@@ -3,17 +3,17 @@
 ## Motivation
 
 This library is built around the "model driven design" ideas, that information
-system (programm** can be decomposed into two parts -
+system (programm) can be decomposed into two parts -
 **declarative model part** and **imperative interpreter part** (engine)
 
 Models can be expressed with data (interoperable, regular),
-more precisely **Data DSLs**.
+or more precisely **Data DSLs**.
 
 The nice feature of Data DSLs, thats its easyly composable, regular and introspectable.
 
 This library is implementation of **model part**.
 
-It intrduces **model storage** and **model project**.
+It intrduces **model project** and **model store**
 
 
 ## Model Project
@@ -160,17 +160,9 @@ Composable, open-world schema engine.
 Each schema node:
 
 * type (required) - defines interpreter and link to type specific schema keys
-* confirms - set of other schemas to evaluate
-* enum
-* constant
-
-
-For example `zen/map` type defines:
-
-* values:  schema - schema to apply to all values
-* keys: { key: schema } - enumeration of keys and schema for each key
-* require: #{:key,...} - list of requried keys in map
-* schema-key: {:key :some-key } - key to resolve schema from data
+* confirms - set of other schemas to confirm (this is not inheretance!)
+* enum - polymorphic enumeration of possible values (TODO: think about terminology)
+* constant - polymorphic fixation of value
 
 
 List of built-in types:
@@ -190,5 +182,14 @@ List of built-in types:
   * zen/map
 * zen/union-map
 * zen/union
+
+
+For example `zen/map` type defines additional validation keys:
+
+* values:  schema - schema to apply to all values
+* keys: { key: schema } - enumeration of keys and schema for each key
+* require: #{:key,...} - list of requried keys in map
+* schema-key: {:key :some-key } - key to resolve schema from data
+
 
 Schema can be extended with primitives and container types.
