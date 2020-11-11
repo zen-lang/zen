@@ -23,7 +23,7 @@ and layout in file system. Set of **namespaces** can be published
 and reused as a **package**.
 
 **model project** layout is highly influenced by clojure and java,
-using similar convetions.
+uses similar convetions.
 
 Model project consists of set of namespaces.
 Each namespace contains one or multiple models described with data.
@@ -50,6 +50,7 @@ by short name and refer between namespaces by full name - '<namespace>/symbol
 Example namespace:
 
 ```edn
+
 {ns myapp.module
  imports #{http}
  
@@ -100,7 +101,7 @@ The key features of zen schema is that it supports
 * ignore, warn on fail on "unknown keys" is just a validation mode not part of schema semantic
 * supports RDF inspired property schema - i.e. schema attached to key name not a key container
 
-```
+```edn
 {ns myapp
 
  Contact {
