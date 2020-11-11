@@ -1,0 +1,22 @@
+{:ns myapp
+
+ email {:zen/tags #{:zen/schema}
+        :zen/desc "email type"
+        :type zen/string
+        :regex #"^.*@.*$"}
+
+ User {:zen/tags #{:zen/schema}
+       :type zen/map
+       :keys {:id {:type zen/string}
+              :name {:type zen/string}
+              :password {:type zen/string}
+              :email {:type email}}}
+
+ admin {:zen/tags #{:myapp/User}
+        :zen/desc "Administrator record"
+        :id "admin"
+        :name "admin"
+        :password #scrypt"pwd"
+        :email "admin"}
+
+ }

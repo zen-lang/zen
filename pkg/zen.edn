@@ -1,14 +1,33 @@
 {ns zen
 
- regex    {types schema
-           tags #{:zen/primitive}
-           :desc "regexp primitive type"
-           :type map
-           :keys {}}
+ :zen/tag {:zen/tags #{:zen/tag}
+           :zen/desc "register keyword as a tag"}
 
- string    {types schema
-            tags #{:zen/primitive}
-            :desc "sring primitive type"
+ :zen/schema {:zen/tags #{:zen/tag}
+              :zen/desc "label resource as zen/schema"
+              :schema schema}
+
+ :zen/property {:zen/tags #{:zen/tag}
+                :zen/desc "register tag as a property - i.e. global key with schema"}
+
+ desc {:zen/tags #{:zen/property :zen/schema}
+        :type string}
+
+ name {:zen/tags #{:zen/property :zen/schema}
+       :type symbol}
+
+ ;; ctx {:zen/tags #{:zen/schema}
+ ;;      :zen/desc "schema for meta-store context"
+ ;;      :keys {:tags {:type map :value {:type map :confirms #{tag}}}
+ ;;             :symbols {:type map}}}
+
+ tags {:zen/tags #{:zen/property :zen/schema}
+       :type zen/set
+       :every {:type keyword}}
+
+
+ string    {:zen/tags #{:zen/primitive :zen/schema}
+            :zen/desc "sring primitive type"
             :type map
             :keys {:minLength {:type integer
                                :min 0
@@ -16,63 +35,65 @@
                    :maxLength {:type integer :min 0}
                    :regex     {:type regex}}}
 
- integer   {types schema
-            tags #{:zen/primitive}
-            :desc "integer primitive type"
+ regex    {:zen/tags #{:zen/schema :zen/primitive}
+           :zen/desc "regexp primitive type"
+           :type map}
+
+
+ integer   {:zen/tags #{:zen/primitive :zen/schema}
+            :zen/desc "integer primitive type"
             :type map
             :keys {:min {:type integer}
                    :max {:type integer}}}
 
- number    {types schema
-            tags #{:zen/primitive}
-            :desc "number primitive type"
+ number    {:zen/tags #{:zen/primitive :zen/schema}
+            :zen/desc "number primitive type"
             :type map
             :keys {:min {:type number}
                    :max {:type number}}}
 
- date      {types schema
-            tags #{:zen/primitive}
+ date      {:zen/tags #{:zen/primitive :zen/schema}
             :type map
             :keys {:in-past   {:type boolean}
                    :in-future {:type boolean}}}
 
- datetime  {types schema
-            tags #{:zen/primitive}
+ datetime  {:zen/tags #{:zen/primitive :zen/schema}
             :type map
             :keys {:in-past {:type boolean}
                    :in-future {:type boolean}}}
 
- boolean   {types schema
-            tags #{:zen/primitive}
+ boolean   {:zen/tags #{:zen/primitive :zen/schema}
             :type map}
 
- symbol    {types schema :type map}
+ symbol    {:zen/tags #{:zen/primitive :zen/schema}
+            :type map}
 
- keyword   {types schema :type map}
+ keyword   {:zen/tags #{:zen/primitive :zen/schema}
+            :type map}
 
- union-key {types schema :type map}
+ union-key {:zen/tags #{:zen/primitive :zen/schema}
+            :type map}
 
-
- coll      {types schema
+ coll      {:zen/tags #{:zen/coll :zen/schema}
             :type map
-            :keys {:every {:confirms #{schema}}
+            :keys {:every {:type map :confirms #{schema}}
                    :minItems {:type integer :min 0}
                    :maxItems {:type integer :min 0}}}
 
- set       {types schema
+ set       {:zen/tags #{:zen/coll :zen/schema}
             :type map
             :confirms #{coll}}
 
- vector    {types schema
+ vector    {:zen/tags #{:zen/coll :zen/schema}
             :type map
             :confirms #{coll}}
 
- map       {types schema
+ map       {:zen/tags #{:zen/coll :zen/schema}
             :type map
-            :keys {:values {:confirms #{schema}}}}
+            :keys {:values {:type map :confirms #{schema}}}}
 
- schema   {types schema
-           :desc "zen schema"
+ schema   {:zen/tags #{:zen/schema}
+           :zen/desc "zen schema"
            :type map
            :schema-key {:key :type}
            :keys {:type {:type symbol}
@@ -90,15 +111,17 @@
                   :require {:type set :every {:type keyword}}}
            :require [:type]}
 
- resource {types schema
+ resource {:zen/tags #{:zen/schema}
            :type map
            :keys {:id {:type string}
                   :resourceType {:type string}}}
 
- reference {types schema
+ reference {:zen/tags #{:zen/schema}
             :type map
             :keys {:id {:type string}
                    :resourceType {:type string}}}
 
- op {types schema
-     :desc "Operaration"}}
+
+ op {:zen/tags #{:zen/schema}
+     :desc "Operaration"
+     :type map}}

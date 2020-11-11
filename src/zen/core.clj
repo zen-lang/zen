@@ -18,6 +18,9 @@
   (read-ns ctx 'myapp)
   (read-ns ctx 'zen)
 
+
+
+
   (println
    (str/join "\n" (:errors @ctx)))
 

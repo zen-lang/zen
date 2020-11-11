@@ -1,19 +1,37 @@
 # zen meta store & schema
 
-## store
+zen project consists of set of namespaces.
 
-* namespace
-* resource
+On file system namespaces can be organized 
+the same way as java/clojure project.
+
+Each namespace is valid edn file with data,
+describing your models.
+Namespace is a map with two special symbol keys  - 'ns  and 'import
+
+* 'ns - defines name of namespace
+* 'imports - is a set of required namespaces to interpret this namespace (zen namespace is imported implicitly)
+
+Inside namespace you can refer local symbols just by local 
+name or symbols from extrnal namespace by ns-name/sym-name.
+
+All other symbolic keys defines meta-resources.
+
+Symbol may be tagged with keywords. Keywords used to 
+organize and classify symbols.
+
+* global keys
 
 ```
-{
- ns myapp.something ;; namespace
- import #{some.ns}
+{ns myapp.something ;; namespace
+ import #{ some.lib }
 
+ :tags {}
+ :desc {}
  ;; resource
- symbol {
+ web {
    ;; name myapp.something/symbol
-   tags #{:zen/schema ....} ;; keyword tags - zen types
+   :zen/tags #{:some.lib/http-server }
 
    ;; resource data
    :key "value"
@@ -25,6 +43,14 @@
 
 }
 ```
+
+
+
+You can load zen project into meta-storage.
+zen will validate all m
+
+## store
+
 
 
 ## schema

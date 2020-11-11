@@ -7,22 +7,25 @@
 
 (zen.core/load-ns
  tctx {'ns 'myapp
-       'str {'types 'zen/schema
+       'str {:zen/tags #{:zen/schema}
              :type 'zen/string}
 
-       'Address {'types 'zen/schema
+       'mykey {:zen/tags #{:zen/schema :zen/property}
+              :type 'zen/string}
+
+       'Address {:zen/tags #{:zen/schema}
                  :type 'zen/map
                  :require #{:city}
                  :keys {:city {:type 'zen/string}
                         :line {:type 'zen/vector
                                :every {:type 'zen/string}}}}
 
-       'Identifier {'types 'zen/schema
+       'Identifier {:zen/tags #{:zen/schema}
                     :type 'zen/map
                     :keys {:value {:type 'zen/string}
                            :system {:type 'zen/string}}}
 
-       'User {'types 'zen/schema
+       'User {:zen/tags #{:zen/schema}
               :type 'zen/map
               :keys {:id   {:type 'zen/string}
                      :name {:type 'zen/string :minLength 3}
@@ -37,25 +40,25 @@
                                            :require #{:system}}}}
               :require #{:name}}
 
-       'Contactable {'types 'zen/schema
+       'Contactable {:zen/tags #{:zen/schema}
                      :type 'zen/map
                      :keys {:contact {:type 'zen/map
                                       :keys {:phone {:type 'zen/string}
                                              :ex    {:type 'zen/string}}}}}
 
-       'SuperUser {'types 'zen/schema
+       'SuperUser {:zen/tags #{:zen/schema}
                    :confirms #{'User 'Contactable}
                    :type 'zen/map
                    :keys {:role {:type 'zen/string}
                           :contact {:type 'zen/map
                                     :require [:ex]}}}
 
-       'Settings {'types 'zen/schema
+       'Settings {:zen/tags #{:zen/schema}
                   :type 'zen/map
                   :keys {:headers {:type 'zen/map
                                    :keys {:content-type {:type 'zen/string :minLength 3}}
                                    :values {:type 'zen/string}}}}
-       'email {'types 'zen/schema
+       'email {:zen/tags #{:zen/schema}
                :type 'zen/string
                :regex #"^.*@.*$"}
        })
@@ -159,6 +162,31 @@
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}
                                                         {:system "s1" :value "v2"}]}
           {:errors empty?})
+
+  (vmatch #{'myapp/User}
+          {:name "niquola"
+           :myapp/unexisting "ups"
+           :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
+          {:errors
+           [{:type "unknown-key",
+             :message "unknown key :myapp/unexisting",
+             :path [:myapp/unexisting]}]})
+
+  (vmatch #{'myapp/User}
+          {:name "niquola"
+           :myapp/mykey "hi"
+           :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
+          {:errors empty?})
+
+  (vmatch #{'myapp/User}
+          {:name "niquola"
+           :myapp/mykey 1
+           :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
+          {:errors
+           [{:message "Expected type of 'string, got 'long",
+             :type "primitive-type",
+             :path [:myapp/mykey],
+             :schema ['myapp/User :myapp/mykey]}]})
 
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}]}
           {:errors [{:message "Expected >= 2, got 1" :path [:identifiers] :schema ['myapp/User :identifiers :minItems]}]})

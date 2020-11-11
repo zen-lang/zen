@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]))
 
 (defn get-symbol [ctx nm]
-  (when-let [res (get-in @ctx [:syms nm])]
+  (when-let [res (get-in @ctx [:symbols nm])]
     (assoc res 'name nm)))
 
 (defn update-acc [ctx acc {dp :path sp :schema}]
@@ -29,6 +29,11 @@
 (defn restore-acc [acc {pth :path sch :schema}]
   (assoc acc :schema sch :path pth))
 
+(defn resolve-property [ctx k]
+  (let [sym (symbol (namespace k) (name k))]
+    (when (contains? (get-in @ctx [:tags-index :zen/property]) sym)
+      (get-symbol ctx sym))))
+
 (defmethod validate-type 'zen/map
   [_ ctx acc {cfs :confirms ks :keys vls :values reqs :require} data]
   (if (map? data)
@@ -41,16 +46,17 @@
                            acc))
           acc (->> data
                    (reduce (fn [acc [k v]]
-                             (if (contains? #{'types 'ns} k)
-                               acc
-                               (if-let [sch (get ks k)]
-                                 (let [acc' (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
-                                       acc' (if vls
-                                              (validate-schema ctx (update-acc ctx (restore-acc acc' acc) {:schema [:values] :path [k]}) vls v)
-                                              (assoc-in acc' [:keys (conj (:path acc) k)] true))]
-                                   (restore-acc acc' acc))
-                                 (if vls
-                                   (-> (validate-schema ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
+                             (if-let [sch (get ks k)]
+                               (let [acc' (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                     acc' (if vls
+                                            (validate-schema ctx (update-acc ctx (restore-acc acc' acc) {:schema [:values] :path [k]}) vls v)
+                                            (assoc-in acc' [:keys (conj (:path acc) k)] true))]
+                                 (restore-acc acc' acc))
+                               (if vls
+                                 (-> (validate-schema ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
+                                     (restore-acc acc))
+                                 (if-let [sch  (and (namespace k) (resolve-property ctx k))]
+                                   (-> (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                        (restore-acc acc))
                                    (update-in acc [:keys (conj (:path acc) k)] #(or % false))))))
                            acc))

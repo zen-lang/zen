@@ -8,7 +8,7 @@
 
 (defn update-types-recur [ctx tp-sym sym]
   (swap! ctx update-in [:tps tp-sym] (fn [x] (conj (or x #{}) sym)))
-  (doseq [tp-sym' (get-in @ctx [:syms tp-sym :isa])]
+  (doseq [tp-sym' (get-in @ctx [:symbols tp-sym :isa])]
     (update-types-recur ctx tp-sym' sym)))
 
 (declare read-ns)
@@ -16,11 +16,62 @@
 (defn pretty-path [pth]
   (->> pth
        (mapv (fn [x] (if (keyword? x) (subs (str x) 1) (str x))))
-       (str/join "." )))
+       (str/join "->" )))
+
+(defn eval-resource [ctx ns-str ns-name nmsps k resource]
+  (-> (clojure.walk/postwalk
+       (fn [x]
+         (if (symbol? x)
+           (if (namespace x)
+             (do (when-not (get-in @ctx [:symbols x])
+                   (swap! ctx update :errors conj (format "Could not resolve symbol '%s in %s/%s" x ns-name k)))
+                 x)
+             (do (when-not (get nmsps x)
+                   (swap! ctx update :errors conj (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)))
+                 (symbol ns-str (name x))))
+           x))
+       resource)
+      (assoc ;;TODO :zen/ns ns-name
+             :zen/name (symbol (name ns-name) (name k)))))
+
+(defn load-tag [ctx nmsps k v]
+  (let [ns-name (get nmsps 'ns)
+        ns-str (name ns-name)
+        res (eval-resource ctx ns-str ns-name nmsps k v)]
+    (swap! ctx (fn [ctx] (update-in ctx [:tags k] (fn [x] (when x (println "WARN: reload tag" (:zen/name res))) res))))))
+
+
+(defn load-symbol [ctx nmsps k v]
+  (let [ns-name (get nmsps 'ns)
+        ns-str (name ns-name)
+        sym (symbol ns-str (name k))
+        res (eval-resource ctx ns-str ns-name nmsps k v)]
+    (swap! ctx (fn [ctx] (update-in ctx [:symbols sym] (fn [x] (when x (println "WARN: reload" (:zen/name res))) res))))
+    (doseq [tg (:zen/tags res)]
+      (swap! ctx update-in [:tags-index tg] (fn [x] (conj (or x #{}) sym))))
+    res))
+
+(defn validate-resource [ctx res]
+  (let [tags (get res :zen/tags)
+        tags-reg (get @ctx :tags)
+        schemas (->> tags
+                     (mapv (fn [tag] (get-in tags-reg [tag :schema])))
+                     (filter identity)
+                     (into #{}))]
+    (when-not (empty? schemas)
+      (println "validate with" schemas)
+      (let [{errs :errors} (zen.validation/validate ctx schemas res)]
+        (when-not (empty? errs)
+          (doseq [err errs]
+            (swap! ctx update :errors
+                   conj (format "Validation: %s '%s' in %s by %s"
+                                (get res :zen/name)
+                                (:message err)
+                                (pretty-path (:path err))
+                                (pretty-path (:schema err))))))))))
 
 (defn load-ns [ctx nmsps]
-  (let [ns-name (get nmsps 'ns)
-        ns-str (name ns-name)]
+  (let [ns-name (get nmsps 'ns)]
     (when-not (get-in ctx [:ns ns-name])
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] nmsps)))
       (doseq [imp (get nmsps 'import)]
@@ -28,41 +79,10 @@
       (->>
        (dissoc nmsps ['ns 'import])
        (mapv (fn [[k v]]
-              (when (and (symbol? k) (map? v))
-                (let [sym (symbol ns-str (name k))
-                      res (-> (clojure.walk/postwalk
-                               (fn [x]
-                                 (if (and (symbol? x) (not (contains? #{'types} x)))
-                                   (if (namespace x)
-                                     (do (when-not (get-in @ctx [:syms x])
-                                           (swap! ctx update :errors conj (format "Could not resolve symbol '%s in %s/%s" x ns-name k)))
-                                         x)
-                                     (do (when-not (get nmsps x)
-                                           (swap! ctx update :errors conj (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)))
-                                         (symbol ns-str (name x))))
-                                   x))
-                               (dissoc v 'tags 'types))
-                              (assoc 'ns ns-name
-                                     'name (symbol (name ns-name) (name k))
-                                     'types (get 'types v)))]
-                  (swap! ctx (fn [ctx] (assoc-in ctx [:syms sym] res)))
-                  (when-let [tps (get v 'types)]
-                    (assert (or (set? tps) (symbol? tps)) (format "types should be a set of symbols or symbol in %s/%s" ns-name k))
-                    (doseq [tp-sym (if (symbol? tps) [tps] tps)]
-                      (update-types-recur ctx tp-sym sym)))
-                  res))))
-       (mapv (fn [res]
-               (when-let [tps (and res (get res 'types))]
-                 (let [tps (if (symbol? tps) #{tps} tps)]
-                   (let [{errs :errors} (zen.validation/validate ctx tps (dissoc res 'types 'ns 'name 'tags))]
-                     (when-not (empty? errs)
-                       (doseq [err errs]
-                         (swap! ctx update :errors
-                                conj (format "Validation: %s '%s' in %s by %s"
-                                             (get res 'name)
-                                             (:message err)
-                                             (pretty-path (:path err))
-                                             (pretty-path (:schema err)))))))))))))))
+               (cond (keyword? k) (load-tag ctx nmsps k v)
+                     (and (symbol? k) (map? v)) (load-symbol ctx nmsps k v)
+                     :else nil)))
+       (mapv (fn [res] (validate-resource ctx res)))))))
 
 (defn read-ns [ctx nm]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
@@ -72,7 +92,7 @@
       (swap! ctx update :errors conj (format "Could not load ns '%s" nm)))))
 
 (defn get-symbol [ctx nm]
-  (when-let [res (get-in @ctx [:syms nm])]
+  (when-let [res (get-in @ctx [:symbols nm])]
     (assoc res 'name nm)))
 
 (defn new-context [& [opts]]
