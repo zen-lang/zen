@@ -1,66 +1,153 @@
 # zen meta store & schema
 
-zen project consists of set of namespaces.
+## Motivation
 
-On file system namespaces can be organized 
-the same way as java/clojure project.
+This library is built around the "model driven design" ideas, that information
+system (programm** can be decomposed into two parts -
+**declarative model part** and **imperative interpreter part** (engine)
 
-Each namespace is valid edn file with data,
-describing your models.
-Namespace is a map with two special symbol keys  - 'ns  and 'import
+Models can be expressed with data (interoperable, regular),
+more precisely **Data DSLs**.
+
+The nice feature of Data DSLs, thats its easyly composable, regular and introspectable.
+
+This library is implementation of **model part**.
+
+It intrduces **model storage** and **model project**.
+
+
+## Model Project
+
+You describe your models like code in modules (**namespaces**)
+and layout in file system. Set of **namespaces** can be published
+and reused as a **package**.
+
+**model project** layout is highly influenced by clojure and java,
+using similar convetions.
+
+Model project consists of set of namespaces.
+Each namespace contains one or multiple models described with data.
+
+## Namespace
+
+Namespaces are written in [edn format]()
+
+Namespace is a map (in terms of clojure)
+with two special symbol keys  - 'ns  and 'import
 
 * 'ns - defines name of namespace
 * 'imports - is a set of required namespaces to interpret this namespace (zen namespace is imported implicitly)
 
-Inside namespace you can refer local symbols just by local 
-name or symbols from extrnal namespace by ns-name/sym-name.
+Namespaces should refer other namespaces explicitly thro import!
+That's how starting from one **entry point** namespace,
+your project can import only used modules and models from other packages.
 
-All other symbolic keys defines meta-resources.
+Rest of symbolic keys in namespace define models and keyword keys define tags.
 
-Symbol may be tagged with keywords. Keywords used to 
-organize and classify symbols.
+Just like in clojure namespace you may refer one model from another located in one namespace
+by short name and refer between namespaces by full name - '<namespace>/symbol 
 
-* global keys
+Example namespace:
 
-```
-{ns myapp.something ;; namespace
- import #{ some.lib }
-
- :tags {}
- :desc {}
- ;; resource
+```edn
+{ns myapp.module
+ imports #{http}
+ 
  web {
-   ;; name myapp.something/symbol
-   :zen/tags #{:some.lib/http-server }
+  :zen/tags #{:http/server}
+  :port 8080
+  :workers 8
+  :api api}
+ 
+ api {
+  :zen/tags #{:http/api}
+  :zen/desc "API definition"
+  :routes {
+    :get {:operation index}
+    "meta" {:operation http/api-introspection}}}
 
-   ;; resource data
-   :key "value"
-   :reference some.ns/symbol
-   :other-key {
-      :content "here"
-   }
- }
+ index {
+  :zen/tags #{:http/op :http/simple-op}
+  :response {
+    :status 302
+    :headers {"location" "/index.html"}}}
 
 }
 ```
 
 
 
-You can load zen project into meta-storage.
-zen will validate all m
+## Tags
 
-## store
+Instead of introducing any kind of types and type hierarchies,
+zen uses **tag system** to classify models.
+
+You may think about tag system as non-hierarchical multidimetional classification.
+Or as a funcion of meta store - you can get all models labeled with specific tag.
 
 
+TODO: keyword or symbol for tags?
 
-## schema
+
+## Schema
+
+zen includes built in schema engine,
+which is slightly similar to json schema.
+
+The key features of zen schema is that it supports
+
+* open world evalualtion - i.e. each schema validates only known by this schema keys (properties)
+* ignore, warn on fail on "unknown keys" is just a validation mode not part of schema semantic
+* supports RDF inspired property schema - i.e. schema attached to key name not a key container
+
+```
+{ns myapp.schema
+
+ Contact {
+   :zen/tags #{:zen/schema}
+   :keys {
+     :system {:type zen/string :enum [{:value "phone"} {:value "email"}]
+     :value  {:type zen/string}}}
+
+ Contactable {
+   :zen/tags #{:zen/schema}
+   :keys {:contacts {:type zen/vector 
+                     :every {:type map :confirms #{Contact}}}}}
+
+ User {
+   :zen/tags #{:zen/schema}
+   :type zen/map
+   :confirms #{Contactable}
+   :keys {
+     :id {:type zen/string}
+     :password {:type zen/string }}}
+
+}
+```
+
+## Store
+
+Model project may be loaded into **store**.
+You start loading from **entry point namespace**.
+All imports will be resolved, validated and loaded into store.
+
+Store functions:
+* get model by name <ns>/<name>
+* get namespace by name
+* get all models by tag
+* reload namespace
+
+
+## Schema Specification
 
 Composable, open-world schema engine.
 
-Schema node:
+Each schema node:
 
-* type (required) - defines interpreter and link to type specific schema
+* type (required) - defines interpreter and link to type specific schema keys
 * confirms - set of other schemas to evaluate
+* enum
+* constant
 
 
 For example `zen/map` type defines:
@@ -71,25 +158,22 @@ For example `zen/map` type defines:
 * schema-key: {:key :some-key } - key to resolve schema from data
 
 
+List of built-in types:
 
-```edn
-{:type zen/map 
- :confirms #{other schemas}
- :keys {:prop schema}
- :require #{:prop}
- :values schema
- }
+* primitives
+  * zen/symbol
+  * zen/keyword
+  * zen/string
+  * zen/number
+  * zen/integer
+  * zen/boolean
+  * zen/date
+  * zen/datetime
+* collections
+  * zen/vector
+  * zen/set
+  * zen/map
+* zen/union-map
+* zen/union
 
-{:type zen/string
- :minLength 3
- :maxLength 1000
- :regex #"^[1-9].**"
- }
-
-{:type zen/vector
- :minItems 1
- :maxItems 2
- :every schema
- :nth {idx schema} ;; TODO
- }
-```
+Schema can be extended with primitives and container types.
