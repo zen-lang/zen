@@ -101,7 +101,7 @@ The key features of zen schema is that it supports
 * supports RDF inspired property schema - i.e. schema attached to key name not a key container
 
 ```
-{ns myapp.schema
+{ns myapp
 
  Contact {
    :zen/tags #{:zen/schema}
@@ -118,11 +118,26 @@ The key features of zen schema is that it supports
    :zen/tags #{:zen/schema}
    :type zen/map
    :confirms #{Contactable}
+   :require #{:id}
    :keys {
      :id {:type zen/string}
+     :email {:type zen/string :regex #".*@.*"}
      :password {:type zen/string }}}
 
+ ;; example of property schema
+ 
+ human-name {
+   :zen/tags #{:zen/property :zen/schema}
+   :type zen/map
+   :keys {:family {:type zen/string} :given {:type zen/vector :every {:type zen/string}}}
+ 
+ }
 }
+;; valid user
+
+{:id "niquola"
+ :myapp/human-name {:given ["Nikolai"] :family "Ryzhikov"}
+ :password #scrypt"secret"}
 ```
 
 ## Store
