@@ -1,0 +1,21 @@
+{ns zen.http
+
+ api {types #{zen/schema}}
+
+ server {types #{zen/schema}}
+
+ op {types #{zen/schema} :isa #{zen/op}}
+
+ metastore-op {types #{zen/schema}
+               :isa #{zen/op op}}
+
+ store-api {types #{api}}
+
+ search {types #{zen/schema}
+         :isa #{op}
+         :keys {:search-params {:isa #{zen/map}}}}
+
+ static-resource {types #{zen/schema}
+                  :isa #{zen/op op}}
+
+}
