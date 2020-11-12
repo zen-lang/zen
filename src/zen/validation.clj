@@ -34,17 +34,13 @@
     (when (contains? (get-in @ctx [:tags 'zen/property]) sym)
       (get-symbol ctx sym))))
 
+;; TODO:
+;; * validate keys
+;; * minItems/maxItems
 (defmethod validate-type 'zen/map
-  [_ ctx acc {cfs :confirms ks :keys vls :values reqs :require eks :exclusive-keys} data]
+  [_ ctx acc {ks :keys vls :values reqs :require eks :exclusive-keys} data]
   (if (map? data)
-    (let [acc (->> cfs
-                   (reduce (fn [acc sym]
-                             (if-let [sch (get-symbol ctx sym)]
-                               (-> (validate-schema ctx (update-acc ctx acc {:schema [sym]}) sch data)
-                                   (restore-acc acc))
-                               (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
-                           acc))
-          acc (->> data
+    (let [acc (->> data
                    (reduce (fn [acc [k v]]
                              (if-let [sch (get ks k)]
                                (let [acc' (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
@@ -212,20 +208,29 @@
     acc
     (add-error ctx acc {:message (format "Expected type of 'regex, got '%s" (pretty-type data)) :type "primitive-type"})))
 
-(defn validate-schema [ctx acc {tp :type {sk :key} :schema-key  ks :keys cfs :confirms :as schema} data]
+(defn validate-schema [ctx acc {tp :type {sk :key} :schema-key const :const enum :enum  cfs :confirms :as schema} data]
   (try
-    (let [acc (if-let [sch-nm (and sk (get data sk))]
+    (let [acc (if const
+                (if (= (:value const) data)
+                  acc
+                  (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"}))
+                acc)
+          acc (->> cfs
+                   (reduce (fn [acc sym]
+                             (if-let [sch (get-symbol ctx sym)]
+                               (-> (validate-schema ctx (update-acc ctx acc {:schema [sym]}) sch data)
+                                   (restore-acc acc))
+                               (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
+                           acc))
+          acc (if-let [sch-nm (and sk (get data sk))]
                 (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
                   (-> (validate-schema ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
                       (restore-acc acc))
                   (add-error ctx acc {:message (format "Could not find schema %s" sch-nm) :type "schema"}))
                 acc)]
-      (cond
-        tp (validate-type tp ctx acc schema data)
-
-        (or ks cfs) (validate-type 'zen/map ctx acc schema data)
-
-        :else (add-error ctx acc {:message (format "I don't know how to eval %s" (pr-str schema)) :type "schema"})))
+      (if tp
+        (validate-type tp ctx acc schema data)
+        (add-error ctx acc {:message (format "I don't know how to eval %s" (pr-str schema)) :type "schema"})))
     (catch Exception e
       (add-error ctx acc {:message (.getMessage e)
                           :type "schema"}))))

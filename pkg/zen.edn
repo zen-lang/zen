@@ -121,9 +121,15 @@
            :type map
            :schema-key {:key :type}
            :keys {:type {:type symbol}
-                  :confirms {:type set :every {:type symbol}}
-                  :enum {:type vector :every {:type map
-                                              :keys {:value {:type any}}}}}
+                  :confirms {:type set
+                             :zen/desc "set of schemas to confirm"
+                             :every {:type symbol}}
+                  :const {:type map
+                          :zen/desc "Check constant"
+                          :keys {:value {:type any}}} ;; TODO: apply top level schema to value
+                  :enum {:type vector
+                         :zen/desc "Check value is in enum"
+                         :every {:type map :keys {:value {:type any}}}}}
            :require [:type]}
 
  resource {:zen/tags #{schema}

@@ -183,8 +183,23 @@ List of built-in types:
   * zen/vector
   * zen/set
   * zen/map
-* zen/union-map
-* zen/union
+* zen/case
+
+### zen/case
+
+`zen/case` is alternative to union type,
+it is more advanced and may be applied to different maps
+
+```edn
+
+{:zen/tags #{'zen/schema}
+ :type 'zen/vector
+ :every {:type 'zen/case
+         :case [{:when {:type 'zen/string}}
+                {:when {:type 'zen/map}
+                 :then {:type 'zen/map :require #{:name} :keys {:name {:type 'zen/string}}}}]}}
+
+```
 
 ### zen/symbol
 

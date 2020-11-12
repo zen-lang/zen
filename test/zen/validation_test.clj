@@ -26,8 +26,8 @@
          'maps-case {:zen/tags #{'zen/schema}
                       :type 'zen/case
                       :case [{:when {:type 'zen/map
-                                      :require #{:person}
-                                      :keys {:person {:type 'zen/boolean}}}
+                                     :require #{:person}
+                                     :keys {:person {:type 'zen/boolean}}}
                                :then {:type 'zen/map
                                       :require #{:name}
                                       :keys {:name {:type 'zen/string}}}}
@@ -38,6 +38,14 @@
                                       :require #{:title}
                                       :keys {:title {:type 'zen/string}}}}]}
 
+         'const {:zen/tags #{'zen/schema}
+                 :type 'zen/string
+                 :const {:value "fixed"}}
+
+         'const-map {:zen/tags #{'zen/schema}
+                     :type 'zen/map
+                     :keys {:fixed {:type 'zen/string}}
+                     :const {:value {:fixed "fixed"}}}
 
          'Address {:zen/tags #{'zen/schema}
                    :type 'zen/map
@@ -171,6 +179,10 @@
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [1 {:ups "ups"}]}
           {:errors
            [{:message "Expected type of 'map, got 1",
+             :type "type",
+             :path [:identifiers 0],
+             :schema ['myapp/User :identifiers :every 'myapp/Identifier]}
+            {:message "Expected type of 'map, got 1",
              :type "type",
              :path [:identifiers 0],
              :schema ['myapp/User :identifiers :every]}
@@ -346,5 +358,37 @@
              :path [],
              :schema ['myapp/maps-case :case]}]})
 
-  )
+  (vmatch #{'myapp/const} "ups"
+          {:errors
+           [{:message "Expected 'fixed', got 'ups'",
+             :type "schema",
+             :path [],
+             :schema ['myapp/const]}]})
 
+  (vmatch #{'myapp/const} "fixed"
+          {:errors empty?})
+
+  (vmatch #{'myapp/const} 1
+          {:errors
+           [{:message "Expected 'fixed', got '1'",
+             :schema ['myapp/const]}
+            {:message "Expected type of 'string, got 'long",
+             :schema ['myapp/const]}]})
+
+  (vmatch #{'myapp/const-map} {:fixed "fixed"}
+          {:errors empty?})
+
+  (vmatch #{'myapp/const-map} {:fixed "ups"}
+          {:errors
+           [{:message "Expected '{:fixed \"fixed\"}', got '{:fixed \"ups\"}'",
+             :type "schema",
+             :path [],
+             :schema ['myapp/const-map]}]})
+
+  (vmatch #{'zen/schema}
+          {:zen/tags #{'zen/schema}
+           :type 'zen/string
+           :const {:value 1}}
+          {:errors [{}]})
+
+)
