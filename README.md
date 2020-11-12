@@ -119,12 +119,14 @@ The key features of zen schema is:
 
  Contact {
    :zen/tags #{zen/schema}
+   :type zen/map
    :keys {
      :system {:type zen/string :enum [{:value "phone"} {:value "email"}]
      :value  {:type zen/string}}}
 
  Contactable {
    :zen/tags #{zen/schema}
+   :type zen/map
    :keys {:contacts {:type zen/vector 
                      :every {:type map :confirms #{Contact}}}}}
 

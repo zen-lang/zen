@@ -98,6 +98,16 @@
                    :require {:type set :every {:type keyword}}
                    :exclusive-keys {:type set :every {:type keyword}}}}
 
+ case  {:zen/tags #{schema}
+         :type map
+         :zen/desc "case definition is a collection of pairs :when and :then.
+                    Starting from first pair, go until first :when schema is valid, then it validates with :then schema"
+         :keys {:case {:type vector
+                        :every {:type map
+                                :require #{:when}
+                                :keys {:when {:type map :confirms #{schema}}
+                                       :then {:type map :confirms #{schema}}}}}}}
+
  ;; map       {:zen/tags #{coll schema}
  ;;            :type map
  ;;            :keys {:values schema}}

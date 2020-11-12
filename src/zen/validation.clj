@@ -134,6 +134,21 @@
   [_ ctx acc sch data]
   acc)
 
+(defmethod validate-type 'zen/case
+  [_ ctx acc {case :case} data]
+  (loop [[{wh :when th :then :as sch} & us] case
+         idx 0]
+    (if (nil? sch)
+      (add-error ctx acc {:message (format "Expected one of %s, but none is conformant" (pr-str (map :when case)))  :type "case"} {:schema [:case]})
+      (let [{errs :errors} (validate-schema ctx (new-validation-acc) wh data)]
+        (println "errs:" errs)
+        (if (empty? errs)
+          (if th
+            (let [acc (validate-schema ctx acc wh data)]
+              (validate-schema ctx (update-acc ctx acc {:schema [:case idx :then]}) th data))
+            acc)
+          (recur us (inc idx)))))))
+
 (defmethod validate-type 'zen/string
   [_ ctx acc {ml :minLength mx :maxLength regex :regex} data]
   (if (string? data)
@@ -174,6 +189,12 @@
   (if (symbol? data)
     acc
     (add-error ctx acc {:message (format "Expected type of 'symbol, got '%s" (pretty-type data)) :type "primitive-type"})))
+
+(defmethod validate-type 'zen/boolean
+  [_ ctx acc schema data]
+  (if (boolean? data)
+    acc
+    (add-error ctx acc {:message (format "Expected type of 'boolean, got '%s" (pretty-type data)) :type "primitive-type"})))
 
 
 (defmethod validate-type 'zen/keyword
