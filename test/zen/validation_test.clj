@@ -7,25 +7,25 @@
 
 (zen.core/load-ns
  tctx {'ns 'myapp
-       'str {:zen/tags #{:zen/schema}
+       'str {:zen/tags #{'zen/schema}
              :type 'zen/string}
 
-       'mykey {:zen/tags #{:zen/schema :zen/property}
+       'mykey {:zen/tags #{'zen/schema 'zen/property}
               :type 'zen/string}
 
-       'Address {:zen/tags #{:zen/schema}
+       'Address {:zen/tags #{'zen/schema}
                  :type 'zen/map
                  :require #{:city}
                  :keys {:city {:type 'zen/string}
                         :line {:type 'zen/vector
                                :every {:type 'zen/string}}}}
 
-       'Identifier {:zen/tags #{:zen/schema}
+       'Identifier {:zen/tags #{'zen/schema}
                     :type 'zen/map
                     :keys {:value {:type 'zen/string}
                            :system {:type 'zen/string}}}
 
-       'User {:zen/tags #{:zen/schema}
+       'User {:zen/tags #{'zen/schema}
               :type 'zen/map
               :keys {:id   {:type 'zen/string}
                      :name {:type 'zen/string :minLength 3}
@@ -40,25 +40,25 @@
                                            :require #{:system}}}}
               :require #{:name}}
 
-       'Contactable {:zen/tags #{:zen/schema}
+       'Contactable {:zen/tags #{'zen/schema}
                      :type 'zen/map
                      :keys {:contact {:type 'zen/map
                                       :keys {:phone {:type 'zen/string}
                                              :ex    {:type 'zen/string}}}}}
 
-       'SuperUser {:zen/tags #{:zen/schema}
+       'SuperUser {:zen/tags #{'zen/schema}
                    :confirms #{'User 'Contactable}
                    :type 'zen/map
                    :keys {:role {:type 'zen/string}
                           :contact {:type 'zen/map
                                     :require [:ex]}}}
 
-       'Settings {:zen/tags #{:zen/schema}
+       'Settings {:zen/tags #{'zen/schema}
                   :type 'zen/map
                   :keys {:headers {:type 'zen/map
                                    :keys {:content-type {:type 'zen/string :minLength 3}}
                                    :values {:type 'zen/string}}}}
-       'email {:zen/tags #{:zen/schema}
+       'email {:zen/tags #{'zen/schema}
                :type 'zen/string
                :regex #"^.*@.*$"}
        })

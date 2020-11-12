@@ -31,7 +31,7 @@
 
 (defn resolve-property [ctx k]
   (let [sym (symbol (namespace k) (name k))]
-    (when (contains? (get-in @ctx [:tags-index :zen/property]) sym)
+    (when (contains? (get-in @ctx [:tags 'zen/property]) sym)
       (get-symbol ctx sym))))
 
 (defmethod validate-type 'zen/map

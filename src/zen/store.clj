@@ -34,28 +34,14 @@
       (assoc ;;TODO :zen/ns ns-name
              :zen/name (symbol (name ns-name) (name k)))))
 
-(defn load-tag [ctx nmsps k v]
-  (let [ns-name (get nmsps 'ns)
-        ns-str (name ns-name)
-        res (eval-resource ctx ns-str ns-name nmsps k v)]
-    (swap! ctx (fn [ctx] (update-in ctx [:tags k] (fn [x] (when x (println "WARN: reload tag" (:zen/name res))) res))))))
-
-
-(defn load-symbol [ctx nmsps k v]
-  (let [ns-name (get nmsps 'ns)
-        ns-str (name ns-name)
-        sym (symbol ns-str (name k))
-        res (eval-resource ctx ns-str ns-name nmsps k v)]
-    (swap! ctx (fn [ctx] (update-in ctx [:symbols sym] (fn [x] (when x (println "WARN: reload" (:zen/name res))) res))))
-    (doseq [tg (:zen/tags res)]
-      (swap! ctx update-in [:tags-index tg] (fn [x] (conj (or x #{}) sym))))
-    res))
 
 (defn validate-resource [ctx res]
   (let [tags (get res :zen/tags)
-        tags-reg (get @ctx :tags)
         schemas (->> tags
-                     (mapv (fn [tag] (get-in tags-reg [tag :schema])))
+                     (mapv (fn [tag]
+                             (when-let [sch (get-in @ctx [:symbols tag])]
+                               (when (contains? (:zen/tags sch) 'zen/schema)
+                                 tag))))
                      (filter identity)
                      (into #{}))]
     (when-not (empty? schemas)
@@ -70,6 +56,16 @@
                                 (pretty-path (:path err))
                                 (pretty-path (:schema err))))))))))
 
+(defn load-symbol [ctx nmsps k v]
+  (let [ns-name (get nmsps 'ns)
+        ns-str (name ns-name)
+        sym (symbol ns-str (name k))
+        res (eval-resource ctx ns-str ns-name nmsps k v)]
+    (swap! ctx (fn [ctx] (update-in ctx [:symbols sym] (fn [x] (when x (println "WARN: reload" (:zen/name res))) res))))
+    (doseq [tg (:zen/tags res)]
+      (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
+    res))
+
 (defn load-ns [ctx nmsps]
   (let [ns-name (get nmsps 'ns)]
     (when-not (get-in ctx [:ns ns-name])
@@ -79,8 +75,7 @@
       (->>
        (dissoc nmsps ['ns 'import])
        (mapv (fn [[k v]]
-               (cond (keyword? k) (load-tag ctx nmsps k v)
-                     (and (symbol? k) (map? v)) (load-symbol ctx nmsps k v)
+               (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k v)
                      :else nil)))
        (mapv (fn [res] (validate-resource ctx res)))))))
 

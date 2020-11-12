@@ -10,9 +10,12 @@
   (is (empty? (:errors @ctx)))
 
   (is (not (empty? (get-in @ctx [:symbols 'zen/schema]))))
+
+  (get-in @ctx [:symbols 'zen/schema])
+
   (is (not (empty? (get-in @ctx [:ns 'zen]))))
-  (is (not (nil? (:zen/property (:tags @ctx)))))
-  (is (not (empty? (:zen/property (:tags-index @ctx)))))
+  (is (not (nil? ('zen/property (:tags @ctx)))))
+  
 
   (keys @ctx)
 
