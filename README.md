@@ -1,5 +1,8 @@
 # zen meta store & schema
 
+[![Build Status](https://travis-ci.org/HealthSamurai/zen.svg?branch=master)](https://travis-ci.org/HealthSamurai/zen)
+
+
 ## Motivation
 
 This library is built around the "model driven design" - idea, that information
