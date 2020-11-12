@@ -26,7 +26,7 @@
             :type map
             :keys {:minLength {:type integer
                                :min 0
-                               :desc "inclusive minimal length of string"}
+                               :zen/desc "inclusive minimal length of string"}
                    :maxLength {:type integer :min 0}
                    :regex     {:type regex}}}
 
@@ -85,26 +85,27 @@
 
  map       {:zen/tags #{coll schema}
             :type map
-            :keys {:values {:type map :confirms #{schema}}}}
+            :keys {:values {:type map :confirms #{schema}}
+                   :schema-key {:type map
+                                :keys {:key {:type keyword}
+                                       :resolve {:type map :values {:type symbol}}}
+                                :require #{:key}}
+                   :keys {:type map
+                          :values {:type map
+                                   :confirms #{schema}
+                                   :keys {:type {:type symbol}}}}
+                   :require {:type set :every {:type keyword}}}}
+
+ ;; map       {:zen/tags #{coll schema}
+ ;;            :type map
+ ;;            :keys {:values schema}}
 
  schema   {:zen/tags #{schema}
            :zen/desc "zen schema"
            :type map
            :schema-key {:key :type}
            :keys {:type {:type symbol}
-                  :confirms {:type set :every {:type symbol}}
-                  :desc {:type string}
-
-                  :schema-key {:type map
-                               :keys {:key {:type keyword}
-                                      :resolve {:type map :values {:type symbol}}}
-                               :require #{:key}}
-                  ;; part of map
-                  :keys {:type map
-                         :values {:type map
-                                  :confirms #{schema}
-                                  :keys {:type {:type symbol}}}}
-                  :require {:type set :every {:type keyword}}}
+                  :confirms {:type set :every {:type symbol}}}
            :require [:type]}
 
  resource {:zen/tags #{schema}
@@ -112,10 +113,21 @@
            :keys {:id {:type string}
                   :resourceType {:type string}}}
 
- ;; ctx {:zen/tags #{schema}
- ;;      :zen/desc "schema for meta-store context"
- ;;      :keys {:tags {:type map :value {:type map :confirms #{tag}}}
- ;;             :symbols {:type map}}}
+
+ ctx {:zen/tags #{schema}
+      :zen/desc "schema for context"
+      :type map
+      :keys {:tags {:type set :every {:type symbol}}
+             :symbols {:type map}}}
+
+ operation {:zen/tags #{schema}
+            :zen/desc "Basic operation schema"
+            :type map
+            :keys {:params {:type map :confirms #{schema}}
+                   :result {:type map :confirms #{schema}}
+                   :middleware {:type map
+                                :keys {:before {:type vector}
+                                       :after  {:type vector}}}}}
 
  ;; reference {:zen/tags #{schema}
  ;;            :type map

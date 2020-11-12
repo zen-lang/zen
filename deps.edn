@@ -1,5 +1,6 @@
 {:paths ["src" "pkg" "test"]
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
+        borkdude/edamame {:mvn/version "0.0.11-alpha.15"}
         healthsamurai/matcho {:mvn/version "0.3.7"}}
 
  :aliases

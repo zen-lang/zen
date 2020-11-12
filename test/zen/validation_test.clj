@@ -199,8 +199,7 @@
            [{:message "Expected type of 'map, got 1",
              :type "type",
              :path [:keys],
-             :schema ['zen/schema :keys]}
-            nil?]})
+             :schema ['zen/schema :schema-key 'zen/map :keys]}]})
 
   (vmatch #{'myapp/Settings} {:headers {:a "str"}}
           {:errors empty?})
@@ -218,20 +217,22 @@
              :schema ['myapp/Settings :headers :content-type :minLength]}
             nil?]})
 
-  (vmatch #{'zen/schema} {:keys {:prop 1}}
+  (vmatch #{'zen/schema} {:type 'zen/map :keys {:prop 1}}
           {:errors
            [{:message "Expected type of 'map, got 1",
              :type "type",
              :path [:keys :prop],
-             :schema ['zen/schema :keys :values]}]})
+             :schema ['zen/schema :schema-key 'zen/map :keys :values]}]})
 
-  (vmatch #{'zen/schema} {:keys {:ups {:type 'zen/string
+  (vmatch #{'zen/schema} {:type 'zen/map
+                          :keys {:ups {:type 'zen/string
                                        :minLength "ups"}}}
           {:errors
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
              :path [:keys :ups :minLength],
-             :schema ['zen/schema :keys :values 'zen/schema :schema-key 'zen/string :minLength]}]})
+             :schema
+             ['zen/schema :schema-key 'zen/map :keys :values 'zen/schema :schema-key 'zen/string :minLength]}]})
 
   (vmatch #{'zen/schema}
           {:type 'zen/map
@@ -250,7 +251,7 @@
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
              :path [:keys :maxLength :min],
-             :schema ['zen/schema :keys :values 'zen/schema :schema-key 'zen/integer :min]}
+             :schema ['zen/schema :schema-key 'zen/map :keys :values 'zen/schema :schema-key 'zen/integer :min]}
             {:type "unknown-key",
              :message "unknown key :ups",
              :path [:keys :minLength :ups]}]})

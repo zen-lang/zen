@@ -202,3 +202,10 @@ Apply clojure.spec regular expressions for collections!!!!
 * :nth {integer: schema} - apply schema to nth element
 * :minItems & :maxItems - min/max items in collection 
 * :filter - TODO: apply filter to collection, then apply schema to 
+
+
+## EDN parser
+
+Comming with basis for LSP for zen models. 
+
+TODO: see https://github.com/borkdude/edamame

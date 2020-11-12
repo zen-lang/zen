@@ -1,6 +1,8 @@
 (ns zen.store-test
   (:require [zen.core :as sut]
-            [clojure.test :refer [deftest is]]))
+            [clojure.test :refer [deftest is]]
+            [edamame.core]
+            [clojure.java.io :as io]))
 
 
 (deftest core-schema-test
@@ -19,9 +21,10 @@
 
   (keys @ctx)
 
-
-
-
+  (comment
+    (doseq [[k v] (edamame.core/parse-string
+                   (slurp (.getPath (io/resource "zen.edn"))))]
+      (println k (meta k) "\n " (meta v) v)))
 
 
   )
