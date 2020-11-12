@@ -1,15 +1,17 @@
-{:paths ["src" "pkg" "test"]
+{:paths ["src" "pkg"]
+
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
-        borkdude/edamame {:mvn/version "0.0.11-alpha.15"}
-        healthsamurai/matcho {:mvn/version "0.3.7"}}
+        borkdude/edamame {:mvn/version "0.0.11-alpha.15"}}
 
  :aliases
  {:nrepl
-  {:extra-paths [ "lib/example" "lib/auth"]
+  {:extra-paths ["test" "lib/example" "lib/auth"]
    :extra-deps {org.clojure/tools.nrepl       {:mvn/version "0.2.13"}
                 org.clojure/core.rrb-vector   {:mvn/version "0.0.13"}
                 cider/cider-nrepl             {:mvn/version "0.25.2"}
-                refactor-nrepl/refactor-nrepl {:mvn/version "2.4.0"}}
+                refactor-nrepl/refactor-nrepl {:mvn/version "2.4.0"}
+
+                healthsamurai/matcho {:mvn/version "0.3.7"}}
 
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
 
