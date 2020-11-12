@@ -2,78 +2,79 @@
 
 ## Motivation
 
-This library is built around the "model driven design" ideas, that information
-system (programm) can be decomposed into two parts -
+This library is built around the "model driven design" - idea, that information
+system can be split into two parts -
 **declarative model part** and **imperative interpreter part** (engine)
 
-Models can be expressed with data (interoperable, regular),
-or more precisely **Data DSLs**.
+Models are expressed with data or more precisely **Data DSLs**.
 
-The nice feature of Data DSLs, thats its easyly composable, regular and introspectable.
+The nice feature of Data DSLs, thats data is easyly 
+composable, regular and introspectable.
 
-This library is implementation of **model part**.
-
-It intrduces **model project** and **model store**
+Zen library implements - model part:  **model project**, **model store** and **schema language**
 
 
 ## Model Project
 
-You describe your models like code in modules (**namespaces**)
+You put your models like code in modules (**namespaces**)
 and layout in file system. Set of **namespaces** can be published
 and reused as a **package**.
 
 **model project** layout is highly influenced by clojure and java,
 uses similar convetions.
 
-Model project consists of set of namespaces.
+Model project consists of set of namespaces and may refer other packages.
+
+### Namespace
+
 Each namespace contains one or multiple models described with data.
 
-## Namespace
+Namespaces are written in [edn format](https://github.com/edn-format/edn)
 
-Namespaces are written in [edn format]()
-
-Namespace is a map (in terms of clojure)
+Namespace is a map (in terms of edn)
 with two special symbol keys  - 'ns  and 'import
 
 * 'ns - defines name of namespace
-* 'imports - is a set of required namespaces to interpret this namespace (zen namespace is imported implicitly)
+* 'imports - is a set of required namespaces to interpret this namespace
 
 Namespaces should refer other namespaces explicitly thro import!
+`zen` namespace is imported implicitly.
+
 That's how starting from one **entry point** namespace,
 your project can import only used modules and models from other packages.
 
 Rest of symbolic keys in namespace define models and keyword keys define tags.
 
 Just like in clojure namespace you may refer one model from another located in one namespace
-by short name and refer between namespaces by full name - '<namespace>/symbol 
+by short name (`symbol`) and refer between namespaces by full name - (`namespace.name/symbol`)
 
 Example namespace:
 
 ```edn
 
-{ns myapp.module
- imports #{http}
+{ns myapp.module ;; namespace name
+ imports #{zen.http} ;; imports - TODO: think about aliases
  
+ ;; model
  web {
-  :zen/tags #{:http/server}
+  :zen/tags #{zen.http/server} ;; tags set
   :port 8080
   :workers 8
-  :api api}
+  :api api ;; local reference to myapp.module/api model
+ }
  
  api {
-  :zen/tags #{:http/api}
+  :zen/tags #{zen.http/api}
   :zen/desc "API definition"
   :routes {
     :get {:operation index}
     "meta" {:operation http/api-introspection}}}
 
  index {
-  :zen/tags #{:http/op :http/simple-op}
+  :zen/tags #{zen.http/op zen.http/simple-op}
   :response {
     :status 302
-    :headers {"location" "/index.html"}}}
-
-}
+    :headers {"location" "/index.html"}}}}
 ```
 
 
@@ -84,39 +85,48 @@ Instead of introducing any kind of types and type hierarchies,
 zen uses **tag system** to classify models.
 
 You may think about tag system as non-hierarchical multidimetional classification.
-Or as a funcion of meta store - you can get all models labeled with specific tag.
+Or as a funcion of meta store - get all models labeled with specific tag.
 
+## Store
 
-TODO: keyword or symbol for tags?
+Model project may be loaded into **store**.
+You start loading from **entry point namespace**.
+All imports will be resolved, validated and loaded into store.
+
+Store functions:
+* get model by name `ns/sym`
+* get namespace by name
+* get all models by tag
+* reload namespace
 
 
 ## Schema
 
 zen includes built in schema engine,
-which is slightly similar to json schema.
+which is similar to json schema.
 
-The key features of zen schema is that it supports
+The key features of zen schema is:
 
-* open world evalualtion - i.e. each schema validates only known by this schema keys (properties)
-* ignore, warn on fail on "unknown keys" is just a validation mode not part of schema semantic
-* supports RDF inspired property schema - i.e. schema attached to key name not a key container
+* open world evalualtion - i.e. each schema validates only known keys (properties)
+* ignore, warn on fail on "unknown keys" is just a validation **mode**, i.e.  not part of schema semantic
+* support of RDF inspired property schema - i.e. schema attached to key  (only namespaced keys) -  not to a key container
 
 ```edn
 {ns myapp
 
  Contact {
-   :zen/tags #{:zen/schema}
+   :zen/tags #{zen/schema}
    :keys {
      :system {:type zen/string :enum [{:value "phone"} {:value "email"}]
      :value  {:type zen/string}}}
 
  Contactable {
-   :zen/tags #{:zen/schema}
+   :zen/tags #{zen/schema}
    :keys {:contacts {:type zen/vector 
                      :every {:type map :confirms #{Contact}}}}}
 
  User {
-   :zen/tags #{:zen/schema}
+   :zen/tags #{zen/schema}
    :type zen/map
    :confirms #{Contactable}
    :require #{:id}
@@ -128,12 +138,11 @@ The key features of zen schema is that it supports
  ;; example of property schema
  
  human-name {
-   :zen/tags #{:zen/property :zen/schema}
+   :zen/tags #{zen/property zen/schema}
    :type zen/map
-   :keys {:family {:type zen/string} :given {:type zen/vector :every {:type zen/string}}}
- 
- }
-}
+   :keys {:family {:type zen/string} 
+          :given {:type zen/vector :every {:type zen/string}}}}}
+
 ;; valid user
 
 {:id "niquola"
@@ -141,29 +150,17 @@ The key features of zen schema is that it supports
  :password #scrypt"secret"}
 ```
 
-## Store
 
-Model project may be loaded into **store**.
-You start loading from **entry point namespace**.
-All imports will be resolved, validated and loaded into store.
+### Schema Specification
 
-Store functions:
-* get model by name <ns>/<name>
-* get namespace by name
-* get all models by tag
-* reload namespace
-
-
-## Schema Specification
-
-Composable, open-world schema engine.
+Schema can be extended with primitives and container types.
 
 Each schema node:
 
-* type (required) - defines interpreter and link to type specific schema keys
-* confirms - set of other schemas to confirm (this is not inheretance!)
-* enum - polymorphic enumeration of possible values (TODO: think about terminology)
-* constant - polymorphic fixation of value
+* `:type` (required) - defines interpreter and link to type specific schema keys
+* `:confirms` - set of other schemas to confirm (this is not inheretance!)
+* `:enum` - polymorphic enumeration of possible values (TODO: think about terminology - reference semantic?)
+* `:constant` - polymorphic fixed value validation
 
 
 List of built-in types:
@@ -184,13 +181,24 @@ List of built-in types:
 * zen/union-map
 * zen/union
 
+### zen/symbol
 
-For example `zen/map` type defines additional validation keys:
+### zen/map
 
-* values:  schema - schema to apply to all values
-* keys: { key: schema } - enumeration of keys and schema for each key
-* require: #{:key,...} - list of requried keys in map
-* schema-key: {:key :some-key } - key to resolve schema from data
+For example `zen/map` type defines following validation keys:
+
+* `:values`  schema - schema to apply to all values
+* `:keys` { key: schema } - enumeration of keys and schema for each key
+* `:require` #{:key,...} - list of requried keys in map
+* `:schema-key` {:key :some-key } - key to resolve schema from data on fly
 
 
-Schema can be extended with primitives and container types.
+
+### zen/vector
+
+Apply clojure.spec regular expressions for collections!!!!
+
+* :every  schema - apply schema to every element in collection
+* :nth {integer: schema} - apply schema to nth element
+* :minItems & :maxItems - min/max items in collection 
+* :filter - TODO: apply filter to collection, then apply schema to 
