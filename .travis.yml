@@ -1,0 +1,4 @@
+language: clojure
+script: make test
+jdk:
+  - oraclejdk11

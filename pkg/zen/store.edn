@@ -1,0 +1,15 @@
+{ns zen.store
+ :zen/desc "Operations for store"
+
+ get-symbol {:zen/tags #{zen/operation}
+             :zen/desc "Operation to get symbol by name"}
+
+ get-tags   {:zen/tags #{zen/operation}
+             :zen/desc "Operation to get symbols by tag"}
+
+ read-namespace {:zen/tags #{zen/operation}
+                 :zen/desc "Operation to get symbols by tag"
+                 :params {:zen/tags #{zen/schema}
+                          :type zen/map}
+                 :result {:zen/tags #{zen/schema}
+                          :type zen/map}}}
