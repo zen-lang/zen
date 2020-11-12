@@ -45,7 +45,6 @@
                      (filter identity)
                      (into #{}))]
     (when-not (empty? schemas)
-      (println "validate with" schemas)
       (let [{errs :errors} (zen.validation/validate ctx schemas res)]
         (when-not (empty? errs)
           (doseq [err errs]

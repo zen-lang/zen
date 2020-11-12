@@ -35,7 +35,7 @@
       (get-symbol ctx sym))))
 
 (defmethod validate-type 'zen/map
-  [_ ctx acc {cfs :confirms ks :keys vls :values reqs :require} data]
+  [_ ctx acc {cfs :confirms ks :keys vls :values reqs :require eks :exclusive-keys} data]
   (if (map? data)
     (let [acc (->> cfs
                    (reduce (fn [acc sym]
@@ -66,7 +66,14 @@
                                (add-error ctx (update-acc ctx acc {:path [k] :schema [:require]})
                                           {:message (format "%s is required" k) :type "require"})
                                acc))
-                           acc))]
+                           acc))
+          acc (if eks
+                (if (> (count (select-keys data eks)) 1)
+                  (add-error ctx (update-acc ctx acc )
+                             {:message (format "Expected only one of keys: %s" eks) :type "exclusive-keys"}
+                             {:schema [:exclusive-keys]})
+                  acc)
+                acc)]
       acc)
     (add-error ctx acc {:message (format "Expected type of 'map, got %s" (pr-str data))  :type "type"})))
 
@@ -121,6 +128,11 @@
                 acc)]
       acc)
     (add-error ctx acc {:message (format "Expected type of 'set, got %s" (pretty-type data))  :type "type"})))
+
+
+(defmethod validate-type 'zen/any
+  [_ ctx acc sch data]
+  acc)
 
 (defmethod validate-type 'zen/string
   [_ ctx acc {ml :minLength mx :maxLength regex :regex} data]

@@ -66,6 +66,7 @@
  keyword   {:zen/tags #{primitive schema}
             :type map}
 
+ ;;TODO: replaced with exclusive-keys
  union-key {:zen/tags #{primitive schema}
             :type map}
 
@@ -94,18 +95,25 @@
                           :values {:type map
                                    :confirms #{schema}
                                    :keys {:type {:type symbol}}}}
-                   :require {:type set :every {:type keyword}}}}
+                   :require {:type set :every {:type keyword}}
+                   :exclusive-keys {:type set :every {:type keyword}}}}
 
  ;; map       {:zen/tags #{coll schema}
  ;;            :type map
  ;;            :keys {:values schema}}
+
+ any {:zen/tags #{schema primitive}
+      :zen/desc "Any type"
+      :type zen/map}
 
  schema   {:zen/tags #{schema}
            :zen/desc "zen schema"
            :type map
            :schema-key {:key :type}
            :keys {:type {:type symbol}
-                  :confirms {:type set :every {:type symbol}}}
+                  :confirms {:type set :every {:type symbol}}
+                  :enum {:type vector :every {:type map
+                                              :keys {:value {:type any}}}}}
            :require [:type]}
 
  resource {:zen/tags #{schema}
