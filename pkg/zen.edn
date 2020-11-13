@@ -92,6 +92,7 @@
             :keys {:values {:type map :confirms #{schema}}
                    :schema-key {:type map
                                 :keys {:key {:type keyword}
+                                       :ns  {:type string :zen/desc "namespace prefix to add to key"}
                                        :resolve {:type map :values {:type symbol}}}
                                 :require #{:key}}
                    :key {:type map

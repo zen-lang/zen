@@ -34,27 +34,52 @@
     (when (contains? (get-in @ctx [:tags 'zen/property]) sym)
       (get-symbol ctx sym))))
 
-;; TODO:
-;; * validate keys
-;; * minItems/maxItems
-(defmethod validate-type 'zen/map
-  [_ ctx acc {ks :keys vls :values reqs :require eks :exclusive-keys} data]
-  (if (map? data)
-    (let [acc (->> data
-                   (reduce (fn [acc [k v]]
-                             (if-let [sch (get ks k)]
+#_(if-let [sch (get ks k)]
                                (let [acc' (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                     acc' (if handle-unknown-keys
+                                            (assoc-in acc' [:keys (conj (:path acc) k)] true)
+                                            acc')
                                      acc' (if vls
                                             (validate-schema ctx (update-acc ctx (restore-acc acc' acc) {:schema [:values] :path [k]}) vls v)
-                                            (assoc-in acc' [:keys (conj (:path acc) k)] true))]
+                                            acc')]
                                  (restore-acc acc' acc))
                                (if vls
                                  (-> (validate-schema ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
                                      (restore-acc acc))
-                                 (if-let [sch  (and (namespace k) (resolve-property ctx k))]
+                                 (if-let [sch  (and (keyword? k) (namespace k) (resolve-property ctx k))]
                                    (-> (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                        (restore-acc acc))
-                                   (update-in acc [:keys (conj (:path acc) k)] #(or % false))))))
+                                   (if handle-unknown-keys
+                                     (update-in acc [:keys (conj (:path acc) k)] #(or % false))
+                                     acc))))
+;; TODO:
+;; * validate keys
+;; * minItems/maxItems
+(defmethod validate-type 'zen/map
+  [_ ctx acc {ks :keys ky :key vls :values {sk :key sk-ns :ns} :schema-key reqs :require eks :exclusive-keys} data]
+  (if (map? data)
+    (let [handle-unknown-keys (and (nil? ky) (nil? vls))
+          acc (->> data
+                   (reduce (fn [acc [k v]]
+                             (let [acc (if-let [sch (get ks k)]
+                                         (let [acc' (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                               acc' (if handle-unknown-keys (assoc-in acc' [:keys (conj (:path acc) k)] true) acc')]
+                                           (restore-acc acc' acc))
+                                         (if-let [sch  (and (keyword? k) (namespace k) (resolve-property ctx k))]
+                                           (-> (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                               (restore-acc acc))
+                                           (if handle-unknown-keys
+                                             (update-in acc [:keys (conj (:path acc) k)] #(or % false))
+                                             acc)))
+                                   acc (if vls
+                                         (-> (validate-schema ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
+                                             (restore-acc acc))
+                                         acc)
+                                   acc (if ky
+                                         (-> (validate-schema ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
+                                             (restore-acc acc))
+                                         acc)]
+                               acc))
                            acc))
           acc (->> reqs
                    (reduce (fn [acc k]
@@ -69,21 +94,39 @@
                              {:message (format "Expected only one of keys: %s" eks) :type "exclusive-keys"}
                              {:schema [:exclusive-keys]})
                   acc)
+                acc)
+
+          acc (if-let [nm (and sk (get data sk))]
+                (let [sch-nm (if sk-ns
+                               (symbol sk-ns (name nm))
+                               nm)]
+                  (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
+                    (-> (validate-schema ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
+                        (restore-acc acc))
+                    (add-error ctx acc {:message (format "Could not find schema %s" sch-nm) :type "schema"})))
                 acc)]
       acc)
     (add-error ctx acc {:message (format "Expected type of 'map, got %s" (pr-str data))  :type "type"})))
 
 (defmethod validate-type 'zen/vector
-  [_ ctx acc {evr :every mn :minItems mx :maxItems} data]
+  [_ ctx acc {evr :every mn :minItems mx :maxItems nt :nth} data]
   (if (sequential? data)
-    (let [acc (if evr
-                (-> 
-                 (loop [acc (update-acc ctx acc {:schema [:every]}), idx 0, [d & ds] data]
+    (let [acc (if (or evr nt)
+                (->
+                 (loop [acc acc, idx 0, [d & ds] data]
                    (if (and (nil? d) (empty? ds))
                      acc
                      (recur
-                      (-> (validate-schema ctx (update-acc ctx acc {:path [idx]}) evr d)
-                          (restore-acc acc))
+                      (let [acc (if evr
+                                  (-> (validate-schema ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
+                                      (restore-acc acc))
+                                  acc)
+                            acc (if-let [sch (and nt (get nt idx))]
+                                  (-> (validate-schema ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
+                                      (restore-acc acc))
+                                  acc)]
+                        acc)
+                      
                       (inc idx) ds)))
                  (restore-acc acc))
                 acc)
@@ -208,7 +251,7 @@
     acc
     (add-error ctx acc {:message (format "Expected type of 'regex, got '%s" (pretty-type data)) :type "primitive-type"})))
 
-(defn validate-schema [ctx acc {tp :type {sk :key} :schema-key const :const enum :enum  cfs :confirms :as schema} data]
+(defn validate-schema [ctx acc {tp :type  const :const enum :enum  cfs :confirms :as schema} data]
   (try
     (let [acc (if const
                 (if (= (:value const) data)
@@ -222,12 +265,7 @@
                                    (restore-acc acc))
                                (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                            acc))
-          acc (if-let [sch-nm (and sk (get data sk))]
-                (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
-                  (-> (validate-schema ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
-                      (restore-acc acc))
-                  (add-error ctx acc {:message (format "Could not find schema %s" sch-nm) :type "schema"}))
-                acc)]
+          ]
       (if tp
         (validate-type tp ctx acc schema data)
         (add-error ctx acc {:message (format "I don't know how to eval %s" (pr-str schema)) :type "schema"})))

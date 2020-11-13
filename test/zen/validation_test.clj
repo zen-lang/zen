@@ -1,7 +1,7 @@
 (ns zen.validation-test
   (:require [zen.core]
             [matcho.core :as matcho]
-            [clojure.test :refer [deftest is]]))
+            [clojure.test :refer [deftest is testing]]))
 
 
 (deftest test-validation
@@ -115,15 +115,15 @@
        (is (empty? (:errors res#)))
        (:errors res#)))
 
-  (defmacro vsch [subj]
+  (defmacro valid-schema! [subj]
     `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
        (is (empty? (:errors res#)))
        res#))
 
-  (defmacro vsch! [subj res]
+  (defmacro invalid-schema [subj res]
     `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
        (matcho/match (:errors res#) ~res)
-       res#))
+       (:errors res#)))
 
   (is (empty? (:errors @tctx)))
 
@@ -413,58 +413,119 @@
   ;;         {:errors [{}]})
 
   ;; tessting map
-  (vsch
-   {:zen/tags #{'zen/schema}
-    :type 'zen/map
-    :key {:type 'zen/string}})
+  (testing "zen/map"
 
-  (zen.core/load-ns!
-   tctx {'ns 'test.map
-         'just-map {:zen/tags #{'zen/schema}
-                    :type 'zen/map
-                    :values {:type 'zen/any}}
+    (valid-schema!
+     {:zen/tags #{'zen/schema}
+      :type 'zen/map
+      :key {:type 'zen/string}})
 
-         'str-keys {:zen/tags #{'zen/schema}
-                    :type 'zen/map
-                    :key {:type 'zen/string}}
+    (zen.core/load-ns!
+     tctx {'ns 'test.map
+           'just-map {:zen/tags #{'zen/schema}
+                      :type 'zen/map
+                      :values {:type 'zen/any}}
 
-         'int-keys {:zen/tags #{'zen/schema}
-                    :type 'zen/map
-                    :key {:type 'zen/integer}}})
+           'str-keys {:zen/tags #{'zen/schema}
+                      :type 'zen/map
+                      :key {:type 'zen/string}}
 
-  (vmatch #{'test.map/just-map} {:a 1}
-          {:errors empty?})
+           'int-keys {:zen/tags #{'zen/schema}
+                      :type 'zen/map
+                      :key {:type 'zen/integer}}})
 
-  (match 'test.map/just-map 1
-         [{:message "Expected type of 'map, got 1",
-           :type "type",
-           :schema ['test.map/just-map]}])
+    (valid 'test.map/just-map {:a 1})
 
-  (valid 'test.map/str-keys {"a" 1 "b" 2})
+    (match 'test.map/just-map 1
+           [{:message "Expected type of 'map, got 1",
+             :type "type",
+             :schema ['test.map/just-map]}])
 
-  ;; tessting vector
-  (vsch
-   {:zen/tags #{'zen/schema}
-    :type 'zen/vector
-    :nth {0 {:type 'zen/string}
-          1 {:type 'zen/string}}})
+    (valid 'test.map/str-keys {"a" 1 "b" 2})
+    (match 'test.map/str-keys {:a 1 "b" 2}
+           [{:message "Expected type of 'string, got 'keyword",
+             :type "primitive-type",
+             :path [:a],
+             :schema ['test.map/str-keys :key]}])
 
-  (vsch!
-   {:zen/tags #{'zen/schema}
-    :type 'zen/vector
-    :nth {0 {:type 'zen/string}
-          1 {:type 'zen/string}}}
-   [{}])
+    ;; schema-key
 
-  (zen.core/load-ns
-   tctx {'ns 'test.vec
-         'nth {:zen/tags #{'zen/schema}
-               :type 'zen/vector
-               :nth {0 {:type 'zen/string}
-                     1 {:type 'zen/string}}}})
+    (def sk-sch
+      {'ns 'test.map.sk
 
-  ;; nth
-  ;; prefix for schema-key
-  ;; key
-  ;; confirms with no type
+       'pt {:zen/tags #{'zen/schema}
+            :type 'zen/map
+            :require #{:name}
+            :keys {:name {:type 'zen/string}}}
+
+       'org {:zen/tags #{'zen/schema}
+             :type 'zen/map
+             :require #{:title}
+             :keys {:title {:type 'zen/string}}}
+
+       'obj {:zen/tags #{'zen/schema}
+             :type 'zen/map
+             :schema-key {:key :kind :ns "test.map.sk"}
+             :keys {:kind {:type 'zen/string}}}})
+
+    (valid-schema! (get sk-sch 'obj))
+
+    (zen.core/load-ns! tctx sk-sch)
+
+    (valid 'test.map.sk/obj {:kind "pt" :name "Nikolai"})
+    (valid 'test.map.sk/obj {:kind "org" :title "SPBGU"})
+
+    (match 'test.map.sk/obj {:kind "pt" :extra "a"}
+           [{:message ":name is required",
+             :type "require",
+             :path [:name],
+             :schema ['test.map.sk/obj :schema-key 'test.map.sk/pt :require]}
+            {:type "unknown-key", :message "unknown key :extra", :path [:extra]}])
+
+    (match 'test.map.sk/obj {:kind "org" :extra "a"}
+           [{:message ":title is required",
+             :type "require",
+             :path [:title],
+             :schema ['test.map.sk/obj :schema-key 'test.map.sk/org :require]}
+            {:type "unknown-key", :message "unknown key :extra", :path [:extra]}])
+
+    )
+
+  (testing "zen/vector"
+
+    (valid-schema!
+     {:zen/tags #{'zen/schema}
+      :type 'zen/vector
+      :nth {0 {:type 'zen/string}
+            1 {:type 'zen/string}}})
+
+    (invalid-schema
+     {:zen/tags #{'zen/schema}
+      :type 'zen/vector
+      :nth {0 {:type 'zen/string}
+            :ups {:type 'zen/string}}}
+
+     [{:message "Expected type of 'integer, got 'keyword",
+       :type "primitive-type",
+       :path [:nth :ups],
+       :schema ['zen/schema :schema-key 'zen/vector :nth :key]}])
+
+    (zen.core/load-ns!
+     tctx {'ns 'test.vec
+           'nth {:zen/tags #{'zen/schema}
+                 :type 'zen/vector
+                 :nth {0 {:type 'zen/integer}
+                       1 {:type 'zen/string}}}})
+
+
+    (valid 'test.vec/nth [1 "ok"])
+    (valid 'test.vec/nth [1 "ok" :anything])
+
+    (match 'test.vec/nth ["str" "ok"]
+           [{:message "Expected type of 'integer, got 'string",
+             :type "primitive-type",
+             :path [0],
+             :schema ['test.vec/nth :nth 0]}])
+    )
+
 )
