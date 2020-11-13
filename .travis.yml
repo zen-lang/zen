@@ -1,4 +1,5 @@
 language: clojure
 script: make test
+install: echo 'ok'
 jdk:
-  - oraclejdk9
+  - oraclejdk11
