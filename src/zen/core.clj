@@ -3,14 +3,29 @@
    [zen.validation]
    [zen.store]))
 
-(def load-ns zen.store/load-ns)
-(def load-ns! zen.store/load-ns!)
-(def read-ns zen.store/read-ns)
-(def new-context zen.store/new-context)
-(def get-symbol zen.store/get-symbol)
+(defn load-ns [ctx ns]
+  (zen.store/load-ns ctx ns))
+
+(defn load-ns! [ctx ns]
+  (zen.store/load-ns! ctx ns))
+
+(defn read-ns [ctx ns-name]
+  (zen.store/read-ns ctx ns-name))
+
+(defn new-context [& [opts]]
+  (zen.store/new-context (or opts {})))
+
+(defn get-symbol [ctx sym]
+  (zen.store/get-symbol ctx sym))
+
+(defn get-tag [ctx sym]
+  (zen.store/get-tag ctx sym))
 
 (defn validate [ctx symbols data]
   (zen.validation/validate ctx symbols data))
+
+(defn validate-schema [ctx schema data]
+  (zen.validation/validate-schema ctx schema data))
 
 
 (comment

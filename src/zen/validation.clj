@@ -22,7 +22,7 @@
 (defn pretty-type [x]
   (str/lower-case (last (str/split (str (type x)) #"\."))))
 
-(declare validate-schema)
+(declare validate-node)
 
 (defmulti validate-type (fn [tp & _] tp))
 
@@ -35,19 +35,19 @@
       (get-symbol ctx sym))))
 
 #_(if-let [sch (get ks k)]
-                               (let [acc' (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                               (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                      acc' (if handle-unknown-keys
                                             (assoc-in acc' [:keys (conj (:path acc) k)] true)
                                             acc')
                                      acc' (if vls
-                                            (validate-schema ctx (update-acc ctx (restore-acc acc' acc) {:schema [:values] :path [k]}) vls v)
+                                            (validate-node ctx (update-acc ctx (restore-acc acc' acc) {:schema [:values] :path [k]}) vls v)
                                             acc')]
                                  (restore-acc acc' acc))
                                (if vls
-                                 (-> (validate-schema ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
+                                 (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
                                      (restore-acc acc))
                                  (if-let [sch  (and (keyword? k) (namespace k) (resolve-property ctx k))]
-                                   (-> (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                   (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                        (restore-acc acc))
                                    (if handle-unknown-keys
                                      (update-in acc [:keys (conj (:path acc) k)] #(or % false))
@@ -62,21 +62,21 @@
           acc (->> data
                    (reduce (fn [acc [k v]]
                              (let [acc (if-let [sch (get ks k)]
-                                         (let [acc' (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                         (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                                acc' (if handle-unknown-keys (assoc-in acc' [:keys (conj (:path acc) k)] true) acc')]
                                            (restore-acc acc' acc))
                                          (if-let [sch  (and (keyword? k) (namespace k) (resolve-property ctx k))]
-                                           (-> (validate-schema ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                           (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                                (restore-acc acc))
                                            (if handle-unknown-keys
                                              (update-in acc [:keys (conj (:path acc) k)] #(or % false))
                                              acc)))
                                    acc (if vls
-                                         (-> (validate-schema ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
+                                         (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
                                              (restore-acc acc))
                                          acc)
                                    acc (if ky
-                                         (-> (validate-schema ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
+                                         (-> (validate-node ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
                                              (restore-acc acc))
                                          acc)]
                                acc))
@@ -101,7 +101,7 @@
                                (symbol sk-ns (name nm))
                                nm)]
                   (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
-                    (-> (validate-schema ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
+                    (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
                         (restore-acc acc))
                     (add-error ctx acc {:message (format "Could not find schema %s" sch-nm) :type "schema"})))
                 acc)]
@@ -118,11 +118,11 @@
                      acc
                      (recur
                       (let [acc (if evr
-                                  (-> (validate-schema ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
+                                  (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
                                       (restore-acc acc))
                                   acc)
                             acc (if-let [sch (and nt (get nt idx))]
-                                  (-> (validate-schema ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
+                                  (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
                                       (restore-acc acc))
                                   acc)]
                         acc)
@@ -151,7 +151,7 @@
                    (if (and (nil? d) (empty? ds))
                      acc
                      (recur
-                      (-> (validate-schema ctx (update-acc ctx acc {:path [idx]}) evr d)
+                      (-> (validate-node ctx (update-acc ctx acc {:path [idx]}) evr d)
                           (restore-acc acc))
                       (inc idx) ds)))
                  (restore-acc acc))
@@ -179,11 +179,11 @@
          idx 0]
     (if (nil? sch)
       (add-error ctx acc {:message (format "Expected one of %s, but none is conformant" (pr-str (map :when case)))  :type "case"} {:schema [:case]})
-      (let [{errs :errors} (validate-schema ctx (new-validation-acc) wh data)]
+      (let [{errs :errors} (validate-node ctx (new-validation-acc) wh data)]
         (if (empty? errs)
           (if th
-            (let [acc (validate-schema ctx acc wh data)]
-              (validate-schema ctx (update-acc ctx acc {:schema [:case idx :then]}) th data))
+            (let [acc (validate-node ctx acc wh data)]
+              (validate-node ctx (update-acc ctx acc {:schema [:case idx :then]}) th data))
             acc)
           (recur us (inc idx)))))))
 
@@ -250,7 +250,7 @@
     acc
     (add-error ctx acc {:message (format "Expected type of 'regex, got '%s" (pretty-type data)) :type "primitive-type"})))
 
-(defn validate-schema [ctx acc {tp :type  const :const enum :enum  cfs :confirms :as schema} data]
+(defn validate-node [ctx acc {tp :type  const :const enum :enum  cfs :confirms :as schema} data]
   (try
     (let [acc (if const
                 (if (= (:value const) data)
@@ -260,7 +260,7 @@
           acc (->> cfs
                    (reduce (fn [acc sym]
                              (if-let [sch (get-symbol ctx sym)]
-                               (-> (validate-schema ctx (update-acc ctx acc {:schema [sym]}) sch data)
+                               (-> (validate-node ctx (update-acc ctx acc {:schema [sym]}) sch data)
                                    (restore-acc acc))
                                (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                            acc))
@@ -273,12 +273,23 @@
       (when (:unsafe @ctx) (throw e)))))
 
 
+(defn validate-schema [ctx schema data]
+  (let [acc (new-validation-acc)
+        acc (validate-node ctx acc  schema data)]
+    (-> acc
+        (select-keys [:errors])
+        (update :errors into (->> (:keys acc)
+                                  (filter (fn [[_ v]] (false? v)))
+                                  (map (fn [[k _]] {:type "unknown-key"
+                                                   :message (format "unknown key %s" (last k))
+                                                   :path k})))))))
+
 (defn validate
   [ctx schemas data]
   (let [acc  (->> schemas
                   (reduce (fn [acc sym]
                             (if-let [sch (get-symbol ctx sym)]
-                              (validate-schema ctx (assoc acc :schema [sym])  sch data)
+                              (validate-node ctx (assoc acc :schema [sym])  sch data)
                               (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                           (new-validation-acc)))]
     (-> acc

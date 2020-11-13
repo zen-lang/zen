@@ -1,0 +1,21 @@
+{ns zen.tests.schema
+ test-case {:zen/tags #{zen/schema}
+            :type zen/map
+            :keys {:title {:type zen/string}
+                   :schema {:type zen/map :confirms #{zen/schema}}
+                   :cases
+                   {:type zen/map
+                    :key {:type zen/keyword}
+                    :values {:type zen/map
+                             :keys {:example {:type zen/any}
+                                    :valid  {:type zen/boolean}
+                                    :result {:type zen/map :confirms #{zen/schema-errors}}}}}}}
+
+ str {:zen/tags #{test-case}
+      :title "Test zen/string"
+      :schema {:type zen/string :minLength 2 :maxLength 5} ;; :regex ".*@.*"
+      :cases {:simple {:example "a@b" :valid true}
+              :minLength {:example "@" :result {:errors [{:path [] :message "expected lenth >= 2"}]}}
+              :maxLength {:example "aaa@aaa" :result {:errors [{:path [] :message "expected lenth <= 5"}]}}}}
+
+ }

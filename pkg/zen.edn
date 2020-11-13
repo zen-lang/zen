@@ -9,6 +9,10 @@
  desc {:zen/tags #{property schema}
        :type string}
 
+ file {:zen/tags #{property schema}
+       :zen/desc "file, namespace was loaded from"
+       :type string}
+
  name {:zen/tags #{property schema}
        :type symbol}
 
@@ -167,6 +171,19 @@
                    :middleware {:type map
                                 :keys {:before {:type vector}
                                        :after  {:type vector}}}}}
+
+ schema-result
+ {:zen/tags #{schema}
+  :type map
+  :keys
+  {:errors
+   {:type vector
+    :every {:type map
+            :keys {:path {:type any}
+                   :schema {:type any}
+                   :message {:type string}
+                   :resource {:type string}
+                   :type {:type string}}}}}}
 
  ;; reference {:zen/tags #{schema}
  ;;            :type map

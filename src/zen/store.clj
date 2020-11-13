@@ -1,10 +1,11 @@
 (ns zen.store
-  (:require
-   [zen.validation]
-   [clojure.edn]
-   [clojure.java.io :as io]
-   [clojure.walk]
-   [clojure.string :as str]))
+  (:require [zen.validation]
+            [clojure.edn]
+            [clojure.java.io :as io]
+            [clojure.walk]
+            [edamame.core]
+            [clojure.string :as str]))
+
 
 (defn update-types-recur [ctx tp-sym sym]
   (swap! ctx update-in [:tps tp-sym] (fn [x] (conj (or x #{}) sym)))
@@ -47,8 +48,7 @@
     (when-not (empty? schemas)
       (let [{errs :errors} (zen.validation/validate ctx schemas res)]
         (when-not (empty? errs)
-          (swap! ctx update :errors (fn [x] (into (or x [])
-                                                 (mapv #(assoc % :resource (:zen/name res)) errs)))))))))
+          (swap! ctx update :errors (fn [x] (into (or x []) (mapv #(assoc % :resource (:zen/name res)) errs)))))))))
 
 (defn load-symbol [ctx nmsps k v]
   (let [ns-name (get nmsps 'ns)
@@ -60,7 +60,7 @@
       (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
     res))
 
-(defn load-ns [ctx nmsps]
+(defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (get nmsps 'ns)]
     (when-not (get-in ctx [:ns ns-name])
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] nmsps)))
@@ -69,11 +69,12 @@
       (->>
        (dissoc nmsps ['ns 'import])
        (mapv (fn [[k v]]
-               (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k v)
+               (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k (merge v opts))
                      :else nil)))
        (mapv (fn [res] (validate-resource ctx res)))))))
 
 (defn load-ns! [ctx nmsps]
+  (assert (map? nmsps) "Expected map")
   (load-ns ctx nmsps)
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
@@ -81,16 +82,27 @@
 (defn read-ns [ctx nm]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [res (io/resource pth)]
-      (let [nmsps (clojure.edn/read-string (slurp (.getPath res)))]
-        (load-ns ctx nmsps))
+      (let [fpth (.getPath res)
+            nmsps (edamame.core/parse-string (slurp fpth))]
+        (load-ns ctx nmsps {:zen/file fpth}))
       (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm)}))))
+
+(defn read-ns! [ctx nmsps]
+  (assert (symbol? nmsps) "Expected symbol")
+  (read-ns ctx nmsps)
+  (when-let [errs (:errors @ctx)]
+    (throw (Exception. (str/join "\n" errs)))))
+
 
 (defn get-symbol [ctx nm]
   (when-let [res (get-in @ctx [:symbols nm])]
     (assoc res 'name nm)))
 
+(defn get-tag [ctx tag]
+  (get-in @ctx [:tags tag]))
+
 (defn new-context [& [opts]]
-  (let [ctx  (atom {})]
+  (let [ctx  (atom (or opts {}))]
     (read-ns ctx 'zen)
     ctx))
 

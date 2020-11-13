@@ -4,126 +4,127 @@
             [clojure.test :refer [deftest is testing]]))
 
 
-(deftest test-validation
+(def tctx (zen.core/new-context {:unsafe true}))
 
-  (def tctx (zen.core/new-context))
-  (swap! tctx assoc :unsafe true)
+(zen.core/load-ns
+ tctx {'ns 'myapp
+       'str {:zen/tags #{'zen/schema}
+             :type 'zen/string}
 
-  (zen.core/load-ns
-   tctx {'ns 'myapp
-         'str {:zen/tags #{'zen/schema}
+       'mykey {:zen/tags #{'zen/schema 'zen/property}
                :type 'zen/string}
 
-         'mykey {:zen/tags #{'zen/schema 'zen/property}
-                 :type 'zen/string}
+       'path {:zen/tags #{'zen/schema}
+              :type 'zen/vector
+              :every {:type 'zen/case
+                      :case [{:when {:type 'zen/string}}
+                             {:when {:type 'zen/map}
+                              :then {:type 'zen/map :require #{:name} :keys {:name {:type 'zen/string}}}}]}}
 
-         'path {:zen/tags #{'zen/schema}
-                :type 'zen/vector
-                :every {:type 'zen/case
-                        :case [{:when {:type 'zen/string}}
-                                {:when {:type 'zen/map}
-                                 :then {:type 'zen/map :require #{:name} :keys {:name {:type 'zen/string}}}}]}}
+       'maps-case {:zen/tags #{'zen/schema}
+                   :type 'zen/case
+                   :case [{:when {:type 'zen/map
+                                  :require #{:person}
+                                  :keys {:person {:type 'zen/boolean}}}
+                           :then {:type 'zen/map
+                                  :require #{:name}
+                                  :keys {:name {:type 'zen/string}}}}
+                          {:when {:type 'zen/map
+                                  :require #{:org}
+                                  :keys {:org {:type 'zen/boolean}}}
+                           :then {:type 'zen/map
+                                  :require #{:title}
+                                  :keys {:title {:type 'zen/string}}}}]}
 
-         'maps-case {:zen/tags #{'zen/schema}
-                      :type 'zen/case
-                      :case [{:when {:type 'zen/map
-                                     :require #{:person}
-                                     :keys {:person {:type 'zen/boolean}}}
-                               :then {:type 'zen/map
-                                      :require #{:name}
-                                      :keys {:name {:type 'zen/string}}}}
-                              {:when {:type 'zen/map
-                                      :require #{:org}
-                                      :keys {:org {:type 'zen/boolean}}}
-                               :then {:type 'zen/map
-                                      :require #{:title}
-                                      :keys {:title {:type 'zen/string}}}}]}
+       'const {:zen/tags #{'zen/schema}
+               :type 'zen/string
+               :const {:value "fixed"}}
 
-         'const {:zen/tags #{'zen/schema}
-                 :type 'zen/string
-                 :const {:value "fixed"}}
-
-         'const-map {:zen/tags #{'zen/schema}
-                     :type 'zen/map
-                     :keys {:fixed {:type 'zen/string}}
-                     :const {:value {:fixed "fixed"}}}
-
-         'Address {:zen/tags #{'zen/schema}
+       'const-map {:zen/tags #{'zen/schema}
                    :type 'zen/map
-                   :require #{:city}
-                   :keys {:city {:type 'zen/string}
-                          :line {:type 'zen/vector
-                                 :every {:type 'zen/string}}}}
+                   :keys {:fixed {:type 'zen/string}}
+                   :const {:value {:fixed "fixed"}}}
 
-         'Identifier {:zen/tags #{'zen/schema}
-                      :type 'zen/map
-                      :keys {:value {:type 'zen/string}
-                             :system {:type 'zen/string}}}
+       'Address {:zen/tags #{'zen/schema}
+                 :type 'zen/map
+                 :require #{:city}
+                 :keys {:city {:type 'zen/string}
+                        :line {:type 'zen/vector
+                               :every {:type 'zen/string}}}}
 
-         'User {:zen/tags #{'zen/schema}
-                :type 'zen/map
-                :keys {:id   {:type 'zen/string}
-                       :name {:type 'zen/string :minLength 3}
-                       :address {:confirms #{'Address}
-                                 :type 'zen/map
-                                 :keys {:home-number {:type 'zen/string}}}
-                       :identifiers {:type 'zen/vector
-                                     :minItems 2
-                                     :every {:confirms #{'Identifier}
-                                             :type 'zen/map
-                                             :keys {:extra {:type 'zen/string}}
-                                             :require #{:system}}}}
-                :require #{:name}}
-
-         'Contactable {:zen/tags #{'zen/schema}
-                       :type 'zen/map
-                       :keys {:contact {:type 'zen/map
-                                        :keys {:phone {:type 'zen/string}
-                                               :ex    {:type 'zen/string}}}}}
-
-         'SuperUser {:zen/tags #{'zen/schema}
-                     :confirms #{'User 'Contactable}
-                     :type 'zen/map
-                     :keys {:role {:type 'zen/string}
-                            :contact {:type 'zen/map
-                                      :require [:ex]}}}
-
-         'Settings {:zen/tags #{'zen/schema}
+       'Identifier {:zen/tags #{'zen/schema}
                     :type 'zen/map
-                    :keys {:headers {:type 'zen/map
-                                     :keys {:content-type {:type 'zen/string :minLength 3}}
-                                     :values {:type 'zen/string}}}}
-         'email {:zen/tags #{'zen/schema}
-                 :type 'zen/string
-                 :regex #"^.*@.*$"}
-         })
+                    :keys {:value {:type 'zen/string}
+                           :system {:type 'zen/string}}}
 
-  ;; (get-in @tctx [:syms 'myapp/User])
+       'User {:zen/tags #{'zen/schema}
+              :type 'zen/map
+              :keys {:id   {:type 'zen/string}
+                     :name {:type 'zen/string :minLength 3}
+                     :address {:confirms #{'Address}
+                               :type 'zen/map
+                               :keys {:home-number {:type 'zen/string}}}
+                     :identifiers {:type 'zen/vector
+                                   :minItems 2
+                                   :every {:confirms #{'Identifier}
+                                           :type 'zen/map
+                                           :keys {:extra {:type 'zen/string}}
+                                           :require #{:system}}}}
+              :require #{:name}}
 
-  (defmacro vmatch [schemas subj res]
-    `(let [res# (zen.core/validate tctx ~schemas ~subj)]
-       (matcho/match res# ~res)
-       res#))
+       'Contactable {:zen/tags #{'zen/schema}
+                     :type 'zen/map
+                     :keys {:contact {:type 'zen/map
+                                      :keys {:phone {:type 'zen/string}
+                                             :ex    {:type 'zen/string}}}}}
 
-  (defmacro match [schema subj res]
-    `(let [res# (zen.core/validate tctx #{~schema} ~subj)]
-       (matcho/match (:errors res#) ~res)
-       (:errors res#)))
+       'SuperUser {:zen/tags #{'zen/schema}
+                   :confirms #{'User 'Contactable}
+                   :type 'zen/map
+                   :keys {:role {:type 'zen/string}
+                          :contact {:type 'zen/map
+                                    :require [:ex]}}}
 
-  (defmacro valid [schema subj]
-    `(let [res# (zen.core/validate tctx #{~schema} ~subj)]
-       (is (empty? (:errors res#)))
-       (:errors res#)))
+       'Settings {:zen/tags #{'zen/schema}
+                  :type 'zen/map
+                  :keys {:headers {:type 'zen/map
+                                   :keys {:content-type {:type 'zen/string :minLength 3}}
+                                   :values {:type 'zen/string}}}}
+       'email {:zen/tags #{'zen/schema}
+               :type 'zen/string
+               :regex #"^.*@.*$"}
+       })
 
-  (defmacro valid-schema! [subj]
-    `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
-       (is (empty? (:errors res#)))
-       res#))
+;; (get-in @tctx [:syms 'myapp/User])
 
-  (defmacro invalid-schema [subj res]
-    `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
-       (matcho/match (:errors res#) ~res)
-       (:errors res#)))
+(defmacro vmatch [schemas subj res]
+  `(let [res# (zen.core/validate tctx ~schemas ~subj)]
+     (matcho/match res# ~res)
+     res#))
+
+(defmacro match [schema subj res]
+  `(let [res# (zen.core/validate tctx #{~schema} ~subj)]
+     (matcho/match (:errors res#) ~res)
+     (:errors res#)))
+
+(defmacro valid [schema subj]
+  `(let [res# (zen.core/validate tctx #{~schema} ~subj)]
+     (is (empty? (:errors res#)))
+     (:errors res#)))
+
+(defmacro valid-schema! [subj]
+  `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
+     (is (empty? (:errors res#)))
+     res#))
+
+(defmacro invalid-schema [subj res]
+  `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
+     (matcho/match (:errors res#) ~res)
+     (:errors res#)))
+
+
+(deftest test-validation
+
 
   (is (empty? (:errors @tctx)))
 
@@ -322,9 +323,9 @@
   (vmatch #{'zen/schema}
           {:type 'zen/case
            :case [{:when {:type 'zen/integer}
-                    :then {:type 'zen/integer}}
-                   {:when {:type 'zen/map}
-                    :then {:type 'zen/map :keys {:name {:type 'zen/string}}}}]}
+                   :then {:type 'zen/integer}}
+                  {:when {:type 'zen/map}
+                   :then {:type 'zen/map :keys {:name {:type 'zen/string}}}}]}
           {:errors empty?})
 
   (vmatch #{'myapp/path}
@@ -411,6 +412,44 @@
   ;;          :type 'zen/string
   ;;          :const {:value 1}}
   ;;         {:errors [{}]})
+  (testing "zen/string"
+
+    (def str-sch {:zen/tags #{'zen/schema}
+                  :type 'zen/string
+                  :minLength 3
+                  :maxLength 5
+                  ;; :regex ".*@.*"
+                  })
+
+    (valid-schema! str-sch)
+
+    (invalid-schema
+     {:zen/tags #{'zen/schema}
+      :type 'zen/string
+      :minLength "a"
+      :maxLength 2.1
+      :regex {}}
+
+     [{:message "Expected type of 'integer, got 'string",
+       :type "primitive-type",
+       :path [:minLength],
+       :schema ['zen/schema :schema-key 'zen/string :minLength]}
+      {:message "Expected type of 'integer, got 'double",
+       :type "primitive-type",
+       :path [:maxLength],
+       :schema ['zen/schema :schema-key 'zen/string :maxLength]}
+      {:message "Expected type of 'regex, got 'persistentarraymap",
+       :type "primitive-type",
+       :path [:regex],
+       :schema ['zen/schema :schema-key 'zen/string :regex]}])
+
+
+    (zen.core/load-ns! tctx {'ns 'test.str 'str str-sch})
+
+
+    (valid 'test.str/str "a@a")
+
+    )
 
   ;; tessting map
   (testing "zen/map"
@@ -447,6 +486,7 @@
              :type "primitive-type",
              :path [:a],
              :schema ['test.map/str-keys :key]}])
+
 
     ;; schema-key
 
@@ -528,4 +568,4 @@
              :schema ['test.vec/nth :nth 0]}])
     )
 
-)
+  )
