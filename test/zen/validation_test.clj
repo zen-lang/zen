@@ -7,6 +7,7 @@
 (deftest test-validation
 
   (def tctx (zen.core/new-context))
+  (swap! tctx assoc :unsafe true)
 
   (zen.core/load-ns
    tctx {'ns 'myapp
@@ -102,6 +103,26 @@
   (defmacro vmatch [schemas subj res]
     `(let [res# (zen.core/validate tctx ~schemas ~subj)]
        (matcho/match res# ~res)
+       res#))
+
+  (defmacro match [schema subj res]
+    `(let [res# (zen.core/validate tctx #{~schema} ~subj)]
+       (matcho/match (:errors res#) ~res)
+       (:errors res#)))
+
+  (defmacro valid [schema subj]
+    `(let [res# (zen.core/validate tctx #{~schema} ~subj)]
+       (is (empty? (:errors res#)))
+       (:errors res#)))
+
+  (defmacro vsch [subj]
+    `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
+       (is (empty? (:errors res#)))
+       res#))
+
+  (defmacro vsch! [subj res]
+    `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
+       (matcho/match (:errors res#) ~res)
        res#))
 
   (is (empty? (:errors @tctx)))
@@ -385,10 +406,65 @@
              :path [],
              :schema ['myapp/const-map]}]})
 
-  (vmatch #{'zen/schema}
-          {:zen/tags #{'zen/schema}
-           :type 'zen/string
-           :const {:value 1}}
-          {:errors [{}]})
+  ;; (vmatch #{'zen/schema}
+  ;;         {:zen/tags #{'zen/schema}
+  ;;          :type 'zen/string
+  ;;          :const {:value 1}}
+  ;;         {:errors [{}]})
 
+  ;; tessting map
+  (vsch
+   {:zen/tags #{'zen/schema}
+    :type 'zen/map
+    :key {:type 'zen/string}})
+
+  (zen.core/load-ns!
+   tctx {'ns 'test.map
+         'just-map {:zen/tags #{'zen/schema}
+                    :type 'zen/map
+                    :values {:type 'zen/any}}
+
+         'str-keys {:zen/tags #{'zen/schema}
+                    :type 'zen/map
+                    :key {:type 'zen/string}}
+
+         'int-keys {:zen/tags #{'zen/schema}
+                    :type 'zen/map
+                    :key {:type 'zen/integer}}})
+
+  (vmatch #{'test.map/just-map} {:a 1}
+          {:errors empty?})
+
+  (match 'test.map/just-map 1
+         [{:message "Expected type of 'map, got 1",
+           :type "type",
+           :schema ['test.map/just-map]}])
+
+  (valid 'test.map/str-keys {"a" 1 "b" 2})
+
+  ;; tessting vector
+  (vsch
+   {:zen/tags #{'zen/schema}
+    :type 'zen/vector
+    :nth {0 {:type 'zen/string}
+          1 {:type 'zen/string}}})
+
+  (vsch!
+   {:zen/tags #{'zen/schema}
+    :type 'zen/vector
+    :nth {0 {:type 'zen/string}
+          1 {:type 'zen/string}}}
+   [{}])
+
+  (zen.core/load-ns
+   tctx {'ns 'test.vec
+         'nth {:zen/tags #{'zen/schema}
+               :type 'zen/vector
+               :nth {0 {:type 'zen/string}
+                     1 {:type 'zen/string}}}})
+
+  ;; nth
+  ;; prefix for schema-key
+  ;; key
+  ;; confirms with no type
 )

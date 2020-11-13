@@ -82,7 +82,10 @@
 
  vector    {:zen/tags #{coll schema}
             :type map
-            :confirms #{coll}}
+            :confirms #{coll}
+            :keys {:nth {:type map
+                         :key {:type integer}
+                         :values {:type map :confirms #{schema}}}}}
 
  map       {:zen/tags #{coll schema}
             :type map
@@ -91,6 +94,9 @@
                                 :keys {:key {:type keyword}
                                        :resolve {:type map :values {:type symbol}}}
                                 :require #{:key}}
+                   :key {:type map
+                         :zen/desc "Validate keys against schema. Turn off unknown-keys validation"
+                         :confirms #{schema}}
                    :keys {:type map
                           :values {:type map
                                    :confirms #{schema}

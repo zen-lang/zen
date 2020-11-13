@@ -78,6 +78,11 @@
                      :else nil)))
        (mapv (fn [res] (validate-resource ctx res)))))))
 
+(defn load-ns! [ctx nmsps]
+  (load-ns ctx nmsps)
+  (when-let [errs (:errors @ctx)]
+    (throw (Exception. (str/join "\n" errs)))))
+
 (defn read-ns [ctx nm]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [res (io/resource pth)]

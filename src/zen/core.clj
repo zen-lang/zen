@@ -4,6 +4,7 @@
    [zen.store]))
 
 (def load-ns zen.store/load-ns)
+(def load-ns! zen.store/load-ns!)
 (def read-ns zen.store/read-ns)
 (def new-context zen.store/new-context)
 

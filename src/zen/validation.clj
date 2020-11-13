@@ -232,8 +232,8 @@
         (validate-type tp ctx acc schema data)
         (add-error ctx acc {:message (format "I don't know how to eval %s" (pr-str schema)) :type "schema"})))
     (catch Exception e
-      (add-error ctx acc {:message (.getMessage e)
-                          :type "schema"}))))
+      (add-error ctx acc {:message (pr-str e) :type "schema"})
+      (when (:unsafe @ctx) (throw e)))))
 
 
 (defn validate
