@@ -180,7 +180,6 @@
     (if (nil? sch)
       (add-error ctx acc {:message (format "Expected one of %s, but none is conformant" (pr-str (map :when case)))  :type "case"} {:schema [:case]})
       (let [{errs :errors} (validate-schema ctx (new-validation-acc) wh data)]
-        (println "errs:" errs)
         (if (empty? errs)
           (if th
             (let [acc (validate-schema ctx acc wh data)]

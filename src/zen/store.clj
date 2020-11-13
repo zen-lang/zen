@@ -24,10 +24,10 @@
          (if (symbol? x)
            (if (namespace x)
              (do (when-not (get-in @ctx [:symbols x])
-                   (swap! ctx update :errors conj (format "Could not resolve symbol '%s in %s/%s" x ns-name k)))
+                   (swap! ctx update :errors conj {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)}))
                  x)
              (do (when-not (get nmsps x)
-                   (swap! ctx update :errors conj (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)))
+                   (swap! ctx update :errors conj {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)}))
                  (symbol ns-str (name x))))
            x))
        resource)
@@ -47,13 +47,8 @@
     (when-not (empty? schemas)
       (let [{errs :errors} (zen.validation/validate ctx schemas res)]
         (when-not (empty? errs)
-          (doseq [err errs]
-            (swap! ctx update :errors
-                   conj (format "Validation: %s '%s' in %s by %s"
-                                (get res :zen/name)
-                                (:message err)
-                                (pretty-path (:path err))
-                                (pretty-path (:schema err))))))))))
+          (swap! ctx update :errors (fn [x] (into (or x [])
+                                                 (mapv #(assoc % :resource (:zen/name res)) errs)))))))))
 
 (defn load-symbol [ctx nmsps k v]
   (let [ns-name (get nmsps 'ns)
@@ -88,7 +83,7 @@
     (if-let [res (io/resource pth)]
       (let [nmsps (clojure.edn/read-string (slurp (.getPath res)))]
         (load-ns ctx nmsps))
-      (swap! ctx update :errors conj (format "Could not load ns '%s" nm)))))
+      (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm)}))))
 
 (defn get-symbol [ctx nm]
   (when-let [res (get-in @ctx [:symbols nm])]

@@ -109,11 +109,11 @@
          :type map
          :zen/desc "case definition is a collection of pairs :when and :then.
                     Starting from first pair, go until first :when schema is valid, then it validates with :then schema"
-         :keys {:case {:type vector
-                        :every {:type map
-                                :require #{:when}
-                                :keys {:when {:type map :confirms #{schema}}
-                                       :then {:type map :confirms #{schema}}}}}}}
+        :keys {:case {:type vector
+                      :every {:type map
+                              :require #{:when}
+                              :keys {:when {:type map :confirms #{schema}}
+                                     :then {:type map :confirms #{schema}}}}}}}
 
  ;; map       {:zen/tags #{coll schema}
  ;;            :type map
@@ -122,6 +122,11 @@
  any {:zen/tags #{schema primitive}
       :zen/desc "Any type"
       :type zen/map}
+
+ validation-fn {:zen/desc "Tag for validation functions"
+                :zen/tags #{schema}
+                :type map
+                :keys {:handler {:type keyword}}}
 
  schema   {:zen/tags #{schema}
            :zen/desc "zen schema"
@@ -136,7 +141,10 @@
                           :keys {:value {:type any}}} ;; TODO: apply top level schema to value
                   :enum {:type vector
                          :zen/desc "Check value is in enum"
-                         :every {:type map :keys {:value {:type any}}}}}
+                         :every {:type map :keys {:value {:type any}}}}
+                  :validation {:type set
+                               :zen/desc "Custom validation set of functions"
+                               :every {:type symbol}}}
            :require [:type]}
 
  resource {:zen/tags #{schema}
