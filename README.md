@@ -46,7 +46,7 @@ Namespaces should refer other namespaces explicitly thro import!
 That's how starting from one **entry point** namespace,
 your project can import only used modules and models from other packages.
 
-Rest of symbolic keys in namespace define models and keyword keys define tags.
+Rest of symbolic keys in namespace define models.
 
 Just like in clojure namespace you may refer one model from another located in one namespace
 by short name (`symbol`) and refer between namespaces by full name - (`namespace.name/symbol`)
@@ -105,8 +105,8 @@ Store functions:
 
 ## Schema
 
-zen includes built in schema engine,
-which is similar to json schema.
+zen includes builrin schema engine,
+which is sinilar json schema.
 
 The key features of zen schema is:
 
