@@ -1,0 +1,2 @@
+export CLOJARS_USERNAME=niquola
+export CLOJARS_PASSWORD=clojars-token

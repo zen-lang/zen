@@ -47,5 +47,4 @@
 
   :deploy
   {:extra-deps {slipset/deps-deploy {:mvn/version "RELEASE"}}
-   :main-opts ["-m" "deps-deploy.deps-deploy" "deploy"
-               "path/to/my.jar"]}}}
+   :main-opts ["-m" "deps-deploy.deps-deploy" "deploy" "target/zen.jar"]}}}

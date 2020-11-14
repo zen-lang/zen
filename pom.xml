@@ -13,11 +13,6 @@
       <version>1.10.1</version>
     </dependency>
     <dependency>
-      <groupId>healthsamurai</groupId>
-      <artifactId>matcho</artifactId>
-      <version>0.3.7</version>
-    </dependency>
-    <dependency>
       <groupId>borkdude</groupId>
       <artifactId>edamame</artifactId>
       <version>0.0.11-alpha.16</version>
