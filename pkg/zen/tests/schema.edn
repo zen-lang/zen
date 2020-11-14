@@ -1,4 +1,5 @@
 {ns zen.tests.schema
+
  test-case {:zen/tags #{zen/schema}
             :type zen/map
             :keys {:title {:type zen/string}
@@ -13,11 +14,15 @@
 
  str {:zen/tags #{test-case}
       :title "Test zen/string"
-      :schema {:type zen/string :minLength 2 :maxLength 5} ;; :regex ".*@.*"
+      :schema {:type zen/string :minLength 2 :maxLength 5 :regex ".*@.*"}
       :cases {:simple {:example "a@b" :valid true}
+              :regex  {:example "a*b"
+                       :result [{:message "Expected match /.*@.*/, got \"a*b\"", :type "string.regex" :path [], :schema [:regex]}]}
               :minLength {:example "@"
-                          :result {:errors [{:path [] :message "expected lenth >= 2"}]}}
+                          :result
+                          [{:message "Expected length >= 2, got 1", :type "string.minLength", :path [], :schema [:minLength]}]}
               :maxLength {:example "aaa@aaa"
-                          :result {:errors [{:path [] :message "expected lenth <= 5"}]}}}}
+                          :result
+                          [{:message "Expected length <= 5, got 7", :type "string.maxLength" :schema [:maxLength]}]}}}
 
  }

@@ -1,5 +1,7 @@
 (ns zen.validation
-  (:require [clojure.string :as str]))
+  (:require
+   [clojure.set]
+   [clojure.string :as str]))
 
 (defn get-symbol [ctx nm]
   (get-in @ctx [:symbols nm]))
@@ -173,20 +175,21 @@
   (if (string? data)
     (let [ln (count data)
           acc (if (and ml (> ml ln))
-                (add-error ctx acc {:message (format "Expected length >= %s, got %s" ml ln) :type "string"}
+                (add-error ctx acc {:message (format "Expected length >= %s, got %s" ml ln) :type "string.minLength"}
                            {:schema [:minLength]})
                 acc)
 
           acc (if (and mx (< mx ln))
-                (add-error ctx acc {:message (format "Expected length <= %s, got %s" mx ln) :type "string"}
+                (add-error ctx acc {:message (format "Expected length <= %s, got %s" mx ln) :type "string.maxLength"}
                            {:schema [:maxLength]})
                 acc)
-          acc (if (and regex (not (re-matches regex data)))
-                (add-error ctx acc {:message (format "Expected '%s' matches /%s/" data regex) :type "string"}
+
+          acc (if (and regex (not (re-find (re-pattern regex) data)))
+                (add-error ctx acc {:message (format "Expected match /%s/, got \"%s\"" regex data) :type "string.regex"}
                            {:schema [:regex]})
                 acc)]
       acc)
-    (add-error ctx acc {:message (format "Expected type of 'string, got '%s" (pretty-type data)) :type "primitive-type"})))
+    (add-error ctx acc {:message (format "Expected type of 'string, got '%s" (pretty-type data)) :type "string.type"})))
 
 (defmethod validate-type 'zen/integer
   [_ ctx acc {ml :min mx :max} data]
@@ -204,9 +207,14 @@
     (add-error ctx acc {:message (format "Expected type of 'integer, got '%s" (pretty-type data)) :type "primitive-type"})))
 
 (defmethod validate-type 'zen/symbol
-  [_ ctx acc schema data]
+  [_ ctx acc {tags :tags} data]
   (if (symbol? data)
-    acc
+    (if tags
+      (let [sym-tags (:zen/tags (get-symbol ctx data))]
+        (if (not (clojure.set/superset? sym-tags tags))
+          (add-error ctx acc {:message (format "Expected type of 'symbol tagged '%s, but %s" tags (or sym-tags #{})) :type "symbol"} {:schema [:tags]})
+          acc))
+      acc)
     (add-error ctx acc {:message (format "Expected type of 'symbol, got '%s" (pretty-type data)) :type "primitive-type"})))
 
 (defmethod validate-type 'zen/boolean
@@ -227,7 +235,7 @@
 
 (defmethod validate-type 'zen/regex
   [_ ctx acc schema data]
-  (if (or (is-regex? data) (string? data))
+  (if (and (string? data) (re-pattern data))
     acc
     (add-error ctx acc {:message (format "Expected type of 'regex, got '%s" (pretty-type data)) :type "primitive-type"})))
 
@@ -244,11 +252,8 @@
                                (-> (validate-node ctx (update-acc ctx acc {:schema [sym]}) sch data)
                                    (restore-acc acc))
                                (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
-                           acc))
-          ]
-      (if tp
-        (validate-type tp ctx acc schema data)
-        (add-error ctx acc {:message (format "I don't know how to eval %s" (pr-str schema)) :type "schema"})))
+                           acc))]
+      (if tp (validate-type tp ctx acc schema data) acc))
     (catch Exception e
       (add-error ctx acc {:message (pr-str e) :type "schema"})
       (when (:unsafe @ctx) (throw e)))))

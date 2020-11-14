@@ -92,7 +92,7 @@
                                    :values {:type 'zen/string}}}}
        'email {:zen/tags #{'zen/schema}
                :type 'zen/string
-               :regex #"^.*@.*$"}
+               :regex "^.*@.*$"}
        })
 
 ;; (get-in @tctx [:syms 'myapp/User])
@@ -190,13 +190,13 @@
              :schema ['myapp/User :address 'myapp/Address :line]}
             nil?]})
 
-  (vmatch #{'myapp/User} {:name "niquola" :address {:line ["a" "b" 1] :city "city"}}
-          {:errors
-           [{:message #"Expected type of 'string",
-             :type "primitive-type",
-             :path [:address :line 2],
-             :schema ['myapp/User :address 'myapp/Address :line :every]}
-            nil?]})
+  (match 'myapp/User
+         {:name "niquola" :address {:line ["a" "b" 1] :city "city"}}
+         [{:message "Expected type of 'string, got 'long",
+           :type "string.type",
+           :path [:address :line 2],
+           :schema ['myapp/User :address 'myapp/Address :line :every]}
+          nil?])
 
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [1 {:ups "ups"}]}
           {:errors
@@ -235,15 +235,14 @@
            :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
           {:errors empty?})
 
-  (vmatch #{'myapp/User}
+  (match 'myapp/User
           {:name "niquola"
            :myapp/mykey 1
            :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
-          {:errors
-           [{:message "Expected type of 'string, got 'long",
-             :type "primitive-type",
-             :path [:myapp/mykey],
-             :schema ['myapp/User :myapp/mykey]}]})
+          [{:message "Expected type of 'string, got 'long",
+            :type "string.type",
+            :path [:myapp/mykey],
+            :schema ['myapp/User :myapp/mykey]}])
 
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}]}
           {:errors [{:message "Expected >= 2, got 1" :path [:identifiers] :schema ['myapp/User :identifiers :minItems]}]})
@@ -266,13 +265,12 @@
                      :schema ['myapp/Settings :headers :values]
                      :message #"Expected type of 'string"}]})
 
-  (vmatch #{'myapp/Settings} {:headers {:content-type "up" :a "up"}}
-          {:errors
-           [{:message "Expected length >= 3, got 2",
-             :type "string",
-             :path [:headers :content-type],
-             :schema ['myapp/Settings :headers :content-type :minLength]}
-            nil?]})
+  (match 'myapp/Settings
+          {:headers {:content-type "up" :a "up"}}
+          [{:message "Expected length >= 3, got 2",
+            :type "string.minLength",
+            :path [:headers :content-type],
+            :schema ['myapp/Settings :headers :content-type :minLength]}])
 
   (vmatch #{'zen/schema} {:type 'zen/map :keys {:prop 1}}
           {:errors
@@ -313,12 +311,12 @@
              :message "unknown key :ups",
              :path [:keys :minLength :ups]}]})
 
-  (vmatch #{'myapp/email}
+  (match 'myapp/email
           "ups"
-          {:errors
-           [{:message "Expected 'ups' matches /^.*@.*$/",
-             :type "string",
-             :schema ['myapp/email :regex]}]})
+          [{:message "Expected match /^.*@.*$/, got \"ups\"",
+            :type "string.regex",
+            :path [],
+            :schema ['myapp/email :regex]}])
 
   (vmatch #{'zen/schema}
           {:type 'zen/case
@@ -483,7 +481,7 @@
     (valid 'test.map/str-keys {"a" 1 "b" 2})
     (match 'test.map/str-keys {:a 1 "b" 2}
            [{:message "Expected type of 'string, got 'keyword",
-             :type "primitive-type",
+             :type "string.type",
              :path [:a],
              :schema ['test.map/str-keys :key]}])
 
@@ -539,7 +537,7 @@
       :nth {0 {:type 'zen/string}
             1 {:type 'zen/string}}})
 
-    (invalid-schema
+   (invalid-schema
      {:zen/tags #{'zen/schema}
       :type 'zen/vector
       :nth {0 {:type 'zen/string}
@@ -565,7 +563,41 @@
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
              :path [0],
-             :schema ['test.vec/nth :nth 0]}])
+             :schema ['test.vec/nth :nth 0]}]))
+
+  (testing "zen/symbol"
+
+    (valid-schema!
+     {:zen/tags #{'zen/schema}
+      :type 'zen/symbol
+      :tags #{'mytag}})
+
+    (invalid-schema
+     {:zen/tags #{'zen/schema}
+      :type 'zen/vector
+      :tags "ups"}
+     [{:type "unknown-key",
+       :message "unknown key :tags",
+       :path [:tags]}])
+
+    (zen.core/load-ns!
+     tctx {'ns 'test.sym
+           'mytag {:zen/tags #{'mytag}}
+           'not-tag {}
+           'sym {:zen/tags #{'zen/schema}
+                 :type 'zen/symbol
+                 :tags #{'mytag}}})
+
+
+    (valid 'test.sym/sym 'test.sym/mytag)
+
+    (match 'test.sym/sym 'ups
+           [{:message "Expected type of 'symbol tagged '#{test.sym/mytag}, but #{}",
+             :type "symbol",
+             :schema ['test.sym/sym :tags]}])
+
     )
+
+
 
   )

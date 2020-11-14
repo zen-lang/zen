@@ -13,11 +13,18 @@
        :zen/desc "file, namespace was loaded from"
        :type string}
 
+ errors {:zen/tags #{property schema}
+         :zen/desc "resource validation errors while load"
+         :confirms #{schema-errors}}
+
  name {:zen/tags #{property schema}
        :type symbol}
 
  primitive {:zen/tags #{tag}
             :zen/desc "Primitive types"}
+
+ type     {:zen/tags #{zen/tag}
+           :zen/desc "register resource as a schema type"}
 
 
  tags {:zen/tags #{property schema}
@@ -25,7 +32,7 @@
        :every {:type symbol}}
 
 
- string    {:zen/tags #{primitive schema}
+ string    {:zen/tags #{type schema primitive}
             :zen/desc "sring primitive type"
             :type map
             :keys {:minLength {:type integer
@@ -34,73 +41,71 @@
                    :maxLength {:type integer :min 0}
                    :regex     {:type regex}}}
 
- regex    {:zen/tags #{schema primitive}
+ regex    {:zen/tags #{type schema primitive}
            :zen/desc "regexp primitive type"
            :type map}
 
 
- integer   {:zen/tags #{primitive schema}
+ integer   {:zen/tags #{type primitive schema}
             :zen/desc "integer primitive type"
             :type map
             :keys {:min {:type integer}
                    :max {:type integer}}}
 
- number    {:zen/tags #{primitive schema}
+ number    {:zen/tags #{type primitive schema}
             :zen/desc "number primitive type"
             :type map
             :keys {:min {:type number}
                    :max {:type number}}}
 
- date      {:zen/tags #{primitive schema}
+ date      {:zen/tags #{type primitive schema}
             :type map
             :keys {:in-past   {:type boolean}
                    :in-future {:type boolean}}}
 
- datetime  {:zen/tags #{primitive schema}
+ datetime  {:zen/tags #{type primitive schema}
             :type map
             :keys {:in-past {:type boolean}
                    :in-future {:type boolean}}}
 
- boolean   {:zen/tags #{primitive schema}
+ boolean   {:zen/tags #{type primitive schema}
             :type map}
 
- symbol    {:zen/tags #{primitive schema}
-            :type map}
+ symbol    {:zen/tags #{type primitive schema}
+            :type map
+            :keys {:tags {:type set
+                          :zen/desc "Check that symbol registered with specific tags"
+                          :every {:type symbol}}}}
 
- keyword   {:zen/tags #{primitive schema}
-            :type map}
-
- ;;TODO: replaced with exclusive-keys
- union-key {:zen/tags #{primitive schema}
+ keyword   {:zen/tags #{type primitive schema}
             :type map}
 
  coll      {:zen/tags #{schema}
             :type map
-            :keys {:every {:type map :confirms #{schema}}
+            :keys {:every {:confirms #{schema}}
                    :minItems {:type integer :min 0}
                    :maxItems {:type integer :min 0}}}
 
- set       {:zen/tags #{coll schema}
-            :type map
-            :confirms #{coll}}
-
- vector    {:zen/tags #{coll schema}
-            :type map
+ set       {:zen/tags #{type coll schema}
             :confirms #{coll}
+            :type map}
+
+ vector    {:zen/tags #{type coll schema}
+            :confirms #{coll}
+            :type map
             :keys {:nth {:type map
                          :key {:type integer}
-                         :values {:type map :confirms #{schema}}}}}
+                         :values {:confirms #{schema}}}}}
 
- map       {:zen/tags #{coll schema}
+ map       {:zen/tags #{type coll schema}
             :type map
-            :keys {:values {:type map :confirms #{schema}}
+            :keys {:values {:confirms #{schema}}
                    :schema-key {:type map
                                 :keys {:key {:type keyword}
                                        :ns  {:type string :zen/desc "namespace prefix to add to key"}
                                        :resolve {:type map :values {:type symbol}}}
                                 :require #{:key}}
-                   :key {:type map
-                         :zen/desc "Validate keys against schema. Turn off unknown-keys validation"
+                   :key {:zen/desc "Validate keys against schema. Turn off unknown-keys validation"
                          :confirms #{schema}}
                    :keys {:type map
                           :values {:type map
@@ -109,21 +114,18 @@
                    :require {:type set :every {:type keyword}}
                    :exclusive-keys {:type set :every {:type keyword}}}}
 
- case  {:zen/tags #{schema}
+ case  {:zen/tags #{type schema}
          :type map
          :zen/desc "case definition is a collection of pairs :when and :then.
                     Starting from first pair, go until first :when schema is valid, then it validates with :then schema"
         :keys {:case {:type vector
                       :every {:type map
                               :require #{:when}
-                              :keys {:when {:type map :confirms #{schema}}
-                                     :then {:type map :confirms #{schema}}}}}}}
+                              :keys {:when {:confirms #{schema}}
+                                     :then {:confirms #{schema}}}}}}}
 
- ;; map       {:zen/tags #{coll schema}
- ;;            :type map
- ;;            :keys {:values schema}}
 
- any {:zen/tags #{schema primitive}
+ any {:zen/tags #{type schema primitive}
       :zen/desc "Any type"
       :type zen/map}
 
@@ -136,10 +138,10 @@
            :zen/desc "zen schema"
            :type map
            :schema-key {:key :type}
-           :keys {:type {:type symbol}
+           :keys {:type {:type symbol :tags #{type}}
                   :confirms {:type set
                              :zen/desc "set of schemas to confirm"
-                             :every {:type symbol}}
+                             :every {:type symbol :tags #{schema}}}
                   :const {:type map
                           :zen/desc "Check constant"
                           :keys {:value {:type any}}} ;; TODO: apply top level schema to value
@@ -148,8 +150,7 @@
                          :every {:type map :keys {:value {:type any}}}}
                   :validation {:type set
                                :zen/desc "Custom validation set of functions"
-                               :every {:type symbol}}}
-           :require [:type]}
+                               :every {:type symbol :tags #{validation-fn}}}}}
 
  resource {:zen/tags #{schema}
            :type map
@@ -166,30 +167,26 @@
  operation {:zen/tags #{schema}
             :zen/desc "Basic operation schema"
             :type map
-            :keys {:params {:type map :confirms #{schema}}
-                   :result {:type map :confirms #{schema}}
+            :keys {:params {:confirms #{schema}}
+                   :result {:confirms #{schema}}
                    :middleware {:type map
                                 :keys {:before {:type vector}
                                        :after  {:type vector}}}}}
 
+ schema-errors
+ {:zen/tags #{schema}
+  :type vector
+  :every {:type map
+          :keys {:path {:type any}
+                 :schema {:type any}
+                 :message {:type string}
+                 :resource {:type string}
+                 :type {:type string}}}}
+
  schema-result
  {:zen/tags #{schema}
   :type map
-  :keys
-  {:errors
-   {:type vector
-    :every {:type map
-            :keys {:path {:type any}
-                   :schema {:type any}
-                   :message {:type string}
-                   :resource {:type string}
-                   :type {:type string}}}}}}
-
- ;; reference {:zen/tags #{schema}
- ;;            :type map
- ;;            :keys {:id {:type string}
- ;;                   :resourceType {:type string}}}
-
+  :keys {:errors {:confirms #{schema-errors}}}}
 
 
  }
