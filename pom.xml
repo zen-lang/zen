@@ -6,6 +6,7 @@
   <artifactId>zen</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>zen</name>
+  <url>https://github.com/zen-lang/zen</url>
   <dependencies>
     <dependency>
       <groupId>org.clojure</groupId>
