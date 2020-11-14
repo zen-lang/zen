@@ -29,7 +29,7 @@
 
  tags {:zen/tags #{property schema}
        :type set
-       :every {:type symbol}}
+       :every {:type symbol :tags #{tag}}}
 
 
  string    {:zen/tags #{type schema primitive}
@@ -80,7 +80,7 @@
  keyword   {:zen/tags #{type primitive schema}
             :type map}
 
- coll      {:zen/tags #{schema}
+ coll      {:zen/tags #{schema tag}
             :type map
             :keys {:every {:confirms #{schema}}
                    :minItems {:type integer :min 0}
@@ -134,7 +134,7 @@
                 :type map
                 :keys {:handler {:type keyword}}}
 
- schema   {:zen/tags #{schema}
+ schema   {:zen/tags #{schema tag}
            :zen/desc "zen schema"
            :type map
            :schema-key {:key :type}
