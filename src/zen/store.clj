@@ -95,8 +95,7 @@
 
 
 (defn get-symbol [ctx nm]
-  (when-let [res (get-in @ctx [:symbols nm])]
-    (assoc res 'name nm)))
+  (get-in @ctx [:symbols nm]))
 
 (defn get-tag [ctx tag]
   (get-in @ctx [:tags tag]))

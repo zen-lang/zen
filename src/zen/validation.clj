@@ -2,8 +2,7 @@
   (:require [clojure.string :as str]))
 
 (defn get-symbol [ctx nm]
-  (when-let [res (get-in @ctx [:symbols nm])]
-    (assoc res 'name nm)))
+  (get-in @ctx [:symbols nm]))
 
 (defn update-acc [ctx acc {dp :path sp :schema}]
   (cond-> acc
@@ -34,24 +33,6 @@
     (when (contains? (get-in @ctx [:tags 'zen/property]) sym)
       (get-symbol ctx sym))))
 
-#_(if-let [sch (get ks k)]
-                               (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
-                                     acc' (if handle-unknown-keys
-                                            (assoc-in acc' [:keys (conj (:path acc) k)] true)
-                                            acc')
-                                     acc' (if vls
-                                            (validate-node ctx (update-acc ctx (restore-acc acc' acc) {:schema [:values] :path [k]}) vls v)
-                                            acc')]
-                                 (restore-acc acc' acc))
-                               (if vls
-                                 (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
-                                     (restore-acc acc))
-                                 (if-let [sch  (and (keyword? k) (namespace k) (resolve-property ctx k))]
-                                   (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
-                                       (restore-acc acc))
-                                   (if handle-unknown-keys
-                                     (update-in acc [:keys (conj (:path acc) k)] #(or % false))
-                                     acc))))
 ;; TODO:
 ;; * validate keys
 ;; * minItems/maxItems

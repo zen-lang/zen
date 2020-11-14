@@ -15,7 +15,9 @@
       :title "Test zen/string"
       :schema {:type zen/string :minLength 2 :maxLength 5} ;; :regex ".*@.*"
       :cases {:simple {:example "a@b" :valid true}
-              :minLength {:example "@" :result {:errors [{:path [] :message "expected lenth >= 2"}]}}
-              :maxLength {:example "aaa@aaa" :result {:errors [{:path [] :message "expected lenth <= 5"}]}}}}
+              :minLength {:example "@"
+                          :result {:errors [{:path [] :message "expected lenth >= 2"}]}}
+              :maxLength {:example "aaa@aaa"
+                          :result {:errors [{:path [] :message "expected lenth <= 5"}]}}}}
 
  }
