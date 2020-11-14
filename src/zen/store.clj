@@ -83,7 +83,7 @@
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [res (io/resource pth)]
       (let [fpth (.getPath res)
-            nmsps (edamame.core/parse-string (slurp fpth))]
+            nmsps (edamame.core/parse-string (slurp res))]
         (load-ns ctx nmsps {:zen/file fpth}))
       (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm)}))))
 
