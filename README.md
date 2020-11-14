@@ -1,6 +1,6 @@
 # zen meta store & schema
 
-[![Build Status](https://travis-ci.org/HealthSamurai/zen.svg?branch=master)](https://travis-ci.org/HealthSamurai/zen)
+[![Build Status](https://travis-ci.org/zen-lang/zen.svg?branch=master)](https://travis-ci.org/zen-lang/zen)
 
 
 ## Motivation
