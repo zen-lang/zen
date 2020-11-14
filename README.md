@@ -5,6 +5,9 @@
 [![Clojars Project](https://img.shields.io/clojars/v/zen-lang/zen.svg)](https://clojars.org/zen-lang/zen)
 
 
+[zen-docs](https://zen-lang.github.io/tags/zen/schema.html)
+
+
 ## Motivation
 
 This library is built around the "model driven design" - idea, that information

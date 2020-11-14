@@ -16,4 +16,4 @@ test:
 	clj -A:test:kaocha
 
 pub:
-	source .env && clj -A:deploy
+	clj -A:deploy
