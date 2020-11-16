@@ -28,8 +28,7 @@ You put your models like code in modules (**namespaces**)
 and layout in file system. Set of **namespaces** can be published
 and reused as a **package**.
 
-**model project** layout is highly influenced by clojure and java,
-uses similar convetions.
+**model project** layout is the same as in clojure.
 
 Model project consists of set of namespaces and may refer other packages.
 
@@ -92,8 +91,10 @@ Example namespace:
 Instead of introducing any kind of types and type hierarchies,
 zen uses **tag system** to classify models.
 
-You may think about tag system as non-hierarchical multidimetional classification.
-Or as a funcion of meta store - get all models labeled with specific tag.
+You may think about tag system as non-hierarchical 
+multidimetional classification (just like java interfaces).
+Or as a function of meta store - 
+get all models labeled with specific tag.
 
 ## Store
 
