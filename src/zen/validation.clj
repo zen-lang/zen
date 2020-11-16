@@ -66,10 +66,15 @@
                            acc))
           acc (->> reqs
                    (reduce (fn [acc k]
-                             (if (nil? (get data k))
-                               (add-error ctx (update-acc ctx acc {:path [k] :schema [:require]})
-                                          {:message (format "%s is required" k) :type "require"})
-                               acc))
+                             (if (set? k)
+                               (if (empty? (->> (select-keys data k) (remove nil?)))
+                                 (add-error ctx (update-acc ctx acc {:schema [:require]})
+                                            {:message (format "one of keys %s is required" k) :type "map.require"})
+                                 acc)
+                               (if (nil? (get data k))
+                                 (add-error ctx (update-acc ctx acc {:path [k] :schema [:require]})
+                                            {:message (format "%s is required" k) :type "require"})
+                                 acc)))
                            acc))
           acc (if eks
                 (if (> (count (select-keys data eks)) 1)

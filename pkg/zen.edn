@@ -111,7 +111,11 @@
                           :values {:type map
                                    :confirms #{schema}
                                    :keys {:type {:type symbol}}}}
-                   :require {:type set :every {:type keyword}}
+                   :require {:type set :every {:type case
+                                               :case [{:when {:type zen/keyword}}
+                                                      {:when {:type zen/set
+                                                              :zen/desc "OR semantic"
+                                                              :every {:type zen/keyword}}}]}}
                    :exclusive-keys {:type set :every {:type keyword}}}}
 
  case  {:zen/tags #{type schema}

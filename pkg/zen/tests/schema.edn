@@ -12,6 +12,12 @@
                                     :valid  {:type zen/boolean}
                                     :result {:type zen/map :confirms #{zen/schema-errors}}}}}}}
 
+ valid-schemas {:zen/tags #{test-case}
+                :title "Valid schemas"
+                :schema {:confirms #{zen/schema}}
+                :cases {:simple-require {:valid true :example {:type zen/map :require #{:a :b :c}}}
+                        :require-with-or {:valid true :example {:type zen/map :require #{:a #{:b :c}}}}}}
+
  str {:zen/tags #{test-case}
       :title "Test zen/string"
       :schema {:type zen/string :minLength 2 :maxLength 5 :regex ".*@.*"}
@@ -24,5 +30,20 @@
               :maxLength {:example "aaa@aaa"
                           :result
                           [{:message "Expected length <= 5, got 7", :type "string.maxLength" :schema [:maxLength]}]}}}
+
+ map-require {:zen/tags #{test-case}
+              :title "Test zen/map require"
+              :schema {:type zen/map
+                       :require #{:a #{:b :c} :d}
+                       :keys {:a {:type zen/string}
+                              :b {:type zen/string}
+                              :c {:type zen/string}
+                              :d {:type zen/string}}}
+              :cases {:simple {:example {:a "a" :b "b" :d "c"} :valid true}
+                      :missed-or {:example {:a "a" :d "d"}
+                                  :result [{:message "one of keys #{:c :b} is required",          
+                                            :type "map.require",
+                                            :path [],
+                                            :schema [:require]}]}}}
 
  }
