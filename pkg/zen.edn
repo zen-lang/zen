@@ -134,7 +134,7 @@
       :type zen/map}
 
  validation-fn {:zen/desc "Tag for validation functions"
-                :zen/tags #{schema}
+                :zen/tags #{schema tag}
                 :type map
                 :keys {:handler {:type keyword}}}
 
