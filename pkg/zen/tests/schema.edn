@@ -45,5 +45,24 @@
                                             :type "map.require",
                                             :path [],
                                             :schema [:require]}]}}}
+ map-exclusive-keys {:zen/tags #{test-case}
+                     :title "Test zen/map exclusive keys"
+                     :schema {:type zen/map
+                              :exclusive-keys #{#{:a :b} #{:b #{:c :d}}}
+                              :keys {:a {:type zen/string}
+                                     :b {:type zen/string}
+                                     :c {:type zen/string}
+                                     :d {:type zen/string}}}
+                     :cases {:simple {:example {:a "a" :c "c" :d "d"} :valid true}
+                             :set-of {:example {:b "b"} :valid true}
+                             :invalid-1 {:example {:a "a" :b "b"}
+                                         :result [{:message "Expected only one of keyset :b or :a, but present (:b :a)",          
+                                                   :type "map.exclusive-keys",
+                                                   :schema [:exclusive-keys]}]}
+                             :invalid-2 {:example {:b "b" :c "c"}
+                                         :result [{:message "Expected only one of keyset #{:c :d} or :b, but present (:c :b)",
+                                                   :type "map.exclusive-keys",
+                                                   :schema [:exclusive-keys]}]}
+                             }}
 
  }

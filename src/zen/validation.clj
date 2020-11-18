@@ -35,6 +35,17 @@
     (when (contains? (get-in @ctx [:tags 'zen/property]) sym)
       (get-symbol ctx sym))))
 
+(defn is-exclusive? [group data]
+  (loop [other-keys nil [k & ks] group]
+    (if (and (nil? k) (empty? ks))
+      true
+      (let [has-keys  (not (empty? (select-keys data (if (set? k) k #{k}))))]
+        (if (and other-keys has-keys)
+          false
+          (if (empty? ks)
+            true
+            (recur has-keys ks)))))))
+
 ;; TODO:
 ;; * validate keys
 ;; * minItems/maxItems
@@ -77,11 +88,15 @@
                                  acc)))
                            acc))
           acc (if eks
-                (if (> (count (select-keys data eks)) 1)
-                  (add-error ctx (update-acc ctx acc )
-                             {:message (format "Expected only one of keys: %s" eks) :type "exclusive-keys"}
-                             {:schema [:exclusive-keys]})
-                  acc)
+                (-> (->> eks
+                         (reduce (fn [acc group]
+                                   (if (is-exclusive? group data)
+                                     acc
+                                     (add-error ctx acc {:message (format "Expected only one of keyset %s, but present %s" (str/join " or " group) (keys data))
+                                                         :type "map.exclusive-keys"}
+                                                {:schema [:exclusive-keys]})))
+                                 acc))
+                 (restore-acc acc))
                 acc)
 
           acc (if-let [nm (and sk (get data sk))]

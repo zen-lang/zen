@@ -111,12 +111,21 @@
                           :values {:type map
                                    :confirms #{schema}
                                    :keys {:type {:type symbol}}}}
-                   :require {:type set :every {:type case
-                                               :case [{:when {:type keyword}}
-                                                      {:when {:type set
-                                                              :zen/desc "OR semantic"
-                                                              :every {:type keyword}}}]}}
-                   :exclusive-keys {:type set :every {:type keyword}}}}
+                   :require {:type set
+                             :zen/desc "Set of required keys; set means 'one of key' is required."
+                             :every {:type case
+                                     :case [{:when {:type keyword}}
+                                            {:when {:type set
+                                                    :zen/desc "mean 'one of this keys'"
+                                                    :every {:type keyword}}}]}}
+                   :exclusive-keys {:type set
+                                    :zen/desc "Set of exclusive groups; each group"
+                                    :every {:type set
+                                            :minItems 2
+                                            :every {:type case
+                                                    :case [{:when {:type keyword}}
+                                                           {:when {:type set}
+                                                            :then {:type set :every {:type keyword}}}]}}}}}
 
  case  {:zen/tags #{type schema}
          :type map

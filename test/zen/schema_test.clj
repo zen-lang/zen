@@ -2,7 +2,7 @@
   (:require
    [zen.core :as zen]
    [matcho.core :as matcho]
-   [clojure.test :refer :all]))
+   [clojure.test :refer [deftest is testing]]))
 
 (deftest test-schema
 
@@ -11,6 +11,7 @@
   (zen/read-ns ctx 'zen.tests.schema)
 
   (is (= 1 1))
+
   (doseq [case-nm (zen/get-tag ctx 'zen.tests.schema/test-case)]
     (let [{title :title schema :schema cs :cases} (zen/get-symbol ctx case-nm)]
       (testing title
