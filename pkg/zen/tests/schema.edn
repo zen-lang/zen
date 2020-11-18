@@ -62,7 +62,27 @@
                              :invalid-2 {:example {:b "b" :c "c"}
                                          :result [{:message "Expected only one of keyset #{:c :d} or :b, but present (:c :b)",
                                                    :type "map.exclusive-keys",
-                                                   :schema [:exclusive-keys]}]}
-                             }}
+                                                   :schema [:exclusive-keys]}]}}
+                     }
+ test-valueset {:zen/tags #{zen/schema}
+                :type zen/map
+                :keys {:values {:type zen/vector
+                                :every {:type zen/map :keys {:code {:type zen/string} :display {:type zen/string}}}}}}
 
+ test-valueset-1 {:zen/tags #{zen/valueset test-valuest}
+                  :values [{:code "a1" :display "A1"}
+                           {:code "a2" :display "A2"}]}
+ test-valueset-2 {:zen/tags #{zen/valueset test-valuest}
+                  :values [{:code "b1" :display "B1"}
+                           {:code "b2" :display "B2"}]}
+ valueset-example {:zen/tags #{test-case}
+                   :schema {:type zen/string
+                            :valuesets #{{:name test-valueset-1 :key :code}
+                                         {:name test-valueset-2 :key :code}}}
+                   :cases {:valid-a {:example "a1" :valid true}
+                           :valid-b {:example "b1" :valid true}
+                           :invalid {:example "c1"
+                                     :result [{:type "valuesets",
+                                               :message "None of valuests #{zen.tests.schema/test-valueset-1 zen.tests.schema/test-valueset-2} is matched for 'c1'",
+                                               :path []}]}}}
  }

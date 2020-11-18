@@ -158,9 +158,17 @@
                   :const {:type map
                           :zen/desc "Check constant"
                           :keys {:value {:type any}}} ;; TODO: apply top level schema to value
-                  :enum {:type vector
+                  :enum {:type set
                          :zen/desc "Check value is in enum"
                          :every {:type map :keys {:value {:type any}}}}
+
+                  :valuesets {:type set
+                              :zen/desc "check that value is from one of valuesets;
+                                         value is searched by specific :key;
+                                         open semantic - i.e. no errors if at least one valueset is matched"
+                              :every {:type map
+                                      :keys {:name {:type symbol :tags #{valueset}}
+                                             :key  {:type keyword}}}}
                   :validation {:type set
                                :zen/desc "Custom validation set of functions"
                                :every {:type symbol :tags #{validation-fn}}}}}
@@ -200,6 +208,24 @@
  {:zen/tags #{schema}
   :type map
   :keys {:errors {:confirms #{schema-errors}}}}
+
+ valueset-provider
+ {:zen/tags #{tag}
+  :zen/desc "Tag to register valueset provider service;
+             It may be search in ndjson or csv files,
+             tables or call to external terminology server;
+             valueset provider interface is TBD;
+             looks like it should be bulk search by key or keys"}
+
+ valueset
+ {:zen/tags #{schema tag}
+  :zen/desc "Registry (vocabulary) with free form data to make symbolic refs for validation.
+             It may be just values enumeration or lookup service by provider"
+  :type map
+  :keys {:index-by {:type set :every {:type keyword}}
+         :values   {:type vector
+                    :every {:type any}}
+         :provider {:type symbol :tags #{valueset-provider}}}}
 
 
  }

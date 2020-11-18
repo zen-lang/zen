@@ -129,7 +129,6 @@
                                       (restore-acc acc))
                                   acc)]
                         acc)
-                      
                       (inc idx) ds)))
                  (restore-acc acc))
                 acc)
@@ -259,36 +258,94 @@
     acc
     (add-error ctx acc {:message (format "Expected type of 'regex, got '%s" (pretty-type data)) :type "primitive-type"})))
 
-(defn validate-node [ctx acc {tp :type  const :const enum :enum  cfs :confirms :as schema} data]
+(defn validate-const [ctx acc const data]
+  (if const
+    (if (= (:value const) data)
+      acc
+      (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"}))
+    acc))
+
+(defn validate-confirms [ctx acc cfs data]
+  (->> cfs
+       (reduce (fn [acc sym]
+                 (if-let [sch (get-symbol ctx sym)]
+                   (-> (validate-node ctx (update-acc ctx acc {:schema [sym]}) sch data)
+                       (restore-acc acc))
+                   (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
+               acc)))
+
+(defn validate-enum [ctx acc enum data]
+  (when enum
+    (println "TBD: enum validation" enum))
+  acc)
+
+(defmulti valueset-find (fn [tp ctx vs data] tp))
+
+
+(defn register-unmatched-valueset [acc nm data]
+  (update-in acc [:valuesets (:path acc)]
+             (fn [{vs :valuesets :as node}]
+               (-> node
+                   (assoc :valuesets (conj (or vs #{}) nm))
+                   (assoc :data data)))))
+
+(defn validate-valuesets [ctx {path :path :as acc} valuesets data]
+  (if valuesets
+    ;; short circuit
+    (if (get-in acc [:valuesets path :match])
+      acc
+      (loop [[{nm :name k :key :as vs} & vss] valuesets acc acc]
+        (if (and (nil? vs) (empty? vss))
+          acc
+          (if-let [vs (get-symbol ctx nm)]
+            (if-let [values (:values vs)]
+              (if (->> values (filter (fn [v] (= (get v k) data))) (first))
+                (assoc-in acc [:valuesets (:path acc)] {:match nm})
+                (recur vss (register-unmatched-valueset acc nm data)))
+              (if-let [prov (:provider vs)]
+                (if (valueset-find prov ctx vs data)
+                  (assoc-in acc [:valuesets (:path acc)] {:match nm})
+                  (recur vss (register-unmatched-valueset acc nm data)))
+                (recur vss acc)))
+            (recur vss acc)))))
+    acc))
+
+(defn validate-node [ctx acc {tp :type :as schema} data]
   (try
-    (let [acc (if const
-                (if (= (:value const) data)
-                  acc
-                  (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"}))
-                acc)
-          acc (->> cfs
-                   (reduce (fn [acc sym]
-                             (if-let [sch (get-symbol ctx sym)]
-                               (-> (validate-node ctx (update-acc ctx acc {:schema [sym]}) sch data)
-                                   (restore-acc acc))
-                               (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
-                           acc))]
+    (let [acc (validate-const ctx acc (:const schema) data)
+          acc (validate-confirms ctx acc (:confirms schema) data)
+          acc (validate-enum ctx acc (:enum schema) data)
+          acc (validate-valuesets ctx acc (:valuesets schema) data)]
       (if tp (validate-type tp ctx acc schema data) acc))
     (catch Exception e
       (add-error ctx acc {:message (pr-str e) :type "schema"})
       (when (:unsafe @ctx) (throw e)))))
 
 
+(defn unknown-keys-errors [acc]
+  (->> (:keys acc)
+       (filter (fn [[_ v]] (false? v)))
+       (map (fn [[k _]] {:type "unknown-key"
+                         :message (format "unknown key %s" (last k))
+                         :path k}))))
+
+(defn valueset-errors [acc]
+  (->> (:valuesets acc)
+       (remove (fn [[_ v]] (:match v)))
+       (map (fn [[path {vs :valuesets data :data}]]
+              {:type "valuesets"
+               :message (format "None of valuests %s is matched for '%s'" vs data)
+               :path path}))))
+
+
 (defn validate-schema [ctx schema data]
   (let [acc (new-validation-acc)
         acc (validate-node ctx acc  schema data)]
-    (-> acc
-        (select-keys [:errors])
-        (update :errors into (->> (:keys acc)
-                                  (filter (fn [[_ v]] (false? v)))
-                                  (map (fn [[k _]] {:type "unknown-key"
-                                                   :message (format "unknown key %s" (last k))
-                                                   :path k})))))))
+    (update acc :errors
+            (fn [errs]
+              (-> errs
+                  (into (unknown-keys-errors acc))
+                  (into (valueset-errors acc)))))))
 
 (defn validate
   [ctx schemas data]
@@ -298,10 +355,8 @@
                               (validate-node ctx (assoc acc :schema [sym])  sch data)
                               (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                           (new-validation-acc)))]
-    (-> acc
-        (select-keys [:errors])
-        (update :errors into (->> (:keys acc)
-                                  (filter (fn [[_ v]] (false? v)))
-                                  (map (fn [[k _]] {:type "unknown-key"
-                                                   :message (format "unknown key %s" (last k))
-                                                   :path k})))))))
+    (update acc :errors
+            (fn [errs]
+              (-> errs
+                  (into (unknown-keys-errors acc))
+                  (into (valueset-errors acc)))))))

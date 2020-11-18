@@ -596,6 +596,26 @@
              :type "symbol",
              :schema ['test.sym/sym :tags]}])
 
+    (zen.core/load-ns!
+     tctx {'ns 'test.enum
+           'vs1 {:zen/tags #{'zen/valueset}
+                :values [{:code "a"}]}
+           'vs2 {:zen/tags #{'zen/valueset}
+                 :values [{:code "b"}]}
+           'code {:zen/tags #{'zen/schema}
+                 :type 'zen/string
+                  :valuesets #{{:name 'vs1 :key :code}
+                               {:name 'vs2 :key :code}}}})
+
+    (valid 'test.enum/code "a")
+
+    (valid 'test.enum/code "b")
+    (match 'test.enum/code "c"
+           [{:type "valuesets",
+             :message
+             "None of valuests #{test.enum/vs1 test.enum/vs2} is matched for 'c'",
+             :path []}])
+
     )
 
 
