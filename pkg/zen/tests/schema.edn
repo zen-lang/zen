@@ -85,4 +85,15 @@
                                      :result [{:type "valuesets",
                                                :message "None of valuests #{zen.tests.schema/test-valueset-1 zen.tests.schema/test-valueset-2} is matched for 'c1'",
                                                :path []}]}}}
- }
+
+ mytag {:zen/tags #{zen/tag}}
+ mysym {:zen/tags #{mytag}}
+ list-example {:zen/tags #{test-case}
+               :schema {:type zen/list
+                        :nth {0 {:type zen/symbol :tags #{mytag}}}}
+               :cases {:valid-list {:example (mysym :b :c) :valid true}
+                       :invalid-list {:example (:ups :b :c)
+                                      :result [{:message "Expected type of 'symbol, got 'keyword", :type "primitive-type", :path [0], :schema [:nth 0]}]}
+                       :invalid-list-2 {:example (ups/ups :b :c)
+                                        :result [{:message "Expected type of 'symbol tagged '#{zen.tests.schema/mytag}, but #{}", :type "symbol", :path [0], :schema [:nth 0 :tags]}]}
+                       }}}

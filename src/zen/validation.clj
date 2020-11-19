@@ -111,37 +111,58 @@
       acc)
     (add-error ctx acc {:message (format "Expected type of 'map, got %s" (pr-str data))  :type "type"})))
 
+(defn validate-collection
+  [type ctx acc {evr :every {si :index si-ns :ns} :schema-index mn :minItems mx :maxItems nt :nth} data]
+  (let [acc (if (or evr nt)
+              (->
+               (loop [acc acc, idx 0, [d & ds] data]
+                 (if (and (nil? d) (empty? ds))
+                   acc
+                   (recur
+                    (let [acc (if evr
+                                (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
+                                    (restore-acc acc))
+                                acc)
+                          acc (if-let [sch (and nt (get nt idx))]
+                                (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
+                                    (restore-acc acc))
+                                acc)]
+                      acc)
+                    (inc idx) ds)))
+               (restore-acc acc))
+              acc)
+        cnt (count data)
+        acc (if (and mn (< cnt mn))
+              (add-error ctx acc {:message (format "Expected >= %s, got %s" mn cnt) :type type}
+                         {:schema [:minItems]})
+              acc)
+        acc (if (and mx (> cnt mx))
+              (add-error ctx acc {:message (format "Expected <= %s, got %s" mx cnt) :type type}
+                         {:schema [:maxItems]})
+              acc)
+
+        acc (if-let [nm (and si (nth data si nil))]
+              (let [sch-nm (if si-ns (symbol si-ns (name nm)) nm)]
+                (println "schema index" sch-nm)
+                (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
+                  (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-index sch-nm]}) sch data)
+                      (restore-acc acc))
+                  (add-error ctx acc
+                             {:message (format "Could not find schema %s" sch-nm) :type "schema"}
+                             {:schema [:schema-index]})))
+              acc)]
+    acc))
+
 (defmethod validate-type 'zen/vector
-  [_ ctx acc {evr :every mn :minItems mx :maxItems nt :nth} data]
+  [_ ctx acc schema data]
   (if (sequential? data)
-    (let [acc (if (or evr nt)
-                (->
-                 (loop [acc acc, idx 0, [d & ds] data]
-                   (if (and (nil? d) (empty? ds))
-                     acc
-                     (recur
-                      (let [acc (if evr
-                                  (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
-                                      (restore-acc acc))
-                                  acc)
-                            acc (if-let [sch (and nt (get nt idx))]
-                                  (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
-                                      (restore-acc acc))
-                                  acc)]
-                        acc)
-                      (inc idx) ds)))
-                 (restore-acc acc))
-                acc)
-          cnt (count data)
-          acc (if (and mn (< cnt mn))
-                (add-error ctx acc {:message (format "Expected >= %s, got %s" mn cnt) :type "vector"}
-                           {:schema [:minItems]})
-                acc)
-          acc (if (and mx (> cnt mx))
-                (add-error ctx acc {:message (format "Expected <= %s, got %s" mx cnt) :type "vector"}
-                           {:schema [:maxItems]})
-                acc)]
-      acc)
+    (validate-collection "vector" ctx acc schema data)
+    (add-error ctx acc {:message (format "Expected type of 'vector, got %s" (pretty-type data))  :type "type"})))
+
+(defmethod validate-type 'zen/list
+  [_ ctx acc schema data]
+  (if (list? data)
+    (validate-collection "list" ctx acc schema data)
     (add-error ctx acc {:message (format "Expected type of 'vector, got %s" (pretty-type data))  :type "type"})))
 
 (defmethod validate-type 'zen/set

@@ -83,6 +83,10 @@
  coll      {:zen/tags #{schema tag}
             :type map
             :keys {:every {:confirms #{schema}}
+                   :schema-index {:type map
+                                  :zen/desc "resolve schema by data"
+                                  :keys {:index {:type integer}
+                                         :ns {:type string}}}
                    :minItems {:type integer :min 0}
                    :maxItems {:type integer :min 0}}}
 
@@ -96,6 +100,13 @@
             :keys {:nth {:type map
                          :key {:type integer}
                          :values {:confirms #{schema}}}}}
+
+ list    {:zen/tags #{type coll schema}
+          :confirms #{coll}
+          :type map
+          :keys {:nth {:type map
+                       :key {:type integer}
+                       :values {:confirms #{schema}}}}}
 
  map       {:zen/tags #{type coll schema}
             :type map

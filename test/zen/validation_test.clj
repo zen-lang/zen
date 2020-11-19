@@ -1,12 +1,12 @@
 (ns zen.validation-test
-  (:require [zen.core]
-            [matcho.core :as matcho]
-            [clojure.test :refer [deftest is testing]]))
+  (:require [matcho.core :as matcho]
+            [clojure.test :refer [deftest is testing]]
+            [zen.core]))
 
 
 (def tctx (zen.core/new-context {:unsafe true}))
 
-(zen.core/load-ns
+(zen.core/load-ns!
  tctx {'ns 'myapp
        'str {:zen/tags #{'zen/schema}
              :type 'zen/string}
@@ -639,6 +639,57 @@
            [{:type "enum",
              :message "Expected 'c' in #{\"a1\" \"b2\" \"a2\" \"b1\"}",
              :path []}])
+
+
+    (zen.core/load-ns!
+     tctx {'ns 'test.list
+
+           'list {:zen/tags #{'zen/schema}
+                  :type 'zen/list
+                  :nth {0 {:const {:value :->}}}}
+
+           'fn1 {:zen/tags #{'zen/schema}
+                 :type 'zen/list
+                 :nth {1 {:type 'zen/integer}}}
+
+           'fn2 {:zen/tags #{'zen/schema}
+                 :type 'zen/list
+                 :nth {1 {:type 'zen/string}}}
+
+           'poly-list {:zen/tags #{'zen/schema}
+                       :type 'zen/list
+                       :schema-index {:index 0 :ns "test.list"}}})
+
+    (valid 'test.list/list '(:-> 1 2 3))
+
+    (match 'test.list/list '(1 2 3)
+           [{:message "Expected ':->', got '1'",
+             :type "schema",
+             :path [0],
+             :schema ['test.list/list :nth 0]}])
+
+    (valid 'test.list/poly-list '(test.list/fn1 1))
+    (valid 'test.list/poly-list '(test.list/fn2 "str"))
+
+
+    (match 'test.list/poly-list '(test.list/fn1 "str")
+           [{:message "Expected type of 'integer, got 'string",
+             :type "primitive-type",
+             :path [1],
+             :schema ['test.list/poly-list :schema-index 'test.list/fn1 :nth 1]}])
+
+    (match 'test.list/poly-list '(test.list/fn2 1)
+           [{:message "Expected type of 'string, got 'long",
+             :type "string.type",
+             :path [1],
+             :schema ['test.list/poly-list :schema-index 'test.list/fn2 :nth 1]}])
+
+    (match 'test.list/poly-list '(test.list/ups 1)
+           [{:message "Could not find schema test.list/ups",
+             :type "schema",
+             :path [],
+             :schema ['test.list/poly-list :schema-index]}])
+
 
     )
 
