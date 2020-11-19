@@ -274,13 +274,25 @@
                    (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                acc)))
 
-(defn validate-enum [ctx acc enum data]
-  (when enum
-    (println "TBD: enum validation" enum))
-  acc)
+(defn register-unmatched-enum [acc enum data]
+  (update-in acc [:enums (:path acc)]
+             (fn [old]
+               (-> old
+                   (update :enum (fn [en] (into (or en #{}) (map :value enum))))
+                   (assoc :data data)))))
+
+(defn validate-enum [ctx {path :path :as acc} enum data]
+  (if enum
+    (if (get-in acc [:enums path :match])
+      acc
+      (if (->> enum
+               (filter (fn [v] (= (:value v) data)))
+               first)
+        (assoc-in acc [:enums path] {:match true})
+        (register-unmatched-enum acc enum data)))
+    acc))
 
 (defmulti valueset-find (fn [tp ctx vs data] tp))
-
 
 (defn register-unmatched-valueset [acc nm data]
   (update-in acc [:valuesets (:path acc)]
@@ -300,11 +312,11 @@
           (if-let [vs (get-symbol ctx nm)]
             (if-let [values (:values vs)]
               (if (->> values (filter (fn [v] (= (get v k) data))) (first))
-                (assoc-in acc [:valuesets (:path acc)] {:match nm})
+                (assoc-in acc [:valuesets path] {:match nm})
                 (recur vss (register-unmatched-valueset acc nm data)))
               (if-let [prov (:provider vs)]
                 (if (valueset-find prov ctx vs data)
-                  (assoc-in acc [:valuesets (:path acc)] {:match nm})
+                  (assoc-in acc [:valuesets path] {:match nm})
                   (recur vss (register-unmatched-valueset acc nm data)))
                 (recur vss acc)))
             (recur vss acc)))))
@@ -337,26 +349,34 @@
                :message (format "None of valuests %s is matched for '%s'" vs data)
                :path path}))))
 
+(defn enum-errors [acc]
+  (->> (:enums acc)
+       (remove (fn [[_ v]] (:match v)))
+       (map (fn [[path {enum :enum data :data}]]
+              {:type "enum"
+               :message (format "Expected '%s' in %s" data enum)
+               :path path}))))
+
+(defn global-errors [acc]
+  (update acc :errors
+          (fn [errs]
+            (-> errs
+                (into (unknown-keys-errors acc))
+                (into (valueset-errors acc))
+                (into (enum-errors acc))))))
+
 
 (defn validate-schema [ctx schema data]
-  (let [acc (new-validation-acc)
-        acc (validate-node ctx acc  schema data)]
-    (update acc :errors
-            (fn [errs]
-              (-> errs
-                  (into (unknown-keys-errors acc))
-                  (into (valueset-errors acc)))))))
+  (-> (validate-node
+       ctx (new-validation-acc)   schema data)
+      (global-errors)))
 
 (defn validate
   [ctx schemas data]
-  (let [acc  (->> schemas
-                  (reduce (fn [acc sym]
-                            (if-let [sch (get-symbol ctx sym)]
-                              (validate-node ctx (assoc acc :schema [sym])  sch data)
-                              (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
-                          (new-validation-acc)))]
-    (update acc :errors
-            (fn [errs]
-              (-> errs
-                  (into (unknown-keys-errors acc))
-                  (into (valueset-errors acc)))))))
+  (->> schemas
+       (reduce (fn [acc sym]
+                 (if-let [sch (get-symbol ctx sym)]
+                   (validate-node ctx (assoc acc :schema [sym])  sch data)
+                   (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
+               (new-validation-acc))
+       (global-errors)))

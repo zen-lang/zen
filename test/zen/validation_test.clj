@@ -597,7 +597,7 @@
              :schema ['test.sym/sym :tags]}])
 
     (zen.core/load-ns!
-     tctx {'ns 'test.enum
+     tctx {'ns 'test.vs
            'vs1 {:zen/tags #{'zen/valueset}
                 :values [{:code "a"}]}
            'vs2 {:zen/tags #{'zen/valueset}
@@ -607,13 +607,37 @@
                   :valuesets #{{:name 'vs1 :key :code}
                                {:name 'vs2 :key :code}}}})
 
-    (valid 'test.enum/code "a")
+    (valid 'test.vs/code "a")
 
-    (valid 'test.enum/code "b")
-    (match 'test.enum/code "c"
+    (valid 'test.vs/code "b")
+    (match 'test.vs/code "c"
            [{:type "valuesets",
              :message
-             "None of valuests #{test.enum/vs1 test.enum/vs2} is matched for 'c'",
+             "None of valuests #{test.vs/vs1 test.vs/vs2} is matched for 'c'",
+             :path []}])
+
+    (zen.core/load-ns!
+     tctx {'ns 'test.enum
+           'val {:zen/tags #{'zen/schema}
+                 :type 'zen/string
+                 :enum [{:value "a1"}
+                        {:value "a2"}]}
+           'inh-val {:zen/tags #{'zen/schema}
+                     :type 'zen/string
+                     :confirms #{'val}
+                     :enum [{:value "b1"}
+                            {:value "b2"}]}})
+
+    (valid 'test.enum/val "a1")
+    (valid 'test.enum/inh-val "a1")
+    (valid 'test.enum/inh-val "b1")
+
+    (match 'test.enum/val "c"
+           [{:type "enum", :message "Expected 'c' in #{\"a1\" \"a2\"}", :path []}])
+
+    (match 'test.enum/inh-val "c"
+           [{:type "enum",
+             :message "Expected 'c' in #{\"a1\" \"b2\" \"a2\" \"b1\"}",
              :path []}])
 
     )
