@@ -143,7 +143,6 @@
 
         acc (if-let [nm (and si (nth data si nil))]
               (let [sch-nm (if si-ns (symbol si-ns (name nm)) nm)]
-                (println "schema index" sch-nm)
                 (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
                   (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-index sch-nm]}) sch data)
                       (restore-acc acc))
