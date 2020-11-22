@@ -111,13 +111,13 @@ Store functions:
 
 ## Schema
 
-zen includes builrin schema engine,
-which is sinilar json schema.
+zen includes builtin schema engine,
+which is similar to json schema.
 
 The key features of zen schema is:
 
 * open world evalualtion - i.e. each schema validates only known keys (properties)
-* ignore, warn on fail on "unknown keys" is just a validation **mode**, i.e.  not part of schema semantic
+* ignore, warn or fail on "unknown keys" is just a validation **mode**, i.e.  not part of schema semantic
 * support of RDF inspired property schema - i.e. schema attached to key  (only namespaced keys) -  not to a key container
 
 ```edn
@@ -166,7 +166,7 @@ The key features of zen schema is:
 
 Schema can be extended with primitives and container types.
 
-Each schema node:
+Each schema node may have a keys:
 
 * `:type` (required) - defines interpreter and link to type specific schema keys
 * `:confirms` - set of other schemas to confirm (this is not inheretance!)
@@ -189,6 +189,7 @@ List of built-in types:
   * zen/vector
   * zen/set
   * zen/map
+  * zen/list
 * zen/case
 
 ### zen/case
