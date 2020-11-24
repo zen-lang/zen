@@ -111,13 +111,13 @@ Store functions:
 
 ## Schema
 
-zen includes builrin schema engine,
-which is sinilar json schema.
+zen includes builtin schema engine,
+which is similar to json schema.
 
 The key features of zen schema is:
 
 * open world evalualtion - i.e. each schema validates only known keys (properties)
-* ignore, warn on fail on "unknown keys" is just a validation **mode**, i.e.  not part of schema semantic
+* ignore, warn or fail on "unknown keys" is just a validation **mode**, i.e.  not part of schema semantic
 * support of RDF inspired property schema - i.e. schema attached to key  (only namespaced keys) -  not to a key container
 
 ```edn
@@ -164,17 +164,12 @@ The key features of zen schema is:
 
 ### Schema Specification
 
-Schema can be extended with primitives and container types.
+Schema statemets are described with maps.
+Map may have a :type key, which defines how this
+map is interpreted. For example `:type zen/string`
+will check for string, zen/map describes map validation.
 
-Each schema node:
-
-* `:type` (required) - defines interpreter and link to type specific schema keys
-* `:confirms` - set of other schemas to confirm (this is not inheretance!)
-* `:enum` - polymorphic enumeration of possible values (TODO: think about terminology - reference semantic?)
-* `:constant` - polymorphic fixed value validation
-
-
-List of built-in types:
+Here is list of built-in types:
 
 * primitives
   * zen/symbol
@@ -189,7 +184,24 @@ List of built-in types:
   * zen/vector
   * zen/set
   * zen/map
+  * zen/list
 * zen/case
+
+You can get all schema types by query meta-store for
+zen/type tag. 
+User can extend schema with new types - TBD
+
+All schema maps may have common a keys:
+
+* `:confirms` - set of other schemas to confirm (this is not inheretance!)
+* `:enum` - polymorphic enumeration of possible values (TODO: think about terminology - reference semantic?)
+* `:constant` - polymorphic fixed value validation
+* `:valueset` - like enum, but using valurset zen protocol (TBD)
+
+Depending on type schema map may have type specific 
+keys. For example :minLength and :regex for zen/string
+or :keys for zen/map.
+
 
 ### zen/case
 
@@ -209,6 +221,8 @@ it is more advanced and may be applied to different maps
 
 ### zen/symbol
 
+* :tags - constraint to only symbols wth tags
+
 ### zen/map
 
 For example `zen/map` type defines following validation keys:
@@ -217,7 +231,6 @@ For example `zen/map` type defines following validation keys:
 * `:keys` { key: schema } - enumeration of keys and schema for each key
 * `:require` #{:key,...} - list of requried keys in map
 * `:schema-key` {:key :some-key } - key to resolve schema from data on fly
-
 
 
 ### zen/vector
