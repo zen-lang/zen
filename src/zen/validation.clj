@@ -104,8 +104,10 @@
                                (symbol sk-ns (name nm))
                                nm)]
                   (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
-                    (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
-                        (restore-acc acc))
+                    (if (contains? (:zen/tags sch) 'zen/type)
+                      (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
+                          (restore-acc acc))
+                      (add-error ctx acc {:message (format "'%s should be tagged with zen/type, but %s" sch-nm (:zen/tags sch)) :type "schema"}))
                     (add-error ctx acc {:message (format "Could not find schema %s" sch-nm) :type "schema"})))
                 acc)]
       acc)
@@ -249,9 +251,12 @@
   [_ ctx acc {tags :tags} data]
   (if (symbol? data)
     (if tags
-      (let [sym-tags (:zen/tags (get-symbol ctx data))]
-        (if (not (clojure.set/superset? sym-tags tags))
-          (add-error ctx acc {:message (format "Expected type of 'symbol tagged '%s, but %s" tags (or sym-tags #{})) :type "symbol"} {:schema [:tags]})
+      (let [sym (get-symbol ctx data)
+            sym-tags (:zen/tags sym)]
+        (if (and sym (not (clojure.set/superset? sym-tags tags)))
+          (add-error ctx acc {:message (format "Expected symbol '%s tagged with '%s, but only %s"
+                                               (str data) (str tags)
+                                               (or sym-tags #{})) :type "symbol"} {:schema [:tags]})
           acc))
       acc)
     (add-error ctx acc {:message (format "Expected type of 'symbol, got '%s" (pretty-type data)) :type "primitive-type"})))
