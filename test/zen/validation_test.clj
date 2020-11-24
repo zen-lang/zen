@@ -498,8 +498,9 @@
 
        'org {:zen/tags #{'zen/schema}
              :type 'zen/map
-             :require #{:title}
-             :keys {:title {:type 'zen/string}}}
+             :require #{:title :id}
+             :keys {:title {:type 'zen/string}
+                    :id {:type 'zen/string}}}
 
        'obj {:zen/tags #{'zen/schema}
              :type 'zen/map
@@ -511,7 +512,7 @@
     (zen.core/load-ns! tctx sk-sch)
 
     (valid 'test.map.sk/obj {:kind "pt" :name "Nikolai"})
-    (valid 'test.map.sk/obj {:kind "org" :title "SPBGU"})
+    (valid 'test.map.sk/obj {:kind "org" :title "SPBGU" :id "org"})
 
     (match 'test.map.sk/obj {:kind "pt" :extra "a"}
            [{:message ":name is required",
@@ -524,6 +525,10 @@
            [{:message ":title is required",
              :type "require",
              :path [:title],
+             :schema ['test.map.sk/obj :schema-key 'test.map.sk/org :require]}
+            {:message ":id is required",
+             :type "require",
+             :path [:id],
              :schema ['test.map.sk/obj :schema-key 'test.map.sk/org :require]}
             {:type "unknown-key", :message "unknown key :extra", :path [:extra]}])
 
@@ -592,7 +597,7 @@
     (valid 'test.sym/sym 'test.sym/mytag)
 
     (match 'test.sym/sym 'ups
-           [{:message "Expected type of 'symbol tagged '#{test.sym/mytag}, but #{}",
+           [{:message "Expected symbol 'ups tagged with '#{test.sym/mytag}, but only #{}"
              :type "symbol",
              :schema ['test.sym/sym :tags]}])
 

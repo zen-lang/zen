@@ -79,12 +79,14 @@
                    (reduce (fn [acc k]
                              (if (set? k)
                                (if (empty? (->> (select-keys data k) (remove nil?)))
-                                 (add-error ctx (update-acc ctx acc {:schema [:require]})
-                                            {:message (format "one of keys %s is required" k) :type "map.require"})
+                                 (add-error ctx acc
+                                            {:message (format "one of keys %s is required" k) :type "map.require"}
+                                            {:schema [:require]})
                                  acc)
                                (if (nil? (get data k))
-                                 (add-error ctx (update-acc ctx acc {:path [k] :schema [:require]})
-                                            {:message (format "%s is required" k) :type "require"})
+                                 (add-error ctx acc
+                                            {:message (format "%s is required" k) :type "require"}
+                                            {:path [k] :schema [:require]})
                                  acc)))
                            acc))
           acc (if eks
@@ -104,10 +106,10 @@
                                (symbol sk-ns (name nm))
                                nm)]
                   (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
-                    (if (contains? (:zen/tags sch) 'zen/type)
+                    (if (contains? (:zen/tags sch) 'zen/schema)
                       (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
                           (restore-acc acc))
-                      (add-error ctx acc {:message (format "'%s should be tagged with zen/type, but %s" sch-nm (:zen/tags sch)) :type "schema"}))
+                      (add-error ctx acc {:message (format "'%s should be tagged with zen/schema, but %s" sch-nm (:zen/tags sch)) :type "schema"}))
                     (add-error ctx acc {:message (format "Could not find schema %s" sch-nm) :type "schema"})))
                 acc)]
       acc)
@@ -253,7 +255,7 @@
     (if tags
       (let [sym (get-symbol ctx data)
             sym-tags (:zen/tags sym)]
-        (if (and sym (not (clojure.set/superset? sym-tags tags)))
+        (if (not (clojure.set/superset? sym-tags tags))
           (add-error ctx acc {:message (format "Expected symbol '%s tagged with '%s, but only %s"
                                                (str data) (str tags)
                                                (or sym-tags #{})) :type "symbol"} {:schema [:tags]})
