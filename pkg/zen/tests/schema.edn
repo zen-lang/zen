@@ -95,5 +95,5 @@
                        :invalid-list {:example (:ups :b :c)
                                       :result [{:message "Expected type of 'symbol, got 'keyword", :type "primitive-type", :path [0], :schema [:nth 0]}]}
                        :invalid-list-2 {:example (ups/ups :b :c)
-                                        :result [{:message "Expected type of 'symbol tagged '#{zen.tests.schema/mytag}, but #{}", :type "symbol", :path [0], :schema [:nth 0 :tags]}]}
+                                        :result [{:message "Expected symbol 'ups/ups tagged with '#{zen.tests.schema/mytag}, but only #{}", :type "symbol", :path [0], :schema [:nth 0 :tags]}]}
                        }}}

@@ -46,11 +46,8 @@
             true
             (recur has-keys ks)))))))
 
-;; TODO:
-;; * validate keys
-;; * minItems/maxItems
 (defmethod validate-type 'zen/map
-  [_ ctx acc {ks :keys ky :key vls :values {sk :key sk-ns :ns} :schema-key reqs :require eks :exclusive-keys} data]
+  [_ ctx acc {ks :keys ky :key vls :values {sk :key sk-ns :ns sk-tags :tags} :schema-key reqs :require eks :exclusive-keys} data]
   (if (map? data)
     (let [handle-unknown-keys (and (nil? ky) (nil? vls))
           acc (->> data
@@ -59,8 +56,8 @@
                                          (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                                acc' (if handle-unknown-keys (assoc-in acc' [:keys (conj (:path acc) k)] true) acc')]
                                            (restore-acc acc' acc))
-                                         (if-let [sch  (and (keyword? k) (namespace k) (resolve-property ctx k))]
-                                           (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                         (if-let [prop-sch  (and (keyword? k) (namespace k) (resolve-property ctx k))]
+                                           (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) prop-sch v)
                                                (restore-acc acc))
                                            (if handle-unknown-keys
                                              (update-in acc [:keys (conj (:path acc) k)] #(or % false))
@@ -105,11 +102,13 @@
                 (let [sch-nm (if sk-ns
                                (symbol sk-ns (name nm))
                                nm)]
-                  (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
-                    (if (contains? (:zen/tags sch) 'zen/schema)
-                      (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
-                          (restore-acc acc))
-                      (add-error ctx acc {:message (format "'%s should be tagged with zen/schema, but %s" sch-nm (:zen/tags sch)) :type "schema"}))
+                  (if-let [{tags :zen/tags :as sch} (and sch-nm (get-symbol ctx sch-nm))]
+                    (if (contains? tags 'zen/schema)
+                      (if (and sk-tags (not (clojure.set/subset? sk-tags tags)))
+                        (add-error ctx acc {:message (format "'%s should be tagged with %s, but %s" sch-nm sk-tags tags) :type "schema"})
+                        (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-key sch-nm]}) sch data)
+                            (restore-acc acc)))
+                      (add-error ctx acc {:message (format "'%s should be tagged with zen/schema, but %s" sch-nm tags) :type "schema"}))
                     (add-error ctx acc {:message (format "Could not find schema %s" sch-nm) :type "schema"})))
                 acc)]
       acc)
@@ -292,13 +291,16 @@
       (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"}))
     acc))
 
-(defn validate-confirms [ctx acc cfs data]
+(defn validate-confirms [ctx {pth :path :as acc} cfs data]
   (->> cfs
        (reduce (fn [acc sym]
-                 (if-let [sch (get-symbol ctx sym)]
-                   (-> (validate-node ctx (update-acc ctx acc {:schema [sym]}) sch data)
-                       (restore-acc acc))
-                   (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
+                 (if (get-in acc [:confirms pth sym])
+                   acc
+                   (let [acc (assoc-in acc [:confirms pth sym] true)]
+                     (if-let [sch (get-symbol ctx sym)]
+                       (-> (validate-node ctx (update-acc ctx acc {:schema [:confirms sym]}) sch data)
+                           (restore-acc acc))
+                       (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))))
                acc)))
 
 (defn register-unmatched-enum [acc enum data]
@@ -355,7 +357,12 @@
           acc (validate-confirms ctx acc (:confirms schema) data)
           acc (validate-enum ctx acc (:enum schema) data)
           acc (validate-valuesets ctx acc (:valuesets schema) data)]
-      (if tp (validate-type tp ctx acc schema data) acc))
+      (if tp
+        (let [{tags :zen/tags} (get-symbol ctx tp)]
+          (if (and tags (contains? tags 'zen/type))
+            (validate-type tp ctx acc schema data)
+            (add-error ctx acc {:message (format ":type '%s' should be tagged with 'zen/type, but %s " tp tags) :type "schema.type"})))
+        acc))
     (catch Exception e
       (add-error ctx acc {:message (pr-str e) :type "schema"})
       (when (:unsafe @ctx) (throw e)))))

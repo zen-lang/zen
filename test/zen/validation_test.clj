@@ -158,7 +158,7 @@
 
   (vmatch #{'myapp/User} {:name "niquola" :address {:extra "niquola"}}
           {:errors [{:path [:address :city]
-                     :schema ['myapp/User :address 'myapp/Address :require]
+                     :schema ['myapp/User :address :confirms 'myapp/Address :require]
                      :type "require"
                      :message ":city is required"}
                     {:path [:address :extra]
@@ -187,7 +187,7 @@
            [{:message #"Expected type of 'vector",
              :type "type",
              :path [:address :line],
-             :schema ['myapp/User :address 'myapp/Address :line]}
+             :schema ['myapp/User :address :confirms 'myapp/Address :line]}
             nil?]})
 
   (match 'myapp/User
@@ -195,7 +195,7 @@
          [{:message "Expected type of 'string, got 'long",
            :type "string.type",
            :path [:address :line 2],
-           :schema ['myapp/User :address 'myapp/Address :line :every]}
+           :schema ['myapp/User :address :confirms 'myapp/Address :line :every]}
           nil?])
 
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [1 {:ups "ups"}]}
@@ -203,7 +203,7 @@
            [{:message "Expected type of 'map, got 1",
              :type "type",
              :path [:identifiers 0],
-             :schema ['myapp/User :identifiers :every 'myapp/Identifier]}
+             :schema ['myapp/User :identifiers :every :confirms 'myapp/Identifier]}
             {:message "Expected type of 'map, got 1",
              :type "type",
              :path [:identifiers 0],
@@ -287,8 +287,9 @@
              :type "primitive-type",
              :path [:keys :ups :minLength],
              :schema
-             ['zen/schema :schema-key 'zen/map :keys :values 'zen/schema :schema-key 'zen/string :minLength]}]})
+             ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :schema-key 'zen/string :minLength]}]})
 
+          
   (vmatch #{'zen/schema}
           {:type 'zen/map
            :keys {:minLength {:type 'zen/integer, :min 0}
@@ -306,7 +307,7 @@
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
              :path [:keys :maxLength :min],
-             :schema ['zen/schema :schema-key 'zen/map :keys :values 'zen/schema :schema-key 'zen/integer :min]}
+             :schema ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :schema-key 'zen/integer :min]}
             {:type "unknown-key",
              :message "unknown key :ups",
              :path [:keys :minLength :ups]}]})
@@ -695,8 +696,53 @@
              :path [],
              :schema ['test.list/poly-list :schema-index]}])
 
-
     )
+
+  (match
+   'zen/schema
+   {:zen/tags #{'zen/schema}
+    :type 'zen/schema}
+   [{:message
+     "Expected symbol 'zen/schema tagged with '#{zen/type}, but only #{zen/tag zen/schema}",
+     :type "symbol",
+     :path [:type],
+     :schema ['zen/schema :type :tags]}
+    {:message
+     "'zen/schema should be tagged with #{zen/type}, but #{zen/tag zen/schema}",
+     :type "schema",
+     :path [],
+     :schema ['zen/schema]}])
+
+  (zen.core/load-ns!
+   tctx {'ns 'test.confirms
+
+         'c1 {:zen/tags #{'zen/schema}
+              :type 'zen/map
+              :keys {:a {:type 'zen/string}}}
+
+         'c2 {:zen/tags #{'zen/schema}
+              :type 'zen/map
+              :confirms #{'c1}
+              :keys {:b {:type 'zen/string}}}
+
+         'c3 {:zen/tags #{'zen/schema}
+              :type 'zen/map
+              :confirms #{'c2 'c1}
+              :keys {:c {:type 'zen/string}}}
+
+         'c4 {:zen/tags #{'zen/schema}
+              :type 'zen/map
+              :confirms #{'c3 'c2 'c1}
+              :keys {:d {:type 'zen/string}}}
+         })
+
+  (match 'test.confirms/c4 {:a 1}
+         [{:message "Expected type of 'string, got 'long",
+           :type "string.type",
+           :path [:a],
+           :schema
+           ['test.confirms/c4 :confirms 'test.confirms/c2 :confirms 'test.confirms/c1 :a]}
+          nil?])
 
 
 

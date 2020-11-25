@@ -114,14 +114,15 @@
                    :schema-key {:type map
                                 :keys {:key {:type keyword}
                                        :ns  {:type string :zen/desc "namespace prefix to add to key"}
+                                       :tags {:type set
+                                              :zen/desc "limit symbols by specific tags"
+                                              :every {:type symbol}}
                                        :resolve {:type map :values {:type symbol}}}
                                 :require #{:key}}
                    :key {:zen/desc "Validate keys against schema. Turn off unknown-keys validation"
                          :confirms #{schema}}
                    :keys {:type map
-                          :values {:type map
-                                   :confirms #{schema}
-                                   :keys {:type {:type symbol}}}}
+                          :values {:confirms #{schema}}}
                    :require {:type set
                              :zen/desc "Set of required keys; set means 'one of key' is required."
                              :every {:type case
@@ -161,7 +162,7 @@
  schema   {:zen/tags #{schema tag}
            :zen/desc "zen schema"
            :type map
-           :schema-key {:key :type}
+           :schema-key {:key :type :tags #{type}}
            :keys {:type {:type symbol :tags #{type}}
                   :confirms {:type set
                              :zen/desc "set of schemas to confirm"
