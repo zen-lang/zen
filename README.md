@@ -17,7 +17,7 @@ Models can be expressed with data - **Data DSLs**.
 Why? Because data is easyly composable, regular and introspectable.
 
 There are a lot of successful Data DSLs in clojure eco-system.
-But often they are often scattered around code-base, i.e. do not play together.
+But often they do not play together :(.
 
 Zen is a framework to unify Data DSLs,
 make them composable and take **model driven design** to the next level.
