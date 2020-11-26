@@ -1,4 +1,4 @@
-# zen meta store & schema
+# Zen meta store & schema
 
 [![Build Status](https://travis-ci.org/zen-lang/zen.svg?branch=master)](https://travis-ci.org/zen-lang/zen)
 
@@ -14,9 +14,9 @@ Often application can be split into two parts
 **declarative models** (DSLs) and  **imperative interpreter** (engines).
 
 Models can be expressed with data - **Data DSLs**.
-Why? Because data is easyly composable, regular and introspectable.
+Why? Because data is easily composable, regular and introspectable.
 
-There are a lot of successful Data DSLs in clojure eco-system.
+There are a lot of successful Data DSLs in clojure ecosystem.
 But often they do not play together :(.
 
 Zen is a framework to unify Data DSLs,
@@ -41,7 +41,7 @@ Namespace is a map (in terms of edn)
 with two special symbol keys  - 'ns  and 'import
 
 * `ns` - defines name of namespace
-* `imports` - dependen
+* `imports` - imported namespaces
 
 Namespaces may refer other namespaces by `imports`.
 Core `zen` namespace is imported implicitly.
@@ -184,7 +184,7 @@ The key features of zen/schema is:
 
 ### Schema Specification
 
-Schema statemets are described with maps.
+Schema statements are described with maps.
 Map may have a :type key, which defines how this
 map is interpreted. For example `:type zen/string`
 will check for string, zen/map describes map validation.
@@ -213,10 +213,10 @@ User can extend schema with new types - TBD
 
 All schema maps may have common a keys:
 
-* `:confirms` - set of other schemas to confirm (this is not inheretance!)
+* `:confirms` - set of other schemas to confirm (this is not inheritance!)
 * `:enum` - polymorphic enumeration of possible values (TODO: think about terminology - reference semantic?)
 * `:constant` - polymorphic fixed value validation
-* `:valuesets` - like enum, but using valurset zen protocol (TBD)
+* `:valuesets` - like enum, but using valueset zen protocol (TBD)
 
 Depending on type schema map may have type specific 
 keys. For example :minLength and :regex for zen/string
@@ -245,7 +245,7 @@ path
 
 ### zen/symbol
 
-* :tags - constraint to only symbols wth tags
+* :tags - constraint to only symbols with tags
 
 ### zen/map
 
@@ -253,7 +253,7 @@ For example `zen/map` type defines following validation keys:
 
 * `:values`  schema - schema to apply to all values
 * `:keys` { key: schema } - enumeration of keys and schema for each key
-* `:require` #{:key,...} - list of requried keys in map
+* `:require` #{:key,...} - list of required keys in map
 * `:schema-key` {:key :some-key } - key to resolve schema from data on fly
 
 
