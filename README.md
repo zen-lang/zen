@@ -10,42 +10,41 @@
 
 ## Motivation
 
-This library is built around the "model driven design" - idea, that information
-system can be split into two parts -
-**declarative model part** and **imperative interpreter part** (engine)
+Often application can be split into two parts
+**declarative models** (DSLs) and  **imperative interpreter** (engines).
 
-Models are expressed with data or more precisely **Data DSLs**.
+Models can be expressed with data - **Data DSLs**.
+Why? Because data is easyly composable, regular and introspectable.
 
-The nice feature of Data DSLs, thats data is easyly 
-composable, regular and introspectable.
+There are a lot of successful Data DSLs in clojure eco-system.
+But often they are often scattered around code-base, i.e. do not play together.
 
-Zen library implements - model part:  **model project**, **model store** and **schema language**
+Zen is a framework to unify Data DSLs,
+make them composable and take **model driven design** to the next level.
 
 
 ## Model Project
 
-You put your models like code in modules (**namespaces**)
-and layout in file system. Set of **namespaces** can be published
-and reused as a **package**.
+Zen separate models source code from interpreters code, but 
+keep it in source path using same layout as clojure.
 
-**model project** layout is the same as in clojure.
+Models are grouped into namespaces and namespaces are 
+stored in [edn files](https://github.com/edn-format/edn).
 
-Model project consists of set of namespaces and may refer other packages.
+Namespaces can be published as **reusable** packages.
 
 ### Namespace
 
 Each namespace contains one or multiple models described with data.
 
-Namespaces are written in [edn format](https://github.com/edn-format/edn)
-
 Namespace is a map (in terms of edn)
 with two special symbol keys  - 'ns  and 'import
 
-* 'ns - defines name of namespace
-* 'imports - is a set of required namespaces to interpret this namespace
+* `ns` - defines name of namespace
+* `imports` - dependen
 
-Namespaces should refer other namespaces explicitly thro import!
-`zen` namespace is imported implicitly.
+Namespaces may refer other namespaces by `imports`.
+Core `zen` namespace is imported implicitly.
 
 That's how starting from one **entry point** namespace,
 your project can import only used modules and models from other packages.
@@ -60,28 +59,51 @@ Example namespace:
 ```edn
 
 {ns myapp.module ;; namespace name
- imports #{zen.http} ;; imports - TODO: think about aliases
+ imports #{http pg model auth} ;; imports - TODO: think about aliases
  
+ db
+ {:zen/tags #{pg/config}
+  :connection {:host "..." :port "..."}
+  :storages #{model/patient-store}}
+
  ;; model
- web {
-  :zen/tags #{zen.http/server} ;; tags set
+ web 
+ {:zen/tags #{http/server} ;; tags set
   :port 8080
   :workers 8
-  :api api ;; local reference to myapp.module/api model
- }
+  :db db
+  :apis #{api http/admin-api}} 
  
- api {
-  :zen/tags #{zen.http/api}
+ api 
+ {:zen/tags #{http/api}
   :zen/desc "API definition"
+  :middleware [{:type http/cors :allow #{"https://myapp.io"}}
+               {:type auth/authorize}]
   :routes {
-    :get {:operation index}
-    "meta" {:operation http/api-introspection}}}
+    "Patient" {:post {:op create-pt}
+               :get  {:op search-pt}}
+    "meta" {:get {:op http/meta}}}}
 
- index {
-  :zen/tags #{zen.http/op zen.http/simple-op}
+ create-pt 
+ {:zen/tags #{http/create}
+  :operation http/create
+  :schemas #{model/patient}
   :response {
-    :status 302
-    :headers {"location" "/index.html"}}}}
+    201 {:confirms #{model/patient}}
+    422 {:confirms #{http/error}}}}
+
+ search-pt 
+ {:zen/tags #{http/search}
+  :operation http/search
+  :store #{model/patient-store}
+  :params {:query {:name {:zen/desc "Search by name" 
+                          :engine http/fhir-search-param
+                          :type "string" :expression "Patient.name"}
+                   :ilike {:engine http/sql-search-param
+                           :query "resource::text ilike {{param.value}}"}}}
+  :response { 
+    201 {:confirms #{model/search-bundle}} 
+    422 {:confirms #{model/search-errors}}}}}
 ```
 
 
@@ -92,7 +114,7 @@ Instead of introducing any kind of types and type hierarchies,
 zen uses **tag system** to classify models.
 
 You may think about tag system as non-hierarchical 
-multidimetional classification (just like java interfaces).
+multidimensional classification (just like java interfaces).
 Or as a function of meta store - 
 get all models labeled with specific tag.
 
@@ -103,62 +125,60 @@ You start loading from **entry point namespace**.
 All imports will be resolved, validated and loaded into store.
 
 Store functions:
-* get model by name `ns/sym`
-* get namespace by name
-* get all models by tag
-* reload namespace
+* get-symbol `ns/sym`
+* get-tag `tag/name`
+* read-ns `my/ns`
 
 
 ## Schema
 
-zen includes builtin schema engine,
-which is similar to json schema.
+Zen has built-in schema engine deeply integrated with meta-store.
 
-The key features of zen schema is:
+The key features of zen/schema is:
 
-* open world evalualtion - i.e. each schema validates only known keys (properties)
-* ignore, warn or fail on "unknown keys" is just a validation **mode**, i.e.  not part of schema semantic
-* support of RDF inspired property schema - i.e. schema attached to key  (only namespaced keys) -  not to a key container
+* open world design - i.e. each schema validates only what it knows
+* support of RDF inspired property schema - i.e. schema attached to key (only namespaced keys) -  not to a key container
 
 ```edn
 {ns myapp
 
- Contact {
-   :zen/tags #{zen/schema}
+ Contact 
+ {:zen/tags #{zen/schema}
    :type zen/map
-   :keys {
-     :system {:type zen/string :enum [{:value "phone"} {:value "email"}]
+   :keys 
+   {:system {:type zen/string 
+             :enum [{:value "phone"} 
+                    {:value "email"}]
      :value  {:type zen/string}}}
 
- Contactable {
-   :zen/tags #{zen/schema}
+ Contactable 
+ {:zen/tags #{zen/schema}
    :type zen/map
    :keys {:contacts {:type zen/vector 
                      :every {:type map :confirms #{Contact}}}}}
 
- User {
-   :zen/tags #{zen/schema}
+ User 
+ {:zen/tags #{zen/schema}
    :type zen/map
    :confirms #{Contactable}
-   :require #{:id}
+   :require #{:id :email}
    :keys {
      :id {:type zen/string}
-     :email {:type zen/string :regex #".*@.*"}
+     :email {:type zen/string :regex ".*@.*"}
      :password {:type zen/string }}}
 
  ;; example of property schema
  
- human-name {
-   :zen/tags #{zen/property zen/schema}
+ human-name 
+ {:zen/tags #{zen/property zen/schema}
    :type zen/map
    :keys {:family {:type zen/string} 
           :given {:type zen/vector :every {:type zen/string}}}}}
 
-;; valid user
-
-{:id "niquola"
- :myapp/human-name {:given ["Nikolai"] :family "Ryzhikov"}
- :password #scrypt"secret"}
+ instance
+ {:id "niquola"
+  :myapp/human-name {:given ["Nikolai"] :family "Ryzhikov"}
+  :password "secret"}
 ```
 
 
@@ -196,7 +216,7 @@ All schema maps may have common a keys:
 * `:confirms` - set of other schemas to confirm (this is not inheretance!)
 * `:enum` - polymorphic enumeration of possible values (TODO: think about terminology - reference semantic?)
 * `:constant` - polymorphic fixed value validation
-* `:valueset` - like enum, but using valurset zen protocol (TBD)
+* `:valuesets` - like enum, but using valurset zen protocol (TBD)
 
 Depending on type schema map may have type specific 
 keys. For example :minLength and :regex for zen/string
@@ -210,12 +230,16 @@ it is more advanced and may be applied to different maps
 
 ```edn
 
+path
 {:zen/tags #{'zen/schema}
  :type 'zen/vector
- :every {:type 'zen/case
-         :case [{:when {:type 'zen/string}}
-                {:when {:type 'zen/map}
-                 :then {:type 'zen/map :require #{:name} :keys {:name {:type 'zen/string}}}}]}}
+ :every
+ {:type 'zen/case
+  :case [{:when {:type 'zen/string}}
+         {:when {:type 'zen/map}
+          :then {:type 'zen/map 
+                 :require #{:name} 
+                 :keys {:name {:type 'zen/string}}}}]}}
 
 ```
 
@@ -241,10 +265,3 @@ Apply clojure.spec regular expressions for collections!!!!
 * :nth {integer: schema} - apply schema to nth element
 * :minItems & :maxItems - min/max items in collection 
 * :filter - TODO: apply filter to collection, then apply schema to 
-
-
-## EDN parser
-
-Comming with basis for LSP for zen models. 
-
-TODO: see https://github.com/borkdude/edamame

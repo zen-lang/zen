@@ -744,6 +744,23 @@
            ['test.confirms/c4 :confirms 'test.confirms/c2 :confirms 'test.confirms/c1 :a]}
           nil?])
 
+  (valid-schema!
+   {:zen/tags       #{'zen/schema}
+    :type           'zen/map
+    :exclusive-keys #{:key-1 :key-2}
+    :keys           {:key-1 {:type 'zen/string}
+                     :key-2 {:type 'zen/string}}})
+
+  (valid-schema!
+   {:zen/tags       #{'zen/schema 'zen/fn}
+
+    :fn {:args {} :result {}}
+
+    :type           'zen/map
+    :exclusive-keys #{:key-1 :key-2}
+    :keys           {:key-1 {:type 'zen/string}
+                     :key-2 {:type 'zen/string}}})
+
 
 
   )

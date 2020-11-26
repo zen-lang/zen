@@ -1,0 +1,73 @@
+{ns myapp
+
+ import #{zenbox zenbox.defaults zenbox.fhir}
+
+ patient-store
+ {:zen/tags #{zenbox.pg/jsnob}
+  :history "diff"
+  :table_name "patients"
+  :retention {:ts 100 :units "days" :bucket "s3/tail"}
+  :indexes {:ilike {:sql "............."}}}
+
+ observation-store
+ {:zen/tags #{zenbox.pg/plain-table}
+  :table_name "observation"}
+
+ ;;JSON-RPC
+ patient-create
+ {:zen/tags #{zenbox.crud/create}
+  :store patient-store
+  :params {:resource {}}
+  :response {}}
+
+ patient-fhir-search
+ {:zen/tags #{zenbox.fhir/search}
+  :store patient-store
+  :params {:name {:path [:name] :type "string"}}}
+
+ patient-search
+ {:zen/tags #{zenbox.search/sql-engine}
+  :store patient-store
+  :params {:name {:sql "resource ilike {{}}"}}}
+
+ rpc
+ {:zen/tags #{zenbox.http/json-rpc}
+  :allowed-operations #{patient-create}}
+
+ patient-create-rest
+ {:zen/tags #{zenbox/http}
+  :operation patient-create}
+
+ patient-api
+ {:zen/tags #{zenbox/api}
+  :middleware {:around [{:type zenbox.fhir/transform-middleware}]}
+  :routes {:get {:type zenbox.search/default-op }
+           :post {:type zenbox.crud/create}}}
+
+
+ two-factor
+ {:zen/tags #{auth/two-factor}
+  :mode ""}
+
+ api
+ {:zen/tags #{zenbox/api}
+  :middleware {:befre [{:type auth/mw :two-factor two-factor}]}
+
+  :routes {:get welcome
+           "admin"   {:api zenbox.defaults/crud-api}
+           "Patient" {:api patient-api}
+           "patient" {[:id] {"Observation" {:get {:type zenbox.search/default-op
+                                                  :inject-params {:patient (get-in [:request :route-params :id])
+                                                                  :tags:not "-sensitive"}
+                                                  :transform-result {:engine "jute" }}}}}
+           "User"    {:api zenbox.defaults/user-api}}}
+
+ server
+ {:zen/tags #{zenbox/server}
+  :port 8080
+  :workers 30
+  :api api}
+
+
+
+ }
