@@ -262,6 +262,23 @@
       acc)
     (add-error ctx acc {:message (format "Expected type of 'symbol, got '%s" (pretty-type data)) :type "primitive-type"})))
 
+
+(defmethod validate-type 'zen/apply
+  [_ ctx acc {tags :tags} data]
+  (if (list? data)
+    (let [sym (first data)]
+      (if (symbol? sym)
+        (if-let [{fn-tags :zen/tags args-schema :args} (get-symbol ctx sym)]
+          (if (contains? fn-tags 'zen/fn)
+            (let [acc (if (and tags (not (clojure.set/subset? tags fn-tags)))
+                        (add-error ctx acc {:message (format "fn definition '%s should be taged with %s, but '%s" sym tags fn-tags) :type "apply.tags"})
+                        acc)]
+              (validate-node ctx (update-acc ctx acc {:schema [sym :args]}) args-schema (rest data)))
+            (add-error ctx acc {:message (format "fn definition '%s should be taged with 'zen/fn, but '%s" sym fn-tags) :type "apply.fn-tag"}))
+          (add-error ctx acc {:message (format "Could not resolve fn '%s" sym) :type "apply.fn-name"}))
+        (add-error ctx acc {:message (format "Expected symbol, got '%s" sym) :type "apply.fn-name"})))
+    (add-error ctx acc {:message (format "Expected fn call '(fn-name args-1 arg-2), got '%s" (pretty-type data)) :type "apply.type"})))
+
 (defmethod validate-type 'zen/boolean
   [_ ctx acc schema data]
   (if (boolean? data)

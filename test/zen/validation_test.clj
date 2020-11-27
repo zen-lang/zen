@@ -3,7 +3,6 @@
             [clojure.test :refer [deftest is testing]]
             [zen.core]))
 
-
 (def tctx (zen.core/new-context {:unsafe true}))
 
 (zen.core/load-ns!
@@ -123,7 +122,9 @@
      (:errors res#)))
 
 
+
 (deftest test-validation
+
 
 
   (is (empty? (:errors @tctx)))
@@ -236,13 +237,13 @@
           {:errors empty?})
 
   (match 'myapp/User
-          {:name "niquola"
-           :myapp/mykey 1
-           :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
-          [{:message "Expected type of 'string, got 'long",
-            :type "string.type",
-            :path [:myapp/mykey],
-            :schema ['myapp/User :myapp/mykey]}])
+         {:name "niquola"
+          :myapp/mykey 1
+          :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
+         [{:message "Expected type of 'string, got 'long",
+           :type "string.type",
+           :path [:myapp/mykey],
+           :schema ['myapp/User :myapp/mykey]}])
 
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}]}
           {:errors [{:message "Expected >= 2, got 1" :path [:identifiers] :schema ['myapp/User :identifiers :minItems]}]})
@@ -266,11 +267,11 @@
                      :message #"Expected type of 'string"}]})
 
   (match 'myapp/Settings
-          {:headers {:content-type "up" :a "up"}}
-          [{:message "Expected length >= 3, got 2",
-            :type "string.minLength",
-            :path [:headers :content-type],
-            :schema ['myapp/Settings :headers :content-type :minLength]}])
+         {:headers {:content-type "up" :a "up"}}
+         [{:message "Expected length >= 3, got 2",
+           :type "string.minLength",
+           :path [:headers :content-type],
+           :schema ['myapp/Settings :headers :content-type :minLength]}])
 
   (vmatch #{'zen/schema} {:type 'zen/map :keys {:prop 1}}
           {:errors
@@ -289,7 +290,7 @@
              :schema
              ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :schema-key 'zen/string :minLength]}]})
 
-          
+  
   (vmatch #{'zen/schema}
           {:type 'zen/map
            :keys {:minLength {:type 'zen/integer, :min 0}
@@ -313,11 +314,11 @@
              :path [:keys :minLength :ups]}]})
 
   (match 'myapp/email
-          "ups"
-          [{:message "Expected match /^.*@.*$/, got \"ups\"",
-            :type "string.regex",
-            :path [],
-            :schema ['myapp/email :regex]}])
+         "ups"
+         [{:message "Expected match /^.*@.*$/, got \"ups\"",
+           :type "string.regex",
+           :path [],
+           :schema ['myapp/email :regex]}])
 
   (vmatch #{'zen/schema}
           {:type 'zen/case
@@ -543,7 +544,7 @@
       :nth {0 {:type 'zen/string}
             1 {:type 'zen/string}}})
 
-   (invalid-schema
+    (invalid-schema
      {:zen/tags #{'zen/schema}
       :type 'zen/vector
       :nth {0 {:type 'zen/string}
@@ -605,11 +606,11 @@
     (zen.core/load-ns!
      tctx {'ns 'test.vs
            'vs1 {:zen/tags #{'zen/valueset}
-                :values [{:code "a"}]}
+                 :values [{:code "a"}]}
            'vs2 {:zen/tags #{'zen/valueset}
                  :values [{:code "b"}]}
            'code {:zen/tags #{'zen/schema}
-                 :type 'zen/string
+                  :type 'zen/string
                   :valuesets #{{:name 'vs1 :key :code}
                                {:name 'vs2 :key :code}}}})
 
@@ -744,23 +745,65 @@
            ['test.confirms/c4 :confirms 'test.confirms/c2 :confirms 'test.confirms/c1 :a]}
           nil?])
 
-  (valid-schema!
-   {:zen/tags       #{'zen/schema}
-    :type           'zen/map
-    :exclusive-keys #{:key-1 :key-2}
-    :keys           {:key-1 {:type 'zen/string}
-                     :key-2 {:type 'zen/string}}})
+
+  (zen.core/get-symbol tctx 'zen/fn)
+
+  ;; :args {:type 'zen/vector
+  ;;        :cat [:ctx {:confirms #{'app/ctx}}]}
 
   (valid-schema!
-   {:zen/tags       #{'zen/schema 'zen/fn}
+   {:zen/tags  #{'zen/schema}
+    :type 'zen/map
+    :keys {:path {:type 'zen/apply :tags #{'zen/fn}}}})
 
-    :fn {:args {} :result {}}
+  (zen.core/load-ns!
+   tctx {'ns 'test.fn
 
-    :type           'zen/map
-    :exclusive-keys #{:key-1 :key-2}
-    :keys           {:key-1 {:type 'zen/string}
-                     :key-2 {:type 'zen/string}}})
+         'fn {:zen/tags #{'zen/tag}}
+
+         'other-fn {:zen/tags #{'zen/fn}
+                    :args {:type 'zen/vector :every {:type 'zen/keyword}}
+                    :ret  {:type 'zen/string}}
+
+         'get {:zen/tags #{'zen/fn 'fn}
+               :args {:type 'zen/vector :every {:type 'zen/keyword}}
+               :ret  {:type 'zen/string}}
+
+         'tpl {:zen/tags  #{'zen/schema 'zen/tag}
+               :type 'zen/map
+               :keys {:path {:type 'zen/apply :tags #{'fn}}}}
+
+         'example {:zen/tags #{'tpl}
+                   :path (list 'get :a :b :c)}})
+
+  (match 'test.fn/tpl {:path "1"}
+         [{:message "Expected fn call '(fn-name args-1 arg-2), got 'string",
+           :type "apply.type",
+           :path [:path],
+           :schema ['test.fn/tpl :path]}])
+
+  (match 'test.fn/tpl {:path (list 'test.fn/tpl "1")}
+         [{:message
+           "fn definition 'test.fn/tpl should be taged with 'zen/fn, but '#{zen/tag zen/schema}", :type "apply.fn-tag",
+           :path [:path],
+           :schema ['test.fn/tpl :path]}])
+
+  (match 'test.fn/tpl {:path (list 'test.fn/other-fn "1")}
+         [{:message
+           "fn definition 'test.fn/other-fn should be taged with #{test.fn/fn}, but '#{zen/fn}",
+           :type "apply.tags",
+           :path [:path],
+           :schema ['test.fn/tpl :path]}])
+
+  (match 'test.fn/tpl {:path (list 'test.fn/get "1")}
+         [{:message "Expected type of 'symbol, got 'string",
+           :type "primitive-type",
+           :path [:path 0],
+           :schema ['test.fn/tpl :path 'test.fn/get :args :every]}])
 
 
+  {:transform {:resourceType "Observation"
+               :user '('zen/get :user :id)
+               :id '('zen/get :request :route :patient-id)}}
 
   )

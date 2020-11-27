@@ -95,5 +95,20 @@
                        :invalid-list {:example (:ups :b :c)
                                       :result [{:message "Expected type of 'symbol, got 'keyword", :type "primitive-type", :path [0], :schema [:nth 0]}]}
                        :invalid-list-2 {:example (ups/ups :b :c)
-                                        :result [{:message "Expected symbol 'ups/ups tagged with '#{zen.tests.schema/mytag}, but only #{}", :type "symbol", :path [0], :schema [:nth 0 :tags]}]}
-                       }}}
+                                        :result [{:message "Expected symbol 'ups/ups tagged with '#{zen.tests.schema/mytag}, but only #{}", :type "symbol", :path [0], :schema [:nth 0 :tags]}]}}}
+
+ extract-fns {:zen/tags #{zen/tag}}
+
+ myfn {:zen/tags #{zen/fn extract-fns}
+       :args {:type zen/vector :every {:type zen/keyword}}
+       :ret {:type zen/any}}
+
+ fn-example {:zen/tags #{test-case}
+             :title "Test zen/fn & zen/apply"
+             :schema {:zen/tags #{zen/schema zen/tag}
+                      :type zen/map
+                      :keys {:path {:type zen/apply :tags #{extract-fns}}}}
+
+             :cases {:valid {:example {:path (myfn :a :b :c)} :valid true}}}
+
+ }
