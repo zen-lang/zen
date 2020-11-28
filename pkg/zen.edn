@@ -71,15 +71,19 @@
  boolean   {:zen/tags #{type primitive schema}
             :type map}
 
+ tagset   {:zen/tags #{schema}
+           :zen/desc "Check that symbol registered with specific tags"
+           :type set
+           :every {:type symbol :tags #{tag}}}
+
  symbol    {:zen/tags #{type primitive schema}
             :type map
-            :keys {:tags {:type set
-                          :zen/desc "Check that symbol registered with specific tags"
-                          :every {:type symbol}}}}
+            :keys {:tags {:confirms #{tagset}}}}
 
 
  keyword   {:zen/tags #{type primitive schema}
-            :type map}
+            :type map
+            :keys {:tags {:confirms #{tagset}}}}
 
  coll      {:zen/tags #{schema tag}
             :type map
@@ -98,9 +102,27 @@
  vector    {:zen/tags #{type coll schema}
             :confirms #{coll}
             :type map
-            :keys {:nth {:type map
+            :keys {:nth {:zen/desc
+                         "Apply schema to specific element in collection"
+                         :type map
                          :key {:type integer}
-                         :values {:confirms #{schema}}}}}
+                         :values {:confirms #{schema}}}
+                   :pairs {:zen/desc "Expect vector is a seq of pairs, where first element is pair
+                                      described with :key schema and second with :value schema.
+                                      If :unique-key true, validate that all keys are unique"
+                           :type map
+                           :keys {:unique-keys {:type boolean
+                                                :zen/desc "Every key in pair is unique"}
+                                  :key {:confirms #{schema}
+                                        :zen/desc "Schema for first element in pair"}
+                                  :value {:confirms #{schema}
+                                          :zen/desc "Schema for second element in pair"}}}
+                   :cat {:zen/desc "Returns a regex op that matches (all) values in sequence, returning a map
+                                    containing the keys of each pred and the corresponding value."
+                         :type vector
+                         :pairs {:unique-keys true
+                                 :key {:type keyword}
+                                 :value {:confirms #{schema}}}}}}
 
  list    {:zen/tags #{type coll schema}
           :confirms #{coll}
@@ -112,14 +134,16 @@
  map       {:zen/tags #{type coll schema}
             :type map
             :keys {:values {:confirms #{schema}}
-                   :schema-key {:type map
-                                :keys {:key {:type keyword}
+                   :schema-key {:zen/desc "Deduce schema from value of specific key."
+                                :type map
+                                :keys {:key {:type keyword :zen/desc ""}
                                        :ns  {:type string :zen/desc "namespace prefix to add to key"}
-                                       :tags {:type set
-                                              :zen/desc "limit symbols by specific tags"
-                                              :every {:type symbol}}
+                                       :tags {:confirms #{tagset}}
                                        :resolve {:type map :values {:type symbol}}}
                                 :require #{:key}}
+                   :keyname-schemas {:zen/desc "Deduce schema from key names"
+                                     :type map
+                                     :keys {:tags {:confirms #{tagset}}}}
                    :key {:zen/desc "Validate keys against schema. Turn off unknown-keys validation"
                          :confirms #{schema}}
                    :keys {:type map
@@ -176,6 +200,7 @@
                          :zen/desc "Check value is in enum"
                          :every {:type map :keys {:value {:type any}}}}
 
+                  ;; TODO: valueset and validation are effects; probably :enum is effect too
                   :valuesets {:type set
                               :zen/desc "check that value is from one of valuesets;
                                          value is searched by specific :key;
@@ -183,28 +208,43 @@
                               :every {:type map
                                       :keys {:name {:type symbol :tags #{valueset}}
                                              :key  {:type keyword}}}}
+
                   :validation {:type set
                                :zen/desc "Custom validation set of functions"
-                               :every {:type symbol :tags #{validation-fn}}}}}
+                               :every {:type symbol :tags #{validation-fn}}}
+
+                  :fx {:zen/desc "Effects producing deferred validations. Each key should be tagged as zen/schema-fx"
+                       :type map
+                       :keyname-schemas {:tags #{schema-fx}}}}}
+
+ schema-fx {:zen/tags #{tag}
+            :zen/desc "Register schema effect"}
 
  fn         {:zen/tags #{schema tag}
-             :zen/desc "Function definition"
+             :zen/desc
+             "Tag for function definition.
+              Provide :args & :ret schemas to validate params.
+              Used with zen/apply to validate reference to function"
              :type map
              :require #{:args :ret}
              :keys {:args {:confirms #{schema}}
                     :ret  {:confirms #{schema}}}}
 
  apply      {:zen/tags #{type schema}
-             :zen/desc "Function application"
+             :zen/desc
+             "Function application zen/schema type.
+              Using :tags you can constraint set of functions"
              :type map
-             :keys {:tags {:type set :every {:type symbol}}}}
+             :keys {:tags {:type set
+                           :every {:type symbol}
+                           :zen/desc "Only zen/fn tagged with this tags can appear in this position"}}}
 
  ctx {:zen/tags #{schema}
       :zen/desc "schema for context"
       :type map
       :keys {:tags {:type set :every {:type symbol}}
              :symbols {:type map}}}
- 
+
  schema-errors
  {:zen/tags #{schema}
   :type vector

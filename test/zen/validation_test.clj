@@ -243,7 +243,7 @@
          [{:message "Expected type of 'string, got 'long",
            :type "string.type",
            :path [:myapp/mykey],
-           :schema ['myapp/User :myapp/mykey]}])
+           :schema ['myapp/User :property :myapp/mykey]}])
 
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}]}
           {:errors [{:message "Expected >= 2, got 1" :path [:identifiers] :schema ['myapp/User :identifiers :minItems]}]})
@@ -577,7 +577,7 @@
     (valid-schema!
      {:zen/tags #{'zen/schema}
       :type 'zen/symbol
-      :tags #{'mytag}})
+      :tags #{'zen/tag}})
 
     (invalid-schema
      {:zen/tags #{'zen/schema}
@@ -589,7 +589,7 @@
 
     (zen.core/load-ns!
      tctx {'ns 'test.sym
-           'mytag {:zen/tags #{'mytag}}
+           'mytag {:zen/tags #{'mytag 'zen/tag}}
            'not-tag {}
            'sym {:zen/tags #{'zen/schema}
                  :type 'zen/symbol
@@ -802,8 +802,81 @@
            :schema ['test.fn/tpl :path 'test.fn/get :args :every]}])
 
 
-  {:transform {:resourceType "Observation"
-               :user '('zen/get :user :id)
-               :id '('zen/get :request :route :patient-id)}}
+  (testing "keyname-schema"
+    (zen.core/load-ns!
+     tctx {'ns 'test.kns
+
+           'mytag {:zen/tags #{'zen/tag}}
+
+           'sch-1 {:zen/tags #{'mytag 'zen/schema}
+                   :type 'zen/integer}
+
+           'sch-2 {:zen/tags #{'mytag 'zen/schema}
+                   :type 'zen/string}
+
+           'kns {:zen/tags #{'zen/schema}
+                 :type 'zen/map
+                 :keyname-schemas {:tags #{'mytag}}}})
+
+    (valid 'test.kns/kns {:test.kns/sch-1 1 :test.kns/sch-2 "ok"})
+
+    (match 'test.kns/kns {:test.kns/sch-1 "a" :test.kns/sch-2 1}
+           [{:message "Expected type of 'integer, got 'string",
+             :type "primitive-type",
+             :path [:test.kns/sch-1],
+             :schema ['test.kns/kns :keyname-schemas :test.kns/sch-1]}
+            {:message "Expected type of 'string, got 'long",
+             :type "string.type",
+             :path [:test.kns/sch-2],
+             :schema ['test.kns/kns :keyname-schemas :test.kns/sch-2]}])
+
+
+    (match 'test.kns/kns {:test.kns/sch-1 1 :test.kns/sch-2 "ok" :extra "ups"}
+           [{:type "unknown-key", :message "unknown key :extra", :path [:extra]}])
+
+
+    )
+
+  (testing "effects"
+    (zen.core/load-ns!
+     tctx {'ns 'test.fx
+           'or {:zen/tags #{'zen/schema-fx 'zen/schema}
+                :type 'zen/vector
+                :every {:type 'zen/keyword}}
+
+           'just {}
+
+           'subj {:zen/tags #{'zen/schema}
+                  :type 'zen/map
+                  :keys {:name {:type 'zen/string}
+                        :email {:type 'zen/string}}
+                  :fx {:test.fx/or [:name :email]}}})
+
+    (invalid-schema
+     {:zen/tags #{'zen/schema}
+      :type 'zen/map
+      :fx {:test.fx/just [:name :email]}}
+     [{:type "unknown-key",
+       :message "unknown key :test.fx/just",
+       :path [:fx :test.fx/just]}])
+
+    (valid-schema!
+     {:zen/tags #{'zen/schema}
+      :type 'zen/map
+      :fx {:test.fx/or [:name :email]}})
+
+    (invalid-schema
+     {:zen/tags #{'zen/schema}
+      :type 'zen/map
+      :fx {:test.fx/or 1}}
+
+     [{:message "Expected type of 'vector, got long",
+       :type "type",
+       :path [:fx :test.fx/or],
+       :schema ['zen/schema :fx :keyname-schemas :test.fx/or]}])
+
+
+    )
+
 
   )

@@ -47,7 +47,11 @@
             (recur has-keys ks)))))))
 
 (defmethod validate-type 'zen/map
-  [_ ctx acc {ks :keys ky :key vls :values {sk :key sk-ns :ns sk-tags :tags} :schema-key reqs :require eks :exclusive-keys} data]
+  [_ ctx acc {ks :keys ky :key vls :values
+              {sk :key sk-ns :ns sk-tags :tags} :schema-key
+              reqs :require
+              kns :keyname-schemas ;; TODO
+              eks :exclusive-keys} data]
   (if (map? data)
     (let [handle-unknown-keys (and (nil? ky) (nil? vls))
           acc (->> data
@@ -56,8 +60,13 @@
                                          (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                                acc' (if handle-unknown-keys (assoc-in acc' [:keys (conj (:path acc) k)] true) acc')]
                                            (restore-acc acc' acc))
-                                         (if-let [prop-sch  (and (keyword? k) (namespace k) (resolve-property ctx k))]
-                                           (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) prop-sch v)
+                                         (if-let [prop-sch  (and (keyword? k) (namespace k) (or (resolve-property ctx k)
+                                                                                                (and kns
+                                                                                                     (when-let [prop-sch (get-symbol ctx (symbol k))]
+                                                                                                       (when (or (nil? (:tags kns))
+                                                                                                                 (clojure.set/subset? (:tags kns) (:zen/tags prop-sch)))
+                                                                                                         prop-sch)))))]
+                                           (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
                                                (restore-acc acc))
                                            (if handle-unknown-keys
                                              (update-in acc [:keys (conj (:path acc) k)] #(or % false))
