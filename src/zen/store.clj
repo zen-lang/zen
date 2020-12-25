@@ -55,7 +55,9 @@
         ns-str (name ns-name)
         sym (symbol ns-str (name k))
         res (eval-resource ctx ns-str ns-name nmsps k v)]
-    (swap! ctx (fn [ctx] (update-in ctx [:symbols sym] (fn [x] (when x (println "WARN: reload" (:zen/name res))) res))))
+    (swap! ctx (fn [ctx] (update-in ctx [:symbols sym] (fn [x]
+                                                        #_(when x (println "WARN: reload" (:zen/name res)))
+                                                        res))))
     (doseq [tg (:zen/tags res)]
       (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
     res))
@@ -63,7 +65,7 @@
 (defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (get nmsps 'ns)]
     (when-not (get-in ctx [:ns ns-name])
-      (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] nmsps)))
+      (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
       (doseq [imp (get nmsps 'import)]
         (read-ns ctx imp))
       (->>
