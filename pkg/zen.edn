@@ -199,6 +199,7 @@
                   :enum {:type set
                          :zen/desc "Check value is in enum"
                          :every {:type map :keys {:value {:type any}}}}
+                  :fail {:type string}
 
                   ;; TODO: valueset and validation are effects; probably :enum is effect too
                   :valuesets {:type set

@@ -60,6 +60,7 @@
               :type 'zen/map
               :keys {:id   {:type 'zen/string}
                      :name {:type 'zen/string :minLength 3}
+                     :old-name {:fail "Not supported"}
                      :address {:confirms #{'Address}
                                :type 'zen/map
                                :keys {:home-number {:type 'zen/string}}}
@@ -182,6 +183,10 @@
              :path [:contact :ex],
              :schema ['myapp/SuperUser :contact :require]}
             nil?]})
+
+  (vmatch #{'myapp/User} {:name "vganshin" :old-name "rgv"}
+          {:errors [{:message #"Not supported"}]})
+
 
   (vmatch #{'myapp/User} {:name "niquola" :address {:line "ups" :city "city"}}
           {:errors
@@ -622,6 +627,30 @@
              :message
              "None of valuests #{test.vs/vs1 test.vs/vs2} is matched for 'c'",
              :path []}])
+
+
+    #_(zen.core/load-ns!
+     tctx {'ns 'test.enum-const-one
+           'a {:zen/tags #{'zen/schema}
+               :type 'zen/map
+               :keys {:type {:type 'zen/string
+                             :enum [{:value "CH"}
+                                    {:value "MI"}]}}}
+           'map {:zen/tags #{'zen/schema}
+                 :type 'zen/map
+                 :keys {:a {:confirms #{'a}}}}})
+
+    #_(zen.core/load-ns!
+     tctx {'ns 'test.enum-const-two
+           'map {:zen/tags #{'zen/schema}
+                 :type 'zen/map
+                 :keys {:a {:type 'zen/map
+                            :keys {:type {:type 'zen/string
+                                          :const {:value "OO"}}}}}}})
+
+    #_(zen.core/validate tctx #{'test.enum-const-one/map 'test.enum-const-two/map} {:a {:type "CH"}})
+
+
 
     (zen.core/load-ns!
      tctx {'ns 'test.enum

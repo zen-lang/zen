@@ -56,30 +56,34 @@
     (let [handle-unknown-keys (and (nil? ky) (nil? vls))
           acc (->> data
                    (reduce (fn [acc [k v]]
-                             (let [acc (if-let [sch (get ks k)]
-                                         (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
-                                               acc' (if handle-unknown-keys (assoc-in acc' [:keys (conj (:path acc) k)] true) acc')]
-                                           (restore-acc acc' acc))
-                                         (if-let [prop-sch  (and (keyword? k) (namespace k) (or (resolve-property ctx k)
-                                                                                                (and kns
-                                                                                                     (when-let [prop-sch (get-symbol ctx (symbol k))]
-                                                                                                       (when (or (nil? (:tags kns))
-                                                                                                                 (clojure.set/subset? (:tags kns) (:zen/tags prop-sch)))
-                                                                                                         prop-sch)))))]
-                                           (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
+                             (if-let [fail (get-in ks [k :fail])]
+                               (add-error ctx acc
+                                          {:message fail}
+                                          {:schema [:fail]})
+                               (let [acc (if-let [sch (get ks k)]
+                                           (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
+                                                 acc' (if handle-unknown-keys (assoc-in acc' [:keys (conj (:path acc) k)] true) acc')]
+                                             (restore-acc acc' acc))
+                                           (if-let [prop-sch  (and (keyword? k) (namespace k) (or (resolve-property ctx k)
+                                                                                                  (and kns
+                                                                                                       (when-let [prop-sch (get-symbol ctx (symbol k))]
+                                                                                                         (when (or (nil? (:tags kns))
+                                                                                                                   (clojure.set/subset? (:tags kns) (:zen/tags prop-sch)))
+                                                                                                           prop-sch)))))]
+                                             (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
+                                                 (restore-acc acc))
+                                             (if handle-unknown-keys
+                                               (update-in acc [:keys (conj (:path acc) k)] #(or % false))
+                                               acc)))
+                                     acc (if vls
+                                           (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
                                                (restore-acc acc))
-                                           (if handle-unknown-keys
-                                             (update-in acc [:keys (conj (:path acc) k)] #(or % false))
-                                             acc)))
-                                   acc (if vls
-                                         (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
-                                             (restore-acc acc))
-                                         acc)
-                                   acc (if ky
-                                         (-> (validate-node ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
-                                             (restore-acc acc))
-                                         acc)]
-                               acc))
+                                           acc)
+                                     acc (if ky
+                                           (-> (validate-node ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
+                                               (restore-acc acc))
+                                           acc)]
+                                 acc)))
                            acc))
           acc (->> reqs
                    (reduce (fn [acc k]
