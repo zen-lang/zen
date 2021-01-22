@@ -635,10 +635,23 @@
      '{ns test.enum-and-const
        one
        {:zen/tags #{zen/schema}
-        :type zen/number}})
+        :type zen/number}
+
+       date
+       {:zen/tags #{zen/schema}
+        :type zen/date}
+
+       datetime
+       {:zen/tags #{zen/schema}
+        :type zen/datetime}})
 
     (valid 'test.enum-and-const/one 1)
     (valid 'test.enum-and-const/one 1.1)
+
+    (valid 'test.enum-and-const/date "1994-09-26")
+
+    (valid 'test.enum-and-const/datetime "1994-09-26T16:40:00")
+
 
     (zen.core/load-ns!
      tctx
