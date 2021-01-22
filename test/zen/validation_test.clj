@@ -648,21 +648,21 @@
     (valid 'test.enum-and-const/one 1)
     (valid 'test.enum-and-const/one 1.1)
 
-    ;; (valid 'test.enum-and-const/date "1994-09-26")
+    (valid 'test.enum-and-const/date "1994-09-26")
 
-    ;; (valid 'test.enum-and-const/datetime "1994-09-26T16:40:00")
+    (valid 'test.enum-and-const/datetime "1994-09-26T16:40:00")
 
 
-    ;; (zen.core/load-ns!
-    ;;  tctx
-    ;;  '{ns custom-primitive-type
-    ;;    animal
-    ;;    {:zen/tags #{zen/type zen/primitive zen/schema}
-    ;;     :type zen/map}
+    (zen.core/load-ns!
+     tctx
+     '{ns custom-primitive-type
+       animal
+       {:zen/tags #{zen/type zen/primitive zen/schema}
+        :type zen/map}
 
-    ;;    cow
-    ;;    {:zen/tags #{zen/schema}
-    ;;     :type animal}})
+       cow
+       {:zen/tags #{zen/schema}
+        :type animal}})
 
     (match 'custom-primitive-type/cow {:cow "mooo"}
            [{:message "No validate-type multimethod for 'custom-primitive-type/animal",
