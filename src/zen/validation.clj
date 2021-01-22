@@ -261,6 +261,23 @@
       acc)
     (add-error ctx acc {:message (format "Expected type of 'integer, got '%s" (pretty-type data)) :type "primitive-type"})))
 
+
+(defmethod validate-type 'zen/number
+  [_ ctx acc {ml :min mx :max} data]
+  (if (or (float? data) (integer? data))
+    (let [acc (if (and ml (> ml data))
+                (add-error ctx acc {:message (format "Expected  >= %s, got %s" ml data) :type "string"}
+                           {:schema [:minLength]})
+                acc)
+
+          acc (if (and mx (< mx data))
+                (add-error ctx acc {:message (format "Expected  <= %s, got %s" mx data) :type "string"}
+                           {:schema [:maxLength]})
+                acc)]
+      acc)
+    (add-error ctx acc {:message (format "Expected type of 'integer, got '%s" (pretty-type data)) :type "primitive-type"})))
+
+
 (defmethod validate-type 'zen/symbol
   [_ ctx acc {tags :tags} data]
   (if (symbol? data)
@@ -313,6 +330,10 @@
   (if (and (string? data) (re-pattern data))
     acc
     (add-error ctx acc {:message (format "Expected type of 'regex, got '%s" (pretty-type data)) :type "primitive-type"})))
+
+(defmethod validate-type :default
+  [t ctx acc schema data]
+  (add-error ctx acc {:message (format "No validate-type multimethod for '%s" t) :type "primitive-type"}))
 
 (defn validate-const [ctx acc const data]
   (if const
