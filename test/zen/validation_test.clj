@@ -651,6 +651,7 @@
     (valid 'test.enum-and-const/date "1994-09-26")
 
     (valid 'test.enum-and-const/datetime "1994-09-26T16:40:00")
+    (valid 'test.enum-and-const/datetime "1994-09-26")
 
 
     (zen.core/load-ns!
