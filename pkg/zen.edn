@@ -122,7 +122,14 @@
                          :type vector
                          :pairs {:unique-keys true
                                  :key {:type keyword}
-                                 :value {:confirms #{schema}}}}}}
+                                 :value {:confirms #{schema}}}}
+                   :filter {:zen/desc ""
+                            :type map
+                            :values {:type map
+                                     :require #{:match}
+                                     :keys {:match {:confirms #{schema}}
+                                            :minItems {:type integer :min 0}
+                                            :maxItems {:type integer :min 0}}}}}}
 
  list    {:zen/tags #{type coll schema}
           :confirms #{coll}

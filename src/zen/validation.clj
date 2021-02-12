@@ -128,25 +128,78 @@
     (add-error ctx acc {:message (format "Expected type of 'map, got %s" (pr-str data))  :type "type"})))
 
 (defn validate-collection
-  [type ctx acc {evr :every {si :index si-ns :ns} :schema-index mn :minItems mx :maxItems nt :nth} data]
-  (let [acc (if (or evr nt)
+  [type ctx acc {evr :every {si :index si-ns :ns} :schema-index mn :minItems mx :maxItems nt :nth filter :filter} data]
+  (let [acc (if (or evr nt filter)
               (->
                (loop [acc acc, idx 0, [d & ds] data]
+
                  (if (and (nil? d) (empty? ds))
                    acc
                    (recur
                     (let [acc (if evr
-                                (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
-                                    (restore-acc acc))
+                                (do
+                                  (prn "2 ACC" acc)
+                                  (prn "1 ACC" (validate-node ctx (update-acc ctx {} {:path [idx] :schema [:every]}) evr d))
+                                  (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
+                                      (restore-acc acc)))
                                 acc)
                           acc (if-let [sch (and nt (get nt idx))]
                                 (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
                                     (restore-acc acc))
-                                acc)]
+                                acc)
+
+                          ;; filter-state {:f-name {:count 0
+                          ;;                        ...}}
+                          acc (if filter
+                                (let [filter-state (:filter-state acc)
+                                      filter-state (reduce-kv (fn [f-acc f-name {:keys [maxItems minItems match] :as fil}]
+                                                                (let [match-result (validate-node ctx (update-acc ctx {} {:path [] :schema [:filter f-name]}) match d)
+                                                                      f-acc (cond-> f-acc
+                                                                              (nil? (:errors match-result))
+                                                                              (update-in [f-name :count] (fnil inc 0)))
+                                                                      count (get-in f-acc [f-name :count] 0)]
+                                                                  (cond-> f-acc
+                                                                    (and maxItems (< maxItems count))
+                                                                    (assoc-in [f-name :error] {:message "max err"
+                                                                                               #_(format "Expected <= %s, got %s" mx cnt)
+                                                                                               :schema [:filter f-name :maxItems]})
+
+                                                                    (and minItems (empty? ds) (> minItems count))
+                                                                    (assoc-in [f-name :error] {:message "min err"
+                                                                                               #_(format "Expected <= %s, got %s" mx cnt)
+                                                                                               :schema [:filter f-name :minItems]}))))
+                                                              filter-state
+                                                              filter)]
+                                  (prn "fstate" filter-state)
+
+                                  (-> (reduce-kv
+                                       (fn [acc f-name {{:keys [message schema]} :error}]
+                                         (if (and message schema)
+                                           (add-error ctx acc {:message message :type type}
+                                                      {:schema schema})
+                                           acc))
+                                       acc
+                                       filter-state)
+                                      (assoc :filter-state filter-state)))
+
+                                acc)
+
+                          acc (if (empty? ds)
+                                (dissoc acc :filter-state)
+                                acc)
+
+
+                          ]
                       acc)
-                    (inc idx) ds)))
+                    (inc idx)
+                    ds
+                    )))
+
                (restore-acc acc))
               acc)
+
+
+
         cnt (count data)
         acc (if (and mn (< cnt mn))
               (add-error ctx acc {:message (format "Expected >= %s, got %s" mn cnt) :type type}

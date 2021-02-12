@@ -543,11 +543,20 @@
 
   (testing "zen/vector"
 
+
+    ;; (filter #(node/validate % {:schema}) [x y z])
+
+
     (valid-schema!
      {:zen/tags #{'zen/schema}
       :type 'zen/vector
       :nth {0 {:type 'zen/string}
-            1 {:type 'zen/string}}})
+            1 {:type 'zen/string}}
+      :filter {:npi {:match {:type 'zen/map
+                             :key {:type 'zen/keyword}
+                             :keys {:system {:type 'zen/string
+                                             :const {:value "npi"}}}}
+                     :maxItems 1}}})
 
     (invalid-schema
      {:zen/tags #{'zen/schema}
@@ -565,17 +574,44 @@
            'nth {:zen/tags #{'zen/schema}
                  :type 'zen/vector
                  :nth {0 {:type 'zen/integer}
-                       1 {:type 'zen/string}}}})
+                       1 {:type 'zen/string}}}
+           'every {:zen/tags #{'zen/schema}
+                   :type 'zen/vector
+                   :every {:type 'zen/string}}
+           'filter {:zen/tags #{'zen/schema}
+                    :type 'zen/vector
+                    :filter {:npi {:match {:type 'zen/map
+                                           :key {:type 'zen/keyword}
+                                           :keys {:system {:type 'zen/string
+                                                           :const {:value "npi"}}}}
+                                   :maxItems 1
+                                   :minItems 1
+                                   }}}})
 
 
     (valid 'test.vec/nth [1 "ok"])
     (valid 'test.vec/nth [1 "ok" :anything])
 
+
     (match 'test.vec/nth ["str" "ok"]
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
              :path [0],
-             :schema ['test.vec/nth :nth 0]}]))
+             :schema ['test.vec/nth :nth 0]}])
+
+    (valid 'test.vec/filter [1 2])
+
+    (valid 'test.vec/filter [1 2 {:system "npi" :value "value"}])
+
+    (valid 'test.vec/filter [1 2 {:system "npi" :value "value"} {:system "npi" :value "value"}])
+
+    (match 'test.vec/filter [1 2 {:system "npi" :value "value"} {:system "npi" :value "value2"}]
+           [{:message "Expected <= 1, got 2",
+             :type "primitive-type",
+             :path [3],
+             :schema ['test.vec/filter :filter 0 :maxItems]}])
+
+    )
 
   (testing "zen/symbol"
 
