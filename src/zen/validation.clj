@@ -138,8 +138,6 @@
                    (recur
                     (let [acc (if evr
                                 (do
-                                  (prn "2 ACC" acc)
-                                  (prn "1 ACC" (validate-node ctx (update-acc ctx {} {:path [idx] :schema [:every]}) evr d))
                                   (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
                                       (restore-acc acc)))
                                 acc)
@@ -147,45 +145,59 @@
                                 (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
                                     (restore-acc acc))
                                 acc)
-
-                          ;; filter-state {:f-name {:count 0
-                          ;;                        ...}}
                           acc (if filter
-                                (let [filter-state (:filter-state acc)
-                                      filter-state (reduce-kv (fn [f-acc f-name {:keys [maxItems minItems match] :as fil}]
-                                                                (let [match-result (validate-node ctx (update-acc ctx {} {:path [] :schema [:filter f-name]}) match d)
-                                                                      f-acc (cond-> f-acc
-                                                                              (nil? (:errors match-result))
-                                                                              (update-in [f-name :count] (fnil inc 0)))
-                                                                      count (get-in f-acc [f-name :count] 0)]
-                                                                  (cond-> f-acc
-                                                                    (and maxItems (< maxItems count))
-                                                                    (assoc-in [f-name :error] {:message "max err"
-                                                                                               #_(format "Expected <= %s, got %s" mx cnt)
-                                                                                               :schema [:filter f-name :maxItems]})
+                                (let [f-state (:f-state acc)
+                                      f-state (reduce-kv (fn [f-acc f-name {:keys [maxItems minItems match] :as fil}]
+                                                           #_(if (and (nil? (get-in f-acc [f-name :error]))
+                                                                    (:errors (validate-node ctx {} match d)))
+                                                             (let [count (-> f-acc (get-in [f-name :count] 0) inc)]
+                                                               (cond-> f-acc
+                                                                 (and maxItems (< maxItems count))
+                                                                 (assoc-in [f-name :error] {:message (format "Expected <= %s, got %s" maxItems count)
+                                                                                            :schema [:filter f-name :maxItems]
+                                                                                            :path [idx]})
 
-                                                                    (and minItems (empty? ds) (> minItems count))
-                                                                    (assoc-in [f-name :error] {:message "min err"
-                                                                                               #_(format "Expected <= %s, got %s" mx cnt)
-                                                                                               :schema [:filter f-name :minItems]}))))
-                                                              filter-state
+                                                                 (and minItems (empty? ds) (> minItems count))
+                                                                 (assoc-in [f-name :error] {:message (format "Expected >= %s, got %s" minItems count)
+                                                                                            :schema [:filter f-name :minItems]}))))
+
+                                                           (if (get-in f-acc [f-name :error])
+                                                                  f-acc
+                                                                  (let [match-result (validate-node ctx {} match d)
+
+                                                                        f-acc (cond-> f-acc
+                                                                                (nil? (:errors match-result))
+                                                                                (update-in [f-name :count] (fnil inc 0)))
+                                                                        count (get-in f-acc [f-name :count] 0)]
+                                                                    (cond-> f-acc
+
+                                                                      (and maxItems (< maxItems count))
+                                                                      (assoc-in [f-name :error] {:message (format "Expected <= %s, got %s" maxItems count)
+                                                                                                 :schema [:filter f-name :maxItems]
+                                                                                                 :path [idx]})
+
+                                                                      (and minItems (empty? ds) (> minItems count))
+                                                                      (assoc-in [f-name :error] {:message (format "Expected >= %s, got %s" minItems count)
+                                                                                                 :schema [:filter f-name :minItems]})))))
+                                                              f-state
                                                               filter)]
-                                  (prn "fstate" filter-state)
 
-                                  (-> (reduce-kv
-                                       (fn [acc f-name {{:keys [message schema]} :error}]
-                                         (if (and message schema)
-                                           (add-error ctx acc {:message message :type type}
-                                                      {:schema schema})
-                                           acc))
-                                       acc
-                                       filter-state)
-                                      (assoc :filter-state filter-state)))
+                                  (-> (if (empty? ds)
+                                        (reduce-kv
+                                        (fn [acc f-name {{:keys [message schema path]} :error}]
+                                          (if (and message schema)
+                                            (add-error ctx acc {:message message :type type}
+                                                       {:schema schema :path path})
+                                            acc))
+                                        acc
+                                        f-state)
+                                          acc)
+                                      (assoc :f-state f-state)))
 
                                 acc)
 
                           acc (if (empty? ds)
-                                (dissoc acc :filter-state)
+                                (dissoc acc :f-state)
                                 acc)
 
 

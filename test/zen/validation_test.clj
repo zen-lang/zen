@@ -580,37 +580,50 @@
                    :every {:type 'zen/string}}
            'filter {:zen/tags #{'zen/schema}
                     :type 'zen/vector
-                    :filter {:npi {:match {:type 'zen/map
-                                           :key {:type 'zen/keyword}
-                                           :keys {:system {:type 'zen/string
-                                                           :const {:value "npi"}}}}
-                                   :maxItems 1
-                                   :minItems 1
-                                   }}}})
+                    :filter {:int-slice {:match {:type 'zen/integer}
+                                         :minItems 1
+                                         :maxItems 2}
+                             :str-slice {:match {:type 'zen/string}
+                                         :minItems 2
+                                         :maxItems 2}}}})
 
 
     (valid 'test.vec/nth [1 "ok"])
     (valid 'test.vec/nth [1 "ok" :anything])
-
-
     (match 'test.vec/nth ["str" "ok"]
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
              :path [0],
              :schema ['test.vec/nth :nth 0]}])
 
-    (valid 'test.vec/filter [1 2])
+    (valid 'test.vec/every ["a" "b"])
+    (match 'test.vec/every [1 "a"]
+           [{:message "Expected type of 'string, got 'long"
+             :type "string.type"
+             :path [0]
+             :schema ['test.vec/every :every]}])
 
-    (valid 'test.vec/filter [1 2 {:system "npi" :value "value"}])
+    (valid 'test.vec/filter [1 "a" "b" :anything])
+    (match 'test.vec/filter [1 2 3 "a" :anything "b" "c"]
+           [{:message "Expected <= 2, got 3",
+             :type "vector",
+             :path [2],
+             :schema ['test.vec/filter :filter :int-slice :maxItems]}
+            {:message "Expected <= 2, got 3",
+             :type "vector",
+             :path [6],
+             :schema ['test.vec/filter :filter :str-slice :maxItems]}])
 
-    (valid 'test.vec/filter [1 2 {:system "npi" :value "value"} {:system "npi" :value "value"}])
-
-    (match 'test.vec/filter [1 2 {:system "npi" :value "value"} {:system "npi" :value "value2"}]
-           [{:message "Expected <= 1, got 2",
-             :type "primitive-type",
-             :path [3],
-             :schema ['test.vec/filter :filter 0 :maxItems]}])
-
+    (match 'test.vec/filter [:anything "a"]
+           [{:message "Expected >= 1, got 0",
+             :type "vector",
+             :path [],
+             :schema ['test.vec/filter :filter :int-slice :minItems]}
+            {:message "Expected >= 2, got 1",
+             :type "vector",
+             :path [],
+             :schema ['test.vec/filter :filter :str-slice :minItems]}])
+     
     )
 
   (testing "zen/symbol"
@@ -964,3 +977,6 @@
 
 
   )
+;; => #'zen.validation-test/test-validation
+;; => #'zen.validation-test/test-validation;; => #'zen.validation-test/test-validation
+;; => #'zen.validation-test/test-validation
