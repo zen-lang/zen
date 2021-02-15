@@ -604,14 +604,14 @@
              :schema ['test.vec/every :every]}])
 
     (valid 'test.vec/filter [1 "a" "b" :anything])
-    (match 'test.vec/filter [1 2 3 "a" :anything "b" "c"]
+    (match 'test.vec/filter [1 2 3 "a" :anything "b" "c" "d"]
            [{:message "Expected <= 2, got 3",
              :type "vector",
-             :path [2],
+             :path [],
              :schema ['test.vec/filter :filter :int-slice :maxItems]}
-            {:message "Expected <= 2, got 3",
+            {:message "Expected <= 2, got 4",
              :type "vector",
-             :path [6],
+             :path [],
              :schema ['test.vec/filter :filter :str-slice :maxItems]}])
 
     (match 'test.vec/filter [:anything "a"]
@@ -623,7 +623,7 @@
              :type "vector",
              :path [],
              :schema ['test.vec/filter :filter :str-slice :minItems]}])
-     
+
     )
 
   (testing "zen/symbol"

@@ -146,71 +146,32 @@
                                     (restore-acc acc))
                                 acc)
                           acc (if filter
-                                (let [f-state (:f-state acc)
-                                      f-state (reduce-kv (fn [f-acc f-name {:keys [maxItems minItems match] :as fil}]
-                                                           #_(if (and (nil? (get-in f-acc [f-name :error]))
-                                                                    (:errors (validate-node ctx {} match d)))
-                                                             (let [count (-> f-acc (get-in [f-name :count] 0) inc)]
-                                                               (cond-> f-acc
-                                                                 (and maxItems (< maxItems count))
-                                                                 (assoc-in [f-name :error] {:message (format "Expected <= %s, got %s" maxItems count)
-                                                                                            :schema [:filter f-name :maxItems]
-                                                                                            :path [idx]})
+                                (reduce-kv
+                                 (fn [acc fname {:keys [maxItems minItems match] :as f}]
+                                   (let [add-error* (partial add-error ctx)
+                                         count (get-in acc [:fstate fname :count] 0)
+                                         match? (empty? (:errors (validate-node ctx {} match d)))
+                                         count (cond-> count match? inc)]
+                                     (cond-> acc
+                                       match? (assoc-in [:fstate fname :count] count)
 
-                                                                 (and minItems (empty? ds) (> minItems count))
-                                                                 (assoc-in [f-name :error] {:message (format "Expected >= %s, got %s" minItems count)
-                                                                                            :schema [:filter f-name :minItems]}))))
+                                       (and (empty? ds) maxItems (< maxItems count))
+                                       (add-error* {:message (format "Expected <= %s, got %s" maxItems count)
+                                                    :type "vector"}
+                                                   {:schema [:filter fname :maxItems]})
 
-                                                           (if (get-in f-acc [f-name :error])
-                                                                  f-acc
-                                                                  (let [match-result (validate-node ctx {} match d)
-
-                                                                        f-acc (cond-> f-acc
-                                                                                (nil? (:errors match-result))
-                                                                                (update-in [f-name :count] (fnil inc 0)))
-                                                                        count (get-in f-acc [f-name :count] 0)]
-                                                                    (cond-> f-acc
-
-                                                                      (and maxItems (< maxItems count))
-                                                                      (assoc-in [f-name :error] {:message (format "Expected <= %s, got %s" maxItems count)
-                                                                                                 :schema [:filter f-name :maxItems]
-                                                                                                 :path [idx]})
-
-                                                                      (and minItems (empty? ds) (> minItems count))
-                                                                      (assoc-in [f-name :error] {:message (format "Expected >= %s, got %s" minItems count)
-                                                                                                 :schema [:filter f-name :minItems]})))))
-                                                              f-state
-                                                              filter)]
-
-                                  (-> (if (empty? ds)
-                                        (reduce-kv
-                                        (fn [acc f-name {{:keys [message schema path]} :error}]
-                                          (if (and message schema)
-                                            (add-error ctx acc {:message message :type type}
-                                                       {:schema schema :path path})
-                                            acc))
-                                        acc
-                                        f-state)
-                                          acc)
-                                      (assoc :f-state f-state)))
-
-                                acc)
-
-                          acc (if (empty? ds)
-                                (dissoc acc :f-state)
-                                acc)
-
-
-                          ]
+                                       (and (empty? ds) minItems (> minItems count))
+                                       (add-error* {:message (format "Expected >= %s, got %s" minItems count)
+                                                    :type "vector"}
+                                                   {:schema [:filter fname :minItems]}))))
+                                 acc filter)
+                                acc)]
                       acc)
                     (inc idx)
-                    ds
-                    )))
-
-               (restore-acc acc))
+                    ds)))
+               (restore-acc acc)
+               (dissoc :fstate))
               acc)
-
-
 
         cnt (count data)
         acc (if (and mn (< cnt mn))
