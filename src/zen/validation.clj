@@ -132,14 +132,12 @@
   (let [acc (if (or evr nt filter)
               (->
                (loop [acc acc, idx 0, [d & ds] data]
-
                  (if (and (nil? d) (empty? ds))
                    acc
                    (recur
                     (let [acc (if evr
-                                (do
-                                  (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
-                                      (restore-acc acc)))
+                                (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
+                                    (restore-acc acc))
                                 acc)
                           acc (if-let [sch (and nt (get nt idx))]
                                 (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
@@ -167,12 +165,10 @@
                                  acc filter)
                                 acc)]
                       acc)
-                    (inc idx)
-                    ds)))
+                    (inc idx) ds)))
                (restore-acc acc)
                (dissoc :fstate))
               acc)
-
         cnt (count data)
         acc (if (and mn (< cnt mn))
               (add-error ctx acc {:message (format "Expected >= %s, got %s" mn cnt) :type type}

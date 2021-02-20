@@ -543,10 +543,6 @@
 
   (testing "zen/vector"
 
-
-    ;; (filter #(node/validate % {:schema}) [x y z])
-
-
     (valid-schema!
      {:zen/tags #{'zen/schema}
       :type 'zen/vector
@@ -590,6 +586,7 @@
 
     (valid 'test.vec/nth [1 "ok"])
     (valid 'test.vec/nth [1 "ok" :anything])
+
     (match 'test.vec/nth ["str" "ok"]
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
@@ -977,6 +974,3 @@
 
 
   )
-;; => #'zen.validation-test/test-validation
-;; => #'zen.validation-test/test-validation;; => #'zen.validation-test/test-validation
-;; => #'zen.validation-test/test-validation
