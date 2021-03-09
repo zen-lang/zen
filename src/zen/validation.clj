@@ -62,7 +62,7 @@
                                           {:schema [:fail]})
                                (let [acc (if-let [sch (get ks k)]
                                            (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
-                                                 acc' (if handle-unknown-keys (assoc-in acc' [:keys (conj (:path acc) k)] true) acc')]
+                                                 acc' (assoc-in acc' [:keys (conj (:path acc) k)] true)]
                                              (restore-acc acc' acc))
                                            (if-let [prop-sch  (and (keyword? k) (namespace k) (or (resolve-property ctx k)
                                                                                                   (and kns

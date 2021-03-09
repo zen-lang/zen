@@ -204,6 +204,44 @@
            :schema ['myapp/User :address :confirms 'myapp/Address :line :every]}
           nil?])
 
+  (zen.core/load-ns!
+   tctx {'ns 'elcheck
+
+         'Person
+         {:zen/tags #{'zen/schema}
+          :type 'zen/map
+          :values {:type 'zen/any}
+          :keys {:firstName {:type 'zen/string}
+                 :lastName {:type 'zen/string}
+                 :middleName {:type 'zen/string}
+                 :birthDate {:type 'zen/datetime}
+                 :genderCode {:type 'zen/string
+                              :enum [{:value "M" :zen/desc "Male"}
+                                     {:value "F" :zen/desc "Female"}]}}}
+
+         'Elcheck
+         {:zen/tags #{'zen/schema}
+          :type 'zen/map
+          :values {:type 'zen/any}
+          :keys {:patient {:confirms #{'Person}}
+                 :subscriber {:confirms #{'Person}
+                              :type 'zen/map
+                              :keys {:memberId {:type 'zen/string}}}}}})
+
+  (vmatch #{'elcheck/Elcheck}
+         {:patient {:genderCode "F",
+                    :updateYourRecords true,
+                    :subscriberRelationship "Spouse",
+                    :birthDate "1970-01-01T00:00:00.000+0000",
+                    :firstName "Nat",
+                    :id "777",
+                    :lastName "Color",
+                    :gender "Female",
+                    :subscriberRelationshipCode "01"},
+          :subscriber
+          {:lastName "O'DONNELL", :memberId "VMPV22071045", :firstName "RYAN"}}
+         {:errors [nil?]})
+
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [1 {:ups "ups"}]}
           {:errors
            [{:message "Expected type of 'map, got 1",
