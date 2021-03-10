@@ -229,7 +229,7 @@
                               :keys {:memberId {:type 'zen/string}}}}}})
 
   (vmatch #{'elcheck/Elcheck}
-         {:patient {:genderCode "F",
+          {:patient {:genderCode "F",
                     :updateYourRecords true,
                     :subscriberRelationship "Spouse",
                     :birthDate "1970-01-01T00:00:00.000+0000",
@@ -239,7 +239,7 @@
                     :gender "Female",
                     :subscriberRelationshipCode "01"},
           :subscriber
-          {:lastName "O'DONNELL", :memberId "VMPV22071045", :firstName "RYAN"}}
+          {:id "22" :lastName "O'DONNELL", :memberId "VMPV22071045", :firstName "RYAN"}}
          {:errors [nil?]})
 
   (vmatch #{'myapp/User} {:name "niquola" :identifiers [1 {:ups "ups"}]}

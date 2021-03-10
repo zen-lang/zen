@@ -54,6 +54,7 @@
               eks :exclusive-keys} data]
   (if (map? data)
     (let [handle-unknown-keys (and (nil? ky) (nil? vls))
+          acc (if-not handle-unknown-keys (update acc :keys (fn [k] (reduce (fn [acc v] (assoc acc v true)) (or k {}) (mapv #(conj (:path acc) %) (keys data))))) acc)
           acc (->> data
                    (reduce (fn [acc [k v]]
                              (if-let [fail (get-in ks [k :fail])]
