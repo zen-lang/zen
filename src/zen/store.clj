@@ -67,7 +67,7 @@
     (when-not (get-in ctx [:ns ns-name])
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
       (doseq [imp (get nmsps 'import)]
-        (if-let [ns (get-in ctx [:memory-store imp])]
+        (if-let [ns (get-in @ctx [:memory-store imp])]
           (load-ns ctx ns opts)
           (read-ns ctx imp)))
       (->>

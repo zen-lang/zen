@@ -4,7 +4,6 @@
 
 
 (deftest core-schema-test
-
   (def ctx (sut/new-context))
 
   (is (empty? (:errors @ctx)))
@@ -16,8 +15,7 @@
   (is (not (empty? (get-in @ctx [:ns 'zen]))))
   (is (not (nil? ('zen/property (:tags @ctx)))))
   (keys @ctx)
-  (second (:symbols @ctx))
-  )
+  (second (:symbols @ctx)))
 
 (deftest memory-store-schema-test
   (def data '{ns data
@@ -26,8 +24,7 @@
 
   (def check '{ns check
                check {:zen/tags #{zen/schema}
-                     :keys {:foo {:type zen/string}}
-                     }})
+                     :keys {:foo {:type zen/string}}}})
 
   (def memory-store {'check check 'data data})
 
@@ -37,13 +34,9 @@
 
   (sut/load-ns ctx data)
 
-  (sut/validate ctx ['check/check] (sut/get-symbol ctx 'data/foo))
+  (is (= memory-store (:memory-store @ctx)))
 
-
-
-  )
+  (is (empty? (:errors (sut/validate ctx ['check/check] (sut/get-symbol ctx 'data/foo))))))
 
 (comment
- @ctx
-
-  )
+ @ctx)
