@@ -67,7 +67,9 @@
     (when-not (get-in ctx [:ns ns-name])
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
       (doseq [imp (get nmsps 'import)]
-        (read-ns ctx imp))
+        (if-let [ns (get-in ctx [:memory-store imp])]
+          (load-ns ctx ns opts)
+          (read-ns ctx imp)))
       (->>
        (dissoc nmsps ['ns 'import])
        (mapv (fn [[k v]]
@@ -84,7 +86,7 @@
 (defn read-ns [ctx nm]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [res (io/resource pth)]
-      (try 
+      (try
         (let [fpth (.getPath res)
               nmsps (edamame.core/parse-string (slurp res))]
           (load-ns ctx nmsps {:zen/file fpth}))
