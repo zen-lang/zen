@@ -16,7 +16,7 @@
 
 (defn new-validation-acc []
   {:errors []
-   :warings []
+   :warnings []
    :schema []
    :path []})
 
@@ -465,19 +465,17 @@
                :message (format "Expected '%s' in %s" data enum)
                :path path}))))
 
-(defn global-errors [acc]
-  (update acc :errors
-          (fn [errs]
-            (-> errs
-                (into (unknown-keys-errors acc))
-                (into (valueset-errors acc))
-                (into (enum-errors acc))))))
-
+(defn global-errors&warnings [acc]
+  (let [errs (concat (:errors acc)
+                     (unknown-keys-errors acc)
+                     (valueset-errors acc)
+                     (enum-errors acc))]
+    (merge acc {:warnings []
+                :errors errs})))
 
 (defn validate-schema [ctx schema data]
-  (-> (validate-node
-       ctx (new-validation-acc)   schema data)
-      (global-errors)))
+  (-> (validate-node ctx (new-validation-acc) schema data)
+      (global-errors&warnings)))
 
 (defn validate
   [ctx schemas data]
@@ -487,4 +485,4 @@
                    (validate-node ctx (update acc :schema conj sym) sch data)
                    (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                (new-validation-acc))
-       (global-errors)))
+       (global-errors&warnings)))
