@@ -39,6 +39,16 @@
                :type 'zen/string
                :const {:value "fixed"}}
 
+       'open-map {:zen/tags #{'zen/schema}
+                  :type 'zen/map
+                  :validation-type :open
+                  :keys {:fixed {:type 'zen/string}}}
+
+       'closed-map {:zen/tags #{'zen/schema}
+                  :type 'zen/map
+                  :validation-type :closed
+                  :keys {:fixed {:type 'zen/string}}}
+
        'const-map {:zen/tags #{'zen/schema}
                    :type 'zen/map
                    :keys {:fixed {:type 'zen/string}}
@@ -355,6 +365,9 @@
             {:type "unknown-key",
              :message "unknown key :ups",
              :path [:keys :minLength :ups]}]})
+
+  (match 'myapp/open-map {:foo "bar"} empty?)
+  (match 'myapp/closed-map {:foo "bar"} [{:path [:foo]}])
 
   (match 'myapp/email
          "ups"

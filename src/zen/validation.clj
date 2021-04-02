@@ -47,14 +47,24 @@
             (recur has-keys ks)))))))
 
 (defmethod validate-type 'zen/map
-  [_ ctx acc {ks :keys ky :key vls :values
+  [_ ctx acc {ks :keys
+              ky :key
+              vls :values
               {sk :key sk-ns :ns sk-tags :tags} :schema-key
               reqs :require
               kns :keyname-schemas ;; TODO
-              eks :exclusive-keys} data]
+              eks :exclusive-keys
+              validation-type :validation-type
+              :or {validation-type :closed}
+              :as sch} data]
   (if (map? data)
-    (let [handle-unknown-keys (and (nil? ky) (nil? vls))
-          acc (if-not handle-unknown-keys (update acc :keys (fn [k] (reduce (fn [acc v] (assoc acc v true)) (or k {}) (mapv #(conj (:path acc) %) (keys data))))) acc)
+    (let [ignore-unknown-keys (or ky vls (= :open validation-type))
+          acc (if ignore-unknown-keys
+                (update acc :keys
+                        (fn [k] (reduce (fn [acc v] (assoc acc v true))
+                                        (or k {})
+                                        (mapv #(conj (:path acc) %) (keys data)))))
+                acc)
           acc (->> data
                    (reduce (fn [acc [k v]]
                              (if-let [fail (get-in ks [k :fail])]
@@ -73,9 +83,9 @@
                                                                                                            prop-sch)))))]
                                              (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
                                                  (restore-acc acc))
-                                             (if handle-unknown-keys
-                                               (update-in acc [:keys (conj (:path acc) k)] #(or % false))
-                                               acc)))
+                                             (if ignore-unknown-keys
+                                               acc
+                                               (update-in acc [:keys (conj (:path acc) k)] #(or % false)))))
                                      acc (if vls
                                            (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
                                                (restore-acc acc))

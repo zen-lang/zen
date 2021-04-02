@@ -134,6 +134,10 @@
  map       {:zen/tags #{type coll schema}
             :type map
             :keys {:values {:confirms #{schema}}
+                   :validation-type {:zen/desc "Type of validation. If open then ignores unknown keys else returns errors. :closed by default"
+                                     :type keyword
+                                     :enum #{{:value :open}
+                                             {:value :closed}}}
                    :schema-key {:zen/desc "Deduce schema from value of specific key."
                                 :type map
                                 :keys {:key {:type keyword :zen/desc ""}
