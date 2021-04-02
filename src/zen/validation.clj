@@ -474,7 +474,7 @@
   (->> schemas
        (reduce (fn [acc sym]
                  (if-let [sch (get-symbol ctx sym)]
-                   (validate-node ctx (assoc acc :schema [sym])  sch data)
+                   (validate-node ctx (update acc :schema conj sym) sch data)
                    (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                (new-validation-acc))
        (global-errors)))
