@@ -27,8 +27,8 @@
 
 (defmulti validate-type (fn [tp & _] tp))
 
-(defn restore-acc [acc {pth :path sch :schema}]
-  (assoc acc :schema sch :path pth))
+(defn restore-acc [acc old-acc]
+  (merge acc (select-keys old-acc [:path :schema])))
 
 (defn resolve-property [ctx k]
   (let [sym (symbol (namespace k) (name k))]
