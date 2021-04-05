@@ -139,24 +139,24 @@
     (add-error ctx acc {:message (format "Expected type of 'map, got %s" (pr-str data))  :type "type"})))
 
 (defn validate-collection
-  [type ctx acc {evr :every {si :index si-ns :ns} :schema-index mn :minItems mx :maxItems nt :nth} data]
-  (let [acc (if (or evr nt)
-              (->
-               (loop [acc acc, idx 0, [d & ds] data]
-                 (if (and (nil? d) (empty? ds))
-                   acc
-                   (recur
-                    (let [acc (if evr
-                                (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:every]}) evr d)
-                                    (restore-acc acc))
-                                acc)
-                          acc (if-let [sch (and nt (get nt idx))]
-                                (-> (validate-node ctx (update-acc ctx acc {:path [idx] :schema [:nth idx]}) sch d)
-                                    (restore-acc acc))
-                                acc)]
-                      acc)
-                    (inc idx) ds)))
-               (restore-acc acc))
+  [type ctx acc {{si :index si-ns :ns} :schema-index mn :minItems mx :maxItems, :as schema} data]
+  (let [need-to-traverse-collection? (or (:every schema) (:nth schema))
+        acc (if need-to-traverse-collection?
+              (->> (map-indexed vector data)
+                   (reduce (fn [acc' [idx coll-el]]
+                             (cond-> acc'
+                               (:every schema)
+                               (as-> $
+                                 (update-acc ctx $ {:path [idx] :schema [:every]})
+                                 (validate-node ctx $ (:every schema) coll-el)
+                                 (restore-acc $ acc))
+
+                               (and (:nth schema) (get (:nth schema) idx))
+                               (as-> $
+                                 (update-acc ctx $ {:path [idx] :schema [:nth idx]})
+                                 (validate-node ctx $ (get (:nth schema) idx) coll-el)
+                                 (restore-acc $ acc))))
+                           acc))
               acc)
         cnt (count data)
         acc (if (and mn (< cnt mn))
