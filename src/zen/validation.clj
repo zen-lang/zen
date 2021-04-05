@@ -159,8 +159,16 @@
           {}
           (map-indexed vector coll)))
 
-(defn validate-slicing [ctx acc slicing coll]
-  acc) ;; TODO
+(declare validate-collection)
+
+(defn validate-slicing [coll-type ctx acc slicing coll]
+  (let [sliced-coll (slice ctx slicing coll)]
+    (reduce (fn [acc' [slice-name {slice-schema :schema}]]
+              (validate-collection coll-type ctx acc' slice-schema (vals (get sliced-coll slice-name))))
+            (if (and (contains? slicing :rest) (contains? sliced-coll :slicing/rest))
+              (validate-collection coll-type ctx acc (:rest slicing) (vals (:slicing/rest sliced-coll)))
+              acc)
+            (dissoc (:slices slicing) :slicing/rest))))
 
 (defn validate-collection
   [type ctx acc {{si :index si-ns :ns} :schema-index mn :minItems mx :maxItems, :as schema} data]
@@ -184,7 +192,7 @@
               acc)
 
         acc (if (:slicing schema)
-              (validate-slicing ctx acc (:slicing schema) data)
+              (validate-slicing type ctx acc (:slicing schema) data)
               acc)
 
         cnt (count data)
