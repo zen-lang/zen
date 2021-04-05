@@ -7,23 +7,24 @@
   (testing "Validate slicing definition"
     (def tctx (zen.core/new-context {:unsafe true}))
 
-    (zen.core/load-ns
+    (zen.core/load-ns!
      tctx '{ns myapp
             slice-definition {:zen/tags #{zen/schema}
                               :type zen/vector
-                              :every {:keys {:kind {:type zen/string}}}
+                              :every {:type zen/map :keys {:kind {:type zen/string}}}
                               :slices {"string"
                                        {:filter {:engine :zen
-                                                 :zen    {:keys {:kind {:const {:value "string"}}}}}
+                                                 :zen    {:type zen/map :keys {:kind {:const {:value "string"}}}}}
                                         :schema {:type zen/vector
-                                                 :every {:keys {:value {:type zen/string}}}}}
+                                                 :every {:type zen/map :keys {:value {:type zen/string}}}}}
                                        "number"
                                        {:filter {:engine :zen
-                                                 :zen    {:keys {:kind {:const {:value "number"}}}}}
+                                                 :zen    {:type zen/map :keys {:kind {:const {:value "number"}}}}}
                                         :schema {:type zen/vector
-                                                 :every {:keys {:value {:type zen/number}}}}}
-                                       "@default" {:schema {:type zen/vector
-                                                            :every {:keys {:value {:type zen/case
+                                                 :every {:type zen/map :keys {:value {:type zen/number}}}}}
+                                       #_#_"@default" {:schema {:type zen/vector
+                                                            :every {:type zen/map
+                                                                    :keys {:value {:type zen/case
                                                                                    :case [{:when {:type zen/string} :then {:fail "String kind is already defined"}}
                                                                                           {:when {:type zen/number} :then {:fail "Number kind is already defined"}}
                                                                                           {:when {:type zen/any}}

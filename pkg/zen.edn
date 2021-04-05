@@ -122,7 +122,32 @@
                          :type vector
                          :pairs {:unique-keys true
                                  :key {:type keyword}
-                                 :value {:confirms #{schema}}}}}}
+                                 :value {:confirms #{schema}}}}
+                   :slices {:zen/desc "Define a slices on the vector. Each slice is named and should contain :filter and :schema
+                                       Use :filter to select vector subset. Use :schema for subset validation.
+                                       There is a default slice name called  @default.
+                                       Elements that don't match any of slices will be validated over @default schema if provided"
+                            :type map
+                            :key {:type string}
+                            :values {:type map
+                                     :require #{:filter :schema}
+                                     :keys {:filter {:type map
+                                                     :validation-type :open
+                                                     :require #{:engine}
+                                                     :keys {:engine {:type case
+                                                                     :case [{:when {:type map :keys {:engine {:const {:value :zen}}}}
+                                                                             :then {:require #{:zen}
+                                                                                    :type map
+                                                                                    :keys {:zen {:confirms #{schema}}}}
+                                                                             }
+                                                                            {:when {:type zen/any}
+                                                                             :then {:fail "Unsupported engine"}}]
+                                                                     }}}
+                                            :schema  {:confirms #{schema}}
+                                            }
+                                     }
+                            }
+                   }}
 
  list    {:zen/tags #{type coll schema}
           :confirms #{coll}
