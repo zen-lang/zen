@@ -126,8 +126,8 @@
                    :slicing {:zen/desc "Define a slicing on the vector"
                              :type map
                              :require #{:slices}
-                             :keys {:other {:zen/desc "Elements that don't match any of slices will be validated over this schema if provided"
-                                            :confirms #{schema}}
+                             :keys {:rest {:zen/desc "Elements that don't match any of slices will be validated over this schema if provided"
+                                           :confirms #{schema}}
                                     :slices {:zen/desc "Each slice is named and should contain :filter and :schema
                                                         Use :filter to select vector subset. Use :schema for subset validation."
                                              :type map

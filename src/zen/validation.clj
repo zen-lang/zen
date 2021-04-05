@@ -138,6 +138,30 @@
       acc)
     (add-error ctx acc {:message (format "Expected type of 'map, got %s" (pr-str data))  :type "type"})))
 
+(defmulti slicing-filter (fn [ctx slicing-definition data] (:engine slicing-definition)))
+
+(defmethod slicing-filter :zen [ctx {schema :zen} data]
+  (empty? (:errors (validate-node ctx (new-validation-acc) schema data))))
+
+(defmethod slicing-filter :matcho [ctx {:keys [matcho]} data]) ;; TODO
+
+(defn determine-slice [ctx slices data]
+  (for [[slice-name slice-definition] slices
+        :when (slicing-filter ctx (:filter slice-definition) data)]
+    slice-name))
+
+(defn slice [ctx slicing coll]
+  (reduce (fn [coll-slices [idx coll-el]]
+            (->> (or (not-empty (determine-slice ctx (:slices slicing) coll-el))
+                     [:slicing/rest])
+                 (into {} (map (fn [slice-name] [slice-name {idx coll-el}])))
+                 (merge-with merge coll-slices)))
+          {}
+          (map-indexed vector coll)))
+
+(defn validate-slicing [ctx acc slicing coll]
+  acc) ;; TODO
+
 (defn validate-collection
   [type ctx acc {{si :index si-ns :ns} :schema-index mn :minItems mx :maxItems, :as schema} data]
   (let [need-to-traverse-collection? (or (:every schema) (:nth schema))
@@ -158,6 +182,11 @@
                                  (restore-acc $ acc))))
                            acc))
               acc)
+
+        acc (if (:slicing schema)
+              (validate-slicing ctx acc (:slicing schema) data)
+              acc)
+
         cnt (count data)
         acc (if (and mn (< cnt mn))
               (add-error ctx acc {:message (format "Expected >= %s, got %s" mn cnt) :type type}
