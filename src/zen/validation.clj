@@ -36,15 +36,12 @@
       (get-symbol ctx sym))))
 
 (defn is-exclusive? [group data]
-  (loop [other-keys nil [k & ks] group]
-    (if (and (nil? k) (empty? ks))
-      true
-      (let [has-keys  (seq (select-keys data (if (set? k) k #{k})))]
-        (if (and other-keys has-keys)
-          false
-          (if (empty? ks)
-            true
-            (recur (or other-keys has-keys) ks)))))))
+  (->> group
+       (filter (fn [g] (->> (if (set? g) g #{g})
+                            (select-keys data)
+                            seq)))
+       count
+       (>= 1)))
 
 (defmethod validate-type 'zen/map
   [_ ctx acc {ks :keys
