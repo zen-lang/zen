@@ -39,12 +39,12 @@
   (loop [other-keys nil [k & ks] group]
     (if (and (nil? k) (empty? ks))
       true
-      (let [has-keys  (not (empty? (select-keys data (if (set? k) k #{k}))))]
+      (let [has-keys  (seq (select-keys data (if (set? k) k #{k})))]
         (if (and other-keys has-keys)
           false
           (if (empty? ks)
             true
-            (recur has-keys ks)))))))
+            (recur (or other-keys has-keys) ks)))))))
 
 (defmethod validate-type 'zen/map
   [_ ctx acc {ks :keys
