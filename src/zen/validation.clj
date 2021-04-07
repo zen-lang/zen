@@ -37,10 +37,11 @@
 
 (defn is-exclusive? [group data]
   (->> group
-       (map #(if (set? %) % #{%}))
-       (filter #(seq (select-keys data %)))
-       count
-       (>= 1)))
+       (filter #(->> (if (set? %) % #{%})
+                     (select-keys data)
+                     seq))
+       (bounded-count 2)
+       (> 2)))
 
 (defmethod validate-type 'zen/map
   [_ ctx acc {ks :keys
