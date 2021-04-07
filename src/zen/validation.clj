@@ -37,9 +37,8 @@
 
 (defn is-exclusive? [group data]
   (->> group
-       (filter (fn [g] (->> (if (set? g) g #{g})
-                            (select-keys data)
-                            seq)))
+       (map #(if (set? %) % #{%}))
+       (filter #(seq (select-keys data %)))
        count
        (>= 1)))
 
