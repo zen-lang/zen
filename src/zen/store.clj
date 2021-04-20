@@ -85,13 +85,20 @@
 
 (defn read-ns [ctx nm]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
-    (if-let [res (io/resource pth)]
+    (if-let [fpth (or (when-let [res (io/resource pth)]
+                       (.getPath res))
+                     (loop [[p & ps] (:paths @ctx)]
+                       (when p
+                         (let [fpth (str p "/" pth)]
+                           (if (when-let [f (io/file fpth)]
+                                 (.exists f))
+                             fpth
+                             (recur ps))))))]
       (try
-        (let [fpth (.getPath res)
-              nmsps (edamame.core/parse-string (slurp res))]
+        (let [nmsps (edamame.core/parse-string (slurp fpth))]
           (load-ns ctx nmsps {:zen/file fpth}))
         (catch Exception e
-          (println (str "ERROR while reading " (.getPath res)))
+          (println (str "ERROR while reading " fpth))
           (println e)
           (throw e)))
       (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm)}))))

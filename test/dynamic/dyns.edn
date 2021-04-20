@@ -1,0 +1,2 @@
+{ns dyns
+ model {:zen/desc "Test dynamic paths"}}

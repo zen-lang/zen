@@ -36,7 +36,23 @@
 
   (is (= memory-store (:memory-store @ctx)))
 
-  (is (empty? (:errors (sut/validate ctx ['check/check] (sut/get-symbol ctx 'data/foo))))))
+  (is (empty? (:errors (sut/validate ctx ['check/check] (sut/get-symbol ctx 'data/foo)))))
+
+
+  
+
+  (def wctx (sut/new-context))
+  (sut/read-ns wctx 'dyns)
+  (is (nil? (sut/get-symbol wctx 'dyns/model)))
+
+  (def dctx (sut/new-context {:paths ["/unexisting"
+                                      (str (System/getProperty "user.dir") "/test/dynamic")]}))
+
+  (sut/read-ns dctx 'dyns)
+  (is (not (nil? (sut/get-symbol dctx 'dyns/model))))
+
+
+  )
 
 (comment
  @ctx)
