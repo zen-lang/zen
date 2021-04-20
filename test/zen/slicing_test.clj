@@ -54,12 +54,12 @@
 
     (matcho/match
      (zen.core/validate tctx #{'myapp/slice-definition} [{:kind "keyword" :value 1}])
-     {:errors [{:path [0 :value]}]})
+     {:errors [{:path [0 "[kw]" :value]}]})
 
     (matcho/match
      (zen.core/validate tctx #{'myapp/slice-definition} [{:kind "number" :value "1"}])
-     {:errors [{:path [0 :value]}]})
+     {:errors [{:path [0 "[number]" :value]}]})
 
     (matcho/match
      (zen.core/validate tctx #{'myapp/slice-definition} [{:kind "foo" :value 1}])
-     {:errors [{:path [0 :value]}]})))
+     {:errors [{:path [0 "[:slicing/rest]" :value]}]})))

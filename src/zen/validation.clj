@@ -1,7 +1,6 @@
 (ns zen.validation
-  (:require
-   [clojure.set]
-   [clojure.string :as str]))
+  (:require [clojure.set]
+            [clojure.string :as str]))
 
 (defn get-symbol [ctx nm]
   (get-in @ctx [:symbols nm]))
@@ -158,12 +157,25 @@
 
 (declare validate-collection)
 
+(defn append-slice-name-to-error-path [slice-name error]
+  (update error :path (fn [[p & rest-p]] (into [p (str \[ slice-name \])] rest-p))))
+
+(defn validate-slice [ctx acc slice-name slice-schema slice-coll]
+  (let [slice-validation-result (validate-node ctx acc slice-schema slice-coll)
+        old-errors (:errors acc)
+        cur-errors (:errors slice-validation-result)
+        new-errors (->> cur-errors
+                        (drop (count old-errors))
+                        (mapv (partial append-slice-name-to-error-path slice-name)))
+        errors     (into old-errors new-errors)]
+    (assoc slice-validation-result :errors errors)))
+
 (defn validate-slicing [ctx acc slicing coll]
   (let [sliced-coll (slice ctx slicing coll)]
     (reduce (fn [acc' [slice-name {slice-schema :schema}]]
-              (validate-node ctx acc' slice-schema (vec (vals (get sliced-coll slice-name)))))
+              (validate-slice ctx acc' slice-name slice-schema (vec (vals (get sliced-coll slice-name)))))
             (if (and (contains? slicing :rest) (contains? sliced-coll :slicing/rest))
-              (validate-node ctx acc (:rest slicing) (vec (vals (:slicing/rest sliced-coll))))
+              (validate-slice ctx acc :slicing/rest (:rest slicing) (vec (vals (:slicing/rest sliced-coll))))
               acc)
             (dissoc (:slices slicing) :slicing/rest))))
 
