@@ -158,7 +158,7 @@
 (declare validate-collection)
 
 (defn append-slice-name-to-error-path [slice-name error]
-  (update error :path (fn [[p & rest-p]] (into [p (str \[ slice-name \])] rest-p))))
+  (update error :path (fn [[p & rest-p]] (into [p (str (keyword slice-name))] rest-p))))
 
 (defn validate-slice [ctx acc slice-name slice-schema slice-coll]
   (let [slice-validation-result (validate-node ctx acc slice-schema slice-coll)
