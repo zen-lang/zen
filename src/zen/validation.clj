@@ -532,3 +532,7 @@
                    (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                (new-validation-acc))
        (global-errors&warnings)))
+
+#_(defmulti validate-valueset [{engine :engine} code] engine)
+#_(defmethod validate-valueset :enum [{enum :enum} code]
+  (contains? enum code))
