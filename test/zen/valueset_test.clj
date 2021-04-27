@@ -43,32 +43,33 @@
                    {:code "bar" :display "Bar"}
                    {:code "baz" :display "Baz"}}}
 
-    Coding {:type zen/map
-            :keys {:code    {:type zen/string}
-                   :display {:type zen/string}}}
+    Coding {:zen/tags #{zen/schema}
+            :type     zen/map
+            :keys     {:code    {:type zen/string}
+                       :display {:type zen/string}}}
 
-    sch {:type zen/map
-         :keys {
-                :code {:type     zen/string
-                       :valueset vs1}
+    sch {:zen/tags #{zen/schema}
+         :type     zen/map
+         :keys     {:code {:type     zen/string
+                           :valueset vs1}
 
-                :coding {:type     zen/map
-                         :confirms #{Coding}
-                         :valueset vs2}
+                    :coding {:type     zen/map
+                             :confirms #{Coding}
+                             :valueset vs2}
 
-                :codeableConcept {:type zen/map
-                                  :keys {:text   {:type zen/string}
-                                         :coding {:type    zen/vector
-                                                  :slicing {:slices {"bind-vs" {:filter {:engine :zen
-                                                                                         :zen    {:type     zen/map
-                                                                                                  :confirms #{Coding}
-                                                                                                  :valueset vs2}}
-                                                                                :schema {:type zen/vector :minItems 1 :maxItems 1}}}}
-                                                  :every   {:type     zen/map
-                                                            :confirms #{Coding}}}}}}}})
+                    :codeableConcept {:type zen/map
+                                      :keys {:text   {:type zen/string}
+                                             :coding {:type    zen/vector
+                                                      :slicing {:slices {"bind-vs" {:filter {:engine :zen
+                                                                                             :zen    {:type     zen/map
+                                                                                                      :confirms #{Coding}
+                                                                                                      :valueset vs2}}
+                                                                                    :schema {:type zen/vector :minItems 1 :maxItems 1}}}}
+                                                      :every   {:type     zen/map
+                                                                :confirms #{Coding}}}}}}}})
 
 
-(deftest valueset-validation
+(deftest ^:kaocha/pending valueset-validation
   (def tctx (zen.core/new-context {:unsafe true}))
 
   (zen.core/load-ns tctx zen-schema)
