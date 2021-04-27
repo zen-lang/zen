@@ -287,23 +287,21 @@
   :type map
   :keys {:errors {:confirms #{schema-errors}}}}
 
- valueset-provider
- {:zen/tags #{tag}
-  :zen/desc "Tag to register valueset provider service;
-             It may be search in ndjson or csv files,
-             tables or call to external terminology server;
-             valueset provider interface is TBD;
-             looks like it should be bulk search by key or keys"}
-
  valueset
  {:zen/tags #{schema tag}
   :zen/desc "Registry (vocabulary) with free form data to make symbolic refs for validation.
-             It may be just values enumeration or lookup service by provider"
+             :engine is used to define a extrnal tool for valueset protocol evaluation"
   :type map
-  :keys {:index-by {:type set :every {:type keyword}}
-         :values   {:type vector
-                    :every {:type any}}
-         :provider {:type symbol :tags #{valueset-provider}}}}
+  :require #{:engine}
+  :keys {:engine {:type keyword}}}
 
+ enum-valueset
+ {:zen/tags #{schema tag}
+  :zen/desc "Simple valuset engine on top of zen/enum
+             This engin check if provided structure exists in the provided enum"
+  :type map
+  :require #{:enum}
+  :keys {:engine {:const {:value :enum}}
+         :enum {:type set}}}
 
  }

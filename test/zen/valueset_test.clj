@@ -3,13 +3,41 @@
             [clojure.test :refer [deftest is testing]]
             [zen.core]))
 
+(deftest valuset-validation
+  (def data
+    '{ns data
+      v1 {:zen/tags #{zen/valueset zen/enum-valueset}
+          :engine :enum
+          :enum #{"foo" "bar" "baz"}}
+      i1 {:zen/tags #{zen/valueset}
+          :engine :enum
+          :enum #{"foo" "bar" "baz"}}
+      i2 {:zen/tags #{zen/valueset zen/enum-valueset}
+          :engine :enumz
+          :enum #{"foo" "bar" "baz"}}
+      i3 {:zen/tags #{zen/valueset zen/enum-valueset}
+          :engine :enum}
+      i4 {:zen/tags #{zen/valueset}}})
+
+  (def tctx (zen.core/new-context {:unsafe true }))
+
+
+  (def _zen-eval (zen.core/load-ns tctx data))
+
+  (matcho/match (sort-by :resource (:errors @tctx))
+
+                '[{:path [:enum], :resource data/i1}
+                  {:path [:engine], :resource data/i2}
+                  {:path [:enum], :resource data/i3}
+                  {:path [:engine], :resource data/i4}]))
+
 (def zen-schema
   '{ns myapp
-    vs1 {:tags #{zen/valueset}
+    vs1 {:tags #{zen/valueset zen/enum-valueset}
          :engine :enum
          :enum #{"foo" "bar" "baz"}}
 
-    vs2 {:tags #{zen/valueset}
+    vs2 {:tags #{zen/valueset zen/enum-valueset}
          :engine :enum
          :enum #{{:code "foo" :display "Foo"}
                  {:code "bar" :display "Bar"}
@@ -59,6 +87,13 @@
       {:code "wrong"
        :coding {:code "wrong" :display "Wrong"}
        :codeableConcept {:text "Wrong" :coding [{:code "wrong" :display "Wrong"}]}})
+     {:errors seq})
+    (matcho/match
+     (zen.core/validate
+      tctx
+      #{'myapp/sch}
+      {:codeableConcept {:text "Wrong" :coding [{:code "foo" :display "Foo"}
+                                                {:code "bar" :display "Bar"}]}})
      {:errors seq})))
 
 (comment
@@ -67,22 +102,22 @@
    icd10-cm {:tags #{zen/valueset aidbox/valueset}
              :engine :aidbox/database
              :table "concept"
-             :code {:engine :sql
-                    :sql "resource#>>'{code}'"}
-             :display {:engine :sql
-                       :sql "resource#>>'{display}'"}
-             :system {:const {:value "http://hl7.org/fhir/sid/icd-10-cm"}}
+             :select {:code {:engine :sql
+                             :sql "resource#>>'{code}'"}
+                      :display {:engine :sql
+                                :sql "resource#>>'{display}'"}
+                      :system {:const {:value "http://hl7.org/fhir/sid/icd-10-cm"}}}
              :where {:engine :sql
                      :sql "resource#>>'{system}' = 'http://hl7.org/fhir/sid/icd-10-cm'"}}
 
    icd9 {:tags #{zen/valueset aidbox/valueset}
          :engine :aidbox/database
          :table "concept"
-         :code {:engine :sql
-                :sql "resource#>>'{code}'"}
-         :display {:engine :sql
-                   :sql "resource#>>'{display}'"}
-         :system {:const {:value "http://terminology.hl7.org/CodeSystem/icd9"}}
+         :select {:code {:engine :sql
+                         :sql "resource#>>'{code}'"}
+                  :display {:engine :sql
+                            :sql "resource#>>'{display}'"}
+                  :system {:const {:value "http://terminology.hl7.org/CodeSystem/icd9"}}}
          :where {:engine :sql
                  :sql "resource#>>'{system}' = 'http://terminology.hl7.org/CodeSystem/icd9'"}}
 
