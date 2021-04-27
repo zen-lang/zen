@@ -404,36 +404,12 @@
   [t ctx acc schema data]
   (add-error ctx acc {:message (format "No validate-type multimethod for '%s" t) :type "primitive-type"}))
 
-(defn validate-const [ctx acc const data]
-  (when (and const (not= (:value const) data))
-    (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"})))
-
-(defn validate-confirms [ctx {pth :path :as acc} cfs data]
-  (->> cfs
-       (reduce (fn [acc sym]
-                 (if (get-in acc [:confirms pth sym])
-                   acc
-                   (let [acc (assoc-in acc [:confirms pth sym] true)]
-                     (if-let [sch (get-symbol ctx sym)]
-                       (-> (validate-node ctx (update-acc ctx acc {:schema [:confirms sym]}) sch data)
-                           (restore-acc acc))
-                       (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))))
-               acc)))
-
 (defn register-unmatched-enum [acc enum data]
   (update-in acc [:enums (:path acc)]
              (fn [old]
                (-> old
                    (update :enum (fn [en] (into (or en #{}) (map :value enum))))
                    (assoc :data data)))))
-
-(defn validate-enum [_ctx {path :path :as acc} enum data]
-  (when (and enum (not (get-in acc [:enums path :match])))
-    (if (->> enum
-             (filter (fn [v] (= (:value v) data)))
-             first)
-      (assoc-in acc [:enums path] {:match true})
-      (register-unmatched-enum acc enum data))))
 
 (defn valueset-engine-apply-dispatch [_ctx {engine :engine} _code] engine)
 (defmulti valueset-engine-apply #'valueset-engine-apply-dispatch)
@@ -456,7 +432,36 @@
                         vs)}))
         engine-result))
 
-(defn validate-valueset [ctx acc valueset-sym data]
+(defn validate-node-rule-dispatch [_ctx _acc rule _rule-val _data] rule)
+(defmulti validate-node-rule #'validate-node-rule-dispatch)
+
+(defmethod validate-node-rule :default [_ctx acc _rule _rule-val _data] acc)
+
+(defmethod validate-node-rule :const [ctx acc _ const data]
+  (when (and const (not= (:value const) data))
+    (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"})))
+
+(defmethod validate-node-rule :confirms [ctx {pth :path :as acc} _ cfs data]
+  (->> cfs
+       (reduce (fn [acc sym]
+                 (if (get-in acc [:confirms pth sym])
+                   acc
+                   (let [acc (assoc-in acc [:confirms pth sym] true)]
+                     (if-let [sch (get-symbol ctx sym)]
+                       (-> (validate-node ctx (update-acc ctx acc {:schema [:confirms sym]}) sch data)
+                           (restore-acc acc))
+                       (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))))
+               acc)))
+
+(defmethod validate-node-rule :enum [_ctx {path :path :as acc} _ enum data]
+  (when (and enum (not (get-in acc [:enums path :match])))
+    (if (->> enum
+             (filter (fn [v] (= (:value v) data)))
+             first)
+      (assoc-in acc [:enums path] {:match true})
+      (register-unmatched-enum acc enum data))))
+
+(defmethod validate-node-rule :valueset [ctx acc _ valueset-sym data]
   (when valueset-sym
     (let [valueset        (get-symbol ctx valueset-sym)
           engine-result   (valueset-engine-apply ctx valueset data)
@@ -466,10 +471,11 @@
 
 (defn validate-node [ctx acc {tp :type :as schema} data]
   (try
-    (let [acc (or (validate-const ctx acc (:const schema) data) acc)
-          acc (or (validate-confirms ctx acc (:confirms schema) data) acc)
-          acc (or (validate-enum ctx acc (:enum schema) data) acc)
-          acc (or (validate-valueset ctx acc (:valueset schema) data) acc)]
+    (let [acc (reduce-kv (fn [acc' rule rule-val]
+                           (or (validate-node-rule ctx acc' rule rule-val data)
+                               acc'))
+                         acc
+                         schema)]
       (if tp
         (let [{tags :zen/tags} (get-symbol ctx tp)]
           (if (and tags (contains? tags 'zen/type))
