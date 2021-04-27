@@ -221,20 +221,12 @@
                              :every {:type symbol :tags #{schema}}}
                   :const {:type map
                           :zen/desc "Check constant"
-                          :keys {:value {:type any}}} ;; TODO: apply top level schema to value
+                          :keys {:value {:type any}}}
+                  ;; TODO: apply top level schema to value
                   :enum {:type set
                          :zen/desc "Check value is in enum"
                          :every {:type map :keys {:value {:type any}}}}
                   :fail {:type string}
-
-                  ;; TODO: valueset and validation are effects; probably :enum is effect too
-                  :valuesets {:type set
-                              :zen/desc "check that value is from one of valuesets;
-                                         value is searched by specific :key;
-                                         open semantic - i.e. no errors if at least one valueset is matched"
-                              :every {:type map
-                                      :keys {:name {:type symbol :tags #{valueset}}
-                                             :key  {:type keyword}}}}
 
                   :validation {:type set
                                :zen/desc "Custom validation set of functions"
@@ -302,6 +294,4 @@
   :type map
   :require #{:enum}
   :keys {:engine {:const {:value :enum}}
-         :enum {:type set}}}
-
- }
+         :enum {:type set}}}}

@@ -659,27 +659,6 @@
              :type "symbol",
              :schema ['test.sym/sym :tags]}])
 
-    (zen.core/load-ns!
-     tctx {'ns 'test.vs
-           'vs1 {:zen/tags #{'zen/valueset}
-                 :values [{:code "a"}]}
-           'vs2 {:zen/tags #{'zen/valueset}
-                 :values [{:code "b"}]}
-           'code {:zen/tags #{'zen/schema}
-                  :type 'zen/string
-                  :valuesets #{{:name 'vs1 :key :code}
-                               {:name 'vs2 :key :code}}}})
-
-    (valid 'test.vs/code "a")
-
-    (valid 'test.vs/code "b")
-    (match 'test.vs/code "c"
-           [{:type "valuesets",
-             :message
-             "None of valuests #{test.vs/vs1 test.vs/vs2} is matched for 'c'",
-             :path []}])
-
-
 
     (zen.core/load-ns!
      tctx
