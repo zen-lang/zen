@@ -1,5 +1,6 @@
 (ns zen.valueset-test
   (:require [matcho.core :as matcho]
+            [zen.validation]
             [clojure.test :refer [deftest is testing]]
             [zen.core]))
 
@@ -31,48 +32,48 @@
                   {:path [:engine], :resource data/i4}]))
 
 
-(def zen-schema
-  '{ns  myapp
-    vs1 {:tags   #{zen/valueset zen/enum-valueset}
-         :engine :enum
-         :enum   #{"foo" "bar" "baz"}}
-
-    vs2 {:tags   #{zen/valueset zen/enum-valueset}
-         :engine :enum
-         :enum   #{{:code "foo" :display "Foo"}
-                   {:code "bar" :display "Bar"}
-                   {:code "baz" :display "Baz"}}}
-
-    Coding {:zen/tags #{zen/schema}
-            :type     zen/map
-            :keys     {:code    {:type zen/string}
-                       :display {:type zen/string}}}
-
-    sch {:zen/tags #{zen/schema}
-         :type     zen/map
-         :keys     {:code   {:type     zen/string
-                             :valueset vs1}
-                    :coding {:type     zen/map
-                             :confirms #{Coding}
-                             :valueset vs2}
-
-                    :codeableConcept
-                    {:type zen/map
-                     :keys {:text   {:type zen/string}
-                            :coding {:type  zen/vector
-                                     :slicing
-                                     {:slices
-                                      {"bind-vs"
-                                       {:filter {:engine :zen
-                                                 :zen    {:type     zen/map
-                                                          :confirms #{Coding}
-                                                          :valueset vs2}}
-                                        :schema {:type zen/vector :minItems 1 :maxItems 1}}}}
-                                     :every {:type     zen/map
-                                             :confirms #{Coding}}}}}}}})
-
-
 (deftest valueset-validation
+  (def zen-schema
+    '{ns  myapp
+      vs1 {:tags   #{zen/valueset zen/enum-valueset}
+           :engine :enum
+           :enum   #{"foo" "bar" "baz"}}
+
+      vs2 {:tags   #{zen/valueset zen/enum-valueset}
+           :engine :enum
+           :enum   #{{:code "foo" :display "Foo"}
+                     {:code "bar" :display "Bar"}
+                     {:code "baz" :display "Baz"}}}
+
+      Coding {:zen/tags #{zen/schema}
+              :type     zen/map
+              :keys     {:code    {:type zen/string}
+                         :display {:type zen/string}}}
+
+      sch {:zen/tags #{zen/schema}
+           :type     zen/map
+           :keys     {:code   {:type     zen/string
+                               :valueset vs1}
+                      :coding {:type     zen/map
+                               :confirms #{Coding}
+                               :valueset vs2}
+
+                      :codeableConcept
+                      {:type zen/map
+                       :keys {:text   {:type zen/string}
+                              :coding {:type  zen/vector
+                                       :slicing
+                                       {:slices
+                                        {"bind-vs"
+                                         {:filter {:engine :zen
+                                                   :zen    {:type     zen/map
+                                                            :confirms #{Coding}
+                                                            :valueset vs2}}
+                                          :schema {:type zen/vector :minItems 1 :maxItems 1}}}}
+                                       :every {:type     zen/map
+                                               :confirms #{Coding}}}}}}}})
+
+
   (def tctx (zen.core/new-context {:unsafe true}))
 
   (def _load-ns-res (zen.core/load-ns tctx zen-schema))
@@ -106,6 +107,50 @@
         {:codeableConcept {:text "Wrong" :coding [{:code "foo" :display "Foo"}
                                                   {:code "bar" :display "Bar"}]}})
       {:errors seq})))
+
+
+(deftest custom-engine-with-deffereds
+  (def zen-schema
+    '{ns myapp
+
+      custom-valueset
+      {:tags #{zen/schema zen/tag}
+       :type zen/map
+       :keys {:engine {:const {:value ::custom}}}}
+
+      vs1 {:tags   #{zen/valueset custom-valueset}
+           :engine ::custom}
+
+      sch {:zen/tags #{zen/schema}
+           :type     zen/map
+           :keys     {:coding {:type     zen/map
+                               :valueset vs1
+                               :keys     {:code    {:type zen/string}
+                                          :system  {:type zen/string}
+                                          :display {:type zen/string}}}}}})
+
+  (defmethod zen.validation/valueset-engine-apply ::custom [_ctx valueset data]
+    {:deffereds [{:kind     :valueset
+                  :valueset valueset
+                  :data     data}]})
+
+  (def tctx (zen.core/new-context))
+
+  (def _load-ns-res (zen.core/load-ns tctx zen-schema))
+
+  (matcho/match @tctx {:errors nil?})
+
+  (matcho/match
+    (zen.core/validate
+      tctx
+      #{'myapp/sch}
+      {:coding {:code "foo" :display "Foo"}})
+    {:errors    empty?
+     :deffereds [{:kind     :valueset
+                  :valueset {:zen/name 'myapp/vs1
+                             :engine   ::custom}
+                  :data     {:code "foo" :display "Foo"}
+                  :path     [:coding]}]}))
 
 
 (comment
