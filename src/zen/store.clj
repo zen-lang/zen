@@ -21,19 +21,19 @@
 
 (defn eval-resource [ctx ns-str ns-name nmsps k resource]
   (-> (clojure.walk/postwalk
-       (fn [x]
-         (if (symbol? x)
-           (if (namespace x)
-             (do (when-not (get-in @ctx [:symbols x])
-                   (swap! ctx update :errors conj {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)}))
-                 x)
-             (do (when-not (get nmsps x)
-                   (swap! ctx update :errors conj {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)}))
-                 (symbol ns-str (name x))))
-           x))
-       resource)
+        (fn [x]
+          (if (symbol? x) ;; TODO: allow symbols namespaced with current namespace
+            (if (namespace x)
+              (do (when-not (get-in @ctx [:symbols x])
+                    (swap! ctx update :errors conj {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)}))
+                  x)
+              (do (when-not (get nmsps x)
+                    (swap! ctx update :errors conj {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)}))
+                  (symbol ns-str (name x))))
+            x))
+        resource)
       (assoc ;;TODO :zen/ns ns-name
-             :zen/name (symbol (name ns-name) (name k)))))
+        :zen/name (symbol (name ns-name) (name k)))))
 
 
 (defn validate-resource [ctx res]

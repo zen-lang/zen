@@ -228,6 +228,12 @@
                          :every {:type map :keys {:value {:type any}}}}
                   :fail {:type string}
 
+                  :valueset {:type symbol
+                             :zen/tags #{valueset}
+                             :zen/desc "Check that value is in valueset.
+                                        Validation can create errors and deferred checks
+                                        Zen doesn't perform any side effects, they should be executed on the application level"}
+
                   :validation {:type set
                                :zen/desc "Custom validation set of functions"
                                :every {:type symbol :tags #{validation-fn}}}

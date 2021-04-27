@@ -22,7 +22,7 @@
 
   (def tctx (zen.core/new-context {:unsafe true }))
 
-  (def _zen-eval (zen.core/load-ns tctx data))
+  (def _load-ns-res (zen.core/load-ns tctx data))
 
   (matcho/match (sort-by :resource (:errors @tctx))
                 '[{:path [:enum], :resource data/i1}
@@ -50,29 +50,32 @@
 
     sch {:zen/tags #{zen/schema}
          :type     zen/map
-         :keys     {:code {:type     zen/string
-                           :valueset vs1}
-
+         :keys     {:code   {:type     zen/string
+                             :valueset vs1}
                     :coding {:type     zen/map
                              :confirms #{Coding}
                              :valueset vs2}
 
-                    :codeableConcept {:type zen/map
-                                      :keys {:text   {:type zen/string}
-                                             :coding {:type    zen/vector
-                                                      :slicing {:slices {"bind-vs" {:filter {:engine :zen
-                                                                                             :zen    {:type     zen/map
-                                                                                                      :confirms #{Coding}
-                                                                                                      :valueset vs2}}
-                                                                                    :schema {:type zen/vector :minItems 1 :maxItems 1}}}}
-                                                      :every   {:type     zen/map
-                                                                :confirms #{Coding}}}}}}}})
+                    :codeableConcept
+                    {:type zen/map
+                     :keys {:text   {:type zen/string}
+                            :coding {:type  zen/vector
+                                     :slicing
+                                     {:slices
+                                      {"bind-vs"
+                                       {:filter {:engine :zen
+                                                 :zen    {:type     zen/map
+                                                          :confirms #{Coding}
+                                                          :valueset vs2}}
+                                        :schema {:type zen/vector :minItems 1 :maxItems 1}}}}
+                                     :every {:type     zen/map
+                                             :confirms #{Coding}}}}}}}})
 
 
-(deftest ^:kaocha/pending valueset-validation
+(deftest valueset-validation
   (def tctx (zen.core/new-context {:unsafe true}))
 
-  (zen.core/load-ns tctx zen-schema)
+  (def _load-ns-res (zen.core/load-ns tctx zen-schema))
 
   (matcho/match @tctx {:errors nil?})
 
@@ -95,6 +98,7 @@
          :coding          {:code "wrong" :display "Wrong"}
          :codeableConcept {:text "Wrong" :coding [{:code "wrong" :display "Wrong"}]}})
       {:errors seq})
+
     (matcho/match
       (zen.core/validate
         tctx

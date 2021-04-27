@@ -441,14 +441,35 @@
         (register-unmatched-enum acc enum data)))
     acc))
 
-(defn validate-valueset [ctx {path :path :as acc} valueset data]
-  (if (nil? valueset)
-    acc
-    acc)) ;; TODO
+(defn valueset-engine-apply-dispatch [_ctx {engine :engine} _code] engine)
+(defmulti valueset-engine-apply #'valueset-engine-apply-dispatch)
 
-#_(defmulti validate-valueset [{engine :engine} code] engine)
-#_(defmethod validate-valueset :enum [{enum :enum} code]
-    (contains? enum code))
+(defmethod valueset-engine-apply :default [_ctx {:keys [engine]} _code]
+  {:errors    [{:message (str "Unknown valueset engine: " engine)}]
+   :deffereds []})
+
+(defmethod valueset-engine-apply :enum [_ctx valueset code]
+  (when-not (contains? (:enum valueset) code)
+    {:errors [{:message (format "Expected '%s' to be in valueset %s" code (:zen/name valueset))}]}))
+
+(defn valueset-engine-prepare-result [_ctx acc valueset engine-result]
+  (into {}
+        (map (fn [[k vs]]
+               {k (mapv (fn [v]
+                          (assoc v
+                                 :path (:path acc)
+                                 :schema (conj (:schema acc) (:zen/name valueset))))
+                        vs)}))
+        engine-result))
+
+(defn validate-valueset [ctx acc valueset-sym data]
+  (if valueset-sym
+    (let [valueset        (get-symbol ctx valueset-sym)
+          engine-result   (valueset-engine-apply ctx valueset data)
+          valueset-result (valueset-engine-prepare-result ctx acc valueset engine-result)]
+      (restore-acc (merge-with into acc valueset-result)
+                   acc))
+    acc))
 
 (defn validate-node [ctx acc {tp :type :as schema} data]
   (try
@@ -485,12 +506,11 @@
                :path path}))))
 
 (defn global-errors&warnings [acc]
-  (let [errs (concat (:errors acc)
-                     (unknown-keys-errors acc)
-                     (valueset-errors acc)
-                     (enum-errors acc))]
-    (merge acc {:warnings []
-                :errors errs})))
+  (let [errs (vec (concat (:errors acc)
+                          (unknown-keys-errors acc)
+                          (valueset-errors acc)
+                          (enum-errors acc)))]
+    (merge acc {:warnings [], :errors errs})))
 
 (defn validate-schema [ctx schema data]
   (-> (validate-node ctx (new-validation-acc) schema data)
