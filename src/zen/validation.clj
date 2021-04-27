@@ -405,11 +405,8 @@
   (add-error ctx acc {:message (format "No validate-type multimethod for '%s" t) :type "primitive-type"}))
 
 (defn validate-const [ctx acc const data]
-  (if const
-    (if (= (:value const) data)
-      acc
-      (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"}))
-    acc))
+  (when (and const (not= (:value const) data))
+    (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"})))
 
 (defn validate-confirms [ctx {pth :path :as acc} cfs data]
   (->> cfs
@@ -430,16 +427,13 @@
                    (update :enum (fn [en] (into (or en #{}) (map :value enum))))
                    (assoc :data data)))))
 
-(defn validate-enum [ctx {path :path :as acc} enum data]
-  (if enum
-    (if (get-in acc [:enums path :match])
-      acc
-      (if (->> enum
-               (filter (fn [v] (= (:value v) data)))
-               first)
-        (assoc-in acc [:enums path] {:match true})
-        (register-unmatched-enum acc enum data)))
-    acc))
+(defn validate-enum [_ctx {path :path :as acc} enum data]
+  (when (and enum (not (get-in acc [:enums path :match])))
+    (if (->> enum
+             (filter (fn [v] (= (:value v) data)))
+             first)
+      (assoc-in acc [:enums path] {:match true})
+      (register-unmatched-enum acc enum data))))
 
 (defn valueset-engine-apply-dispatch [_ctx {engine :engine} _code] engine)
 (defmulti valueset-engine-apply #'valueset-engine-apply-dispatch)
@@ -463,20 +457,19 @@
         engine-result))
 
 (defn validate-valueset [ctx acc valueset-sym data]
-  (if valueset-sym
+  (when valueset-sym
     (let [valueset        (get-symbol ctx valueset-sym)
           engine-result   (valueset-engine-apply ctx valueset data)
           valueset-result (valueset-engine-prepare-result ctx acc valueset engine-result)]
       (restore-acc (merge-with into acc valueset-result)
-                   acc))
-    acc))
+                   acc))))
 
 (defn validate-node [ctx acc {tp :type :as schema} data]
   (try
-    (let [acc (validate-const ctx acc (:const schema) data)
-          acc (validate-confirms ctx acc (:confirms schema) data)
-          acc (validate-enum ctx acc (:enum schema) data)
-          acc (validate-valueset ctx acc (:valueset schema) data)]
+    (let [acc (or (validate-const ctx acc (:const schema) data) acc)
+          acc (or (validate-confirms ctx acc (:confirms schema) data) acc)
+          acc (or (validate-enum ctx acc (:enum schema) data) acc)
+          acc (or (validate-valueset ctx acc (:valueset schema) data) acc)]
       (if tp
         (let [{tags :zen/tags} (get-symbol ctx tp)]
           (if (and tags (contains? tags 'zen/type))
