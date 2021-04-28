@@ -917,44 +917,53 @@
 
   (testing "effects"
     (zen.core/load-ns!
-     tctx {'ns 'test.fx
-           'or {:zen/tags #{'zen/schema-fx 'zen/schema}
-                :type 'zen/vector
-                :every {:type 'zen/keyword}}
+      tctx {'ns 'test.fx
+            'or {:zen/tags #{'zen/schema-fx 'zen/schema}
+                 :type     'zen/vector
+                 :every    {:type 'zen/keyword}}
 
-           'just {}
+            'just {}
 
-           'subj {:zen/tags #{'zen/schema}
-                  :type 'zen/map
-                  :keys {:name {:type 'zen/string}
-                        :email {:type 'zen/string}}
-                  :fx {:test.fx/or [:name :email]}}})
+            'subj {:zen/tags #{'zen/schema}
+                   :type     'zen/map
+                   :keys     {:name  {:type 'zen/string}
+                              :email {:type 'zen/string}}
+                   'or       [:name :email]}})
 
     (invalid-schema
-     {:zen/tags #{'zen/schema}
-      :type 'zen/map
-      :fx {:test.fx/just [:name :email]}}
-     [{:type "unknown-key",
-       :message "unknown key :test.fx/just",
-       :path [:fx :test.fx/just]}])
+      {:zen/tags     #{'zen/schema}
+       :type         'zen/map
+       'test.fx/just [:name :email]}
+      [{:type    "unknown-key",
+        :message "unknown key test.fx/just",
+        :path    ['test.fx/just]}])
 
     (valid-schema!
-     {:zen/tags #{'zen/schema}
-      :type 'zen/map
-      :fx {:test.fx/or [:name :email]}})
+      {:zen/tags   #{'zen/schema}
+       :type       'zen/map
+       'test.fx/or [:name :email]})
 
     (invalid-schema
-     {:zen/tags #{'zen/schema}
-      :type 'zen/map
-      :fx {:test.fx/or 1}}
+      {:zen/tags   #{'zen/schema}
+       :type       'zen/map
+       'test.fx/or 1}
+      [{:message "Expected type of 'vector, got long",
+        :type    "type",
+        :path    ['test.fx/or],
+        :schema  ['zen/schema :keyname-schemas 'test.fx/or]}])
 
-     [{:message "Expected type of 'vector, got long",
-       :type "type",
-       :path [:fx :test.fx/or],
-       :schema ['zen/schema :fx :keyname-schemas :test.fx/or]}])
+    #_{:fx     (:zen/name prop-sch)
+       :path   (conj (:path acc) k)
+       :params v
+       :data   data}
 
-
-    )
-
-
-  )
+    (matcho/match (zen.core/validate
+                    tctx
+                    '#{test.fx/subj}
+                    {:name "Ilya"})
+                  {:errors  empty
+                   :effects [{:fx     'test.fx/or
+                              :path   ['test.fx/or]
+                              :data   {:name "Ilya"}
+                              :params [:name :email]}
+                             nil?]})))

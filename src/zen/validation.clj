@@ -17,7 +17,8 @@
   {:errors []
    :warnings []
    :schema []
-   :path []})
+   :path []
+   :effects []})
 
 (defn pretty-type [x]
   (str/lower-case (last (str/split (str (type x)) #"\."))))
@@ -33,6 +34,12 @@
   (let [sym (symbol (namespace k) (name k))]
     (when (contains? (get-in @ctx [:tags 'zen/property]) sym)
       (get-symbol ctx sym))))
+
+(defn resolve-keyname-schema [ctx keyname-schemas schema-key]
+  (when-let [prop-sch (and keyname-schemas (get-symbol ctx (symbol schema-key)))]
+    (when (or (nil? (:tags keyname-schemas))
+              (clojure.set/subset? (:tags keyname-schemas) (:zen/tags prop-sch)))
+      prop-sch)))
 
 (defn is-exclusive? [group data]
   (->> group
@@ -71,14 +78,12 @@
                                            (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                                  acc' (assoc-in acc' [:keys (conj (:path acc) k)] true)]
                                              (restore-acc acc' acc))
-                                           (if-let [prop-sch  (and (keyword? k) (namespace k) (or (resolve-property ctx k)
-                                                                                                  (and kns
-                                                                                                       (when-let [prop-sch (get-symbol ctx (symbol k))]
-                                                                                                         (when (or (nil? (:tags kns))
-                                                                                                                   (clojure.set/subset? (:tags kns) (:zen/tags prop-sch)))
-                                                                                                           prop-sch)))))]
+                                           (if-let [prop-sch  (and (qualified-ident? k)
+                                                                   (or (resolve-property ctx k)
+                                                                       (resolve-keyname-schema ctx kns k)))]
                                              (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
-                                                 (restore-acc acc))
+                                                 (restore-acc acc)
+                                                 (assoc-in [:keys (conj (:path acc) k)] true))
                                              (if ignore-unknown-keys
                                                acc
                                                (update-in acc [:keys (conj (:path acc) k)] #(or % false)))))
@@ -115,7 +120,7 @@
                                                          :type "map.exclusive-keys"}
                                                 {:schema [:exclusive-keys]})))
                                  acc))
-                 (restore-acc acc))
+                    (restore-acc acc))
                 acc)
 
           acc (if-let [nm (and sk (get data sk))]
@@ -435,7 +440,14 @@
 (defn validate-node-rule-dispatch [_ctx _acc rule _rule-val _data] rule)
 (defmulti validate-node-rule #'validate-node-rule-dispatch)
 
-(defmethod validate-node-rule :default [_ctx acc _rule _rule-val _data] acc)
+(defmethod validate-node-rule :default [ctx acc rule rule-val data]
+  (when-let [keyname-schema (resolve-keyname-schema ctx {:tags #{'zen/schema-fx}} rule)]
+    (when (contains? (:zen/tags keyname-schema) 'zen/schema-fx)
+      (update acc :effects conj
+              {:fx     (:zen/name keyname-schema)
+               :path   (conj (:path acc) rule)
+               :params rule-val
+               :data   data}))))
 
 (defmethod validate-node-rule :const [ctx acc _ const data]
   (when (and const (not= (:value const) data))
@@ -509,7 +521,9 @@
                           (unknown-keys-errors acc)
                           (valueset-errors acc)
                           (enum-errors acc)))]
-    (merge acc {:warnings [], :errors errs})))
+    (merge acc {:warnings []
+                :errors errs
+                :effects (:effects acc)})))
 
 (defn validate-schema [ctx schema data]
   (-> (validate-node ctx (new-validation-acc) schema data)
