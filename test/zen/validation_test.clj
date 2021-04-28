@@ -952,16 +952,11 @@
         :path    ['test.fx/or],
         :schema  ['zen/schema :keyname-schemas 'test.fx/or]}])
 
-    #_{:fx     (:zen/name prop-sch)
-       :path   (conj (:path acc) k)
-       :params v
-       :data   data}
-
     (matcho/match (zen.core/validate
                     tctx
                     '#{test.fx/subj}
                     {:name "Ilya"})
-                  {:errors  empty
+                  {:errors  empty?
                    :effects [{:fx     'test.fx/or
                               :path   ['test.fx/or]
                               :data   {:name "Ilya"}
