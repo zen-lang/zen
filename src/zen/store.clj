@@ -122,7 +122,7 @@
   (get-in @ctx [:tags tag]))
 
 (defn new-context [& [opts]]
-  (let [ctx  (atom (or opts {}))]
+  (let [ctx (atom (or opts {}))]
     (read-ns ctx 'zen)
     ctx))
 

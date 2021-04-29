@@ -67,7 +67,7 @@
     (let [ignore-unknown-keys (or ky vls (= :open validation-type))
           acc (if ignore-unknown-keys
                 (update acc :keys
-                        (fn [k] (reduce (fn [acc v] (assoc acc v true))
+                        (fn [k] (reduce (fn [acc v] (assoc acc v #{(:schema acc)}))
                                         (or k {})
                                         (mapv #(conj (:path acc) %) (keys data)))))
                 acc)
@@ -79,16 +79,16 @@
                                           {:schema [:fail]})
                                (let [acc (if-let [sch (get ks k)]
                                            (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
-                                                 acc' (assoc-in acc' [:keys (conj (:path acc) k)] true)]
+                                                 acc' (update-in acc' [:keys (conj (:path acc) k)] (fnil conj #{}) (:schema acc))]
                                              (restore-acc acc' acc))
                                            (if-let [prop-sch (or (resolve-property ctx k)
                                                                  (resolve-keyname-schema ctx kns k))]
                                              (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
                                                  (restore-acc acc)
-                                                 (assoc-in [:keys (conj (:path acc) k)] true))
+                                                 (update-in [:keys (conj (:path acc) k)] (fnil conj #{}) (:schema acc)))
                                              (if ignore-unknown-keys
                                                acc
-                                               (update-in acc [:keys (conj (:path acc) k)] #(or % false)))))
+                                               (update-in acc [:keys (conj (:path acc) k)] #(or % #{})))))
                                      acc (if vls
                                            (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
                                                (restore-acc acc))
@@ -503,7 +503,7 @@
 
 (defn unknown-keys-errors [acc]
   (->> (:keys acc)
-       (filter (fn [[_ v]] (false? v)))
+       (filter (fn [[_ v]] (empty? v)))
        (map (fn [[k _]] {:type "unknown-key"
                          :message (format "unknown key %s" (last k))
                          :path k}))))
