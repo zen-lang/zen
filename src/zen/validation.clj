@@ -164,17 +164,22 @@
 
 (declare validate-collection)
 
-(defn append-slice-name-to-error-path [slice-name error]
-  (update error :path (fn [[p & rest-p]] (into [p (str \[ slice-name \])] rest-p))))
+(defn append-slice-name-to-error-path [old-path slice-name error]
+  (let [error-sub-path (drop (count old-path) (:path error))
+        path           (vec (concat old-path
+                                    [(str "[" slice-name "]")]
+                                    error-sub-path))]
+    (assoc error :path path)))
+
+(defn process-slicing-errors-paths [path slice-name old-errors cur-errors]
+  (->> cur-errors
+       (drop (count old-errors))
+       (mapv (partial append-slice-name-to-error-path path slice-name))
+       (into old-errors)))
 
 (defn validate-slice [ctx acc slice-name slice-schema slice-coll]
   (let [slice-validation-result (validate-node ctx acc slice-schema slice-coll)
-        old-errors (:errors acc)
-        cur-errors (:errors slice-validation-result)
-        new-errors (->> cur-errors
-                        (drop (count old-errors))
-                        (mapv (partial append-slice-name-to-error-path slice-name)))
-        errors     (into old-errors new-errors)]
+        errors (process-slicing-errors-paths (:path acc) slice-name (:errors acc) (:errors slice-validation-result))]
     (assoc slice-validation-result :errors errors)))
 
 (defn validate-slicing [ctx acc slicing coll]

@@ -32,14 +32,67 @@
             slice-definition
             {:zen/tags #{zen/schema}
              :type zen/vector
-             :every {:type zen/map :keys {:kind {:type zen/string}, :value {:type zen/any}}}
-             :slicing {:slices {"kw"     {:filter {:engine :zen, :zen {:type zen/map :keys {:kind {:const {:value "keyword"}}}}}
-                                          :schema {:type zen/vector, :every {:type zen/map :keys {:value {:type zen/keyword}}}}}
-                                "number" {:filter {:engine :zen, :zen {:type zen/map :keys {:kind {:const {:value "number"}}}}}
-                                          :schema {:type zen/vector, :every {:type zen/map :keys {:value {:type zen/number}}}}}}
-                       :rest   {:type  zen/vector
-                                :every {:type zen/map
-                                        :keys {:value {:type zen/string}}}}}}})
+             :every {:type zen/map :keys {:kind {:type zen/string}
+                                          :value {:type zen/any}}}
+             :slicing {:rest {:type  zen/vector
+                              :every {:type zen/map
+                                      :keys {:value {:type zen/string}}}}
+                       :slices {"kw"
+                                {:filter {:engine :zen
+                                          :zen    {:type zen/map
+                                                   :keys {:kind {:const {:value "keyword"}}}}}
+                                 :schema {:type  zen/vector
+                                          :every {:type zen/map
+                                                  :keys {:value {:type zen/keyword}}}}}
+
+                                "number"
+                                {:filter {:engine :zen
+                                          :zen    {:type zen/map
+                                                   :keys {:kind {:const {:value "number"}}}}}
+                                 :schema {:type  zen/vector
+                                          :every {:type zen/map
+                                                  :keys {:value {:type zen/number}}}}}
+
+                                "nested"
+                                {:filter {:engine :zen
+                                          :zen    {:type zen/map
+                                                   :keys {:kind {:const {:value "nested"}}}}}
+                                 :schema {:type  zen/vector
+                                          :every {:type zen/map
+                                                  :keys {:value {:type zen/vector
+                                                                 :every {:type zen/map
+                                                                         :keys {:kind  {:type zen/string}
+                                                                                :value {:type zen/any}}}
+                                                                 :slicing
+                                                                 {:slices
+                                                                  {"nest-kw"
+                                                                   {:filter {:engine :zen
+                                                                             :zen    {:type zen/map
+                                                                                      :keys {:kind {:const {:value "keyword"}}}}}
+                                                                    :schema {:type  zen/vector
+                                                                             :every {:type zen/map
+                                                                                     :keys {:value {:type zen/keyword}}}}}}}}}}}}
+
+                                "map"
+                                {:filter {:engine :zen
+                                          :zen    {:type zen/map
+                                                   :keys {:kind {:const {:value "map"}}}}}
+                                 :schema {:type  zen/vector
+                                          :every {:type zen/map
+                                                  :keys {:value {:type zen/map
+                                                                 :keys {:nested {:type zen/vector
+                                                                                 :every {:type zen/map
+                                                                                         :keys {:kind  {:type zen/string}
+                                                                                                :value {:type zen/any}}}
+                                                                                 :slicing
+                                                                                 {:slices
+                                                                                  {"nest-kw"
+                                                                                   {:filter {:engine :zen
+                                                                                             :zen    {:type zen/map
+                                                                                                      :keys {:kind {:const {:value "keyword"}}}}}
+                                                                                    :schema {:type  zen/vector
+                                                                                             :every {:type zen/map
+                                                                                                     :keys {:value {:type zen/keyword}}}}}}}}}}}}}}}}}})
 
     (matcho/match @tctx {:errors nil?})
 
@@ -47,16 +100,30 @@
      [{:kind "keyword" :value :hello}
       {:kind "keyword" :value :world}
       {:kind "number" :value 1}
-      {:kind "foo"    :value "string"}])
+      {:kind "foo"    :value "string"}
+      {:kind "map"
+       :value {:nested [{:kind "keyword" :value :world}
+                        {:kind "number" :value 1}]}}
+      {:kind "nested"
+       :value [{:kind "keyword" :value :world}
+               {:kind "number" :value 1}]}])
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "keyword" :value 1}]
-            {:errors [{:path [0 "[kw]" :value]}]})
+            {:errors [{:path ["[kw]" 0 :value nil?]} nil?]})
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "number" :value "1"}]
-            {:errors [{:path [0 "[number]" :value]}]})
+            {:errors [{:path ["[number]" 0 :value nil?]} nil?]})
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "foo" :value 1}]
-            {:errors [{:path [0 "[:slicing/rest]" :value]}]})))
+            {:errors [{:path ["[:slicing/rest]" 0 :value nil?]} nil?]})
+
+    (vmatch tctx #{'myapp/slice-definition}
+            [{:kind "map", :value {:nested [{:kind "keyword" :value "not keyword"}]}}]
+            {:errors [{:path ["[map]" 0 :value :nested "[nest-kw]" 0 :value nil?]} nil?]})
+
+    (vmatch tctx #{'myapp/slice-definition}
+            [{:kind "nested" :value [{:kind "keyword" :value "not keyword"}]}]
+            {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil?]} nil?]})))
