@@ -31,12 +31,15 @@
   (merge acc (select-keys old-acc [:path :schema])))
 
 (defn resolve-property [ctx k]
-  (let [sym (symbol (namespace k) (name k))]
-    (when (contains? (get-in @ctx [:tags 'zen/property]) sym)
-      (get-symbol ctx sym))))
+  (when (qualified-ident? k)
+    (let [sym (symbol (namespace k) (name k))]
+      (when (contains? (get-in @ctx [:tags 'zen/property]) sym)
+        (get-symbol ctx sym)))))
 
 (defn resolve-keyname-schema [ctx keyname-schemas schema-key]
-  (when-let [prop-sch (and keyname-schemas (get-symbol ctx (symbol schema-key)))]
+  (when-let [prop-sch (and (seq keyname-schemas)
+                           (qualified-ident? schema-key)
+                           (get-symbol ctx (symbol schema-key)))]
     (when (or (nil? (:tags keyname-schemas))
               (clojure.set/subset? (:tags keyname-schemas) (:zen/tags prop-sch)))
       prop-sch)))
@@ -78,9 +81,8 @@
                                            (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                                  acc' (assoc-in acc' [:keys (conj (:path acc) k)] true)]
                                              (restore-acc acc' acc))
-                                           (if-let [prop-sch  (and (qualified-ident? k)
-                                                                   (or (resolve-property ctx k)
-                                                                       (resolve-keyname-schema ctx kns k)))]
+                                           (if-let [prop-sch (or (resolve-property ctx k)
+                                                                 (resolve-keyname-schema ctx kns k))]
                                              (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
                                                  (restore-acc acc)
                                                  (assoc-in [:keys (conj (:path acc) k)] true))
@@ -437,17 +439,29 @@
                         vs)}))
         engine-result))
 
-(defn validate-node-rule-dispatch [_ctx _acc rule _rule-val _data] rule)
+(defn validate-node-rule-dispatch [ctx _acc rule _rule-val _data]
+  (if (resolve-keyname-schema ctx {:tags #{'zen/schema-fx}} rule)
+    ::fx
+    rule))
+
 (defmulti validate-node-rule #'validate-node-rule-dispatch)
 
-(defmethod validate-node-rule :default [ctx acc rule rule-val data]
-  (when-let [keyname-schema (resolve-keyname-schema ctx {:tags #{'zen/schema-fx}} rule)]
-    (when (contains? (:zen/tags keyname-schema) 'zen/schema-fx)
-      (update acc :effects conj
-              {:fx     (:zen/name keyname-schema)
-               :path   (conj (:path acc) rule)
-               :params rule-val
-               :data   data}))))
+(defmethod validate-node-rule :default [_ctx _acc _rule _rule-val _data])
+
+(defn emit-fx
+  "If an unknown key encountered it may be a top-level fx symbol (as defined in zen/schema :keyname-schemas)
+  then the encountered symbol should be checked if it indeed is a zen/schema-fx
+  and if it is a zen/schema-fx then an effect should be produced"
+  [ctx schema-key schema-params data]
+  (when-let [keyname-schema (resolve-keyname-schema ctx {:tags #{'zen/schema-fx}} schema-key)]
+    {:fx     (:zen/name keyname-schema)
+     :params schema-params
+     :data   data}))
+
+(defmethod validate-node-rule ::fx [ctx acc rule rule-val data]
+  (let [fx (-> (emit-fx ctx rule rule-val data)
+               (assoc :path (conj (:path acc) rule)))]
+    (update acc :effects conj fx)))
 
 (defmethod validate-node-rule :const [ctx acc _ const data]
   (when (and const (not= (:value const) data))
