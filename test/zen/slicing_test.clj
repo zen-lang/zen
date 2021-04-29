@@ -155,4 +155,11 @@
 
     (valid tctx 'myapp/subj
            [{:kind "slice", :slice-key "kw-key"}
-            {:kind "rest", :rest-key "rest-key"}])))
+            {:kind "rest", :rest-key "rest-key"}])
+
+    (vmatch tctx #{'myapp/subj}
+             [{:kind "rest", :rest-key "rest-key"}
+              {:kind "slice", :rest-key "kw-key"}]
+             {:errors [{:path [1 #_"[slice]" :rest-key nil?]}
+                       ;; zen can't know where unknown key came from, thus can't write slice in this path
+                       nil?]})))

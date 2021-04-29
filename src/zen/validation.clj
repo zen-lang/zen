@@ -174,6 +174,10 @@
     (assoc error :path path)))
 
 (defn process-slicing-errors-paths
+  "Appends slice names to errors paths
+   We can't modify (:path acc) when traversing into slices because
+   paths are shared between :every and :slices and
+   keys validation relies on paths collisions"
   [path slice-name old-errors cur-errors]
   (->> cur-errors
        (drop (count old-errors))
@@ -181,18 +185,21 @@
        (into old-errors)))
 
 (defn validate-slice [ctx acc slice-name slice-schema slice-coll]
-  (let [slice-validation-result (validate-node ctx acc slice-schema slice-coll)
+  (let [slice-validation-result (validate-node ctx (update-acc ctx acc {:schema [slice-name]}) slice-schema slice-coll)
         errors (process-slicing-errors-paths (:path acc) slice-name (:errors acc) (:errors slice-validation-result))]
-    (assoc slice-validation-result :errors errors)))
+    (restore-acc (assoc slice-validation-result :errors errors)
+                 acc)))
 
 (defn validate-slicing [ctx acc slicing coll]
-  (let [sliced-coll (slice ctx slicing coll)]
-    (reduce (fn [acc' [slice-name {slice-schema :schema}]]
-              (validate-slice ctx acc' slice-name slice-schema (vec (vals (get sliced-coll slice-name)))))
-            (if (and (contains? slicing :rest) (contains? sliced-coll :slicing/rest))
-              (validate-slice ctx acc :slicing/rest (:rest slicing) (:slicing/rest sliced-coll))
-              acc)
-            (dissoc (:slices slicing) :slicing/rest))))
+  (let [slicing-acc (update-acc ctx acc {:schema [:slicing]})
+        sliced-coll (slice ctx slicing coll)
+        result-acc  (reduce (fn [acc' [slice-name {slice-schema :schema}]]
+                              (validate-slice ctx acc' slice-name slice-schema (vec (vals (get sliced-coll slice-name)))))
+                            (if (and (contains? slicing :rest) (contains? sliced-coll :slicing/rest))
+                              (validate-slice ctx slicing-acc :slicing/rest (:rest slicing) (:slicing/rest sliced-coll))
+                              slicing-acc)
+                            (dissoc (:slices slicing) :slicing/rest))]
+    (restore-acc result-acc acc)))
 
 (defn validate-collection
   [type ctx acc {{si :index si-ns :ns} :schema-index mn :minItems mx :maxItems, :as schema} data]
@@ -526,7 +533,7 @@
   (->> schemas
        (reduce (fn [acc sym]
                  (if-let [sch (get-symbol ctx sym)]
-                   (validate-node ctx (update acc :schema conj sym) sch data)
+                   (validate-node ctx (assoc acc :schema [sym]) sch data)
                    (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
                (new-validation-acc))
        (global-errors&warnings)))
