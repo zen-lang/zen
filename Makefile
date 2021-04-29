@@ -4,7 +4,7 @@
 SHELL = bash
 
 repl:
-	clj -A:test:nrepl -m nrepl.cmdline
+	echo "Use clojure jack-in instead"
 
 jar:
 	clojure -X:depstar jar :jar target/zen.jar

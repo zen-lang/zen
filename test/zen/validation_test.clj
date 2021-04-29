@@ -1,6 +1,7 @@
 (ns zen.validation-test
   (:require [matcho.core :as matcho]
             [clojure.test :refer [deftest is testing]]
+            [zen.test-utils :refer [vmatch match valid valid-schema! invalid-schema]]
             [zen.core]))
 
 (def tctx (zen.core/new-context {:unsafe true}))
@@ -106,69 +107,38 @@
        })
 
 ;; (get-in @tctx [:syms 'myapp/User])
-
-(defmacro vmatch [schemas subj res]
-  `(let [res# (zen.core/validate tctx ~schemas ~subj)]
-     (matcho/match res# ~res)
-     res#))
-
-(defmacro match [schema subj res]
-  `(let [res# (zen.core/validate tctx #{~schema} ~subj)]
-     (matcho/match (:errors res#) ~res)
-     (:errors res#)))
-
-(defmacro valid [schema subj]
-  `(let [res# (zen.core/validate tctx #{~schema} ~subj)]
-     (is (empty? (:errors res#)))
-     (:errors res#)))
-
-(defmacro valid-schema! [subj]
-  `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
-     (is (empty? (:errors res#)))
-     res#))
-
-(defmacro invalid-schema [subj res]
-  `(let [res# (zen.core/validate tctx #{'zen/schema} ~subj)]
-     (matcho/match (:errors res#) ~res)
-     (:errors res#)))
-
-
-
 (deftest test-validation
-
-
-
   (is (empty? (:errors @tctx)))
 
-  (vmatch #{'myapp/str} 1
+  (vmatch tctx #{'myapp/str} 1
           {:errors [{:message #"Expected type of 'string"}]})
 
-  (vmatch #{'myapp/str} "string"
+  (vmatch tctx #{'myapp/str} "string"
           {:errors empty?})
 
-  (vmatch #{'myapp/User} 1
+  (vmatch tctx #{'myapp/User} 1
           {:errors [{:message #"Expected type of 'map"}]})
 
-  (vmatch #{'myapp/User} {:name 1}
+  (vmatch tctx #{'myapp/User} {:name 1}
           {:errors [{:message #"Expected type of 'string"
                      :path [:name]
                      :schema ['myapp/User :name]}
                     nil?]})
 
-  (vmatch #{'myapp/User} {:name "niquola"}
+  (vmatch tctx #{'myapp/User} {:name "niquola"}
           {:errors empty?})
 
-  (vmatch #{'myapp/User} {:id "niquola"}
+  (vmatch tctx #{'myapp/User} {:id "niquola"}
           {:errors [{:message #":name is required"
                      :path [:name]
                      :schema ['myapp/User :require]}]})
 
-  (vmatch #{'myapp/User} {:name "niquola" :role "niquola"}
+  (vmatch tctx #{'myapp/User} {:name "niquola" :role "niquola"}
           {:errors [{:path [:role]
                      :type "unknown-key"
                      :message "unknown key :role"}]})
 
-  (vmatch #{'myapp/User} {:name "niquola" :address {:extra "niquola"}}
+  (vmatch tctx #{'myapp/User} {:name "niquola" :address {:extra "niquola"}}
           {:errors [{:path [:address :city]
                      :schema ['myapp/User :address :confirms 'myapp/Address :require]
                      :type "require"
@@ -177,16 +147,16 @@
                      :type "unknown-key"
                      :message "unknown key :extra"}]})
 
-  (vmatch #{'myapp/User} {:name "niquola" :contact {:phone "888"}}
+  (vmatch tctx #{'myapp/User} {:name "niquola" :contact {:phone "888"}}
           {:errors
            [{:type "unknown-key",
              :message "unknown key :contact",
              :path [:contact]}]})
 
-  (vmatch #{'myapp/SuperUser} {:name "niquola" :role "niquola"}
+  (vmatch tctx #{'myapp/SuperUser} {:name "niquola" :role "niquola"}
           {:errors empty?})
 
-  (vmatch #{'myapp/SuperUser} {:name "niquola" :contact {:phone "888"}}
+  (vmatch tctx #{'myapp/SuperUser} {:name "niquola" :contact {:phone "888"}}
           {:errors
            [{:message ":ex is required",
              :type "require",
@@ -194,11 +164,11 @@
              :schema ['myapp/SuperUser :contact :require]}
             nil?]})
 
-  (vmatch #{'myapp/User} {:name "vganshin" :old-name "rgv"}
+  (vmatch tctx #{'myapp/User} {:name "vganshin" :old-name "rgv"}
           {:errors [{:message #"Not supported"}]})
 
 
-  (vmatch #{'myapp/User} {:name "niquola" :address {:line "ups" :city "city"}}
+  (vmatch tctx #{'myapp/User} {:name "niquola" :address {:line "ups" :city "city"}}
           {:errors
            [{:message #"Expected type of 'vector",
              :type "type",
@@ -206,7 +176,7 @@
              :schema ['myapp/User :address :confirms 'myapp/Address :line]}
             nil?]})
 
-  (match 'myapp/User
+  (match tctx 'myapp/User
          {:name "niquola" :address {:line ["a" "b" 1] :city "city"}}
          [{:message "Expected type of 'string, got 'long",
            :type "string.type",
@@ -238,7 +208,7 @@
                               :type 'zen/map
                               :keys {:memberId {:type 'zen/string}}}}}})
 
-  (vmatch #{'elcheck/Elcheck}
+  (vmatch tctx #{'elcheck/Elcheck}
           {:patient {:genderCode "F",
                     :updateYourRecords true,
                     :subscriberRelationship "Spouse",
@@ -252,7 +222,7 @@
           {:id "22" :lastName "O'DONNELL", :memberId "VMPV22071045", :firstName "RYAN"}}
          {:errors [nil?]})
 
-  (vmatch #{'myapp/User} {:name "niquola" :identifiers [1 {:ups "ups"}]}
+  (vmatch tctx #{'myapp/User} {:name "niquola" :identifiers [1 {:ups "ups"}]}
           {:errors
            [{:message "Expected type of 'map, got 1",
              :type "type",
@@ -270,11 +240,11 @@
              :message "unknown key :ups",
              :path [:identifiers 1 :ups]}]})
 
-  (vmatch #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}
+  (vmatch tctx #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}
                                                         {:system "s1" :value "v2"}]}
           {:errors empty?})
 
-  (vmatch #{'myapp/User}
+  (vmatch tctx #{'myapp/User}
           {:name "niquola"
            :myapp/unexisting "ups"
            :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
@@ -283,13 +253,13 @@
              :message "unknown key :myapp/unexisting",
              :path [:myapp/unexisting]}]})
 
-  (vmatch #{'myapp/User}
+  (vmatch tctx #{'myapp/User}
           {:name "niquola"
            :myapp/mykey "hi"
            :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
           {:errors empty?})
 
-  (match 'myapp/User
+  (match tctx 'myapp/User
          {:name "niquola"
           :myapp/mykey 1
           :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
@@ -298,42 +268,42 @@
            :path [:myapp/mykey],
            :schema ['myapp/User :property :myapp/mykey]}])
 
-  (vmatch #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}]}
+  (vmatch tctx #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}]}
           {:errors [{:message "Expected >= 2, got 1" :path [:identifiers] :schema ['myapp/User :identifiers :minItems]}]})
 
-  (vmatch #{'zen/schema} {:type 'zen/string}
+  (vmatch tctx #{'zen/schema} {:type 'zen/string}
           {:errors empty?})
 
-  (vmatch #{'zen/schema} {:type 'zen/map :keys 1}
+  (vmatch tctx #{'zen/schema} {:type 'zen/map :keys 1}
           {:errors
            [{:message "Expected type of 'map, got 1",
              :type "type",
              :path [:keys],
              :schema ['zen/schema :schema-key 'zen/map :keys]}]})
 
-  (vmatch #{'myapp/Settings} {:headers {:a "str"}}
+  (vmatch tctx #{'myapp/Settings} {:headers {:a "str"}}
           {:errors empty?})
 
-  (vmatch #{'myapp/Settings} {:headers {:a 1}}
+  (vmatch tctx #{'myapp/Settings} {:headers {:a 1}}
           {:errors [{:path [:headers :a]
                      :schema ['myapp/Settings :headers :values]
                      :message #"Expected type of 'string"}]})
 
-  (match 'myapp/Settings
+  (match tctx 'myapp/Settings
          {:headers {:content-type "up" :a "up"}}
          [{:message "Expected length >= 3, got 2",
            :type "string.minLength",
            :path [:headers :content-type],
            :schema ['myapp/Settings :headers :content-type :minLength]}])
 
-  (vmatch #{'zen/schema} {:type 'zen/map :keys {:prop 1}}
+  (vmatch tctx #{'zen/schema} {:type 'zen/map :keys {:prop 1}}
           {:errors
            [{:message "Expected type of 'map, got 1",
              :type "type",
              :path [:keys :prop],
              :schema ['zen/schema :schema-key 'zen/map :keys :values]}]})
 
-  (vmatch #{'zen/schema} {:type 'zen/map
+  (vmatch tctx #{'zen/schema} {:type 'zen/map
                           :keys {:ups {:type 'zen/string
                                        :minLength "ups"}}}
           {:errors
@@ -344,14 +314,14 @@
              ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :schema-key 'zen/string :minLength]}]})
 
   
-  (vmatch #{'zen/schema}
+  (vmatch tctx #{'zen/schema}
           {:type 'zen/map
            :keys {:minLength {:type 'zen/integer, :min 0}
                   :maxLength {:type 'zen/integer, :min 0}
                   :regex {:type 'zen/regex}}}
           {:errors empty?})
 
-  (vmatch #{'zen/schema}
+  (vmatch tctx #{'zen/schema}
           {:type 'zen/map
            :keys {:minLength {:type 'zen/integer, :ups 0}
                   :maxLength {:type 'zen/integer, :min ""}
@@ -366,17 +336,17 @@
              :message "unknown key :ups",
              :path [:keys :minLength :ups]}]})
 
-  (match 'myapp/open-map {:foo "bar"} empty?)
-  (match 'myapp/closed-map {:foo "bar"} [{:path [:foo]}])
+  (match tctx 'myapp/open-map {:foo "bar"} empty?)
+  (match tctx 'myapp/closed-map {:foo "bar"} [{:path [:foo]}])
 
-  (match 'myapp/email
+  (match tctx 'myapp/email
          "ups"
          [{:message "Expected match /^.*@.*$/, got \"ups\"",
            :type "string.regex",
            :path [],
            :schema ['myapp/email :regex]}])
 
-  (vmatch #{'zen/schema}
+  (vmatch tctx #{'zen/schema}
           {:type 'zen/case
            :case [{:when {:type 'zen/integer}
                    :then {:type 'zen/integer}}
@@ -384,11 +354,11 @@
                    :then {:type 'zen/map :keys {:name {:type 'zen/string}}}}]}
           {:errors empty?})
 
-  (vmatch #{'myapp/path}
+  (vmatch tctx #{'myapp/path}
           ["string" {:name "name"} "rest"]
           {:errors empty?})
 
-  (vmatch #{'myapp/path}
+  (vmatch tctx #{'myapp/path}
           ["string" {:name "name"} 1 {:name "ups"}]
           {:errors
            [{:message
@@ -397,7 +367,7 @@
              :path [2],
              :schema ['myapp/path :every :case]}]})
 
-  (vmatch #{'myapp/path}
+  (vmatch tctx #{'myapp/path}
           ["string" {:name "name"} 1 {:name "ups"}]
           {:errors
            [{:message
@@ -407,11 +377,11 @@
              :schema ['myapp/path :every :case]}]})
 
 
-  (vmatch #{'myapp/maps-case}
+  (vmatch tctx #{'myapp/maps-case}
           {:person true :name "Ok"}
           {:errors empty?})
 
-  (vmatch #{'myapp/maps-case}
+  (vmatch tctx #{'myapp/maps-case}
           {:person true}
           {:errors
            [{:message ":name is required",
@@ -419,7 +389,7 @@
              :path [:name],
              :schema ['myapp/maps-case :case 0 :then :require]}]})
 
-  (vmatch #{'myapp/maps-case}
+  (vmatch tctx #{'myapp/maps-case}
           {:org true}
           {:errors
            [{:message ":title is required",
@@ -427,7 +397,7 @@
              :path [:title],
              :schema ['myapp/maps-case :case 1 :then :require]}]})
 
-  (vmatch #{'myapp/maps-case}
+  (vmatch tctx #{'myapp/maps-case}
           {:something true}
           {:errors
            [{:message
@@ -436,34 +406,34 @@
              :path [],
              :schema ['myapp/maps-case :case]}]})
 
-  (vmatch #{'myapp/const} "ups"
+  (vmatch tctx #{'myapp/const} "ups"
           {:errors
            [{:message "Expected 'fixed', got 'ups'",
              :type "schema",
              :path [],
              :schema ['myapp/const]}]})
 
-  (vmatch #{'myapp/const} "fixed"
+  (vmatch tctx #{'myapp/const} "fixed"
           {:errors empty?})
 
-  (vmatch #{'myapp/const} 1
+  (vmatch tctx #{'myapp/const} 1
           {:errors
            [{:message "Expected 'fixed', got '1'",
              :schema ['myapp/const]}
             {:message "Expected type of 'string, got 'long",
              :schema ['myapp/const]}]})
 
-  (vmatch #{'myapp/const-map} {:fixed "fixed"}
+  (vmatch tctx #{'myapp/const-map} {:fixed "fixed"}
           {:errors empty?})
 
-  (vmatch #{'myapp/const-map} {:fixed "ups"}
+  (vmatch tctx #{'myapp/const-map} {:fixed "ups"}
           {:errors
            [{:message "Expected '{:fixed \"fixed\"}', got '{:fixed \"ups\"}'",
              :type "schema",
              :path [],
              :schema ['myapp/const-map]}]})
 
-  ;; (vmatch #{'zen/schema}
+  ;; (vmatch tctx #{'zen/schema}
   ;;         {:zen/tags #{'zen/schema}
   ;;          :type 'zen/string
   ;;          :const {:value 1}}
@@ -477,9 +447,9 @@
                   ;; :regex ".*@.*"
                   })
 
-    (valid-schema! str-sch)
+    (valid-schema! tctx str-sch)
 
-    (invalid-schema
+    (invalid-schema tctx
      {:zen/tags #{'zen/schema}
       :type 'zen/string
       :minLength "a"
@@ -503,14 +473,14 @@
     (zen.core/load-ns! tctx {'ns 'test.str 'str str-sch})
 
 
-    (valid 'test.str/str "a@a")
+    (valid tctx 'test.str/str "a@a")
 
     )
 
   ;; tessting map
   (testing "zen/map"
 
-    (valid-schema!
+    (valid-schema! tctx
      {:zen/tags #{'zen/schema}
       :type 'zen/map
       :key {:type 'zen/string}})
@@ -529,15 +499,15 @@
                       :type 'zen/map
                       :key {:type 'zen/integer}}})
 
-    (valid 'test.map/just-map {:a 1})
+    (valid tctx 'test.map/just-map {:a 1})
 
-    (match 'test.map/just-map 1
+    (match tctx 'test.map/just-map 1
            [{:message "Expected type of 'map, got 1",
              :type "type",
              :schema ['test.map/just-map]}])
 
-    (valid 'test.map/str-keys {"a" 1 "b" 2})
-    (match 'test.map/str-keys {:a 1 "b" 2}
+    (valid tctx 'test.map/str-keys {"a" 1 "b" 2})
+    (match tctx 'test.map/str-keys {:a 1 "b" 2}
            [{:message "Expected type of 'string, got 'keyword",
              :type "string.type",
              :path [:a],
@@ -565,21 +535,21 @@
              :schema-key {:key :kind :ns "test.map.sk"}
              :keys {:kind {:type 'zen/string}}}})
 
-    (valid-schema! (get sk-sch 'obj))
+    (valid-schema! tctx (get sk-sch 'obj))
 
     (zen.core/load-ns! tctx sk-sch)
 
-    (valid 'test.map.sk/obj {:kind "pt" :name "Nikolai"})
-    (valid 'test.map.sk/obj {:kind "org" :title "SPBGU" :id "org"})
+    (valid tctx 'test.map.sk/obj {:kind "pt" :name "Nikolai"})
+    (valid tctx 'test.map.sk/obj {:kind "org" :title "SPBGU" :id "org"})
 
-    (match 'test.map.sk/obj {:kind "pt" :extra "a"}
+    (match tctx 'test.map.sk/obj {:kind "pt" :extra "a"}
            [{:message ":name is required",
              :type "require",
              :path [:name],
              :schema ['test.map.sk/obj :schema-key 'test.map.sk/pt :require]}
             {:type "unknown-key", :message "unknown key :extra", :path [:extra]}])
 
-    (match 'test.map.sk/obj {:kind "org" :extra "a"}
+    (match tctx 'test.map.sk/obj {:kind "org" :extra "a"}
            [{:message ":title is required",
              :type "require",
              :path [:title],
@@ -594,13 +564,13 @@
 
   (testing "zen/vector"
 
-    (valid-schema!
+    (valid-schema! tctx
      {:zen/tags #{'zen/schema}
       :type 'zen/vector
       :nth {0 {:type 'zen/string}
             1 {:type 'zen/string}}})
 
-    (invalid-schema
+    (invalid-schema tctx
      {:zen/tags #{'zen/schema}
       :type 'zen/vector
       :nth {0 {:type 'zen/string}
@@ -619,10 +589,10 @@
                        1 {:type 'zen/string}}}})
 
 
-    (valid 'test.vec/nth [1 "ok"])
-    (valid 'test.vec/nth [1 "ok" :anything])
+    (valid tctx 'test.vec/nth [1 "ok"])
+    (valid tctx 'test.vec/nth [1 "ok" :anything])
 
-    (match 'test.vec/nth ["str" "ok"]
+    (match tctx 'test.vec/nth ["str" "ok"]
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
              :path [0],
@@ -630,12 +600,12 @@
 
   (testing "zen/symbol"
 
-    (valid-schema!
+    (valid-schema! tctx
      {:zen/tags #{'zen/schema}
       :type 'zen/symbol
       :tags #{'zen/tag}})
 
-    (invalid-schema
+    (invalid-schema tctx
      {:zen/tags #{'zen/schema}
       :type 'zen/vector
       :tags "ups"}
@@ -652,9 +622,9 @@
                  :tags #{'mytag}}})
 
 
-    (valid 'test.sym/sym 'test.sym/mytag)
+    (valid tctx 'test.sym/sym 'test.sym/mytag)
 
-    (match 'test.sym/sym 'ups
+    (match tctx 'test.sym/sym 'ups
            [{:message "Expected symbol 'ups tagged with '#{test.sym/mytag}, but only #{}"
              :type "symbol",
              :schema ['test.sym/sym :tags]}])
@@ -675,13 +645,13 @@
        {:zen/tags #{zen/schema}
         :type zen/datetime}})
 
-    (valid 'test.enum-and-const/one 1)
-    (valid 'test.enum-and-const/one 1.1)
+    (valid tctx 'test.enum-and-const/one 1)
+    (valid tctx 'test.enum-and-const/one 1.1)
 
-    (valid 'test.enum-and-const/date "1994-09-26")
+    (valid tctx 'test.enum-and-const/date "1994-09-26")
 
-    (valid 'test.enum-and-const/datetime "1994-09-26T16:40:00")
-    (valid 'test.enum-and-const/datetime "1994-09-26")
+    (valid tctx 'test.enum-and-const/datetime "1994-09-26T16:40:00")
+    (valid tctx 'test.enum-and-const/datetime "1994-09-26")
 
 
     (zen.core/load-ns!
@@ -695,7 +665,7 @@
        {:zen/tags #{zen/schema}
         :type animal}})
 
-    (match 'custom-primitive-type/cow {:cow "mooo"}
+    (match tctx 'custom-primitive-type/cow {:cow "mooo"}
            [{:message "No validate-type multimethod for 'custom-primitive-type/animal",
              :type "primitive-type",
              :path [],
@@ -713,14 +683,14 @@
                      :enum [{:value "b1"}
                             {:value "b2"}]}})
 
-    (valid 'test.enum/val "a1")
-    (valid 'test.enum/inh-val "a1")
-    (valid 'test.enum/inh-val "b1")
+    (valid tctx 'test.enum/val "a1")
+    (valid tctx 'test.enum/inh-val "a1")
+    (valid tctx 'test.enum/inh-val "b1")
 
-    (match 'test.enum/val "c"
+    (match tctx 'test.enum/val "c"
            [{:type "enum", :message "Expected 'c' in #{\"a1\" \"a2\"}", :path []}])
 
-    (match 'test.enum/inh-val "c"
+    (match tctx 'test.enum/inh-val "c"
            [{:type "enum",
              :message "Expected 'c' in #{\"a1\" \"b2\" \"a2\" \"b1\"}",
              :path []}])
@@ -745,31 +715,31 @@
                        :type 'zen/list
                        :schema-index {:index 0 :ns "test.list"}}})
 
-    (valid 'test.list/list '(:-> 1 2 3))
+    (valid tctx 'test.list/list '(:-> 1 2 3))
 
-    (match 'test.list/list '(1 2 3)
+    (match tctx 'test.list/list '(1 2 3)
            [{:message "Expected ':->', got '1'",
              :type "schema",
              :path [0],
              :schema ['test.list/list :nth 0]}])
 
-    (valid 'test.list/poly-list '(test.list/fn1 1))
-    (valid 'test.list/poly-list '(test.list/fn2 "str"))
+    (valid tctx 'test.list/poly-list '(test.list/fn1 1))
+    (valid tctx 'test.list/poly-list '(test.list/fn2 "str"))
 
 
-    (match 'test.list/poly-list '(test.list/fn1 "str")
+    (match tctx 'test.list/poly-list '(test.list/fn1 "str")
            [{:message "Expected type of 'integer, got 'string",
              :type "primitive-type",
              :path [1],
              :schema ['test.list/poly-list :schema-index 'test.list/fn1 :nth 1]}])
 
-    (match 'test.list/poly-list '(test.list/fn2 1)
+    (match tctx 'test.list/poly-list '(test.list/fn2 1)
            [{:message "Expected type of 'string, got 'long",
              :type "string.type",
              :path [1],
              :schema ['test.list/poly-list :schema-index 'test.list/fn2 :nth 1]}])
 
-    (match 'test.list/poly-list '(test.list/ups 1)
+    (match tctx 'test.list/poly-list '(test.list/ups 1)
            [{:message "Could not find schema test.list/ups",
              :type "schema",
              :path [],
@@ -777,7 +747,7 @@
 
     )
 
-  (match
+  (match tctx
    'zen/schema
    {:zen/tags #{'zen/schema}
     :type 'zen/schema}
@@ -815,7 +785,7 @@
               :keys {:d {:type 'zen/string}}}
          })
 
-  (match 'test.confirms/c4 {:a 1}
+  (match tctx 'test.confirms/c4 {:a 1}
          [{:message "Expected type of 'string, got 'long",
            :type "string.type",
            :path [:a],
@@ -829,7 +799,7 @@
   ;; :args {:type 'zen/vector
   ;;        :cat [:ctx {:confirms #{'app/ctx}}]}
 
-  (valid-schema!
+  (valid-schema! tctx
    {:zen/tags  #{'zen/schema}
     :type 'zen/map
     :keys {:path {:type 'zen/apply :tags #{'zen/fn}}}})
@@ -854,111 +824,30 @@
          'example {:zen/tags #{'tpl}
                    :path (list 'get :a :b :c)}})
 
-  (match 'test.fn/tpl {:path "1"}
+  (match tctx 'test.fn/tpl {:path "1"}
          [{:message "Expected fn call '(fn-name args-1 arg-2), got 'string",
            :type "apply.type",
            :path [:path],
            :schema ['test.fn/tpl :path]}])
 
-  (match 'test.fn/tpl {:path (list 'test.fn/tpl "1")}
+  (match tctx 'test.fn/tpl {:path (list 'test.fn/tpl "1")}
          [{:message
            "fn definition 'test.fn/tpl should be taged with 'zen/fn, but '#{zen/tag zen/schema}", :type "apply.fn-tag",
            :path [:path],
            :schema ['test.fn/tpl :path]}])
 
-  (match 'test.fn/tpl {:path (list 'test.fn/other-fn "1")}
+  (match tctx 'test.fn/tpl {:path (list 'test.fn/other-fn "1")}
          [{:message
            "fn definition 'test.fn/other-fn should be taged with #{test.fn/fn}, but '#{zen/fn}",
            :type "apply.tags",
            :path [:path],
            :schema ['test.fn/tpl :path]}])
 
-  (match 'test.fn/tpl {:path (list 'test.fn/get "1")}
+  (match tctx 'test.fn/tpl {:path (list 'test.fn/get "1")}
          [{:message "Expected type of 'symbol, got 'string",
            :type "primitive-type",
            :path [:path 0],
            :schema ['test.fn/tpl :path 'test.fn/get :args :every]}])
 
 
-  (testing "keyname-schema"
-    (zen.core/load-ns!
-     tctx {'ns 'test.kns
-
-           'mytag {:zen/tags #{'zen/tag}}
-
-           'sch-1 {:zen/tags #{'mytag 'zen/schema}
-                   :type 'zen/integer}
-
-           'sch-2 {:zen/tags #{'mytag 'zen/schema}
-                   :type 'zen/string}
-
-           'kns {:zen/tags #{'zen/schema}
-                 :type 'zen/map
-                 :keyname-schemas {:tags #{'mytag}}}})
-
-    (valid 'test.kns/kns {:test.kns/sch-1 1 :test.kns/sch-2 "ok"})
-
-    (match 'test.kns/kns {:test.kns/sch-1 "a" :test.kns/sch-2 1}
-           [{:message "Expected type of 'integer, got 'string",
-             :type "primitive-type",
-             :path [:test.kns/sch-1],
-             :schema ['test.kns/kns :keyname-schemas :test.kns/sch-1]}
-            {:message "Expected type of 'string, got 'long",
-             :type "string.type",
-             :path [:test.kns/sch-2],
-             :schema ['test.kns/kns :keyname-schemas :test.kns/sch-2]}])
-
-
-    (match 'test.kns/kns {:test.kns/sch-1 1 :test.kns/sch-2 "ok" :extra "ups"}
-           [{:type "unknown-key", :message "unknown key :extra", :path [:extra]}])
-
-
-    )
-
-  (testing "effects"
-    (zen.core/load-ns!
-      tctx {'ns 'test.fx
-            'or {:zen/tags #{'zen/schema-fx 'zen/schema}
-                 :type     'zen/vector
-                 :every    {:type 'zen/keyword}}
-
-            'just {}
-
-            'subj {:zen/tags #{'zen/schema}
-                   :type     'zen/map
-                   :keys     {:name  {:type 'zen/string}
-                              :email {:type 'zen/string}}
-                   'or       [:name :email]}})
-
-    (invalid-schema
-      {:zen/tags     #{'zen/schema}
-       :type         'zen/map
-       'test.fx/just [:name :email]}
-      [{:type    "unknown-key",
-        :message "unknown key test.fx/just",
-        :path    ['test.fx/just]}])
-
-    (valid-schema!
-      {:zen/tags   #{'zen/schema}
-       :type       'zen/map
-       'test.fx/or [:name :email]})
-
-    (invalid-schema
-      {:zen/tags   #{'zen/schema}
-       :type       'zen/map
-       'test.fx/or 1}
-      [{:message "Expected type of 'vector, got long",
-        :type    "type",
-        :path    ['test.fx/or],
-        :schema  ['zen/schema :keyname-schemas 'test.fx/or]}])
-
-    (matcho/match (zen.core/validate
-                    tctx
-                    '#{test.fx/subj}
-                    {:name "Ilya"})
-                  {:errors  empty?
-                   :effects [{:fx     'test.fx/or
-                              :path   ['test.fx/or]
-                              :data   {:name "Ilya"}
-                              :params [:name :email]}
-                             nil?]})))
+  )

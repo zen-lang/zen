@@ -2,6 +2,7 @@
   (:require [matcho.core :as matcho]
             [zen.core]
             [zen.validation]
+            [zen.test-utils :refer [vmatch match valid valid-schema! invalid-schema]]
             [clojure.test :refer [deftest is testing]]))
 
 (deftest slicing-tests
@@ -42,24 +43,20 @@
 
     (matcho/match @tctx {:errors nil?})
 
-    (matcho/match
-     (zen.core/validate
-      tctx
-      #{'myapp/slice-definition}
-      [{:kind "keyword" :value :hello}
-       {:kind "keyword" :value :world}
-       {:kind "number" :value 1}
-       {:kind "foo"    :value "string"}])
-     {:errors empty?})
+    (valid tctx 'myapp/slice-definition
+     [{:kind "keyword" :value :hello}
+      {:kind "keyword" :value :world}
+      {:kind "number" :value 1}
+      {:kind "foo"    :value "string"}])
 
-    (matcho/match
-     (zen.core/validate tctx #{'myapp/slice-definition} [{:kind "keyword" :value 1}])
-     {:errors [{:path [0 "[kw]" :value]}]})
+    (vmatch tctx #{'myapp/slice-definition}
+            [{:kind "keyword" :value 1}]
+            {:errors [{:path [0 "[kw]" :value]}]})
 
-    (matcho/match
-     (zen.core/validate tctx #{'myapp/slice-definition} [{:kind "number" :value "1"}])
-     {:errors [{:path [0 "[number]" :value]}]})
+    (vmatch tctx #{'myapp/slice-definition}
+            [{:kind "number" :value "1"}]
+            {:errors [{:path [0 "[number]" :value]}]})
 
-    (matcho/match
-     (zen.core/validate tctx #{'myapp/slice-definition} [{:kind "foo" :value 1}])
-     {:errors [{:path [0 "[:slicing/rest]" :value]}]})))
+    (vmatch tctx #{'myapp/slice-definition}
+            [{:kind "foo" :value 1}]
+            {:errors [{:path [0 "[:slicing/rest]" :value]}]})))
