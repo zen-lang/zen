@@ -4,8 +4,7 @@
 (defn deep-merge
   "efficient deep merge"
   [a b]
-  (loop [[[k v :as i] & ks] b
-         acc a]
+  (loop [[[k v :as i] & ks] b, acc a]
     (if (nil? i)
       acc
       (let [av (get a k)]
@@ -26,16 +25,28 @@
            (partition 2 kvs))))
 
 
-(defn assoc-when-key [pred & args]
-  (apply assoc-when-kv (comp pred first) args))
+(defn assoc-when-key
+  ([pred m k v]
+   (cond-> m (pred k) (assoc k v)))
+  ([pred m k v & kvs]
+   {:pre [(even? (count kvs))]}
+   (reduce (partial apply assoc-when-key pred)
+           (assoc-when-kv pred m k v)
+           (partition 2 kvs))))
 
 
-(defn assoc-when [pred & args]
-  (apply assoc-when-kv (comp pred second) args))
+(defn assoc-when
+  ([pred m k v]
+   (cond-> m (pred v) (assoc k v)))
+  ([pred m k v & kvs]
+   {:pre [(even? (count kvs))]}
+   (reduce (partial apply assoc-when-key pred)
+           (assoc-when-key pred m k v)
+           (partition 2 kvs))))
 
 
-(defn assoc-some [& args]
-  (apply assoc-when some? args))
+(defn assoc-some [m k v & kvs]
+  (apply assoc-when some? m k v kvs))
 
 
 (defn dissoc-when-kv
@@ -50,28 +61,50 @@
            ks)))
 
 
-(defn dissoc-when-key [pred & args]
-  (apply dissoc-when-kv (comp pred first) args))
+(defn dissoc-when-key
+  ([pred m k]
+   (cond-> m
+     (and (contains? m k)
+          (pred k))
+     (dissoc k)))
+  ([pred m k & ks]
+   (reduce (partial dissoc-when-key pred)
+           (dissoc-when-key pred m k)
+           ks)))
 
 
-(defn dissoc-when [pred & args]
-  (apply dissoc-when-kv (comp pred second) args))
+(defn dissoc-when
+  ([pred m k]
+   (cond-> m
+     (and (contains? m k)
+          (pred (get m k)))
+     (dissoc k)))
+  ([pred m k & ks]
+   (reduce (partial dissoc-when pred)
+           (dissoc-when pred m k)
+           ks)))
 
 
-(defn dissoc-nil [& args]
-  (apply dissoc-when nil? args))
+(defn dissoc-nil [m k & ks]
+  (apply dissoc-when nil? m k ks))
 
 
 (defn strip-when-key [pred m]
-  (apply dissoc-when-key pred m (keys m)))
+  (if-let [ks (seq (keys m))]
+    (apply dissoc-when-key pred m ks)
+    m))
 
 
 (defn strip-when-kv [pred m]
-  (apply dissoc-when-kv pred m (keys m)))
+  (if-let [ks (seq (keys m))]
+    (apply dissoc-when-kv pred m ks)
+    m))
 
 
 (defn strip-when [pred m]
-  (apply dissoc-when pred m (keys m)))
+  (if-let [ks (seq (keys m))]
+    (apply dissoc-when pred m ks)
+    m))
 
 
 (defn strip-nils [m]
