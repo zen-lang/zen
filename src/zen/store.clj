@@ -67,15 +67,20 @@
     (when-not (get-in ctx [:ns ns-name])
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
       (doseq [imp (get nmsps 'import)]
-        (if-let [ns (get-in @ctx [:memory-store imp])]
-          (load-ns ctx ns opts)
+        (cond
+          (get-in @ctx [:ns imp])
+          :already-imported
+
+          (contains? (:memory-store @ctx) imp)
+          (load-ns ctx (get-in @ctx [:memory-store imp]) opts)
+
+          :else
           (read-ns ctx imp)))
-      (->>
-       (dissoc nmsps ['ns 'import])
-       (mapv (fn [[k v]]
-               (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k (merge v opts))
-                     :else nil)))
-       (mapv (fn [res] (validate-resource ctx res)))))))
+      (->> (dissoc nmsps ['ns 'import])
+           (mapv (fn [[k v]]
+                   (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k (merge v opts))
+                         :else                      nil)))
+           (mapv (fn [res] (validate-resource ctx res)))))))
 
 (defn load-ns! [ctx nmsps]
   (assert (map? nmsps) "Expected map")
