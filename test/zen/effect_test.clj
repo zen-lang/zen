@@ -42,7 +42,7 @@
 
   (zen.core/load-ns!
     tctx {'ns  'test.fx
-          'xor {:zen/tags #{'zen/schema-fx 'zen/schema}
+          'only-one {:zen/tags #{'zen/schema-fx 'zen/schema}
                 :type     'zen/vector
                 :every    {:type 'zen/keyword}}
 
@@ -59,30 +59,30 @@
   (valid-schema! tctx
                  {:zen/tags    #{'zen/schema}
                   :type        'zen/map
-                  'test.fx/xor [:name :email]})
+                  'test.fx/only-one [:name :email]})
 
   (invalid-schema tctx
                   {:zen/tags    #{'zen/schema}
                    :type        'zen/map
-                   'test.fx/xor 1}
+                   'test.fx/only-one 1}
                   [{:message "Expected type of 'vector, got long",
                     :type    "type",
-                    :path    ['test.fx/xor],
-                    :schema  ['zen/schema :keyname-schemas 'test.fx/xor]}]))
+                    :path    ['test.fx/only-one],
+                    :schema  ['zen/schema :keyname-schemas 'test.fx/only-one]}]))
 
-(deftest ^:kaocha/pending emit&apply-effect
+(deftest emit&apply-effect
   (def tctx (zen.core/new-context {:unsafe true}))
 
   (zen.core/load-ns!
     tctx {'ns   'test.fx
-          'xor  {:zen/tags #{'zen/schema-fx 'zen/schema}
+          'only-one  {:zen/tags #{'zen/schema-fx 'zen/schema}
                  :type     'zen/vector
                  :every    {:type 'zen/keyword}}
           'subj {:zen/tags #{'zen/schema}
                  :type     'zen/map
                  :keys     {:name  {:type 'zen/string}
                             :email {:type 'zen/string}}
-                 'xor      [:name :email]}})
+                 'only-one      [:name :email]}})
 
   (def data {:name "Ilya", :email "ir4y.ix@gmail.com"})
 
@@ -90,16 +90,27 @@
 
   (matcho/match validation-result
                 {:errors  empty?
-                 :effects [{:fx     'test.fx/xor
-                            :path   ['test.fx/xor]
+                 :effects [{:name   'test.fx/only-one
+                            :path   ['test.fx/only-one]
                             :data   {:name "Ilya", :email "ir4y.ix@gmail.com"}
                             :params [:name :email]}
                            nil?]})
 
+  (defmethod zen.core/fx-evaluator 'test.fx/only-one [ctx {:keys [path params]} data]
+    (when (< 1 (count (select-keys data params)))
+      {:data data
+       :errors [{:path    path
+                 :type    "effect"
+                 :message "Should be either :name or :email not both at once"}]}))
+
   (matcho/match (zen.core/apply-fx tctx validation-result data)
-                {:errors  [{:path    ['test.fx/xor]
+                {:errors  [{:path    ['test.fx/only-one]
                             :type    "effect"
                             :message "Should be either :name or :email not both at once"}
                            nil?]
                  :effects empty?
-                 :data    {:name "Ilya", :email "ir4y.ix@gmail.com"}}))
+                 :data    {:name "Ilya", :email "ir4y.ix@gmail.com"}})
+
+  (matcho/match (zen.core/apply-fx tctx (zen.core/validate tctx '#{test.fx/subj} {:name "Ilya"}) {:name "Ilya"})
+                {:errors empty?
+                 :effects empty?}))

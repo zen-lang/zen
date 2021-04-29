@@ -454,7 +454,7 @@
   and if it is a zen/schema-fx then an effect should be produced"
   [ctx schema-key schema-params data]
   (when-let [keyname-schema (resolve-keyname-schema ctx {:tags #{'zen/schema-fx}} schema-key)]
-    {:fx     (:zen/name keyname-schema)
+    {:name     (:zen/name keyname-schema)
      :params schema-params
      :data   data}))
 
