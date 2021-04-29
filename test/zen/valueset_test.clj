@@ -28,10 +28,9 @@
 (defmulti valueset-engine-apply #'valueset-engine-apply-dispatch)
 
 (defmethod valueset-engine-apply :default [_ctx {:keys [engine]} _code]
-  {:errors    [{:message (str "Unknown valueset engine: " engine)}]
-   :deffereds []})
+  {:errors [{:message (str "Unknown valueset engine: " engine)}]})
 
-(defmethod zen.core/fx-evaluator 'fx/valueset [ctx {valueset-sym :params, value :data} data]
+(defmethod zen.core/fx-evaluator 'fx/valueset [ctx {valueset-sym :params, value :data} _data]
   (valueset-engine-apply ctx (zen.core/get-symbol ctx valueset-sym) value))
 
 
