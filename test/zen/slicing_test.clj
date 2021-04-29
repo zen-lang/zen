@@ -126,4 +126,33 @@
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "nested" :value [{:kind "keyword" :value "not keyword"}]}]
-            {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil?]} nil?]})))
+            {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil?]} nil?]})
+
+    )
+
+  (testing "slicing path collision unknown key bug"
+    (def tctx (zen.core/new-context {:unsafe true}))
+
+    (zen.core/load-ns!
+      tctx '{ns myapp
+
+             subj
+             {:zen/tags #{zen/schema}
+              :type zen/vector
+              :every {:type zen/map, :keys {:kind {:type zen/string}}}
+              :slicing {:rest {:type  zen/vector
+                               :every {:type zen/map,
+                                       :keys {:rest-key {:type zen/any}}}}
+                        :slices {"slice"
+                                 {:filter {:engine :zen
+                                           :zen    {:type zen/map
+                                                    :keys {:kind {:const {:value "slice"}}}}}
+                                  :schema {:type  zen/vector
+                                           :every {:type zen/map
+                                                   :keys {:slice-key {:type zen/any}}}}}}}}})
+
+    (matcho/match @tctx {:errors nil?})
+
+    (valid tctx 'myapp/subj
+           [{:kind "slice", :slice-key "kw-key"}
+            {:kind "rest", :rest-key "rest-key"}])))

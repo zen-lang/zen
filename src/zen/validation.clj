@@ -157,10 +157,12 @@
   (reduce (fn [coll-slices [idx coll-el]]
             (->> (or (not-empty (determine-slice ctx (:slices slicing) coll-el))
                      [:slicing/rest])
-                 (into {} (map (fn [slice-name] [slice-name {idx coll-el}])))
+                 (into {} (map (fn [slice-name] [slice-name ^:slice{idx coll-el}])))
                  (merge-with merge coll-slices)))
           {}
-          (map-indexed vector coll)))
+          (if (:slice (meta coll))
+            coll
+            (map-indexed vector coll))))
 
 (declare validate-collection)
 
@@ -171,7 +173,8 @@
                                     error-sub-path))]
     (assoc error :path path)))
 
-(defn process-slicing-errors-paths [path slice-name old-errors cur-errors]
+(defn process-slicing-errors-paths
+  [path slice-name old-errors cur-errors]
   (->> cur-errors
        (drop (count old-errors))
        (mapv (partial append-slice-name-to-error-path path slice-name))
@@ -187,7 +190,7 @@
     (reduce (fn [acc' [slice-name {slice-schema :schema}]]
               (validate-slice ctx acc' slice-name slice-schema (vec (vals (get sliced-coll slice-name)))))
             (if (and (contains? slicing :rest) (contains? sliced-coll :slicing/rest))
-              (validate-slice ctx acc :slicing/rest (:rest slicing) (vec (vals (:slicing/rest sliced-coll))))
+              (validate-slice ctx acc :slicing/rest (:rest slicing) (:slicing/rest sliced-coll))
               acc)
             (dissoc (:slices slicing) :slicing/rest))))
 
@@ -195,7 +198,9 @@
   [type ctx acc {{si :index si-ns :ns} :schema-index mn :minItems mx :maxItems, :as schema} data]
   (let [need-to-traverse-collection? (or (:every schema) (:nth schema))
         acc (if need-to-traverse-collection?
-              (->> (map-indexed vector data)
+              (->> (if (:slice (meta data))
+                     data
+                     (map-indexed vector data))
                    (reduce (fn [acc' [idx coll-el]]
                              (cond-> acc'
                                (:every schema)
@@ -226,7 +231,7 @@
                          {:schema [:maxItems]})
               acc)
 
-        acc (if-let [nm (and si (nth data si nil))]
+        acc (if-let [nm (and si (or (get data si nil) (nth data si nil)))]
               (let [sch-nm (if si-ns (symbol si-ns (name nm)) nm)]
                 (if-let [sch (and sch-nm (get-symbol ctx sch-nm))]
                   (-> (validate-node ctx (update-acc ctx acc {:schema [:schema-index sch-nm]}) sch data)
@@ -239,7 +244,7 @@
 
 (defmethod validate-type 'zen/vector
   [_ ctx acc schema data]
-  (if (sequential? data)
+  (if (or (sequential? data) (:slice (meta data)))
     (validate-collection "vector" ctx acc schema data)
     (add-error ctx acc {:message (format "Expected type of 'vector, got %s" (pretty-type data))  :type "type"})))
 
@@ -277,7 +282,7 @@
 
 
 (defmethod validate-type 'zen/any
-  [_ ctx acc sch data]
+  [_ _ctx acc _sch _data]
   acc)
 
 (defmethod validate-type 'zen/case
