@@ -43,48 +43,58 @@
 
   (testing "effects"
     (zen.core/load-ns!
-     tctx {'ns 'test.fx
-           'or {:zen/tags #{'zen/schema-fx 'zen/schema}
-                :type     'zen/vector
-                :every    {:type 'zen/keyword}}
+      tctx {'ns  'test.fx
+            'xor {:zen/tags #{'zen/schema-fx 'zen/schema}
+                  :type     'zen/vector
+                  :every    {:type 'zen/keyword}}
 
-           'just {}
+            'just {}
 
-           'subj {:zen/tags #{'zen/schema}
-                  :type     'zen/map
-                  :keys     {:name  {:type 'zen/string}
-                             :email {:type 'zen/string}}
-                  'or       [:name :email]}})
+            'subj {:zen/tags #{'zen/schema}
+                   :type     'zen/map
+                   :keys     {:name  {:type 'zen/string}
+                              :email {:type 'zen/string}}
+                   'xor      [:name :email]}})
 
     (invalid-schema tctx
-     {:zen/tags     #{'zen/schema}
-      :type         'zen/map
-      'test.fx/just [:name :email]}
-     [{:type    "unknown-key",
-       :message "unknown key test.fx/just",
-       :path    ['test.fx/just]}])
+                    {:zen/tags     #{'zen/schema}
+                     :type         'zen/map
+                     'test.fx/just [:name :email]}
+                    [{:type    "unknown-key",
+                      :message "unknown key test.fx/just",
+                      :path    ['test.fx/just]}])
 
     (valid-schema! tctx
-     {:zen/tags   #{'zen/schema}
-      :type       'zen/map
-      'test.fx/or [:name :email]})
+                   {:zen/tags    #{'zen/schema}
+                    :type        'zen/map
+                    'test.fx/xor [:name :email]})
 
     (invalid-schema tctx
-     {:zen/tags   #{'zen/schema}
-      :type       'zen/map
-      'test.fx/or 1}
-     [{:message "Expected type of 'vector, got long",
-       :type    "type",
-       :path    ['test.fx/or],
-       :schema  ['zen/schema :keyname-schemas 'test.fx/or]}])
+                    {:zen/tags    #{'zen/schema}
+                     :type        'zen/map
+                     'test.fx/xor 1}
+                    [{:message "Expected type of 'vector, got long",
+                      :type    "type",
+                      :path    ['test.fx/xor],
+                      :schema  ['zen/schema :keyname-schemas 'test.fx/xor]}])
 
-    (vmatch tctx
-            '#{test.fx/subj}
-            {:name "Ilya"}
+
+    (def data {:name "Ilya", :email "ir4y.ix@gmail.com"})
+
+    (def validation-result (zen.core/validate tctx '#{test.fx/subj} data))
+
+    (matcho/match validation-result
                   {:errors  empty?
-                   :effects [{:fx     'test.fx/or
-                              :path   ['test.fx/or]
-                              :data   {:name "Ilya"}
+                   :effects [{:fx     'test.fx/xor
+                              :path   ['test.fx/xor]
+                              :data   {:name "Ilya", :email "ir4y.ix@gmail.com"}
                               :params [:name :email]}
-                             nil?]}))
-  )
+                             nil?]})
+
+    (matcho/match (zen.core/apply-fx tctx validation-result data)
+                  {:errors  [{:path    ['test.fx/xor]
+                              :type    "effect"
+                              :message "Should be either :name or :email not both at once"}
+                             nil?]
+                   :effects empty?
+                   :data    {:name "Ilya", :email "ir4y.ix@gmail.com"}})))

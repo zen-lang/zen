@@ -27,6 +27,7 @@
 (defn validate-schema [ctx schema data]
   (zen.validation/validate-schema ctx schema data))
 
+(defn apply-fx [ctx validation-result data]) ;; TODO
 
 (comment
   (def ctx (new-context {}))
