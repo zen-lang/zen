@@ -5,81 +5,94 @@
             [zen.core]))
 
 
+(def zen-fx
+  '{ns fx
+
+    valueset-definition
+    {:zen/tags #{zen/schema zen/tag}
+     :type     zen/map
+     :require  #{:engine}
+     :keys     {:engine {:type zen/keyword}}
+     :zen/desc "Registry (vocabulary) with free form data to make symbolic refs for validation.
+                :engine is used to define a extrnal tool for valueset protocol evaluation"}
+
+    valueset
+    {:zen/tags #{zen/schema-fx}
+     :type     zen/symbol :tags #{valueset-definition}
+     :zen/desc "Check that value is in valueset.
+                Validation can create errors and deferred checks
+                Doesn't perform any side effects, they should be executed on the application level"}})
+
+(defn valueset-engine-apply-dispatch [_ctx {engine :engine} _code] engine)
+
+(defmulti valueset-engine-apply #'valueset-engine-apply-dispatch)
+
+(defmethod valueset-engine-apply :default [_ctx {:keys [engine]} _code]
+  {:errors    [{:message (str "Unknown valueset engine: " engine)}]
+   :deffereds []})
+
+(defmethod zen.core/fx-evaluator 'fx/valueset [ctx {valueset-sym :params, value :data} data]
+  (valueset-engine-apply ctx (zen.core/get-symbol ctx valueset-sym) value))
+
+
 (deftest custom-engine-with-deffereds
   (def zen-schema
-    '{ns myapp
+    '{ns     myapp
+      import #{fx}
 
-      valueset-definition
+      fhir-code-enum-valueset-definition
       {:zen/tags #{zen/schema zen/tag}
-       :type zen/map
-       :require #{:engine}
-       :keys {:engine {:type zen/keyword}}}
+       :type     zen/map
+       :require  #{:enum}
+       :keys     {:engine {:const {:value :fhir-code-enum}}
+                  :enum   {:type zen/set}}}
 
-      enum-valueset-definition
-      {:zen/tags #{zen/schema zen/tag}
-       :type zen/map
-       :require #{:enum}
-       :keys {:engine {:const {:value :enum}}
-              :enum {:type zen/set}}}
-
-
-      valueset
-      {:zen/tags #{zen/schema-fx}
-       :type zen/symbol :tags #{valueset-definition}}
-
-      foo-bar-baz-valueset {:zen/tags #{valueset-definition enum-valueset-definition}
-                            :engine :enum
-                            :enum #{"foo" "bar" "baz"}}
+      foo-bar-baz-valueset {:zen/tags #{fx/valueset-definition fhir-code-enum-valueset-definition}
+                            :engine   :fhir-code-enum
+                            :enum     #{"foo" "bar" "baz"}}
 
       sch {:zen/tags #{zen/schema}
            :type     zen/map
-           :keys     {:coding {:type     zen/map
-                               valueset  foo-bar-baz-valueset
-                               :keys     {:code    {:type zen/string}
-                                          :system  {:type zen/string}
-                                          :display {:type zen/string}}}}}})
+           :keys     {:code   {:type       zen/string
+                               fx/valueset foo-bar-baz-valueset}
+                      :coding {:type       zen/map
+                               fx/valueset foo-bar-baz-valueset
+                               :keys       {:code    {:type zen/string}
+                                            :system  {:type zen/string}
+                                            :display {:type zen/string}}}}}})
+
+  (defmethod valueset-engine-apply :fhir-code-enum [_ctx valueset data]
+    (let [code (cond-> data (map? data) :code)]
+      (when-not (contains? (:enum valueset) code)
+        {:errors [{:message (format "Expected '%s' to be in valueset %s" code (:zen/name valueset))}]})))
 
   (def tctx (zen.core/new-context))
 
-  (def _load-ns-res (zen.core/load-ns tctx zen-schema))
+  (do (zen.core/load-ns tctx zen-fx)
+      (zen.core/load-ns tctx zen-schema)
+      nil)
 
   (matcho/match @tctx {:errors nil?})
 
   (def data {:coding {:code "foo" :display "Foo"}})
 
-  (def validation-result
-    (zen.core/validate
-     tctx
-     #{'myapp/sch}
-     data))
+  (def validation-result (zen.core/validate tctx #{'myapp/sch} data))
 
-  (matcho/match
-    validation-result
-    {:errors    empty?
-     :effects [
-               {:name 'myapp/valueset
-                :params 'myapp/foo-bar-baz-valueset
-                :data {:code "foo" :display "Foo"}
-                :path [:coding 'myapp/valueset]}
-               nil?
-               ]
-     })
-
-  (defmethod zen.core/fx-evaluator 'myapp/valueset [ctx {valueset-name :params {code :code} :data} _data]
-    (let [{:keys [engine enum]} (zen.core/get-symbol ctx valueset-name)]
-      (if (= engine :enum)
-        (when-not (contains? enum code)
-          {:errors [{:message (format "Expected '%s' to be in valueset %s" code valueset-name)}]})
-
-        {:errors [{:message (format "Engine '%s' is not supported" engine)}]})))
+  (matcho/match validation-result
+                {:errors  empty?
+                 :effects [{:name   'fx/valueset
+                            :params 'myapp/foo-bar-baz-valueset
+                            :data   {:code "foo" :display "Foo"}
+                            :path   [:coding 'fx/valueset]}
+                           nil?]})
 
   (def resolved (zen.core/apply-fx tctx validation-result data))
 
   (matcho/match resolved {:errors empty? :effects empty?})
 
-  (matcho/match (zen.core/validate! tctx #{'myapp/sch} {:coding {:code "Boo" :display "Boo"}}) {:errors seq})
-
-  )
+  (matcho/match (zen.core/validate! tctx #{'myapp/sch} {:coding {:code "Boo" :display "Boo"}})
+                {:errors [{:path [:coding 'fx/valueset nil?]}
+                          nil?]}))
 
 
 (comment

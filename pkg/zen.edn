@@ -208,36 +208,30 @@
 
  validation-fn {:zen/desc "Tag for validation functions"
                 :zen/tags #{schema tag}
-                :type map
-                :keys {:handler {:type keyword}}}
+                :type     map
+                :keys     {:handler {:type keyword}}}
 
- schema   {:zen/tags        #{schema tag}
-           :zen/desc        "zen schema"
-           :type            map
-           :schema-key      {:key :type :tags #{type}}
-           :keyname-schemas {:tags #{schema-fx}}
-           :keys            {:type     {:type symbol :tags #{type}}
-                             :confirms {:type     set
-                                        :zen/desc "set of schemas to confirm"
-                                        :every    {:type symbol :tags #{schema}}}
-                             :const    {:type     map
-                                        :zen/desc "Check constant"
-                                        :keys     {:value {:type any}}}
-                             ;; TODO: apply top level schema to value
-                             :enum     {:type     set
-                                        :zen/desc "Check value is in enum"
-                                        :every    {:type map :keys {:value {:type any}}}}
-                             :fail     {:type string}
+ schema {:zen/tags        #{schema tag}
+         :zen/desc        "zen schema"
+         :type            map
+         :schema-key      {:key :type :tags #{type}}
+         :keyname-schemas {:tags #{schema-fx}}
+         :keys            {:type     {:type symbol :tags #{type}}
+                           :confirms {:type     set
+                                      :zen/desc "set of schemas to confirm"
+                                      :every    {:type symbol :tags #{schema}}}
+                           :const    {:type     map
+                                      :zen/desc "Check constant"
+                                      :keys     {:value {:type any}}}
+                           ;; TODO: apply top level schema to value
+                           :enum     {:type     set
+                                      :zen/desc "Check value is in enum"
+                                      :every    {:type map :keys {:value {:type any}}}}
+                           :fail     {:type string}
 
-                             :valueset {:type     symbol
-                                        :zen/tags #{valueset}
-                                        :zen/desc "Check that value is in valueset.
-                                          Validation can create errors and deferred checks
-                                          Zen doesn't perform any side effects, they should be executed on the application level"}
-
-                             :validation {:type     set
-                                          :zen/desc "Custom validation set of functions"
-                                          :every    {:type symbol :tags #{validation-fn}}}}}
+                           :validation {:type     set
+                                        :zen/desc "Custom validation set of functions"
+                                        :every    {:type symbol :tags #{validation-fn}}}}}
 
  schema-fx {:zen/tags #{tag}
             :zen/desc "Register schema effect"}
@@ -279,22 +273,5 @@
 
  schema-result
  {:zen/tags #{schema}
-  :type map
-  :keys {:errors {:confirms #{schema-errors}}}}
-
- valueset
- {:zen/tags #{schema tag}
-  :zen/desc "Registry (vocabulary) with free form data to make symbolic refs for validation.
-             :engine is used to define a extrnal tool for valueset protocol evaluation"
-  :type map
-  :require #{:engine}
-  :keys {:engine {:type keyword}}}
-
- enum-valueset
- {:zen/tags #{schema tag}
-  :zen/desc "Simple valuset engine on top of zen/enum
-             This engin check if provided structure exists in the provided enum"
-  :type map
-  :require #{:enum}
-  :keys {:engine {:const {:value :enum}}
-         :enum {:type set}}}}
+  :type     map
+  :keys     {:errors {:confirms #{schema-errors}}}}}

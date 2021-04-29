@@ -418,27 +418,6 @@
                    (update :enum (fn [en] (into (or en #{}) (map :value enum))))
                    (assoc :data data)))))
 
-(defn valueset-engine-apply-dispatch [_ctx {engine :engine} _code] engine)
-(defmulti valueset-engine-apply #'valueset-engine-apply-dispatch)
-
-(defmethod valueset-engine-apply :default [_ctx {:keys [engine]} _code]
-  {:errors    [{:message (str "Unknown valueset engine: " engine)}]
-   :deffereds []})
-
-(defmethod valueset-engine-apply :enum [_ctx valueset code]
-  (when-not (contains? (:enum valueset) code)
-    {:errors [{:message (format "Expected '%s' to be in valueset %s" code (:zen/name valueset))}]}))
-
-(defn valueset-engine-prepare-result [_ctx acc valueset engine-result]
-  (into {}
-        (map (fn [[k vs]]
-               {k (mapv (fn [v]
-                          (assoc v
-                                 :path (:path acc)
-                                 :schema (conj (:schema acc) (:zen/name valueset))))
-                        vs)}))
-        engine-result))
-
 (defn validate-node-rule-dispatch [ctx _acc rule _rule-val _data]
   (if (resolve-keyname-schema ctx {:tags #{'zen/schema-fx}} rule)
     ::fx
@@ -487,14 +466,6 @@
       (assoc-in acc [:enums path] {:match true})
       (register-unmatched-enum acc enum data))))
 
-(defmethod validate-node-rule :valueset [ctx acc _ valueset-sym data]
-  (when valueset-sym
-    (let [valueset        (get-symbol ctx valueset-sym)
-          engine-result   (valueset-engine-apply ctx valueset data)
-          valueset-result (valueset-engine-prepare-result ctx acc valueset engine-result)]
-      (restore-acc (merge-with into acc valueset-result)
-                   acc))))
-
 (defn validate-node [ctx acc {tp :type :as schema} data]
   (try
     (let [acc (reduce-kv (fn [acc' rule rule-val]
@@ -520,8 +491,6 @@
                          :message (format "unknown key %s" (last k))
                          :path k}))))
 
-(defn valueset-errors [acc])
-
 (defn enum-errors [acc]
   (->> (:enums acc)
        (remove (fn [[_ v]] (:match v)))
@@ -533,7 +502,6 @@
 (defn global-errors&warnings [acc]
   (let [errs (vec (concat (:errors acc)
                           (unknown-keys-errors acc)
-                          (valueset-errors acc)
                           (enum-errors acc)))]
     (merge acc {:warnings []
                 :errors errs
