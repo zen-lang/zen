@@ -46,6 +46,9 @@
           (assoc (dissoc validation-result :effects) :data data)
           (:effects validation-result)))
 
+(defn validate! [ctx symbols data]
+  (apply-fx ctx (zen.validation/validate ctx symbols data) data))
+
 (comment
   (def ctx (new-context {}))
 
