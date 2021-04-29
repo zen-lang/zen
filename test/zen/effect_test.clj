@@ -70,7 +70,7 @@
                     :path    ['test.fx/xor],
                     :schema  ['zen/schema :keyname-schemas 'test.fx/xor]}]))
 
-(deftest emit&apply-effect
+(deftest ^:kaocha/pending emit&apply-effect
   (def tctx (zen.core/new-context {:unsafe true}))
 
   (zen.core/load-ns!
