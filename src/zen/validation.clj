@@ -194,7 +194,9 @@
   (let [slicing-acc (update-acc ctx acc {:schema [:slicing]})
         sliced-coll (slice ctx slicing coll)
         result-acc  (reduce (fn [acc' [slice-name {slice-schema :schema}]]
-                              (validate-slice ctx acc' slice-name slice-schema (vec (vals (get sliced-coll slice-name)))))
+                              (if-let [slice (get sliced-coll slice-name)]
+                                (validate-slice ctx acc' slice-name slice-schema slice)
+                                acc'))
                             (if (and (contains? slicing :rest) (contains? sliced-coll :slicing/rest))
                               (validate-slice ctx slicing-acc :slicing/rest (:rest slicing) (:slicing/rest sliced-coll))
                               slicing-acc)

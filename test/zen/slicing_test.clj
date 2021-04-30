@@ -126,9 +126,7 @@
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "nested" :value [{:kind "keyword" :value "not keyword"}]}]
-            {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil?]} nil?]})
-
-    )
+            {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil?]} nil?]}))
 
   (testing "slicing path collision unknown key bug"
     (def tctx (zen.core/new-context {:unsafe true}))
@@ -149,7 +147,7 @@
                                                     :keys {:kind {:const {:value "slice"}}}}}
                                   :schema {:type  zen/vector
                                            :every {:type zen/map
-                                                   :keys {:slice-key {:type zen/any}}}}}}}}})
+                                                   :keys {:slice-key {:type zen/string}}}}}}}}})
 
     (matcho/match @tctx {:errors nil?})
 
@@ -159,7 +157,9 @@
 
     (vmatch tctx #{'myapp/subj}
              [{:kind "rest", :rest-key "rest-key"}
-              {:kind "slice", :rest-key "kw-key"}]
-             {:errors [{:path [1 #_"[slice]" :rest-key nil?]}
+              {:kind "slice", :rest-key "kw-key"}
+              {:kind "slice", :slice-key :kw-key}]
+             {:errors [{:path ["[slice]" 2 :slice-key nil?]}
+                       {:path [1 :rest-key nil?]}
                        ;; zen can't know where unknown key came from, thus can't write slice in this path
                        nil?]})))
