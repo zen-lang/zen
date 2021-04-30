@@ -18,7 +18,8 @@
 
     valueset
     {:zen/tags #{zen/schema-fx}
-     :type     zen/symbol :tags #{valueset-definition}
+     :type     zen/symbol
+     :tags     #{valueset-definition}
      :zen/desc "Check that value is in valueset.
                 Validation can create errors and deferred checks
                 Doesn't perform any side effects, they should be executed on the application level"}})
@@ -97,10 +98,30 @@
 (comment
   ;; Example of possibe fhir valueset
   '{ns       CDCICD910CMDiagnosisCodes
+
+    aidbox-valueset-legacy {:zen/tags #{zen/schema zen/tag}
+                            :type     zen/map
+                            :require  #{:valueset-id}
+                            :keys     {:engine      {:const {:value :aidbox/valueset-legacy}}
+                                       :valueset-id {:type zen/string}}}
+
+
+    icd10-cm {:zen/tags #{fx/valueset-definition aidbox-valueset-legacy}
+              :engine      :aidbox/valueset-legacy
+              :valueset-id "icd10-cm"}
+
+
+    icd10-cm {:zen/tags #{fx/valueset-definition terminology-proxy}
+              :engine      :fhir-terminology-proxy
+              :base-url    "http://localhost:8080/fhir"
+              :headers     {"Authorization": "Basic fofofofofoffo"}
+              :valueset-id "icd10-cm"}
+
     icd10-cm {:tags   #{zen/valueset aidbox/valueset}
               :engine :aidbox/database
               :table  "concept"
-              :select {:code    {:engine :sql
+
+              :select {:code    {:engine :dsql
                                  :sql    "resource#>>'{code}'"}
                        :display {:engine :sql
                                  :sql    "resource#>>'{display}'"}
