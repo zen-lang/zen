@@ -111,13 +111,13 @@
               :valueset-id "icd10-cm"}
 
 
-    icd10-cm {:zen/tags #{fx/valueset-definition terminology-proxy}
+    icd10-cm1 {:zen/tags #{fx/valueset-definition terminology-proxy}
               :engine      :fhir-terminology-proxy
               :base-url    "http://localhost:8080/fhir"
-              :headers     {"Authorization": "Basic fofofofofoffo"}
+              :headers     {"Authorization" "Basic fofofofofoffo"}
               :valueset-id "icd10-cm"}
 
-    icd10-cm {:tags   #{zen/valueset aidbox/valueset}
+    icd10-cm2 {:tags   #{zen/valueset aidbox/valueset}
               :engine :aidbox/database
               :table  "concept"
 
