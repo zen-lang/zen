@@ -504,8 +504,8 @@
                                 :type "schema.type"})))
         acc))
     (catch Exception e
-      (add-error ctx acc {:message (pr-str e) :type "schema"})
-      (when (:unsafe @ctx) (throw e)))))
+      (when (:unsafe @ctx) (throw e))
+      (add-error ctx acc {:message (pr-str e) :type "schema"}))))
 
 (defn unknown-keys-errors [acc]
   (->> (:keys acc)
