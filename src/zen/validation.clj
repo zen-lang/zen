@@ -1,5 +1,6 @@
 (ns zen.validation
   (:require [clojure.set]
+            [zen.effect]
             [clojure.string :as str]))
 
 (defn get-symbol [ctx nm]
@@ -145,6 +146,10 @@
 
 (defmethod slicing-filter :zen [ctx {schema :zen} data]
   (empty? (:errors (validate-node ctx (new-validation-acc) schema data))))
+
+(defmethod slicing-filter :zen-fx [ctx {schema :zen} data]
+  (let [pure-validation (validate-node ctx (new-validation-acc) schema data)]
+    (empty? (:errors (zen.effect/apply-fx ctx pure-validation data)))))
 
 (defmethod slicing-filter :matcho [ctx {:keys [matcho]} data]) ;; TODO
 

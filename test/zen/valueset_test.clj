@@ -2,6 +2,7 @@
   (:require [matcho.core :as matcho]
             [zen.validation]
             [clojure.test :refer [deftest is testing]]
+            [zen.effect]
             [zen.core]))
 
 
@@ -31,7 +32,7 @@
 (defmethod valueset-engine-apply :default [_ctx {:keys [engine]} _code]
   {:errors [{:message (str "Unknown valueset engine: " engine)}]})
 
-(defmethod zen.core/fx-evaluator 'fx/valueset [ctx {valueset-sym :params, value :data} _data]
+(defmethod zen.effect/fx-evaluator 'fx/valueset [ctx {valueset-sym :params, value :data} _data]
   (valueset-engine-apply ctx (zen.core/get-symbol ctx valueset-sym) value))
 
 
@@ -86,7 +87,7 @@
                             :path   [:coding 'fx/valueset]}
                            nil?]})
 
-  (def resolved (zen.core/apply-fx tctx validation-result data))
+  (def resolved (zen.effect/apply-fx tctx validation-result data))
 
   (matcho/match resolved {:errors empty? :effects empty?})
 

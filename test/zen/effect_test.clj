@@ -2,6 +2,7 @@
   (:require [matcho.core :as matcho]
             [clojure.test :refer [deftest is testing]]
             [zen.test-utils :refer [vmatch match valid valid-schema! invalid-schema]]
+            [zen.effect]
             [zen.core]))
 
 (deftest keyname-schemas
@@ -96,14 +97,14 @@
                             :params [:name :email]}
                            nil?]})
 
-  (defmethod zen.core/fx-evaluator 'test.fx/only-one [ctx {:keys [path params]} data]
+  (defmethod zen.effect/fx-evaluator 'test.fx/only-one [ctx {:keys [path params]} data]
     (when (< 1 (count (select-keys data params)))
       {:data data
        :errors [{:path    path
                  :type    "effect"
                  :message "Should be either :name or :email not both at once"}]}))
 
-  (matcho/match (zen.core/apply-fx tctx validation-result data)
+  (matcho/match (zen.effect/apply-fx tctx validation-result data)
                 {:errors  [{:path    ['test.fx/only-one]
                             :type    "effect"
                             :message "Should be either :name or :email not both at once"}
@@ -111,6 +112,6 @@
                  :effects empty?
                  :data    {:name "Ilya", :email "ir4y.ix@gmail.com"}})
 
-  (matcho/match (zen.core/apply-fx tctx (zen.core/validate tctx '#{test.fx/subj} {:name "Ilya"}) {:name "Ilya"})
+  (matcho/match (zen.effect/apply-fx tctx (zen.core/validate tctx '#{test.fx/subj} {:name "Ilya"}) {:name "Ilya"})
                 {:errors empty?
                  :effects empty?}))

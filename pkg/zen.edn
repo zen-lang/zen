@@ -137,13 +137,18 @@
                                                       :keys {:filter {:type map
                                                                       :validation-type :open
                                                                       :require #{:engine}
-                                                                      :keys {:engine {:type case
-                                                                                      :case [{:when {:type map :keys {:engine {:const {:value :zen}}}}
-                                                                                              :then {:require #{:zen}
-                                                                                                     :type map
-                                                                                                     :keys {:zen {:confirms #{schema}}}}}
-                                                                                             {:when {:type zen/any}
-                                                                                              :then {:fail "Unsupported engine"}}]}}}
+                                                                      :keys {:engine
+                                                                             {:type case
+                                                                              :case [{:when
+                                                                                      {:type map
+                                                                                       :keys
+                                                                                       {:engine {:type keyword
+                                                                                                 :enum  #{{:value :zen} {:value :zen-fx}}}}}
+                                                                                      :then {:require #{:zen}
+                                                                                             :type map
+                                                                                             :keys {:zen {:confirms #{schema}}}}}
+                                                                                     {:when {:type zen/any}
+                                                                                      :then {:fail "Unsupported engine"}}]}}}
                                                              :schema  {:confirms #{schema}}}}}}}}}
 
  list    {:zen/tags #{type coll schema}
