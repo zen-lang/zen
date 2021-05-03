@@ -489,23 +489,33 @@
       (assoc-in acc [:enums path] {:match true})
       (register-unmatched-enum acc enum data))))
 
-(defn validate-node [ctx acc {tp :type :as schema} data]
+(defn validate-node-rule* [ctx acc rule rule-val data]
+  (try (validate-node-rule ctx acc rule rule-val data)
+       (catch Exception e
+         (when (:unsafe @ctx) (throw e))
+         (add-error ctx acc {:message (pr-str e) :type "schema"}))))
+
+(defn validate-type* [ctx acc schema data]
   (try
-    (let [acc (reduce-kv (fn [acc' rule rule-val]
-                           (or (validate-node-rule ctx acc' rule rule-val data)
-                               acc'))
-                         acc
-                         schema)]
-      (if tp
-        (let [{tags :zen/tags} (get-symbol ctx tp)]
-          (if (and tags (contains? tags 'zen/type))
-            (validate-type tp ctx acc schema data)
-            (add-error ctx acc {:message (format ":type '%s' should be tagged with 'zen/type, but %s " tp tags)
-                                :type "schema.type"})))
-        acc))
+    (if (:type schema)
+      (let [{tags :zen/tags} (get-symbol ctx (:type schema))]
+        (if (and tags (contains? tags 'zen/type))
+          (validate-type (:type schema) ctx acc schema data)
+          (add-error ctx acc {:message (format ":type '%s' should be tagged with 'zen/type, but %s " (:type schema) tags)
+                              :type "schema.type"})))
+      acc)
     (catch Exception e
       (when (:unsafe @ctx) (throw e))
       (add-error ctx acc {:message (pr-str e) :type "schema"}))))
+
+(defn validate-node [ctx acc {tp :type :as schema} data]
+  (let [acc (reduce-kv (fn [acc' rule rule-val]
+                         (or (validate-node-rule* ctx acc' rule rule-val data)
+                             acc'))
+                       acc
+                       schema)
+        acc (validate-type* ctx acc schema data)]
+    acc))
 
 (defn unknown-keys-errors [acc]
   (->> (:keys acc)
