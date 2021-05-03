@@ -29,6 +29,15 @@
 
     (zen.core/load-ns!
      tctx '{ns myapp
+            required-slice {:zen/tags #{zen/schema}
+                            :type zen/vector
+                            :every {:type zen/map
+                                    :require #{:kind}
+                                    :keys {:kind {:type zen/string}}}
+                            :slicing {:slices {"one" {:filter {:engine :zen
+                                                               :zen {:type zen/map
+                                                                     :keys {:kind {:const {:value "one"}}}}}
+                                                      :schema {:type zen/vector :minItems 1 :maxItems 1}}}}}
             slice-definition
             {:zen/tags #{zen/schema}
              :type zen/vector
@@ -126,7 +135,12 @@
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "nested" :value [{:kind "keyword" :value "not keyword"}]}]
-            {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil?]} nil?]}))
+            {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil?]} nil?]})
+
+    (match tctx 'myapp/required-slice
+           [{:kind "two"}]
+           [{:type "vector"
+             :path ["[one]"]}]))
 
   (testing "slicing path collision unknown key bug"
     (def tctx (zen.core/new-context {:unsafe true}))
