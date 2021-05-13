@@ -22,7 +22,9 @@
    :effects []})
 
 (defn pretty-type [x]
-  (str/lower-case (last (str/split (str (type x)) #"\."))))
+  (if-let [tp (type x)]
+    (str/lower-case (last (str/split (str tp) #"\.")))
+    "nil"))
 
 (declare validate-node)
 
