@@ -31,7 +31,7 @@
   ([pred m k v & kvs]
    {:pre [(even? (count kvs))]}
    (reduce (partial apply assoc-when-key pred)
-           (assoc-when-kv pred m k v)
+           (assoc-when-key pred m k v)
            (partition 2 kvs))))
 
 
@@ -40,8 +40,8 @@
    (cond-> m (pred v) (assoc k v)))
   ([pred m k v & kvs]
    {:pre [(even? (count kvs))]}
-   (reduce (partial apply assoc-when-key pred)
-           (assoc-when-key pred m k v)
+   (reduce (partial apply assoc-when pred)
+           (assoc-when pred m k v)
            (partition 2 kvs))))
 
 
