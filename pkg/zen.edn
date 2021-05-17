@@ -35,7 +35,8 @@
  string    {:zen/tags #{type schema primitive}
             :zen/desc "sring primitive type"
             :type map
-            :keys {:minLength {:type integer
+            :keys {:tags {:confirms #{tagset}}
+                   :minLength {:type integer
                                :min 0
                                :zen/desc "inclusive minimal length of string"}
                    :maxLength {:type integer :min 0}

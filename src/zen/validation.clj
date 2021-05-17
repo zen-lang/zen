@@ -131,7 +131,9 @@
           acc (if-let [nm (and sk (get data sk))]
                 (let [sch-nm (if sk-ns
                                (symbol sk-ns (name nm))
-                               nm)]
+                               (cond (string? nm) (symbol nm)
+                                     (symbol? nm) nm
+                                     :else (assert false (str "Expected symbol or string " nm ", but got " (type nm)))))]
                   (if-let [{tags :zen/tags :as sch} (and sch-nm (get-symbol ctx sch-nm))]
                     (if (contains? tags 'zen/schema)
                       (if (and sk-tags (not (clojure.set/subset? sk-tags tags)))
@@ -314,8 +316,10 @@
             acc)
           (recur us (inc idx)))))))
 
+(symbol "a/b")
+
 (defmethod validate-type 'zen/string
-  [_ ctx acc {ml :minLength mx :maxLength regex :regex} data]
+  [_ ctx acc {ml :minLength mx :maxLength regex :regex tags :tags} data]
   (if (string? data)
     (let [ln (count data)
           acc (if (and ml (> ml ln))
@@ -331,6 +335,20 @@
           acc (if (and regex (not (re-find (re-pattern regex) data)))
                 (add-error ctx acc {:message (format "Expected match /%s/, got \"%s\"" regex data) :type "string.regex"}
                            {:schema [:regex]})
+                acc)
+
+          acc (if tags
+                (let [sdata (symbol data)
+                      sym (get-symbol ctx sdata)]
+                  (if-not sym
+                    (add-error ctx acc {:message (format "No symbol '%s found" sdata) :type "string"} {:schema [:tags]})
+
+                    (let [sym-tags (:zen/tags sym)]
+                      (if (not (clojure.set/superset? sym-tags tags))
+                        (add-error ctx acc {:message (format "Expected symbol '%s tagged with '%s, but only %s"
+                                                             (str data) (str tags)
+                                                             (or sym-tags #{})) :type "string"} {:schema [:tags]})
+                        acc))))
                 acc)]
       acc)
     (add-error ctx acc {:message (format "Expected type of 'string, got '%s" (pretty-type data)) :type "string.type"})))

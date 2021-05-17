@@ -470,10 +470,24 @@
        :schema ['zen/schema :schema-key 'zen/string :regex]}])
 
 
-    (zen.core/load-ns! tctx {'ns 'test.str 'str str-sch})
+    (zen.core/load-ns! tctx {'ns 'test.str
+                             'str str-sch
+                             'mytag  {:zen/tags #{'zen/tag}}
+                             'tagged {:zen/tags #{'mytag}}
+                             'str-tgs {:type 'zen/string :tags #{'mytag}}})
 
+    (zen.core/get-symbol tctx 'test.str/tagged)
+    @tctx
 
     (valid tctx 'test.str/str "a@a")
+
+    (vmatch tctx #{'test.str/str-tgs} "zen/map"
+            {:errors [{:message #"Expected symbol 'zen/map tagged .*"}]})
+
+    (vmatch tctx #{'test.str/str-tgs} "nonexits/one"
+            {:errors [{:message #".*No symbol.*"}]})
+
+    (valid tctx 'test.str/str-tgs "test.str/tagged")
 
     )
 
@@ -533,7 +547,12 @@
        'obj {:zen/tags #{'zen/schema}
              :type 'zen/map
              :schema-key {:key :kind :ns "test.map.sk"}
-             :keys {:kind {:type 'zen/string}}}})
+             :keys {:kind {:type 'zen/string}}}
+
+       'obj2 {:zen/tags #{'zen/schema}
+              :type 'zen/map
+              :schema-key {:key :kind}
+              :keys {:kind {:type 'zen/string}}}})
 
     (valid-schema! tctx (get sk-sch 'obj))
 
@@ -541,6 +560,8 @@
 
     (valid tctx 'test.map.sk/obj {:kind "pt" :name "Nikolai"})
     (valid tctx 'test.map.sk/obj {:kind "org" :title "SPBGU" :id "org"})
+    (valid tctx 'test.map.sk/obj2 {:kind "test.map.sk/pt" :name "Nikolai"})
+    (valid tctx 'test.map.sk/obj2 {:kind "test.map.sk/org" :title "SPBGU" :id "org"})
 
     (match tctx 'test.map.sk/obj {:kind "pt" :extra "a"}
            [{:message ":name is required",
@@ -603,6 +624,12 @@
     (valid-schema! tctx
      {:zen/tags #{'zen/schema}
       :type 'zen/symbol
+      :tags #{'zen/tag}})
+
+    (valid-schema!
+     tctx
+     {:zen/tags #{'zen/schema}
+      :type 'zen/string
       :tags #{'zen/tag}})
 
     (invalid-schema tctx
