@@ -313,7 +313,7 @@
              :schema
              ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :schema-key 'zen/string :minLength]}]})
 
-  
+
   (vmatch tctx #{'zen/schema}
           {:type 'zen/map
            :keys {:minLength {:type 'zen/integer, :min 0}
@@ -871,7 +871,7 @@
            :schema ['test.fn/tpl :path]}])
 
   (match tctx 'test.fn/tpl {:path (list 'test.fn/get "1")}
-         [{:message "Expected type of 'symbol, got 'string",
+         [{:message "Expected type of 'keyword, got 'string",
            :type "primitive-type",
            :path [:path 0],
            :schema ['test.fn/tpl :path 'test.fn/get :args :every]}])
