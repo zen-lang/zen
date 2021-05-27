@@ -427,7 +427,7 @@
   [_ ctx acc schema data]
   (if (keyword? data)
     acc
-    (add-error ctx acc {:message (format "Expected type of 'symbol, got '%s" (pretty-type data)) :type "primitive-type"})))
+    (add-error ctx acc {:message (format "Expected type of 'keyword, got '%s" (pretty-type data)) :type "primitive-type"})))
 
 (defn is-regex? [x]
   (instance? java.util.regex.Pattern x))
