@@ -272,7 +272,7 @@
     (add-error ctx acc {:message (format "Expected type of 'vector, got %s" (pretty-type data))  :type "type"})))
 
 (defmethod validate-type 'zen/set
-  [_ ctx acc {evr :every mn :minItems mx :maxItems} data]
+  [_ ctx acc {:as schema, evr :every, mn :minItems, mx :maxItems} data]
   (if (or (set? data) (sequential? data))
     (let [acc (if evr
                 (->
@@ -293,6 +293,20 @@
           acc (if (and mx (> cnt mx))
                 (add-error ctx acc {:message (format "Expected <= %s, got %s" mx cnt) :type "vector"}
                            {:schema [:maxItems]})
+                acc)
+          acc (if (and (:subset-of schema)
+                       (not (clojure.set/subset?
+                              data
+                              (:subset-of schema))))
+                (add-error ctx acc {:message (format "Expected %s to be a subset of %s" data (:subset-of schema)) :type "set"}
+                           {:schema [:subset-of]})
+                acc)
+          acc (if (and (:superset-of schema)
+                       (not (clojure.set/superset?
+                              data
+                              (:superset-of schema))))
+                (add-error ctx acc {:message (format "Expected %s to be a superset of %s" data (:superset-of schema)) :type "set"}
+                           {:schema [:superset-of]})
                 acc)]
       acc)
     (add-error ctx acc {:message (format "Expected type of 'set, got %s" (pretty-type data))  :type "type"})))

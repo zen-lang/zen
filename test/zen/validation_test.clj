@@ -104,7 +104,12 @@
        'email {:zen/tags #{'zen/schema}
                :type 'zen/string
                :regex "^.*@.*$"}
-       })
+
+       'some-superset {:type 'zen/set
+                       :superset-of #{"foo" "bar" "baz"}}
+
+       'some-subset {:type 'zen/set
+                     :subset-of '#{"foo" "bar" "baz"}}})
 
 ;; (get-in @tctx [:syms 'myapp/User])
 (deftest test-validation
@@ -874,7 +879,40 @@
          [{:message "Expected type of 'keyword, got 'string",
            :type "primitive-type",
            :path [:path 0],
-           :schema ['test.fn/tpl :path 'test.fn/get :args :every]}])
+           :schema ['test.fn/tpl :path 'test.fn/get :args :every]}]))
 
 
-  )
+(deftest set-validation
+  (testing "superset-of"
+    (vmatch tctx #{'myapp/some-superset} #{"foo"}
+            {:errors [{:type "set"
+                       :schema ['myapp/some-superset :superset-of]}
+                      nil?]})
+
+    (vmatch tctx #{'myapp/some-superset} #{"quux"}
+            {:errors [{:type "set"
+                       :schema ['myapp/some-superset :superset-of]}
+                      nil?]})
+
+    (vmatch tctx #{'myapp/some-superset} #{"foo" "bar" "baz"}
+            {:errors [nil?]})
+
+    (vmatch tctx #{'myapp/some-superset} #{"foo" "bar" "baz" "quux"}
+            {:errors [nil?]}))
+
+  (testing "subset-of"
+    (vmatch tctx #{'myapp/some-subset} #{"foo"}
+            {:errors [nil?]})
+
+    (vmatch tctx #{'myapp/some-subset} #{"quux"}
+            {:errors [{:type "set"
+                       :schema ['myapp/some-subset :subset-of]}
+                      nil?]})
+
+    (vmatch tctx #{'myapp/some-subset} #{"foo" "bar" "baz"}
+            {:errors [nil?]})
+
+    (vmatch tctx #{'myapp/some-subset} #{"foo" "bar" "baz" "quux"}
+            {:errors [{:type "set"
+                       :schema ['myapp/some-subset :subset-of]}
+                      nil?]})))

@@ -98,7 +98,11 @@
 
  set       {:zen/tags #{type coll schema}
             :confirms #{coll}
-            :type map}
+            :type map
+            :keys {:superset-of {:type set
+                                 :zen/desc "Check if the data is a superset of specified set"}
+                   :subset-of   {:type set
+                                 :zen/desc "Check if the data is a subset of specified set"}}}
 
  vector    {:zen/tags #{type coll schema}
             :confirms #{coll}
