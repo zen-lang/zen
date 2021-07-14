@@ -385,7 +385,7 @@
 
 (defmethod validate-type 'zen/number
   [_ ctx acc {ml :min mx :max} data]
-  (if (or (float? data) (integer? data))
+  (if (number? data)
     (let [acc (if (and ml (> ml data))
                 (add-error ctx acc {:message (format "Expected  >= %s, got %s" ml data) :type "string"}
                            {:schema [:minLength]})

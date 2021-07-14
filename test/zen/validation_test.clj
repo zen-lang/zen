@@ -109,7 +109,9 @@
                        :superset-of #{"foo" "bar" "baz"}}
 
        'some-subset {:type 'zen/set
-                     :subset-of '#{"foo" "bar" "baz"}}})
+                     :subset-of '#{"foo" "bar" "baz"}}
+
+       'some-number {:type 'zen/number}})
 
 ;; (get-in @tctx [:syms 'myapp/User])
 (deftest test-validation
@@ -916,3 +918,22 @@
             {:errors [{:type "set"
                        :schema ['myapp/some-subset :subset-of]}
                       nil?]})))
+
+(deftest number-validation
+  (vmatch tctx #{'myapp/some-number} 1
+          {:errors [nil?]})
+
+  (vmatch tctx #{'myapp/some-number} 0.1
+          {:errors [nil?]})
+
+  (vmatch tctx #{'myapp/some-number} nil
+          {:errors [{:type "primitive-type"}]})
+
+  (vmatch tctx #{'myapp/some-number} 0.1M
+          {:errors [nil?]})
+
+  (vmatch tctx #{'myapp/some-number} 1N
+          {:errors [nil?]})
+
+  (vmatch tctx #{'myapp/some-number} 1/3
+          {:errors [nil?]}))
