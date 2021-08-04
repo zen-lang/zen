@@ -1,0 +1,90 @@
+{ns fhir.us-core
+ import #{fhir}
+
+
+ ;; 1. extensions and constraints
+ Patient
+ {:zen/tags #{zen/schema}
+  :confirms #{fhir/Patient}
+  :type zen/map
+  :require #{:gender :identifier :name}
+  :keys {:race {:confirms #{race}}
+         :name {:type zen/vector
+                :minItems 1
+                :every {:type zen/map
+                        :require #{#{:given :family}}
+                        :keys {:given {:type zen/vector
+                                       :minItems 1}}}}
+         :identifier {:type zen/vector
+                      :minItems 1
+                      :every {:type zen/map
+                              :require #{:system :value}}}}}
+
+ ;; valueset
+ omb-categories
+ {:zen/tags #{zen/schema fhir/valueset}
+  :concepts [{:code "1002-5" :system "urn:oid:2.16.840.1.113883.6.238"
+              :display "American Indian or Alaska Native"}
+             {:code "2028-9" :system "urn:oid:2.16.840.1.113883.6.238"
+              :display "Asian"}]}
+
+ ;; extension
+ race
+ {:zen/tags #{zen/schema fhir/extension}
+  :type zen/map
+  :keys {:text {:type zen/string}
+         :ombCategory {:confirms #{fhir/Coding}
+                       fhir/bind {:valueset omb-categories}}
+         :detailed {:confirms #{fhir/Coding}}}}
+
+
+ ;; 2. match
+ bmi
+ {:zen/tags #{zen/schema}
+  :confirms #{fhir/Observation}
+  :type zen/map
+  :require #{:code :valueQuantity}
+
+  :match {:code {:coding #{{:code "59576-9"
+                            :system "http://loinc.org"}}}
+          :valueQuantity {:system "http://unitsofmeasure.org"
+                          :unit "kg/m2"}}
+  :keys {:valueQuantity {:type zen/map :require #{:value :unit :system}}}}
+
+ ;; 3. slicing = filter
+ blood-pressure
+ {:zen/tags #{zen/schema}
+  :confirms #{fhir/Observation}
+  :type zen/map
+  :require #{:code :component}
+
+  :match {:code {:coding #{{:code "85354-9" :system "http://loinc.org"}}}}
+
+  :keys
+  {:component
+   {:type zen/vector
+    :minItems 2 :maxItems 2
+    :filter
+    {:systolic
+     {:match  {:code {:coding #{{:code "8480-6" :system "http://loinc.org"}}}}
+      :schema {:type zen/vector
+               :minItems 1 :maxItems 1
+               :every {:type zen/map
+                       :match {:valueQuantity {:system "http://unitsofmeasure.org"
+                                               :unit "mm[Hg]"}}
+                       :keys {:ext {:type zen/string}
+                              :valueQuanitity {:type zen/map
+                                               :keys {:value {:type zen/number :min 10}}}}}}}
+     :diastolic
+     {:match {:code {:coding #{{:code "8462-4" :system "http://loinc.org"}}}}
+      :schema {:type zen/vector
+               :minItems 1 :maxItems 1
+               :every {:type zen/map
+                       :match {:valueQuantity {:system "http://unitsofmeasure.org"
+                                               :unit "mm[Hg]"}}
+                       :keys {:valueQuanitity {:type zen/map
+                                               :keys {:value {:type zen/number :min 0}}}}}}}}}}}
+
+
+
+ }

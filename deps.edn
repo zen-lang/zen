@@ -1,27 +1,26 @@
-{:paths ["src" "pkg"]
+{:paths ["src" "zrc"]
 
  :lib "zen-lang/zen"
- :version "0.0.1-SNAPSHOT"
+ :version "0.0.2"
 
- :deps {org.clojure/clojure {:mvn/version "1.10.1"}
-        borkdude/edamame {:mvn/version "0.0.11-alpha.16"}
-        healthsamurai/matcho {:mvn/version "0.3.7"}}
+ :deps {org.clojure/clojure  {:mvn/version "1.10.1"}
+        borkdude/edamame     {:mvn/version "0.0.11"}}
 
  :aliases
  {:nrepl
   {:extra-paths []
-   :extra-deps {org.clojure/tools.nrepl       {:mvn/version "0.2.13"}
-                org.clojure/core.rrb-vector   {:mvn/version "0.0.13"}
-                cider/cider-nrepl             {:mvn/version "0.25.6"}
-                refactor-nrepl/refactor-nrepl {:mvn/version "2.4.0"}}
+   :extra-deps {cider/cider-nrepl             {:mvn/version "LATEST"}
+                refactor-nrepl/refactor-nrepl {:mvn/version "2.5.1"}}
 
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
 
-  :test {:extra-paths ["test" "lib/example" "lib/auth"]
-         :extra-deps {healthsamurai/matcho {:mvn/version "0.3.7"}}}
+  :test
+  {:extra-paths ["test" "ztest"]
+   :extra-deps {healthsamurai/matcho {:mvn/version "0.3.7"}}}
 
-  :outdated {:extra-deps {olical/depot {:mvn/version "1.7.0"}}
-             :main-opts ["-m" "depot.outdated.main"]}
+  :outdated
+  {:extra-deps {olical/depot {:mvn/version "1.7.0"}}
+   :main-opts ["-m" "depot.outdated.main"]}
 
   :kaocha
   {:extra-deps {lambdaisland/kaocha  {:mvn/version "1.0-612"}}
@@ -29,18 +28,8 @@
    :jvm-opts    ^:replace ["-XX:-OmitStackTraceInFastThrow"]
    :main-opts   ["-m" "kaocha.runner" "--config-file" "test/test.edn"]}
 
-  :runner {:extra-deps {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner"
-                                                   :sha     "3cb0a9daf1cb746259dc8309b218f9211ad3b33b"}}
-           :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
-           :main-opts ["-m" "test-runner"]}
 
-  :build
-  {:extra-paths ["build"]
-   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
-   :extra-deps {cambada/cambada {:git/url "https://github.com/HealthSamurai/cambada"
-                         :sha     "a8ccf922e516e3249e96ae63dadd91d5f01e83f5"}}
-   :main-opts  ["-m" "build"]}
-
+  ;; todo migrate to tools.build
   :depstar {:extra-deps
             {seancorfield/depstar {:mvn/version "1.1.133"}}
             :ns-default hf.depstar

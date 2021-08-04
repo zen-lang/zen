@@ -1,0 +1,8 @@
+{ns zen.require-test
+ require {lib my.library}
+
+ mysybol
+ {:zen/tags #{lib/model}}
+
+
+ }

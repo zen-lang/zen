@@ -1,0 +1,80 @@
+{
+ ;; name of namespace
+ ns intro
+
+ HumanName
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:family {:zen/desc "Family name (often called 'Surname')"
+                  :type zen/string}
+         :given {:type zen/vector
+                 :zen/desc "Given names (not always 'first'). Includes middle names"
+                 :every {:type zen/string}}
+         :use {:type zen/string}}}
+ ;; 1
+ ;; Patient
+ ;; {:zen/tags #{zen/schema}
+ ;;  :type zen/map
+ ;;  ;; :keys {}
+ ;;  ;; :keys {:birthDate {:type zen/date}
+ ;;  ;;        :name {:type zen/vector
+ ;;  ;;               :every {:confirms #{HumanName}}}}
+ ;;  :keys {:id {:type zen/string}
+ ;;         :resourceType {:type zen/string}
+ ;;         :name {:type zen/vector
+ ;;                :every {:confirms #{HumanName}}}
+ ;;         :birthDate {:type zen/date}
+ ;;         :address {:type zen/vector
+ ;;                   :every {:confirms #{Address}}}}
+ ;;  }
+
+
+ Address
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:city {:type zen/string}
+         :lines {:type zen/vector :every {:type zen/string}}}}
+
+
+ Resource
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:resourceType {:type zen/string}
+         :id {:type zen/string}}}
+
+ DomainResource
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :confirms #{Resource}
+  :keys {:text {:type zen/map
+                :keys {:div {:type zen/string}}}}}
+
+ Namable
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:name {:type zen/vector
+                :every {:confirms #{HumanName}}}}}
+ Patient
+ {:zen/tags #{zen/schema}
+  :confirms #{DomainResource Namable}
+  :type zen/map
+  :keys {:gender {:type zen/string
+                  :enum [{:value "female"}
+                         {:value "male"}]}
+         :active {:type zen/boolean}
+         :birthDate {:type zen/date}
+         :managingOrganization {:type zen/any}
+         :address {:type zen/vector}
+         :identifier {:type zen/vector}
+         :telecom {:type zen/vector}}}
+
+ MyPatient
+ {:zen/tags #{zen/schema}
+  :confirms #{Patient}
+  :type zen/map
+  :require #{:gender}
+  :keys {:name {:type zen/vector
+                :every {:type zen/map
+                        :require #{#{:family :given}}}}}}
+
+}

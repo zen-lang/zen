@@ -1,0 +1,193 @@
+{ns fhir
+
+ extension {:zen/tags #{zen/tag}}
+
+ bind {:zen/tags #{zen/schema-fx zen/schema}
+       :type zen/map
+       :require #{:valueset}
+       :key {:valueset {:type zen/symbol}}}
+
+ valueset {:zen/tags #{zen/schema zen/tag}
+           :type zen/map
+           :require #{:concepts}
+           :keys {:concepts {:type zen/vector
+                             :every {:confirms #{Coding}}}}}
+
+ ContactPoint
+ {:zen/tags #{ zen/schema}
+  :type zen/map
+  :keys {:system {:zen/desc "phone | fax | email | pager | url | sms | other"
+                  :type zen/string}
+         :value {:zen/desc "The actual contact point details"
+                 :type zen/string}
+         :use {:zen/desc "home | work | temp | old | mobile - purpose of this contact point"
+               :type zen/string}
+         :rank {:zen/desc "Specify preferred order of use (1 = highest)"
+                :type zen/integer}
+         :period {:zen/desc "Time period when the contact point was/is in use"
+                  :confirms #{Period}}}
+  }
+
+ Address
+ {:zen/tags #{ zen/schema}
+  :type zen/map
+  :keys {:use {:zen/desc "home | work | temp | old | billing - purpose of this address"
+               :type zen/string}
+         :city {:zen/desc "Name of city town etc."
+                :type zen/string}
+         :type {:zen/desc "postal | physical | both"
+                :type zen/string}
+         :state {:zen/desc "Sub-unit of country (abbreviations ok)"
+                 :type zen/string}
+         :line {:type zen/vector
+                :zen/desc "Street name number direction & P.O. Box etc."
+                :every {:type zen/string}}
+         :postalCode {:zen/desc "Postal code for area"
+                      :type zen/string}
+         :period {:zen/desc "Time period when address was/is in use"
+                  :confirms #{Period}}
+         :country {:zen/desc "Country (e.g. can be ISO 3166 2 or 3 letter code)"
+                   :type zen/string}
+         :district {:zen/desc "District name (aka county)"
+                    :type zen/string}
+         :text {:zen/desc "Text representation of the address"
+                :type zen/string}}}
+
+ Coding
+ {:zen/tags #{ zen/schema}
+  :type zen/map
+  :keys {:system {:zen/desc "Identity of the terminology system"
+                  :type zen/string}
+         :version {:zen/desc "Version of the system - if relevant"
+                   :type zen/string}
+         :code {:zen/desc "Symbol in syntax defined by the system"
+                :type zen/string}
+         :display {:zen/desc "Representation defined by the system"
+                   :type zen/string}
+         :userSelected {:zen/desc "If this coding was chosen directly by the user"
+                        :type zen/boolean}}}
+
+ CodeableConcept
+ {:zen/tags #{ zen/schema}
+  :type zen/map
+  :keys {:coding {:type zen/vector
+                  :zen/desc "Code defined by a terminology system"
+                  :every {:confirms #{Coding}}}
+         :text {:zen/desc "Plain text representation of the concept"
+                :type zen/string}}}
+
+ Period
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:start {:zen/desc "Starting time with inclusive boundary"
+                 :type zen/datetime}
+         :end {:zen/desc "End time with inclusive boundary if not ongoing"
+               :type zen/datetime}}}
+
+ HumanName
+ {:zen/tags #{zen/schema},
+  :type zen/map,
+  :keys {:use {:zen/desc "usual | official | temp | nickname | anonymous | old | maiden",
+               :type zen/string},
+         :text {:zen/desc "Text representation of the full name",
+                :type zen/string},
+         :family {:zen/desc "Family name (often called 'Surname')",
+                  :type zen/string},
+         :given {:type zen/vector,
+                 :zen/desc "Given names (not always 'first'). Includes middle names",
+                 :every {:type zen/string}},
+         :prefix {:type zen/vector,
+                  :zen/desc "Parts that come before the name",
+                  :every {:type zen/string}},
+         :suffix {:type zen/vector,
+                  :zen/desc "Parts that come after the name",
+                  :every {:type zen/string}},
+         :period {:zen/desc "Time period when name was/is in use",
+                  :confirms #{Period}}}}
+
+ Identifier
+ {:zen/tags #{zen/schema},
+  :type zen/map,
+  :keys {:use {:zen/desc "usual | official | temp | secondary | old (If known)",
+               :type zen/string},
+         :type {:zen/desc "Description of identifier",
+                :confirms #{CodeableConcept}},
+         :system {:zen/desc "The namespace for the identifier value",
+                  :type zen/string}
+         :value {:zen/desc "The value that is unique",
+                 :type zen/string},
+         :period {:zen/desc "Time period when id is/was valid for use",
+                  :confirms #{Period}},
+         :assigner {:zen/desc "Organization that issued id (may be just text)",
+                    :confirms #{Reference}}}}
+
+ Reference
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:reference {:zen/desc "Literal reference Relative internal or absolute URL"
+                     :type zen/string}
+         :type {:zen/desc "Type the reference refers to (e.g. \"Patient\")"
+                :type zen/string}
+         :identifier {:zen/desc "Logical reference when literal reference is not known"
+                      :confirms #{Identifier}}
+         :display {:zen/desc "Text alternative for the resource"
+                   :type zen/string}}}
+
+ Resource
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:resourceType {:type zen/string}
+         :id {:type zen/string}}}
+
+ DomainResource
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :confirms #{Resource}
+  :keys {:text {:type zen/map
+                :keys {:div {:type zen/string}}}}}
+
+ Patient
+ {:zen/tags #{zen/schema}
+  :confirms #{DomainResource}
+  :type zen/map
+  :keys {:name {:type zen/vector
+                :every {:confirms #{HumanName}}}
+         :gender {:type zen/string
+                  :enum [{:value "female"}
+                         {:value "male"}]}
+         :active {:type zen/boolean}
+         :birthDate {:type zen/datetime}
+         :managingOrganization {:confirms #{Reference}}
+         :address {:type zen/vector :every {:confirms #{Address}}}
+         :identifier {:type zen/vector :every {:confirms #{Identifier}}}
+         :telecom {:type zen/vector :every {:confirms #{ContactPoint}}}}}
+
+
+ Quantity
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:value {:zen/desc "Numerical value (with implicit precision)"
+                 :type zen/number}
+         :comparator {:zen/desc "< | <= | >= | > - how to understand the value"
+                      :type zen/string}
+         :unit {:zen/desc "Unit representation"
+                :type zen/string}
+         :system {:zen/desc "System that defines coded unit form"
+                  :type zen/string}
+         :code {:zen/desc "Coded form of the unit"
+                :type zen/string}}}
+
+ Observation
+ {:zen/tags #{zen/schema}
+  :confirms #{DomainResource}
+  :type zen/map
+  :keys {:code {:confirms #{CodeableConcept}}
+         :valueQuantity {:confirms #{Quantity}}
+         :component {:type zen/vector
+                     :every {:type zen/map
+                             :keys {:code {:confirms #{CodeableConcept}}
+                                    :valueQuantity {:confirms #{Quantity}}}}}}}
+
+
+
+ }

@@ -93,12 +93,13 @@
     (if-let [content (if-let [res (io/resource pth)]
                        (slurp res)
                        (loop [[p & ps] (:paths @ctx)]
-                         (when p
+                         (if p
                            (let [fpth (str p "/" pth)
                                  file (io/file fpth)]
                              (if (.exists file)
                                (slurp file)
-                               (recur ps))))))]
+                               (recur ps)))
+                           (println "Could not find " pth))))]
       (try
         (let [nmsps (edamame.core/parse-string content)]
           (load-ns ctx nmsps {:zen/file pth}))
@@ -121,11 +122,16 @@
 (defn get-tag [ctx tag]
   (get-in @ctx [:tags tag]))
 
+(defn get-tags [ctx tag]
+  (->> (get-in @ctx [:tags tag])
+       (mapv #(get-symbol ctx %))))
+
 (defn new-context [& [opts]]
   (let [ctx (atom (or opts {}))]
     (read-ns ctx 'zen)
     ctx))
 
+;; what is this
 (defn instance-of? [tp res]
   (let [tps (get res 'types)]
     (or (and (set? tps) (contains? tps 'primitive))

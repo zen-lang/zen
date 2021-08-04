@@ -1,0 +1,39 @@
+{ns zen.effects-test
+ require {test zen.test}
+
+ my-effect
+ {:zen/tags #{zen/effect zen/schema}
+  :zen/desc "Declaration of effect"
+  :type zen/map
+  :require #{:num-keys}
+  :keys {:num-keys {:type zen/integer}}}
+
+ model
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :fx {:zen.effects-test/my-effect {:num-keys 3}}}
+
+ test
+ {:zen/tags #{test/case}
+  :schema model
+  :cases
+  {
+
+   "test effect is produced"
+   {:data {:a 1}
+    :effects [{:type :zen.effects-test/my-effect
+               :path []
+               :schema [model :fx :zen.effects-test/my-effect]
+               :data {:a 1}
+               :args {:num-keys 3}}]}
+
+   "test valid case"
+   {:data {:a 1 :b 2 :c 3}
+    :errors test/empty?}
+
+
+
+   }}
+
+
+ }

@@ -39,7 +39,8 @@
                    :minLength {:type integer
                                :min 0
                                :zen/desc "inclusive minimal length of string"}
-                   :maxLength {:type integer :min 0}
+                   :maxLength {:type integer :min 0
+                               :zen/desc "inclusive max length of string"}
                    :regex     {:type regex}}}
 
  regex    {:zen/tags #{type schema primitive}
@@ -128,6 +129,11 @@
                          :pairs {:unique-keys true
                                  :key {:type keyword}
                                  :value {:confirms #{schema}}}}
+                   :filter {:type zen/map
+                            :zen/desc "Filter collection and apply schema"
+                            :values {:type map
+                                     :keys {:match {:type any}
+                                            :schema {:confirms #{schema}}}}}
                    :slicing {:zen/desc "Define a slicing on the vector"
                              :type map
                              :require #{:slices}
@@ -230,6 +236,8 @@
                            :confirms {:type     set
                                       :zen/desc "set of schemas to confirm"
                                       :every    {:type symbol :tags #{schema}}}
+                           :match    {:type any
+                                      :zen/desc "Match data pattern"}
                            :const    {:type     map
                                       :zen/desc "Check constant"
                                       :keys     {:value {:type any}}}

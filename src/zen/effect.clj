@@ -19,7 +19,17 @@
         (update :data (comp zen.utils/strip-nils zen.utils/deep-merge) data))))
 
 (defn apply-fx [ctx validation-result data]
-  (reduce (fn [acc fx]
+  (let [errs (->> (:effects validation-result)
+                  (reduce (fn [errs fx]
+                            (if-let [new-errs (fx-evaluator ctx fx data)]
+                              (into errs new-errs)
+                              errs))
+                          []))]
+    (-> validation-result
+        ;; (dissoc :effects)
+        (update :errors (fn [x] (into (or x []) errs)))))
+  
+  #_(reduce (fn [acc fx]
             (merge-acc acc (fx-prepare-result ctx acc fx (fx-evaluator ctx fx data))))
           (assoc (dissoc validation-result :effects) :data data)
           (:effects validation-result)))

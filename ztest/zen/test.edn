@@ -1,0 +1,11 @@
+{ns zen.test
+
+ validate
+ {}
+
+ case
+ {:zen/tags #{tag schema}
+  :type zen/map
+  :keys {}}
+
+ }

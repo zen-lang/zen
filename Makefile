@@ -5,6 +5,7 @@ SHELL = bash
 
 repl:
 	echo "Use clojure jack-in instead"
+	clj -M:nrepl:test:build -m nrepl.cmdline --middleware [cider.nrepl/cider-middleware]
 
 jar:
 	clojure -X:depstar jar :jar target/zen.jar
