@@ -24,4 +24,3 @@
     (doseq [{do :do match :match} (:steps case)]
       (let [res (sub/validate ztx (:schema do) (:data do))]
         (matcho/match res match)))))
-

@@ -1,0 +1,2164 @@
+; This is the Calva evaluation results output window.
+; TIPS: The keyboard shortcut `ctrl+alt+c o` shows and focuses this window
+;   when connected to a REPL session.
+; Please see https://calva.io/output/ for more info.
+; Happy coding! ♥️
+
+; Connecting ...
+; Hooking up nREPL sessions...
+; Connected session: clj
+; TIPS: 
+;   - You can edit the contents here. Use it as a REPL if you like.
+;   - `alt+enter` evaluates the current top level form.
+;   - `ctrl+enter` evaluates the current form.
+;   - `alt+up` and `alt+down` traverse up and down the REPL command history
+;      when the cursor is after the last contents at the prompt
+;   - Clojure lines in stack traces are peekable and clickable.
+clj꞉user꞉>  ; Use `alt+enter` to evaluate
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.all-tests...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.all-tests꞉> 
+; Running tests for zen.all-tests...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.all-tests꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+Case: Type validation in map
+; 2 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.map-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.map-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+Case: Type validation in map
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {1
+  {-
+   {:path [:key2],
+    :message "Expected type 'zen/string got class java.lang.Boolean"},
+   + nil}}}
+; expected:
+{:errors {1 {:path [:key2], :message Expected type 'zen/string got class java.lang.Boolean}}}
+; actual:
+{:errors ({:message Expected type 'zen/string got class java.lang.Long, :path [:key1]})}
+; 2 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.map-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.map-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+Case: Type validation in map
+; 2 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation_test.clj
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+Case: Type validation in map
+; 2 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+Case: is-key type validation
+Case: Type validation in map
+; 2 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+ERROR while reading zen/keys-test.edn
+#error {
+ :cause Unmatched delimiter: }, expected: ] to match [ at [22 21]
+ :data {:type :edamame/error, :row 23, :col 85, :edamame/opened-delimiter [, :edamame/opened-delimiter-loc {:row 22, :col 21}, :edamame/expected-delimiter ]}
+ :via
+ [{:type clojure.lang.ExceptionInfo
+   :message Unmatched delimiter: }, expected: ] to match [ at [22 21]
+   :data {:type :edamame/error, :row 23, :col 85, :edamame/opened-delimiter [, :edamame/opened-delimiter-loc {:row 22, :col 21}, :edamame/expected-delimiter ]}
+   :at [edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]}]
+ :trace
+ [[edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]
+  [edamame.impl.parser$throw_reader invoke parser.cljc 90]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 528]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamam
+e.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 519]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399
+]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$pa
+rse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 519]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parse
+r$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke 
+parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_string invokeStatic parser.cljc 710]
+  [edamame.impl.parser$parse_string invoke parser.cljc 704]
+  [edamame.core$parse_string invokeStatic core.cljc 60]
+  [edamame.core$parse_string invoke core.cljc 5]
+  [zen.store$read_ns invokeStatic store.clj 104]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.store$load_ns invokeStatic store.clj 78]
+  [zen.store$load_ns doInvoke store.clj 65]
+  [clojure.lang.RestFn invoke RestFn.java 442]
+  [zen.store$read_ns invokeStatic store.clj 105]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.core$read_ns invokeStatic core.clj 14]
+  [zen.core$read_ns invoke core.clj 13]
+  [zen.validation_test$fn__9689 invokeStatic validation_test.clj 21]
+  [zen.validation_test$fn__9689 invoke validation_test.c
+lj 18]
+  [cider.nrepl.middleware.test$test_var$fn__7246 invoke test.clj 213]
+  [cider.nrepl.middleware.test$test_var invokeStatic test.clj 213]
+  [cider.nrepl.middleware.test$test_var invoke test.clj 205]
+  [cider.nrepl.middleware.test$test_vars$fn__7250$fn__7255 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars$fn__7250 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars invokeStatic test.clj 225]
+  [cider.nrepl.middleware.test$test_vars invoke test.clj 219]
+  [cider.nrepl.middleware.test$test_ns invokeStatic test.clj 241]
+  [cider.nrepl.middleware.test$test_ns invoke test.clj 232]
+  [cider.nrepl.middleware.test$test_var_query invokeStatic test.clj 252]
+  [cider.nrepl.middleware.test$test_var_query invoke test.clj 245]
+  [cider.nrepl.middleware.test$handle_test_var_q
+uery_op$fn__7294$fn__7295 invoke test.clj 290]
+  [clojure.lang.AFn applyToHelper AFn.java 152]
+  [clojure.lang.AFn applyTo AFn.java 144]
+  [clojure.core$apply invokeStatic core.clj 665]
+  [clojure.core$with_bindings_STAR_ invokeStatic core.clj 1973]
+  [clojure.core$with_bindings_STAR_ doInvoke core.clj 1973]
+  [clojure.lang.RestFn invoke RestFn.java 425]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294 invoke test.clj 282]
+  [clojure.lang.AFn run AFn.java 22]
+  [nrepl.middleware.session$session_exec$main_loop__1058$fn__1062 invoke session.clj 202]
+  [nrepl.middleware.session$session_exec$main_loop__1058 invoke session.clj 201]
+  [clojure.lang.AFn run AFn.java 22]
+  [java.lang.Thread run Thread.java 829]]}
+ERROR while reading zen/all-tests.edn
+#error {
+ :cause Unmatched delimiter: }, expected: ] to match [ at [22 21]
+ :data {:type :edamame/error, :row 23, :col 85, :edamame/opened-delimiter [, :edamame/opened-delimiter-loc {:row 22, :col 21}, :edamame/expected-delimiter ]}
+ :via
+ [{:type clojure.lang.ExceptionInfo
+   :message Unmatched delimiter: }, expected: ] to match [ at [22 21]
+   :data {:type :edamame/error, :row 23, :col 85, :edamame/opened-delimiter [, :edamame/opened-delimiter-loc {:row 22, :col 21}, :edamame/expected-delimiter ]}
+   :at [edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]}]
+ :trace
+ [[edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]
+  [edamame.impl.parser$throw_reader invoke parser.cljc 90]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 528]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamam
+e.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 519]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399
+]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$pa
+rse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 519]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parse
+r$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke 
+parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_string invokeStatic parser.cljc 710]
+  [edamame.impl.parser$parse_string invoke parser.cljc 704]
+  [edamame.core$parse_string invokeStatic core.cljc 60]
+  [edamame.core$parse_string invoke core.cljc 5]
+  [zen.store$read_ns invokeStatic store.clj 104]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.store$load_ns invokeStatic store.clj 78]
+  [zen.store$load_ns doInvoke store.clj 65]
+  [clojure.lang.RestFn invoke RestFn.java 442]
+  [zen.store$read_ns invokeStatic store.clj 105]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.core$read_ns invokeStatic core.clj 14]
+  [zen.core$read_ns invoke core.clj 13]
+  [zen.validation_test$fn__9689 invokeStatic validation_test.clj 21]
+  [zen.validation_test$fn__9689 invoke validation_test.c
+lj 18]
+  [cider.nrepl.middleware.test$test_var$fn__7246 invoke test.clj 213]
+  [cider.nrepl.middleware.test$test_var invokeStatic test.clj 213]
+  [cider.nrepl.middleware.test$test_var invoke test.clj 205]
+  [cider.nrepl.middleware.test$test_vars$fn__7250$fn__7255 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars$fn__7250 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars invokeStatic test.clj 225]
+  [cider.nrepl.middleware.test$test_vars invoke test.clj 219]
+  [cider.nrepl.middleware.test$test_ns invokeStatic test.clj 241]
+  [cider.nrepl.middleware.test$test_ns invoke test.clj 232]
+  [cider.nrepl.middleware.test$test_var_query invokeStatic test.clj 252]
+  [cider.nrepl.middleware.test$test_var_query invoke test.clj 245]
+  [cider.nrepl.middleware.test$handle_test_var_q
+uery_op$fn__7294$fn__7295 invoke test.clj 290]
+  [clojure.lang.AFn applyToHelper AFn.java 152]
+  [clojure.lang.AFn applyTo AFn.java 144]
+  [clojure.core$apply invokeStatic core.clj 665]
+  [clojure.core$with_bindings_STAR_ invokeStatic core.clj 1973]
+  [clojure.core$with_bindings_STAR_ doInvoke core.clj 1973]
+  [clojure.lang.RestFn invoke RestFn.java 425]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294 invoke test.clj 282]
+  [clojure.lang.AFn run AFn.java 22]
+  [nrepl.middleware.session$session_exec$main_loop__1058$fn__1062 invoke session.clj 202]
+  [nrepl.middleware.session$session_exec$main_loop__1058 invoke session.clj 201]
+  [clojure.lang.AFn run AFn.java 22]
+  [java.lang.Thread run Thread.java 829]]}
+; ERROR in zen.validation-test/test-validation (line 21):
+; Uncaught exception, not in assertion
+; error: clojure.lang.ExceptionInfo: Unmatched delimiter: }, expected: ] to match [ at [22 21] {:type :edamame/error, :row 23, :col 85, :edamame/opened-delimiter "[", :edamame/opened-delimiter-loc {:row 22, :col 21}, :edamame/expected-delimiter "]"} (parser.cljc)
+; expected:
+undefined
+; 1 tests finished, problems found. 😭 errors: 1, failures: 0, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+Case: Type validation in map
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 2 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; ERROR in zen.validation-test/test-validation (line 25):
+; Uncaught exception, not in assertion
+; error: java.lang.IllegalArgumentException: No method in multimethod 'compile-type-check' for dispatch value: zen/integer (MultiFn.java)
+; expected:
+undefined
+; 1 tests finished, problems found. 😭 errors: 1, failures: 0, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+Case: Type validation in map
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 2 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+Case: Type validation in map
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 2 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.all-tests...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.all-tests꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+; Syntax error compiling at (src/zen/validation.clj:0:0).
+; Unable to resolve symbol: data in this context
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+; Syntax error compiling at (src/zen/validation.clj:0:0).
+; Unable to resolve symbol: data in this context
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation_test.clj
+; Evaluating file: validation_test.clj
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation_test.clj
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+#'zen.validation-test/test-validation
+clj꞉zen.validation-test꞉> 
+#'zen.validation-test/test-validation
+clj꞉zen.validation-test꞉> 
+nil
+clj꞉zen.validation-test꞉> 
+#'zen.validation-test/test-validation
+clj꞉zen.validation-test꞉> 
+nil
+clj꞉zen.validation-test꞉> 
+#'zen.validation-test/test-validation
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"check-map? data"
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"check-map?" zen.keys-test/is-key-data
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#'zen.validation/check-map?
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" zen.keys-test/is-key-data
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" zen.keys-test/is-key-data
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"check-map?" zen.keys-test/is-key-data false
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#'zen.validation/check-map?
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" zen.keys-test/is-key-data false
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" zen.keys-test/is-key-data false
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" zen.keys-test/m0-data false
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" zen.keys-test/m0-data false
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+; expected:
+{:errors {0 {:path {0 :for}}}}
+; actual:
+{:errors ({:message Expected map, :type :type, :path []})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+Case: is-key type validation
+"check-map?" zen.keys-test/m0-data false
+
+FAIL in () (NO_SOURCE_FILE:26)
+Matcho pattern mismatch:
+
+{:errors {0 {:path {0 {- :for, + nil}}}}}
+
+expected: {:errors {0 {:path {0 :for}}}}
+  actual: {:errors ({:message "Expected map", :type :type, :path []})}
+nil
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for 4444} true
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for 4444} true
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for 4455} true
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for 4455} true
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "dlskjds",
+    + "Expected type 'zen/string got class java.lang.Long"}}}}
+; expected:
+{:errors {0 {:message dlskjds}}}
+; actual:
+{:errors ({:message Expected type 'zen/string got class java.lang.Long, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for 4455} true
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "", + "Expected type 'zen/string got class java.lang.Long"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/string got class java.lang.Long, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; ERROR in zen.validation-test/test-validation (line 25):
+; Uncaught exception, not in assertion
+; error: java.lang.IllegalArgumentException: No method in multimethod 'compile-type-check' for dispatch value: zen/set (MultiFn.java)
+; expected:
+undefined
+; 1 tests finished, problems found. 😭 errors: 1, failures: 0, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"check-map?" {:for 4455} true
+"jere i am"
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "", + "Expected type 'zen/set got class java.lang.Long"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class java.lang.Long, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for 4455} true
+"jere i am"
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "", + "Expected type 'zen/set got class java.lang.Long"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class java.lang.Long, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen꞉> 
+; Running tests for zen...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for #{zen.keys-test/string}} true
+"jere i am"
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"check-map?" {:for #{zen.keys-test/string}} true
+"jere i am"
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"check-map?" {:for #{zen.keys-test/string}} true
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for #{zen.keys-test/string}} true
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"check-map?" {:for #{zen.keys-test/string}} true
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"check-map?" {:for #{zen.keys-test/string}} true
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#'zen.validation/check-map?
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+#{zen.keys-test/string}
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+#{zen.keys-test/string}
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"type-ckeck zen/set" java.lang.Long
+76543
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "", + "Expected type 'zen/set got class java.lang.Long"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class java.lang.Long, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+#{0 1 2}
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "",
+    +
+    "Expected type 'zen/set got class clojure.lang.PersistentHashSet"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class clojure.lang.PersistentHashSet, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+#{0 1 2}
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {- {:path [:for], :message ""}, + nil}}}
+; expected:
+{:errors {0 {:path [:for], :message }}}
+; actual:
+{:errors ()}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+#{0 1 2}
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {- {:path [:for], :message ""}, + nil}}}
+; expected:
+{:errors {0 {:path [:for], :message }}}
+; actual:
+{:errors ()}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+ERROR while reading zen/keys-test.edn
+#error {
+ :cause The map literal starting with :path contains 3 form(s). Map literals must contain an even number of forms.
+ :data {:type :edamame/error, :row 25, :col 22}
+ :via
+ [{:type clojure.lang.ExceptionInfo
+   :message The map literal starting with :path contains 3 form(s). Map literals must contain an even number of forms.
+   :data {:type :edamame/error, :row 25, :col 22}
+   :at [edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]}]
+ :trace
+ [[edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]
+  [edamame.impl.parser$throw_reader invoke parser.cljc 90]
+  [edamame.impl.parser$throw_odd_map invokeStatic parser.cljc 386]
+  [edamame.impl.parser$throw_odd_map invoke parser.cljc 384]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 403]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [ed
+amame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 519]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+ 
+ [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.par
+ser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 519]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_d
+elimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map
+ invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_string invokeStatic parser.cljc 710]
+  [edamame.impl.parser$parse_string invoke parser.cljc 704]
+  [edamame.core$parse_string invokeStatic core.cljc 60]
+  [edamame.core$parse_string invoke core.cljc 5]
+  [zen.store$read_ns invokeStatic store.clj 104]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.store$load_ns invokeStatic store.clj 78]
+  [zen.store$load_ns doInvoke store.clj 65]
+  [clojure.lang.RestFn invoke RestFn.java 442]
+  [zen.store$read_ns invokeStatic store.clj 105]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.core$read_ns invokeStatic core.clj 14]
+  [zen.core$read_ns invoke core.clj 13]
+
+  [zen.validation_test$fn__16266 invokeStatic validation_test.clj 21]
+  [zen.validation_test$fn__16266 invoke validation_test.clj 18]
+  [cider.nrepl.middleware.test$test_var$fn__7246 invoke test.clj 213]
+  [cider.nrepl.middleware.test$test_var invokeStatic test.clj 213]
+  [cider.nrepl.middleware.test$test_var invoke test.clj 205]
+  [cider.nrepl.middleware.test$test_vars$fn__7250$fn__7255 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars$fn__7250 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars invokeStatic test.clj 225]
+  [cider.nrepl.middleware.test$test_vars invoke test.clj 219]
+  [cider.nrepl.middleware.test$test_ns invokeStatic test.clj 241]
+  [cider.nrepl.middleware.test$test_ns invoke test.clj 232]
+  [cider.nrepl.middleware.test$test_var_query invokeStatic t
+est.clj 252]
+  [cider.nrepl.middleware.test$test_var_query invoke test.clj 245]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294$fn__7295 invoke test.clj 290]
+  [clojure.lang.AFn applyToHelper AFn.java 152]
+  [clojure.lang.AFn applyTo AFn.java 144]
+  [clojure.core$apply invokeStatic core.clj 665]
+  [clojure.core$with_bindings_STAR_ invokeStatic core.clj 1973]
+  [clojure.core$with_bindings_STAR_ doInvoke core.clj 1973]
+  [clojure.lang.RestFn invoke RestFn.java 425]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294 invoke test.clj 282]
+  [clojure.lang.AFn run AFn.java 22]
+  [nrepl.middleware.session$session_exec$main_loop__1058$fn__1062 invoke session.clj 202]
+  [nrepl.middleware.session$session_exec$main_loop__1058 invoke session.clj 201]
+  [clojure.lang.AFn run AFn.java 22]
+  [java.lang.Thread run Thread.java 829]]}
+ERROR while reading zen/all-tests.edn
+#error {
+ :cause The map literal starting with :path contains 3 form(s). Map literals must contain an even number of forms.
+ :data {:type :edamame/error, :row 25, :col 22}
+ :via
+ [{:type clojure.lang.ExceptionInfo
+   :message The map literal starting with :path contains 3 form(s). Map literals must contain an even number of forms.
+   :data {:type :edamame/error, :row 25, :col 22}
+   :at [edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]}]
+ :trace
+ [[edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]
+  [edamame.impl.parser$throw_reader invoke parser.cljc 90]
+  [edamame.impl.parser$throw_odd_map invokeStatic parser.cljc 386]
+  [edamame.impl.parser$throw_odd_map invoke parser.cljc 384]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 403]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [ed
+amame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 519]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+ 
+ [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.par
+ser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 519]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_d
+elimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map
+ invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_string invokeStatic parser.cljc 710]
+  [edamame.impl.parser$parse_string invoke parser.cljc 704]
+  [edamame.core$parse_string invokeStatic core.cljc 60]
+  [edamame.core$parse_string invoke core.cljc 5]
+  [zen.store$read_ns invokeStatic store.clj 104]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.store$load_ns invokeStatic store.clj 78]
+  [zen.store$load_ns doInvoke store.clj 65]
+  [clojure.lang.RestFn invoke RestFn.java 442]
+  [zen.store$read_ns invokeStatic store.clj 105]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.core$read_ns invokeStatic core.clj 14]
+  [zen.core$read_ns invoke core.clj 13]
+
+  [zen.validation_test$fn__16266 invokeStatic validation_test.clj 21]
+  [zen.validation_test$fn__16266 invoke validation_test.clj 18]
+  [cider.nrepl.middleware.test$test_var$fn__7246 invoke test.clj 213]
+  [cider.nrepl.middleware.test$test_var invokeStatic test.clj 213]
+  [cider.nrepl.middleware.test$test_var invoke test.clj 205]
+  [cider.nrepl.middleware.test$test_vars$fn__7250$fn__7255 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars$fn__7250 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars invokeStatic test.clj 225]
+  [cider.nrepl.middleware.test$test_vars invoke test.clj 219]
+  [cider.nrepl.middleware.test$test_ns invokeStatic test.clj 241]
+  [cider.nrepl.middleware.test$test_ns invoke test.clj 232]
+  [cider.nrepl.middleware.test$test_var_query invokeStatic t
+est.clj 252]
+  [cider.nrepl.middleware.test$test_var_query invoke test.clj 245]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294$fn__7295 invoke test.clj 290]
+  [clojure.lang.AFn applyToHelper AFn.java 152]
+  [clojure.lang.AFn applyTo AFn.java 144]
+  [clojure.core$apply invokeStatic core.clj 665]
+  [clojure.core$with_bindings_STAR_ invokeStatic core.clj 1973]
+  [clojure.core$with_bindings_STAR_ doInvoke core.clj 1973]
+  [clojure.lang.RestFn invoke RestFn.java 425]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294 invoke test.clj 282]
+  [clojure.lang.AFn run AFn.java 22]
+  [nrepl.middleware.session$session_exec$main_loop__1058$fn__1062 invoke session.clj 202]
+  [nrepl.middleware.session$session_exec$main_loop__1058 invoke session.clj 201]
+  [clojure.lang.AFn run AFn.java 22]
+  [java.lang.Thread run Thread.java 829]]}
+; ERROR in zen.validation-test/test-validation (line 21):
+; Uncaught exception, not in assertion
+; error: clojure.lang.ExceptionInfo: The map literal starting with :path contains 3 form(s). Map literals must contain an even number of forms. {:type :edamame/error, :row 25, :col 22} (parser.cljc)
+; expected:
+undefined
+; 1 tests finished, problems found. 😭 errors: 1, failures: 0, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+#{0 1 2}
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {- {:path [:for], :message nil}, + nil}}}
+; expected:
+{:errors {0 {:path [:for], :message nil}}}
+; actual:
+{:errors ()}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"type-ckeck zen/set" clojure.lang.PersistentHashSet
+#{0 1 2}
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {0 {- {:path [:for]}, + nil}}}
+; expected:
+{:errors {0 {:path [:for]}}}
+; actual:
+{:errors ()}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+"type-ckeck zen/set" java.lang.Long
+1
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Evaluating file: validation.clj
+; Syntax error reading source at (src/zen/validation.clj:74:85).
+; Unmatched delimiter: )
+; Evaluation of file validation.clj failed: class clojure.lang.Compiler$CompilerException
+
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.validation...
+Case: is-key type validation
+"type-ckeck zen/set" java.lang.Long
+1
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+; Evaluating file: validation.clj
+nil
+; Running tests for zen.validation...
+Case: is-key type validation
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation꞉> 
+#multifn[compile-type-check 0x65a51dd1]
+clj꞉zen.validation꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "", + "Expected type 'zen/set got class java.lang.Long"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class java.lang.Long, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors
+ {0
+  {:message
+   {- "", + "Expected type 'zen/set got class java.lang.String"}}}}
+; expected:
+{:errors {0 {:message }}}
+; actual:
+{:errors ({:message Expected type 'zen/set got class java.lang.String, :path [:for]})}
+; 1 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; 1 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; 2 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; 2 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; FAIL in zen.validation-test/test-validation (validation_test.clj:26):
+; Matcho pattern mismatch:
+
+{:errors {- nil, + ()}}
+; expected:
+{:errors nil}
+; actual:
+{:errors ()}
+; 2 tests finished, problems found. 😭 errors: 0, failures: 1, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation
+; 2 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: is-key type validation. :for attribute is `zen/set`
+; 3 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: checks `is-key` type, :for attribute is `zen/set`
+; 3 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: checks `is-key` type
+; 3 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen꞉> 
+; Running tests for zen...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen꞉> 
+; Running tests for zen...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+ERROR while reading zen/keys-test.edn
+#error {
+ :cause The map literal starting with :zen/tags contains 3 form(s). Map literals must contain an even number of forms.
+ :data {:type :edamame/error, :row 21, :col 16}
+ :via
+ [{:type clojure.lang.ExceptionInfo
+   :message The map literal starting with :zen/tags contains 3 form(s). Map literals must contain an even number of forms.
+   :data {:type :edamame/error, :row 21, :col 16}
+   :at [edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]}]
+ :trace
+ [[edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]
+  [edamame.impl.parser$throw_reader invoke parser.cljc 90]
+  [edamame.impl.parser$throw_odd_map invokeStatic parser.cljc 386]
+  [edamame.impl.parser$throw_odd_map invoke parser.cljc 384]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 403]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 59
+8]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_string invokeStatic parser.cljc 710]
+  [edamame.impl.p
+arser$parse_string invoke parser.cljc 704]
+  [edamame.core$parse_string invokeStatic core.cljc 60]
+  [edamame.core$parse_string invoke core.cljc 5]
+  [zen.store$read_ns invokeStatic store.clj 104]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.store$load_ns invokeStatic store.clj 78]
+  [zen.store$load_ns doInvoke store.clj 65]
+  [clojure.lang.RestFn invoke RestFn.java 442]
+  [zen.store$read_ns invokeStatic store.clj 105]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.core$read_ns invokeStatic core.clj 14]
+  [zen.core$read_ns invoke core.clj 13]
+  [zen.validation_test$fn__17901 invokeStatic validation_test.clj 21]
+  [zen.validation_test$fn__17901 invoke validation_test.clj 18]
+  [cider.nrepl.middleware.test$test_var$fn__7246 invoke test.clj 213]
+  [cider.nrepl.middleware.test$test_var invokeStatic test.clj 213]
+  [cider.nrepl.middleware.test$test_var invoke test.clj 205]
+  [cider.nrepl.middleware.test$test_vars$fn__7250$fn__7255 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687
+]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars$fn__7250 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars invokeStatic test.clj 225]
+  [cider.nrepl.middleware.test$test_vars invoke test.clj 219]
+  [cider.nrepl.middleware.test$test_ns invokeStatic test.clj 241]
+  [cider.nrepl.middleware.test$test_ns invoke test.clj 232]
+  [cider.nrepl.middleware.test$test_var_query invokeStatic test.clj 252]
+  [cider.nrepl.middleware.test$test_var_query invoke test.clj 245]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294$fn__7295 invoke test.clj 290]
+  [clojure.lang.AFn applyToHelper AFn.java 152]
+  [clojure.lang.AFn applyTo AFn.java 144]
+  [clojure.core$apply invokeStatic core.clj 665]
+  [clojure.core$with_bindings_STAR_ invokeStatic core.clj 1973]
+  [clojure.core$with_bindings_STAR_ doInvoke core.clj 1973]
+  [clojure.lang.RestFn invoke Re
+stFn.java 425]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294 invoke test.clj 282]
+  [clojure.lang.AFn run AFn.java 22]
+  [nrepl.middleware.session$session_exec$main_loop__1058$fn__1062 invoke session.clj 202]
+  [nrepl.middleware.session$session_exec$main_loop__1058 invoke session.clj 201]
+  [clojure.lang.AFn run AFn.java 22]
+  [java.lang.Thread run Thread.java 829]]}
+ERROR while reading zen/all-tests.edn
+#error {
+ :cause The map literal starting with :zen/tags contains 3 form(s). Map literals must contain an even number of forms.
+ :data {:type :edamame/error, :row 21, :col 16}
+ :via
+ [{:type clojure.lang.ExceptionInfo
+   :message The map literal starting with :zen/tags contains 3 form(s). Map literals must contain an even number of forms.
+   :data {:type :edamame/error, :row 21, :col 16}
+   :at [edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]}]
+ :trace
+ [[edamame.impl.parser$throw_reader invokeStatic parser.cljc 102]
+  [edamame.impl.parser$throw_reader invoke parser.cljc 90]
+  [edamame.impl.parser$throw_odd_map invokeStatic parser.cljc 386]
+  [edamame.impl.parser$throw_odd_map invoke parser.cljc 384]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 403]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 59
+8]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 127]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_to_delimiter invokeStatic parser.cljc 117]
+  [edamame.impl.parser$parse_to_delimiter invoke parser.cljc 115]
+  [edamame.impl.parser$parse_map invokeStatic parser.cljc 399]
+  [edamame.impl.parser$parse_map invoke parser.cljc 396]
+  [edamame.impl.parser$dispatch invokeStatic parser.cljc 520]
+  [edamame.impl.parser$dispatch invoke parser.cljc 448]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 598]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_next invokeStatic parser.cljc 586]
+  [edamame.impl.parser$parse_next invoke parser.cljc 585]
+  [edamame.impl.parser$parse_string invokeStatic parser.cljc 710]
+  [edamame.impl.p
+arser$parse_string invoke parser.cljc 704]
+  [edamame.core$parse_string invokeStatic core.cljc 60]
+  [edamame.core$parse_string invoke core.cljc 5]
+  [zen.store$read_ns invokeStatic store.clj 104]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.store$load_ns invokeStatic store.clj 78]
+  [zen.store$load_ns doInvoke store.clj 65]
+  [clojure.lang.RestFn invoke RestFn.java 442]
+  [zen.store$read_ns invokeStatic store.clj 105]
+  [zen.store$read_ns invoke store.clj 91]
+  [zen.core$read_ns invokeStatic core.clj 14]
+  [zen.core$read_ns invoke core.clj 13]
+  [zen.validation_test$fn__17901 invokeStatic validation_test.clj 21]
+  [zen.validation_test$fn__17901 invoke validation_test.clj 18]
+  [cider.nrepl.middleware.test$test_var$fn__7246 invoke test.clj 213]
+  [cider.nrepl.middleware.test$test_var invokeStatic test.clj 213]
+  [cider.nrepl.middleware.test$test_var invoke test.clj 205]
+  [cider.nrepl.middleware.test$test_vars$fn__7250$fn__7255 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687
+]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars$fn__7250 invoke test.clj 228]
+  [clojure.test$default_fixture invokeStatic test.clj 687]
+  [clojure.test$default_fixture invoke test.clj 683]
+  [cider.nrepl.middleware.test$test_vars invokeStatic test.clj 225]
+  [cider.nrepl.middleware.test$test_vars invoke test.clj 219]
+  [cider.nrepl.middleware.test$test_ns invokeStatic test.clj 241]
+  [cider.nrepl.middleware.test$test_ns invoke test.clj 232]
+  [cider.nrepl.middleware.test$test_var_query invokeStatic test.clj 252]
+  [cider.nrepl.middleware.test$test_var_query invoke test.clj 245]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294$fn__7295 invoke test.clj 290]
+  [clojure.lang.AFn applyToHelper AFn.java 152]
+  [clojure.lang.AFn applyTo AFn.java 144]
+  [clojure.core$apply invokeStatic core.clj 665]
+  [clojure.core$with_bindings_STAR_ invokeStatic core.clj 1973]
+  [clojure.core$with_bindings_STAR_ doInvoke core.clj 1973]
+  [clojure.lang.RestFn invoke Re
+stFn.java 425]
+  [cider.nrepl.middleware.test$handle_test_var_query_op$fn__7294 invoke test.clj 282]
+  [clojure.lang.AFn run AFn.java 22]
+  [nrepl.middleware.session$session_exec$main_loop__1058$fn__1062 invoke session.clj 202]
+  [nrepl.middleware.session$session_exec$main_loop__1058 invoke session.clj 201]
+  [clojure.lang.AFn run AFn.java 22]
+  [java.lang.Thread run Thread.java 829]]}
+; ERROR in zen.validation-test/test-validation (line 21):
+; Uncaught exception, not in assertion
+; error: clojure.lang.ExceptionInfo: The map literal starting with :zen/tags contains 3 form(s). Map literals must contain an even number of forms. {:type :edamame/error, :row 21, :col 16} (parser.cljc)
+; expected:
+undefined
+; 1 tests finished, problems found. 😭 errors: 1, failures: 0, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Evaluating file: validation_test.clj
+#'zen.validation-test/test-validation
+; Running tests for zen.validation-test...
+Case: checks `is-key` type
+; 2 tests finished, all passing 👍, ns: 1, vars: 1
+clj꞉zen.validation-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.keys-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.keys-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.require-test...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.require-test꞉> 
+; Running tests for zen.all-tests...
+; No tests found. 😱, ns: 0, vars: 0
+clj꞉zen.all-tests꞉> 
