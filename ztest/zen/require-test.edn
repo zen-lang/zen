@@ -1,6 +1,6 @@
 {ns zen.require-test
 
- require {lib my.library}
+ require #{zen.test}
 
  basic-require
  {:zen/tags #{zen/schema}
@@ -8,20 +8,118 @@
   :require #{:foo :bar}
   :values {:type zen/any}}
 
+ or-require
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{#{:foo :bar}}
+  :values {:type zen/any}}
+
+ nested-require
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:attr {:type zen/map
+                :require #{#{:foo :bar}}
+                :values {:type zen/any}}}}
+
+ a-require
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{:a}
+  :values {:type zen/any}}
+
+ b-require
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{:b}
+  :values {:type zen/any}}
+
+ ab-require
+ {:zen/tags #{zen/schema}
+  :confirms #{a-require b-require}}
+
  basic-require-test
  {:zen/tags #{zen.test/case}
-  :title "checks `is-key` type"
+  :title ":require"
   :steps
-  [{:desc "checks if given :for is not `zet/set`"
-    :do {:type 'zen.test/validate :schema is-key-schema :data {}}
+  [{:desc "Empty data"
+    :do {:type zen.test/validate :schema basic-require :data {}}
+    :match {:errors [{:path [:bar]
+                      :type "require"
+                      :schema [basic-require :require]}
+                     {:path [:foo]
+                      :type "require"
+                      :schema [basic-require :require]}]}}
+
+   {:desc "foo key missed"
+    :do {:type zen.test/validate :schema basic-require :data {:bar 1}}
+    :match {:errors [{:path [:foo]
+                      :type "require"
+                      :schema [basic-require :require]}
+                     zen.test/nil?]}}
+
+   {:desc "bar key missed"
+    :do {:type zen.test/validate :schema basic-require :data {:foo 1}}
+    :match {:errors [{:path [:bar]
+                      :type "require"
+                      :schema [basic-require :require]}
+                     zen.test/nil?]}}
+
+   {:desc "Valid data"
+    :do {:type zen.test/validate
+         :schema basic-require
+         :data {:foo "foo" :bar "bar"}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "require or"
+    :do {:type zen.test/validate
+         :schema or-require
+         :data {:foo "foo" :bar "bar"}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "or - :foo key"
+    :do {:type zen.test/validate
+         :schema or-require
+         :data {:foo "foo"}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "or - :bar key"
+    :do {:type zen.test/validate
+         :schema or-require
+         :data {:bar "bar"}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "or - no keys"
+    :do {:type zen.test/validate
+         :schema or-require
+         :data {:some "ups"}}
+    :match {:errors [{:type "require"
+                      :schema [or-require :require]
+                      :path zen.test/empty?}]}}
+
+   {:desc "nested require"
+    :do {:type zen.test/validate
+         :schema nested-require
+         :data {}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "nested require"
+    :do {:type zen.test/validate
+         :schema nested-require
+         :data {:attr {:some ""}}}
+    :match {:errors [{:type "require"
+                      :schema [nested-require :keys :attr :require]
+                      :path [:attr]}]}}
+
+   {:desc "require & confirms"
+    :do {:type zen.test/validate
+         :schema ab-require
+         :data {}}
     :match {:errors
-            [
-             {:path [:foo]
-              :type :require
-              :schema [basic-require-test]
-              :messge ""}
+            [{:type "require",
+              :path [:a],
+              :schema [zen.require-test/ab-require :confirms zen.require-test/a-require :require]}
+             {:type "require",
+              :path [:b],
+              :schema [zen.require-test/ab-require :confirms zen.require-test/b-require :require]}
              ]}}
-  ;;  {:desc "...otherwise seems to be ok"
-  ;;   :do {:type 'zen.test/validate :schema is-key-schema :data {:for #{1 2 3}}}
-  ;;   :match {:errors []}}]}
-  }
+   ]}}

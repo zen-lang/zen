@@ -1,6 +1,6 @@
 (ns zen.core
   (:require
-   ;; [zen.validation]
+   [zen.validation]
    [zen.effect]
    [zen.store]))
 
@@ -27,14 +27,16 @@
    (zen.store/get-tag ztx sym)
    (map #(get-symbol ztx %))))
 
-;; (defn validate [ztx symbols data]
-;;   (zen.validation/validate ztx symbols data))
+(defn validate [ztx symbols data]
+  (-> (zen.validation/validate ztx symbols data)
+      (select-keys [:errors :warnings :effects])
+      (update :errors (fn [x] (sort-by :path x)))))
 
-;; (defn validate-schema [ztx schema data]
-;;   (zen.validation/validate-schema ztx schema data))
+(defn validate-schema [ztx schema data]
+  (zen.validation/validate-schema ztx schema data))
 
-;; (defn validate! [ztx symbols data]
-;;   (zen.effect/apply-fx ztx (zen.validation/validate ztx symbols data) data))
+(defn validate! [ztx symbols data]
+  (zen.effect/apply-fx ztx (zen.validation/validate ztx symbols data) data))
 
 (comment
   (def ztx (new-context {}))
