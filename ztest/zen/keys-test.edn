@@ -1,0 +1,30 @@
+{ns zen.keys-test
+
+ import #{zen.test}
+
+ is-key-schema {:zen/tags #{zen/schema}
+                :type zen/map
+                :require #{:for}
+                :keys {:for {:type zen/set}}}
+
+ is-key
+ {:zen/tags #{zen.test/case}
+  :title "checks `is-key` type"
+  :steps
+  [{:desc "checks if given :for is not `zet/set`"
+    :do {:type 'zen.test/validate :schema is-key-schema :data {:for "foo"}}
+    :match {:errors [{:path [:for] :message "Expected type 'zen/set got class java.lang.String"}]}}
+   {:desc "...otherwise seems to be ok"
+    :do {:type 'zen.test/validate :schema is-key-schema :data {:for #{1 2 3}}}
+    :match {:errors []}}]}
+
+;;  bounds-schema {:zen/tags #{zen/schema}
+;;                 }
+ 
+ }
+
+
+;; bounds
+;; {:zen/tags #{schema is-key}
+;;  :for #{integer number}
+;;  :zen/desc "bounds of numbers"}

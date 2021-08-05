@@ -1,6 +1,7 @@
 (ns zen.validation
   (:require [clojure.set]
-            [zen.store]))
+            ;; [zen.store]
+            ))
 
 (defmulti compile-key (fn [k ztx kfg] k))
 (defmulti compile-type-check (fn [tp ztx] tp))
@@ -39,8 +40,11 @@
     (-> (v {:errors [] :path []}data opts)
         (select-keys [:errors :effects]))))
 
+(defn get-symbol [ctx nm]
+  (get-in @ctx [:symbols nm]))
+
 (defn validate [ztx schemas data & [opts]]
-  (let [sch (zen.store/get-symbol ztx schemas)]
+  (let [sch (get-symbol ztx schemas)]
     (-> (validate-schema ztx sch data)
         (update :errors #(sort-by :path %)))))
 
@@ -52,12 +56,22 @@
       vtx
       (add-error vtx {:message (str "Expected type 'zen/string got " (type data))}))))
 
+
 (defmethod compile-type-check 'zen/number
   [_ _]
   (fn [vtx data _]
     (if (number? data)
       vtx
       (add-error vtx {:message "Expected number" :type :type}))))
+
+
+(defmethod compile-type-check 'zen/set
+  [_ _]
+  (fn [vtx data _]
+    (if (set? data)
+       vtx
+       (add-error vtx {:message (str "Expected type 'zen/set got " (type data))}))))
+
 
 (defn check-map? [vtx data _]
   (if (map? data) vtx

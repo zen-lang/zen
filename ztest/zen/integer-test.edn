@@ -1,4 +1,4 @@
-{ns zen.map-test
+{ns zen.integer-test
 
  import #{zen.test}
 

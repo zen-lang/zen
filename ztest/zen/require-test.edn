@@ -1,8 +1,27 @@
 {ns zen.require-test
+
  require {lib my.library}
 
- mysybol
- {:zen/tags #{lib/model}}
+ basic-require
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{:foo :bar}
+  :values {:type zen/any}}
 
-
- }
+ basic-require-test
+ {:zen/tags #{zen.test/case}
+  :title "checks `is-key` type"
+  :steps
+  [{:desc "checks if given :for is not `zet/set`"
+    :do {:type 'zen.test/validate :schema is-key-schema :data {}}
+    :match {:errors
+            [
+             {:path [:foo]
+              :type :require
+              :schema [basic-require-test]
+              :messge ""}
+             ]}}
+  ;;  {:desc "...otherwise seems to be ok"
+  ;;   :do {:type 'zen.test/validate :schema is-key-schema :data {:for #{1 2 3}}}
+  ;;   :match {:errors []}}]}
+  }
