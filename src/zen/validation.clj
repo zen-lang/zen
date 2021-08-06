@@ -266,13 +266,13 @@
   [_ ctx acc schema data]
   (if (or (sequential? data) (:slice (meta data)))
     (validate-collection "vector" ctx acc schema data)
-    (add-error ctx acc {:message (format "Expected type of 'vector, got %s" (pretty-type data))  :type "type"})))
+    (add-error ctx acc {:message (format "Expected type of 'vector, got '%s" (pretty-type data))  :type "type"})))
 
 (defmethod validate-type 'zen/list
   [_ ctx acc schema data]
   (if (list? data)
     (validate-collection "list" ctx acc schema data)
-    (add-error ctx acc {:message (format "Expected type of 'vector, got %s" (pretty-type data))  :type "type"})))
+    (add-error ctx acc {:message (format "Expected type of 'list, got '%s" (pretty-type data))  :type "type"})))
 
 (defmethod validate-type 'zen/set
   [_ ctx acc {:as schema, evr :every, mn :minItems, mx :maxItems} data]
@@ -301,18 +301,18 @@
                        (not (clojure.set/subset?
                               data
                               (:subset-of schema))))
-                (add-error ctx acc {:message (format "Expected %s to be a subset of %s" data (:subset-of schema)) :type "set"}
+                (add-error ctx acc {:message (format "Expected %s to be a subset of %s" data (apply sorted-set (:subset-of schema))) :type "set"}
                            {:schema [:subset-of]})
                 acc)
           acc (if (and (:superset-of schema)
                        (not (clojure.set/superset?
                               data
                               (:superset-of schema))))
-                (add-error ctx acc {:message (format "Expected %s to be a superset of %s" data (:superset-of schema)) :type "set"}
+                (add-error ctx acc {:message (format "Expected %s to be a superset of %s" data (apply sorted-set (:superset-of schema))) :type "set"}
                            {:schema [:superset-of]})
                 acc)]
       acc)
-    (add-error ctx acc {:message (format "Expected type of 'set, got %s" (pretty-type data))  :type "type"})))
+    (add-error ctx acc {:message (format "Expected type of 'set, got '%s" (pretty-type data))  :type "type"})))
 
 
 (defmethod validate-type 'zen/any

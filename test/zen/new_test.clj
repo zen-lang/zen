@@ -29,11 +29,12 @@
   (def ztx (zen.core/new-context {:unsafe true}))
   ;; (zen.core/read-ns ztx 'zen.all-tests)
   (zen.core/read-ns ztx 'zen.require-test)
+  (zen.core/read-ns ztx 'zen.keys-test)
 
   (doseq [case (zen.core/get-tags ztx 'zen.test/case)]
     (println "## Case: " (or (:title case) (:id case)))
     (doseq [{desc :desc do :do match :match} (:steps case)]
-      (println "  validate: " desc " \n  "  (:schema do) "\n  "(:data do))
+      (println "  validate: " desc " \n  "  (:schema do) "\n  " (:data do))
       (let [res (zen.core/validate ztx #{(:schema do)} (:data do))]
         (if (empty? (:errors res))
           (println "    valid!")
