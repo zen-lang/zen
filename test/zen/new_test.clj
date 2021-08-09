@@ -30,6 +30,7 @@
   (zen.core/read-ns ztx 'zen.require-test)
   (zen.core/read-ns ztx 'zen.keys-test)
   (zen.core/read-ns ztx 'zen.schema-key-test)
+  (zen.core/read-ns ztx 'zen.case-test)
 
   (doseq [case (zen.core/get-tags ztx 'zen.test/case)]
     (println "## Case: " (or (:title case) (:id case)))

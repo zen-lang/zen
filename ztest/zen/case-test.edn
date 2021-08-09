@@ -1,0 +1,51 @@
+{ns zen.case-test
+
+ import #{zen.test}
+
+ cases
+ {:zen/tags #{zen/schema}
+  :type zen/case
+  :case [{:when {:type zen/map
+                 :require #{:is}
+                 :keys {:is {:type zen/boolean}}}
+          :then {:type zen/map
+                 :require #{:foo}
+                 :keys {:foo {:type zen/integer
+                              :min 1}}}}]}
+
+ cases-tests
+ {:zen/tags #{zen.test/case}
+  :title "Cases validations in map"
+  :steps
+  [{:desc "Checks if require key not given"
+    :do {:type 'zen.test/validate :schema cases :data {:is true}}
+    :match
+    {:errors [{:path [:foo]
+               :type "require"
+               :message ":foo is required"
+               :schema [cases :case 0 :then :require]}]}}
+   {:desc "Checks if given key has invalid type"
+    :do {:type 'zen.test/validate :schema cases :data {:is true :foo "bar"}}
+    :match
+    {:errors [{:path [:foo]
+               :type "primitive-type"
+               :message "Expected type of 'integer, got 'string"
+               :schema [cases :case 0 :then :keys :foo]}]}}
+   {:desc "Checks if given key has invalid value"
+    :do {:type 'zen.test/validate :schema cases :data {:is true :foo 0}}
+    :match
+    {:errors [{:path [:foo]
+               :type "string"
+               :message "Expected  >= 1, got 0"
+               :schema [cases :case 0 :then :keys :foo :minLength]}]}}
+   {:desc "Checks if nothing was given"
+    :do {:type 'zen.test/validate :schema cases :data {:nothing-given here}}
+    :match
+    {:errors [{:path []
+               :type "case"
+               :message "Expected one of ({:type zen/map, :require #{:is}, :keys {:is {:type zen/boolean}}}), but none is conformant"
+               :schema [cases :case]}]}}
+   {:desc "Valid data given"
+    :do {:type 'zen.test/validate :schema cases :data {:is true :foo 1}}
+    :match
+    {:errors zen.test/nil?}}]}}
