@@ -16,6 +16,150 @@
     :match
     {:errors zen.test/nil?}}]}
 
+ keyword-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/keyword}}}
+
+ keyword-tests
+ {:zen/tags #{zen.test/case}
+  :title "Keyword validations in map"
+  :steps
+  [{:desc "Checks if given value has invalid type"
+    :do {:type 'zen.test/validate :schema keyword-schema :data {:a "abc"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'keyword, got 'string"
+               :schema [keyword-schema :keys :a]}]}}
+   {:desc "Valid keyword was given"
+    :do {:type 'zen.test/validate :schema keyword-schema :data {:a :abc}}
+    :match
+    {:errors zen.test/nil?}}]}
+
+ symbol-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/symbol}}}
+
+ symbol-tests
+ {:zen/tags #{zen.test/case}
+  :title "Symbol validations in map"
+  :steps
+  [{:desc "Checks if given value has invalid type"
+    :do {:type 'zen.test/validate :schema symbol-schema :data {:a "abc"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'symbol, got 'string"
+               :schema [symbol-schema :keys :a]}]}}
+   {:desc "Valid symbol was given"
+    :do {:type 'zen.test/validate :schema symbol-schema :data {:a SomeSymbol}}
+    :match
+    {:errors zen.test/nil?}}]}
+
+ date-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/date}}}
+
+ date-tests
+ {:zen/tags #{zen.test/case}
+  :title "Date validations in map"
+  :steps
+  [{:desc "Checks if given value is not a string type"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a 42}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"42\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Cheks if given str does not seem to be a date"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "not a date at all"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"not a date at all\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Cheks if given str with month less than 1"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "2021-00-06"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"2021-00-06\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Cheks if given str with month greater than 12"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "2021-33-06"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"2021-33-06\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Cheks if given str with day of month less than 1"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "2021-06-00"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"2021-06-00\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Cheks if given str with day of month greater than 31"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "2021-06-44"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"2021-06-44\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Valid keyword was given"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "2021-08-06"}}
+    :match
+    {:errors zen.test/nil?}}]}
+
+ datetime-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/datetime}}}
+
+ datetime-tests
+ {:zen/tags #{zen.test/case}
+  :title "Datetime validations in map"
+  :steps
+  [{:desc "Checks if given value is not a string type"
+    :do {:type 'zen.test/validate :schema datetime-schema :data {:a 42}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'datetime, got \"42\""
+               :schema [datetime-schema :keys :a]}]}}
+   {:desc "Cheks if given str with hour greater than 23"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "2021-09-06T25:17:42z"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"2021-09-06T25:17:42z\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Cheks if given str with minute greater than 59"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "2021-09-06T19:77:42z"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"2021-09-06T19:77:42z\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Cheks if given str with second greater than 59"
+    :do {:type 'zen.test/validate :schema date-schema :data {:a "2021-09-06T19:17:99z"}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'date, got \"2021-09-06T19:17:99z\""
+               :schema [date-schema :keys :a]}]}}
+   {:desc "Valid keyword was given"
+    :do {:type 'zen.test/validate :schema datetime-schema :data {:a "2021-08-06T19:17:42Z"}}
+    :match
+    {:errors zen.test/nil?}}
+   {:desc "Valid keyword with all cases"
+    :do {:type 'zen.test/validate :schema datetime-schema :data {:a "2021-08-06t19:17:42z"}}
+    :match
+    {:errors zen.test/nil?}}]}
+
  string-schema
  {:zen/tags #{zen/schema}
   :type zen/map
@@ -132,6 +276,27 @@
                :schema [number-schema :keys :a]}]}}
    {:desc "Valid number was given"
     :do {:type 'zen.test/validate :schema number-schema :data {:a 2.2}}
+    :match
+    {:errors zen.test/nil?}}]}
+
+ regex-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/regex}}}
+
+ regex-test
+ {:zen/tags #{zen.test/case}
+  :title "Regex validations in map"
+  :steps
+  [{:desc "Checks if given is not string"
+    :do {:type 'zen.test/validate :schema regex-schema :data {:a false}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'regex, got 'boolean"
+               :schema [regex-schema :keys :a]}]}}
+   {:desc "Valid regex ws give"
+    :do {:type 'zen.test/validate :schema regex-schema :data {:a ".+"}}
     :match
     {:errors zen.test/nil?}}]}
 

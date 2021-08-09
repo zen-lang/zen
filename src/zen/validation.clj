@@ -457,15 +457,15 @@
 
 (defmethod validate-type 'zen/date
   [_ ctx acc schema data]
-  (if (and (string? data) #_(re-matches #"\d{4}-\d{2}-\d{2}" data))
+  (if (and (string? data) (re-matches #"\d{4}-(0[1-9]|1[012])-([012][1-9]|3[01])" data))
     acc
     (add-error ctx acc {:message (format "Expected type of 'date, got \"%s\"" data) :type "primitive-type"})))
 
 (defmethod validate-type 'zen/datetime
   [_ ctx acc schema data]
-  (if (and (string? data) #_(re-matches #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*" data))
+  (if (and (string? data) (re-matches #"(?i)\d{4}-(0[1-9]|1[012])-([012][1-9]|3[01])T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)[Z]?" data))
     acc
-    (add-error ctx acc {:message (format "Expected type of 'date, got \"'%s\"" data) :type "primitive-type"})))
+    (add-error ctx acc {:message (format "Expected type of 'datetime, got \"%s\"" data) :type "primitive-type"})))
 
 (defmethod validate-type :default
   [t ctx acc schema data]

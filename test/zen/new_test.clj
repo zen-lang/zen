@@ -1,10 +1,9 @@
 (ns zen.validation-test
   (:require [matcho.core :as matcho]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer [deftest]]
             [clojure.walk]
             [clojure.string :as str]
             [zen.core]))
-
 
 ;; (defmacro match-schema [sch data errs]
 ;;   `(let [res# (sub/validate-schema ztx ~sch ~data)]
@@ -42,4 +41,3 @@
                                    (mapv #(str "     " %))
                                    (str/join "\n"))))
         (matcho/match res (translate-to-matcho match))))))
-
