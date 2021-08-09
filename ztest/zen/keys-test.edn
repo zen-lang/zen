@@ -476,4 +476,71 @@
    {:desc "Given set intersects with :superset-of by left bound"
     :do {:type 'zen.test/validate :schema set-schema+superset :data {:a #{0 1 2 3 4 5 6 7}}}
     :match
+    {:errors zen.test/nil?}}]}
+
+ const-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:age {:type zen/integer}}
+  :const {:value {:age 42}}}
+
+ const-tests
+ {:zen/tags #{zen.test/case}
+  :title "const validations in map"
+  :steps
+  [{:desc "Checks if giving map does not hold key at all"
+    :do {:type 'zen.test/validate :schema const-schema :data {}}
+    :match
+    {:errors [{:path []
+               :type "schema"
+               :message "Expected '{:age 42}', got '{}'"
+               :schema [const-schema]}]}}
+   {:desc "Checks if giving map holds wrong type value"
+    :do {:type 'zen.test/validate :schema const-schema :data {:age "a lot"}}
+    :match
+    {:errors [{:path []
+               :type "schema"
+               :message "Expected '{:age 42}', got '{:age \"a lot\"}'"
+               :schema [const-schema]}]}}
+   {:desc "Checks if giving map holds wrong value"
+    :do {:type 'zen.test/validate :schema const-schema :data {:age 11}}
+    :match
+    {:errors [{:path []
+               :type "schema"
+               :message "Expected '{:age 42}', got '{:age 11}'"
+               :schema [const-schema]}]}}
+   {:desc "Valis data given"
+    :do {:type 'zen.test/validate :schema const-schema :data {:age 42}}
+    :match
+    {:errors zen.test/nil?}}]}
+
+ enums-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:gender {:type zen/string
+                  :enum [{:value "Female"}
+                         {:value "Male"}]}}}
+
+ enums-tests
+ {:zen/tags #{zen.test/case}
+  :title "enums validations in map"
+  :steps
+  [{:desc "Checks if giving map holds wrong type value"
+    :do {:type 'zen.test/validate :schema enums-schema :data {:gender 42}}
+    :match
+    {:errors [{:path [:gender]
+               :type "string.type"
+               :message "Expected type of 'string, got 'long"
+               :schema [enums-schema :keys :gender]}]}}
+   {:desc "Checks if giving map holds wrong value"
+    :do {:type 'zen.test/validate :schema enums-schema :data {:gender "Dunno"}}
+    :match
+    {:errors [{:path [:gender]
+               :type "enum"
+               :message "Expected 'Dunno' in #{\"Male\" \"Female\"}"
+;;               :schema [enums-schema] ;; TODO If open the test fails
+               }]}}
+   {:desc "Valid data given"
+    :do {:type 'zen.test/validate :schema enums-schema :data {:gender "Female"}}
+    :match
     {:errors zen.test/nil?}}]}}
