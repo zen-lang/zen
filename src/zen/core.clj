@@ -23,7 +23,9 @@
   (zen.store/get-tag ctx sym))
 
 (defn validate [ctx symbols data]
-  (zen.validation/validate ctx symbols data))
+  (-> 
+   (zen.validation/validate ctx symbols data)
+   (select-keys [:errors :warnings :effects])))
 
 (defn validate-schema [ctx schema data]
   (zen.validation/validate-schema ctx schema data))
