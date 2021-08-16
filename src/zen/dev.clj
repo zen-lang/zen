@@ -28,7 +28,8 @@
   (let [filename (-> (.getPath file)
                      ;; this is strange prefix in macos
                      (str/replace  #"^/private" ""))]
-    (when (str/ends-with? filename ".edn")
+    (when (and (str/ends-with? filename ".edn")
+               (not (str/starts-with? (.getName file) ".")))
       (if-let [ns (ns-name paths filename)]
         (reload-ns ztx ns)
         (println :zen.watch/can-not-find filename))))
