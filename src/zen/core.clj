@@ -33,6 +33,13 @@
 (defn validate! [ctx symbols data]
   (zen.effect/apply-fx ctx (zen.validation/validate ctx symbols data) data))
 
+(defn errors
+  "get zen metastorage errors"
+  [ztx]
+  (->> 
+   (:errors @ztx)
+   (sort-by (fn [e] (str (:ns e) "-" (:message e)) ))))
+
 (comment
   (def ctx (new-context {}))
 

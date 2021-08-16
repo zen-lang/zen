@@ -25,10 +25,12 @@
           (if (symbol? x) ;; TODO: allow symbols namespaced with current namespace
             (if (namespace x)
               (do (when-not (get-in @ctx [:symbols x])
-                    (swap! ctx update :errors conj {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)}))
+                    (swap! ctx update :errors conj {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)
+                                                    :ns ns-name}))
                   x)
               (do (when-not (get nmsps x)
-                    (swap! ctx update :errors conj {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)}))
+                    (swap! ctx update :errors conj {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
+                                                    :ns ns-name}))
                   (symbol ns-str (name x))))
             x))
         resource)
@@ -88,25 +90,31 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
+(defn find-file [paths pth]
+  (or (io/resource pth)
+      (loop [[p & ps] paths]
+        (when p
+          (let [fpth (str p "/" pth)
+                file (io/file fpth)]
+            (if (.exists file)
+              file
+              (recur ps)))))))
+
 (defn read-ns [ctx nm]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
-    (if-let [content (if-let [res (io/resource pth)]
-                       (slurp res)
-                       (loop [[p & ps] (:paths @ctx)]
-                         (when p
-                           (let [fpth (str p "/" pth)
-                                 file (io/file fpth)]
-                             (if (.exists file)
-                               (slurp file)
-                               (recur ps))))))]
+    (if-let [file (find-file (:paths @ctx) pth)]
       (try
-        (let [nmsps (edamame.core/parse-string content)]
-          (load-ns ctx nmsps {:zen/file pth}))
+        (let [content (slurp file)
+              nmsps (edamame.core/parse-string content)]
+          (load-ns ctx nmsps {:zen/file pth})
+          :zen/loaded)
         (catch Exception e
-          (println (str "ERROR while reading " pth))
-          (println e)
-          (throw e)))
-      (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm)}))))
+          (swap! ctx update :errors conj {:message (.getMessage e)
+                                          :file (.getPath file)
+                                          :ns nm})
+          :zen/load-failed))
+      (do (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm) :ns nm})
+          :zen/load-failed))))
 
 (defn read-ns! [ctx nmsps]
   (assert (symbol? nmsps) "Expected symbol")
