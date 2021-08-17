@@ -90,6 +90,7 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
+;; TODO: cache find file
 (defn find-file [paths pth]
   (or (io/resource pth)
       (loop [[p & ps] paths]
@@ -98,7 +99,13 @@
                 file (io/file fpth)]
             (if (.exists file)
               file
-              (recur ps)))))))
+              (let [modules (io/file (str p "/node_modules"))]
+                (if (and (.exists modules) (.isDirectory modules))
+                  (or (->> (.listFiles modules)
+                           (filter #(.isDirectory %))
+                           (some (fn [x] (find-file [x] pth))))
+                      (recur ps))
+                  (recur ps)))))))))
 
 (defn read-ns [ctx nm]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
