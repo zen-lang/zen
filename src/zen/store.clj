@@ -64,10 +64,9 @@
       (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
     res))
 
-
 (defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (get nmsps 'ns)]
-    (when-not (get-in @ctx [:ns ns-name])
+    (when (or true (not (get-in @ctx [:ns ns-name])))
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
       (doseq [imp (get nmsps 'import)]
         (cond
@@ -78,16 +77,13 @@
           (load-ns ctx (get-in @ctx [:memory-store imp]) opts)
 
           :else
-          (read-ns ctx imp)))
+          (read-ns ctx imp {:ns ns-name})))
       (->> (dissoc nmsps ['ns 'import])
            (mapv (fn [[k v]]
                    (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k (merge v opts))
                          :else                      nil)))
            (mapv (fn [res] (validate-resource ctx res)))))))
 
-(defn reload-ns [ctx nmsps & [opts]]
-  (update ctx :ns dissoc ns-name)
-  (load-ns ctx nmsps opts))
 
 (defn load-ns! [ctx nmsps]
   (assert (map? nmsps) "Expected map")
@@ -112,7 +108,7 @@
                       (recur ps))
                   (recur ps)))))))))
 
-(defn read-ns [ctx nm]
+(defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [file (find-file (:paths @ctx) pth)]
       (try
@@ -125,7 +121,8 @@
                                           :file (.getPath file)
                                           :ns nm})
           :zen/load-failed))
-      (do (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm) :ns nm})
+      (do (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm)
+                                          :ns (or (:ns opts) nm)})
           :zen/load-failed))))
 
 (defn read-ns! [ctx nmsps]

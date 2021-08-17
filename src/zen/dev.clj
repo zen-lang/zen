@@ -20,8 +20,9 @@
   (swap! ztx update :errors
          (fn [errs]
            (->> errs
-                (remove (fn [{ens :ns}]
-                          (= ens ns))))))
+                (remove (fn [{ens :ns res :resource}]
+                          (or (= ens ns)
+                              (and res (= ns (symbol (namespace res))))))))))
   (zen.core/read-ns ztx (symbol ns)))
 
 (defn handle-updates [ztx paths htx {file :file kind :kind}]
