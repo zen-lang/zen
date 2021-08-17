@@ -64,6 +64,7 @@
       (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
     res))
 
+
 (defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (get nmsps 'ns)]
     (when-not (get-in ctx [:ns ns-name])
@@ -83,6 +84,10 @@
                    (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k (merge v opts))
                          :else                      nil)))
            (mapv (fn [res] (validate-resource ctx res)))))))
+
+(defn reload-ns [ctx nmsps & [opts]]
+  (update ctx :ns dissoc ns-name)
+  (load-ns ctx nmsps opts))
 
 (defn load-ns! [ctx nmsps]
   (assert (map? nmsps) "Expected map")
