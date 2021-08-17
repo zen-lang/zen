@@ -54,5 +54,13 @@
 
   )
 
+(deftest node-modules
+  (def zctx* (sut/new-context {:paths ["test/fixtures/tmp-proj/"]}))
+  (sut/read-ns zctx* 'project)
+
+  (is (empty? (:errors @zctx*)))
+
+  (is (contains? (:ns @zctx*) 'fhir.r4)))
+
 (comment
  @ctx)

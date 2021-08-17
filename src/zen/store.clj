@@ -67,7 +67,7 @@
 
 (defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (get nmsps 'ns)]
-    (when-not (get-in ctx [:ns ns-name])
+    (when-not (get-in @ctx [:ns ns-name])
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
       (doseq [imp (get nmsps 'import)]
         (cond
