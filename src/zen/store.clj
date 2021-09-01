@@ -100,13 +100,17 @@
                 file (io/file fpth)]
             (if (.exists file)
               file
-              (let [modules (io/file (str p "/node_modules"))]
-                (if (and (.exists modules) (.isDirectory modules))
-                  (or (->> (.listFiles modules)
-                           (filter #(.isDirectory %))
-                           (some (fn [x] (find-file [x] pth))))
-                      (recur ps))
-                  (recur ps)))))))))
+              (let [fpth (str p "/node_modules/" pth)
+                    file (io/file fpth)]
+                (if (.exists file)
+                  file
+                  (let [modules (io/file (str p "/node_modules"))]
+                    (if (and (.exists modules) (.isDirectory modules))
+                      (or (->> (.listFiles modules)
+                               (filter #(.isDirectory %))
+                               (some (fn [x] (find-file [x] pth))))
+                          (recur ps))
+                      (recur ps)))))))))))
 
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
