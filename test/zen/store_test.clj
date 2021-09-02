@@ -60,7 +60,8 @@
 
   (is (empty? (:errors @zctx*)))
 
-  (is (contains? (:ns @zctx*) 'fhir.r4)))
+  (is (contains? (:ns @zctx*) 'fhir.r4))
+  (is (contains? (:ns @zctx*) 'us-core.patient)))
 
 (comment
  @ctx)

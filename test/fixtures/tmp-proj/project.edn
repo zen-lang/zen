@@ -1,7 +1,7 @@
 {ns project
- import #{fhir.r4}
+ import #{fhir.r4 us-core.patient}
 
- foo 
+ foo
  {:zen/tags #{zen/schema}
   :type zen/map
   :keys {:bool {:confirms #{fhir.r4/boolean}}}}}

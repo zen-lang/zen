@@ -103,6 +103,10 @@
               (let [modules (io/file (str p "/node_modules"))]
                 (if (and (.exists modules) (.isDirectory modules))
                   (or (->> (.listFiles modules)
+                           (mapcat (fn [x]
+                                     (if (and (.isDirectory x) (str/starts-with? (.getName x) "@"))
+                                       (.listFiles x)
+                                       [x])))
                            (filter #(.isDirectory %))
                            (some (fn [x] (find-file [x] pth))))
                       (recur ps))
