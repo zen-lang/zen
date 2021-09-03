@@ -23,6 +23,7 @@
                 (remove (fn [{ens :ns res :resource}]
                           (or (= ens ns)
                               (and res (= ns (symbol (namespace res))))))))))
+  (swap! ztx assoc-in [:ns-reloads ns] (hash (get-in @ztx [:ns ns])))
   (zen.core/read-ns ztx (symbol ns)))
 
 (defn handle-updates [ztx paths htx {file :file kind :kind}]
