@@ -68,10 +68,27 @@
       (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
     res))
 
+(defn pre-load-ns!
+  "Loads symbols from nmsps to ctx without any processing
+  so they can be referenced before they're processed"
+  [ctx nmsps]
+  (let [ns-name (get nmsps 'ns)
+        this-ns-symbols
+        (into {}
+              (keep (fn [[sym schema]]
+                      (when (map? schema) ;; TODO: maybe not only maps?
+                        [(symbol (name ns-name) (name sym))
+                         (select-keys schema #{:zen/tags})]))) ;; TODO: maybe not only tags must be saved?
+              nmsps)]
+    (swap! ctx update :symbols (partial merge this-ns-symbols))))
+
 (defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (get nmsps 'ns)]
     (when (or true (not (get-in @ctx [:ns ns-name])))
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
+
+      (pre-load-ns! ctx nmsps)
+
       (doseq [imp (get nmsps 'import)]
         (cond
           (get-in @ctx [:ns imp])
@@ -82,6 +99,7 @@
 
           :else
           (read-ns ctx imp {:ns ns-name})))
+
       (->> (dissoc nmsps ['ns 'import])
            (mapv (fn [[k v]]
                    (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k (merge v opts))

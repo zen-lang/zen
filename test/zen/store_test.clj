@@ -62,16 +62,18 @@
   (is (contains? (:ns @zctx*) 'us-core.patient)))
 
 
-(deftest ^:kaocha/pending recursive-import
+(deftest recursive-import
   (def memory-store
-    '{foo {ns foo
+    '{foo {ns     foo
            import #{bar}
-           schema {:zen/tags #{zen/schema}
+           tag    {:zen/tags #{zen/tag}}
+           schema {:zen/tags #{zen/schema tag bar/tag}
                    :confirms #{bar/schema}}}
 
       bar {ns bar
            import #{foo}
-           schema {:zen/tags #{zen/schema}
+           tag    {:zen/tags #{zen/tag}}
+           schema {:zen/tags #{zen/schema foo/tag tag}
                    :confirms #{foo/schema}}}})
 
   (def ctx (sut/new-context {:memory-store memory-store}))
