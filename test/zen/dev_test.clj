@@ -17,7 +17,7 @@
   (spit (str project "/lib/mylib.edn") "{ns lib.mylib}")
   (spit (str project "/broken.edn") "{ns broken"))
 
-(t/deftest test-zen-dev
+(t/deftest ^:kaocha/pending test-zen-dev
   (init-project)
 
   (def ztx (zen/new-context {:paths [project]}))
