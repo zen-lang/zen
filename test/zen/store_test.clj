@@ -36,11 +36,10 @@
 
   (is (= memory-store (:memory-store @ctx)))
 
-  (is (empty? (:errors (sut/validate ctx ['check/check] (sut/get-symbol ctx 'data/foo)))))
+  (is (empty? (:errors (sut/validate ctx ['check/check] (sut/get-symbol ctx 'data/foo))))))
 
 
-  
-
+(deftest dynamic-paths
   (def wctx (sut/new-context))
   (sut/read-ns wctx 'dyns)
   (is (nil? (sut/get-symbol wctx 'dyns/model)))
@@ -49,10 +48,8 @@
                                       (str (System/getProperty "user.dir") "/test/dynamic")]}))
 
   (sut/read-ns dctx 'dyns)
-  (is (not (nil? (sut/get-symbol dctx 'dyns/model))))
+  (is (not (nil? (sut/get-symbol dctx 'dyns/model)))))
 
-
-  )
 
 (deftest node-modules
   (def zctx* (sut/new-context {:paths ["test/fixtures/tmp-proj/"]}))
