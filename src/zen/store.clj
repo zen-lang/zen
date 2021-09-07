@@ -25,12 +25,16 @@
           (if (symbol? x) ;; TODO: allow symbols namespaced with current namespace
             (if (namespace x)
               (do (when-not (get-in @ctx [:symbols x])
-                    (swap! ctx update :errors conj {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)
-                                                    :ns ns-name}))
+                    (swap! ctx update :errors
+                           (fnil conj [])
+                           {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)
+                            :ns ns-name}))
                   x)
               (do (when-not (get nmsps x)
-                    (swap! ctx update :errors conj {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
-                                                    :ns ns-name}))
+                    (swap! ctx update :errors
+                           (fnil conj [])
+                           {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
+                            :ns ns-name}))
                   (symbol ns-str (name x))))
             x))
         resource)
@@ -121,12 +125,16 @@
           (load-ns ctx nmsps {:zen/file pth})
           :zen/loaded)
         (catch Exception e
-          (swap! ctx update :errors conj {:message (.getMessage e)
-                                          :file (.getPath file)
-                                          :ns nm})
+          (swap! ctx update :errors
+                 (fnil conj [])
+                 {:message (.getMessage e)
+                  :file (.getPath file)
+                  :ns nm})
           :zen/load-failed))
-      (do (swap! ctx update :errors conj {:message (format "No file for ns '%s" nm)
-                                          :ns (or (:ns opts) nm)})
+      (do (swap! ctx update :errors
+                 (fnil conj [])
+                 {:message (format "No file for ns '%s" nm)
+                  :ns (or (:ns opts) nm)})
           :zen/load-failed))))
 
 (defn read-ns! [ctx nmsps]
