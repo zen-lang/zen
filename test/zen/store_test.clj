@@ -17,6 +17,7 @@
   (keys @ctx)
   (second (:symbols @ctx)))
 
+
 (deftest memory-store-schema-test
   (def data '{ns data
              import #{check}
@@ -59,6 +60,26 @@
 
   (is (contains? (:ns @zctx*) 'fhir.r4))
   (is (contains? (:ns @zctx*) 'us-core.patient)))
+
+
+(deftest ^:kaocha/pending recursive-import
+  (def memory-store
+    '{foo {ns foo
+           import #{bar}
+           schema {:zen/tags #{zen/schema}
+                   :confirms #{bar/schema}}}
+
+      bar {ns bar
+           import #{foo}
+           schema {:zen/tags #{zen/schema}
+                   :confirms #{foo/schema}}}})
+
+  (def ctx (sut/new-context {:memory-store memory-store}))
+
+  (sut/load-ns ctx (memory-store 'foo))
+
+  (is (empty? (:errors @ctx))))
+
 
 (comment
  @ctx)
