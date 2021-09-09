@@ -20,7 +20,7 @@
   (spit (str project "/dev-test-broken.edn") "{ns dev-test-broken"))
 
 
-(t/deftest test-zen-dev
+(t/deftest ^:kaocha/pending test-zen-dev
   (init-project)
 
   (def ztx (zen/new-context {:paths [project]}))
@@ -59,6 +59,14 @@
     (matcho/match
      (zen/errors ztx)
      empty?)
+
+
+    (t/testing "not imported ns doesn't loaded after watcher found changes in it"
+      (spit (str project "/not-imported.edn") "{ns not-imported, foo {}}")
+
+      (Thread/sleep 200)
+
+      (t/is (not (contains? (:ns @ztx) 'not-imported))))
 
     (finally
       (println ::stop)
