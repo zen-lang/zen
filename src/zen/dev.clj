@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.java.io :as io]))
 
-(defn ns-name [paths filename]
+(defn make-ns-name [paths filename]
   (when-let [nm (->> paths
                      (map (fn [p]
                             (when (str/starts-with? filename p)
@@ -14,17 +14,18 @@
     (-> (str/replace nm #"/" ".")
         (symbol))))
 
-(defn reload-ns [ztx ns]
-  (println :zen.watch/reload ns)
+(defn reload-ns [ztx ns-sym]
+  (println :zen.watch/reload ns-sym)
   ;; TODO: reload depended namespaces
   (swap! ztx update :errors
-         (fn [errs]
-           (->> errs
-                (remove (fn [{ens :ns res :resource}]
-                          (or (= ens ns)
-                              (and res (= ns (symbol (namespace res))))))))))
-  (swap! ztx assoc-in [:ns-reloads ns] (hash (get-in @ztx [:ns ns])))
-  (zen.core/read-ns ztx (symbol ns)))
+         (partial remove (fn [error]
+                           (or (= ns-sym (:ns error))
+                               (and (:resource error)
+                                    (= ns-sym (-> error :resource namespace symbol)))
+                               (and (:missing-ns error)
+                                    (= ns-sym (:missing-ns error)))))))
+  (swap! ztx assoc-in [:ns-reloads ns-sym] (hash (get-in @ztx [:ns ns-sym])))
+  (zen.core/read-ns ztx (symbol ns-sym)))
 
 (defn handle-updates [ztx paths htx {file :file kind :kind}]
   (let [filename (-> (.getPath file)
@@ -32,8 +33,13 @@
                      (str/replace  #"^/private" ""))]
     (when (and (str/ends-with? filename ".edn")
                (not (str/starts-with? (.getName file) ".")))
-      (if-let [ns (ns-name paths filename)]
-        (reload-ns ztx ns)
+      (if-let [ns-name (make-ns-name paths filename)]
+        (if (->> (lazy-cat (keys (:ns @ztx))
+                           (map :ns (:errors @ztx))
+                           (map :missing-ns (:errors @ztx)))
+                 (some #{ns-name}))
+          (reload-ns ztx ns-name)
+          (println :zen.watch/reload-ignore ns-name))
         (println :zen.watch/can-not-find filename))))
   htx)
 

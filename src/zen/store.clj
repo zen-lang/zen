@@ -152,6 +152,7 @@
       (do (swap! ctx update :errors
                  (fnil conj [])
                  {:message (format "No file for ns '%s" nm)
+                  :missing-ns nm
                   :ns (or (:ns opts) nm)})
           :zen/load-failed))))
 

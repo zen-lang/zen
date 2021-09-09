@@ -9,24 +9,30 @@
 (System/getProperty "java.io.tmpdir")
 
 
-(defonce project (str "/tmp/zentest/" (str (gensym "zen"))))
+(defn delete-directory-recursive
+  [^java.io.File file]
+  (when (.isDirectory file)
+    (doseq [file-in-dir (.listFiles file)]
+      (delete-directory-recursive file-in-dir)))
+  (io/delete-file file true))
 
 
-(defn init-project []
+(defn init-project [project]
+  (delete-directory-recursive (io/file project))
   (doto (io/file project) (.mkdirs))
-  (doto (io/file (str project "/lib")) (.mkdirs))
-  (spit (str project "/dev-test-app.edn") "{ns dev-test-app imports #{lib.dev-test-lib} Model1 {:zen/tags #{lib.dev-test-lib/model}}}")
-  (spit (str project "/lib/dev-test-lib.edn") "{ns lib.dev-test-lib}")
-  (spit (str project "/dev-test-broken.edn") "{ns dev-test-broken"))
+  (doto (io/file (str project "/lib")) (.mkdirs)))
 
 
-(t/deftest ^:kaocha/pending test-zen-dev
-  (init-project)
-
+(t/deftest test-zen-dev
+  (def project (str "/tmp/zentest/" (str (gensym "zen"))))
+  (init-project project)
   (def ztx (zen/new-context {:paths [project]}))
 
-  (zen/read-ns ztx 'dev-test-app)
+  (spit (str project "/dev-test-app.edn") "{ns dev-test-app import #{lib.dev-test-lib} Model1 {:zen/tags #{lib.dev-test-lib/model}}}")
+  (spit (str project "/lib/dev-test-lib.edn") "{ns lib.dev-test-lib}")
+  (spit (str project "/dev-test-broken.edn") "{ns dev-test-broken")
 
+  (zen/read-ns ztx 'dev-test-app)
 
   (zen/read-ns ztx 'lib.dev-test-lib)
   (zen/read-ns ztx 'dev-test-broken)
@@ -45,9 +51,8 @@
   (try
     (dev/watch ztx)
     (spit (str project "/lib/dev-test-lib.edn") "{ns lib.dev-test-lib model {:zen/tags #{zen/tag}}}")
-    (spit (str project "/dev-test-app.edn") "{ns dev-test-app imports #{lib.dev-test-lib} Model1 {:zen/tags #{lib.dev-test-lib/model}} Model2 {:zen/tags #{lib.dev-test-lib/model}}}")
+    (spit (str project "/dev-test-app.edn") "{ns dev-test-app import #{lib.dev-test-lib dev-test-broken} Model1 {:zen/tags #{lib.dev-test-lib/model}} Model2 {:zen/tags #{lib.dev-test-lib/model}}}")
     (spit (str project "/dev-test-broken.edn") "{ns dev-test-broken Model {}}")
-
 
     (Thread/sleep 200)
 
@@ -60,13 +65,77 @@
      (zen/errors ztx)
      empty?)
 
+    (finally
+      (println ::stop)
+      (dev/stop ztx))))
+
+
+(t/deftest not-imported-but-created
+  (def project (str "/tmp/zentest/" (str (gensym "zen"))))
+  (init-project project)
+  (def ztx (zen/new-context {:paths [project]}))
+
+  (try
+    (dev/watch ztx)
 
     (t/testing "not imported ns doesn't loaded after watcher found changes in it"
-      (spit (str project "/not-imported.edn") "{ns not-imported, foo {}}")
+      (spit (str project "/dev-test-app2.edn") "{ns dev-test-app2 import #{}}")
 
       (Thread/sleep 200)
 
-      (t/is (not (contains? (:ns @ztx) 'not-imported))))
+      (t/is (not (contains? (:ns @ztx) 'dev-test-app2)))
+
+      (zen/read-ns ztx 'dev-test-app2)
+
+      (t/is (contains? (:ns @ztx) 'dev-test-app2))
+
+      (spit (str project "/not-imported-yet.edn") "{ns not-imported-yet, foo {}}")
+
+      (Thread/sleep 200)
+
+      (t/is (not (contains? (:ns @ztx) 'not-imported-yet)))
+
+      (spit (str project "/dev-test-app2.edn") "{ns dev-test-app2 import #{not-imported-yet}}")
+
+      (Thread/sleep 200)
+
+      (t/is (contains? (:ns @ztx) 'not-imported-yet))
+
+      (matcho/match
+        (zen/errors ztx)
+        empty?))
+
+    (finally
+      (println ::stop)
+      (dev/stop ztx))))
+
+
+(t/deftest not-created-but-imported
+  (def project (str "/tmp/zentest/" (str (gensym "zen"))))
+  (init-project project)
+  (def ztx (zen/new-context {:paths [project]}))
+
+  (try
+    (dev/watch ztx)
+
+    (t/testing "imported before created, then created and should be loaded"
+      (spit (str project "/dev-test-app3.edn") "{ns dev-test-app3 import #{not-created-yet}}")
+      (Thread/sleep 200)
+
+      (t/is (not (contains? (:ns @ztx) 'dev-test-app3)))
+
+      (zen/read-ns ztx 'dev-test-app3)
+
+      (t/is (contains? (:ns @ztx) 'dev-test-app3))
+
+      (spit (str project "/not-created-yet.edn") "{ns not-created-yet, foo {}}")
+      (Thread/sleep 200)
+
+      (t/is (contains? (:ns @ztx) 'not-created-yet))
+
+      (matcho/match
+        (zen/errors ztx)
+        empty?))
 
     (finally
       (println ::stop)
