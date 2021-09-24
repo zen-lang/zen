@@ -113,15 +113,24 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
+
+(defn get-file [ctx pth]
+  (or (when-let [resource (io/resource pth)]
+        {:type :resource
+         :resource resource})
+      (get (:paths/cache @ctx) pth)))
+
+
 ;; TODO: cache find file
-(defn find-file [paths pth]
-  (or (io/resource pth)
+(defn find-file [ctx paths pth]
+  (or (get-file ctx pth)
       (loop [[p & ps] paths]
         (when p
           (let [fpth (str p "/" pth)
                 file (io/file fpth)]
             (if (.exists file)
-              file
+              {:type :file
+               :file file}
               (let [modules (io/file (str p "/node_modules"))]
                 (if (and (.exists modules) (.isDirectory modules))
                   (or (->> (.listFiles modules)
@@ -130,15 +139,27 @@
                                        (.listFiles x)
                                        [x])))
                            (filter #(.isDirectory %))
-                           (some (fn [x] (find-file [x] pth))))
+                           (some (fn [x] (find-file ctx [x] pth))))
                       (recur ps))
                   (recur ps)))))))))
 
+
+(defmulti read-file (fn [file-map] (:type file-map)))
+
+
+(defmethod read-file :file [{:keys [file]}]
+  (slurp file))
+
+
+(defmethod read-file :resource [{:keys [resource]}]
+  (slurp resource))
+
+
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
-    (if-let [file (find-file (:paths @ctx) pth)]
+    (if-let [file (find-file ctx (:paths @ctx) pth)]
       (try
-        (let [content (slurp file)
+        (let [content (read-file file)
               nmsps (edamame.core/parse-string content)]
           (load-ns ctx nmsps {:zen/file pth})
           :zen/loaded)
