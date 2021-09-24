@@ -116,9 +116,11 @@
 
 (defn get-file [ctx pth]
   (or (when-let [resource (io/resource pth)]
-        {:type :resource
-         :resource resource})
-      (get (:paths/cache @ctx) pth)))
+        {:type     :resource
+         :resource resource
+         :path     (.getPath resource)})
+      (some-> (get (:paths/cache @ctx) pth)
+              (assoc :path (str "paths/cache:" pth)))))
 
 
 ;; TODO: cache find file
@@ -130,7 +132,8 @@
                 file (io/file fpth)]
             (if (.exists file)
               {:type :file
-               :file file}
+               :file file
+               :path (.getPath file)}
               (let [modules (io/file (str p "/node_modules"))]
                 (if (and (.exists modules) (.isDirectory modules))
                   (or (->> (.listFiles modules)
@@ -167,7 +170,7 @@
           (swap! ctx update :errors
                  (fnil conj [])
                  {:message (.getMessage e)
-                  :file (.getPath file)
+                  :file (:path file)
                   :ns nm})
           :zen/load-failed))
       (do (swap! ctx update :errors
