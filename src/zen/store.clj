@@ -150,12 +150,16 @@
 (defmulti read-file (fn [file-map] (:type file-map)))
 
 
-(defmethod read-file :file [{:keys [file]}]
-  (slurp file))
+(defmethod read-file :file [{:keys [file return-input-stream]}]
+  (if return-input-stream
+    (java.io.FileInputStream. file)
+    (slurp file)))
 
 
-(defmethod read-file :resource [{:keys [resource]}]
-  (slurp resource))
+(defmethod read-file :resource [{:keys [resource return-input-stream]}]
+  (if return-input-stream
+    (.openStream resource)
+    (slurp resource)))
 
 
 (defn read-ns [ctx nm & [opts]]
