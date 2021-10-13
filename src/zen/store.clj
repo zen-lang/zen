@@ -150,6 +150,12 @@
 (defmulti read-file (fn [file-map] (:type file-map)))
 
 
+(defmethod read-file :string [{s :string, :keys [return-input-stream]}]
+  (if return-input-stream
+    (java.io.ByteArrayInputStream. (.getBytes s))
+    s))
+
+
 (defmethod read-file :file [{:keys [file return-input-stream]}]
   (if return-input-stream
     (java.io.FileInputStream. file)
