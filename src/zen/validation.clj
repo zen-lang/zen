@@ -574,9 +574,12 @@
                 :errors errs
                 :effects (:effects acc)})))
 
-(defn validate-schema [ctx schema data]
-  (-> (validate-node ctx (new-validation-acc) schema data)
-      (global-errors&warnings)))
+(defn validate-schema
+  ([ctx schema data]
+   (validate-schema ctx schema data (new-validation-acc)))
+  ([ctx schema data validation-acc]
+   (-> (validate-node ctx validation-acc schema data)
+       (global-errors&warnings))))
 
 (defn validate
   [ctx schemas data]
