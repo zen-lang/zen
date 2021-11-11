@@ -38,7 +38,8 @@
   [ztx]
   (->> 
    (:errors @ztx)
-   (sort-by (fn [e] (str (:ns e) "-" (:message e)) ))))
+   (sort-by (fn [e] (str (:ns e) "-" (:message e)) ))
+   vec))
 
 (comment
   (def ctx (new-context {}))
