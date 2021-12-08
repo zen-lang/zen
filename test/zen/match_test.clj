@@ -28,7 +28,31 @@
       {:name #{{:use "official"}}})
     [{:expected {:use "official"}
       :but [{:use "some"} {:use "other"}],
-      :path [:name]}]))
+      :path [:name]}])
+
+  (matcho/match
+    (sut/match 1 1)
+    empty?)
+
+  (matcho/match
+    (sut/match nil nil)
+    empty?)
+
+  (matcho/match
+    (sut/match "1" "1")
+    empty?)
+
+  (matcho/match
+    (sut/match "1" 1)
+    [{:expected 1 :but "1"}])
+
+  (matcho/match
+    (sut/match "1" nil)
+    [{:expected nil :but "1"}])
+
+  (matcho/match
+    (sut/match nil "1")
+    [{:expected "1" :but nil}]))
 
 
 (deftest test-zen-match
