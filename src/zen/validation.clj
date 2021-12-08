@@ -1,6 +1,7 @@
 (ns zen.validation
   (:require [clojure.set]
             [zen.effect]
+            [zen.match]
             [clojure.string :as str]))
 
 (defn get-symbol [ctx nm]
@@ -522,6 +523,16 @@
              first)
       (assoc-in acc [:enums path] {:match true})
       (register-unmatched-enum acc enum data))))
+
+(defmethod validate-node-rule :match [ctx acc _ pattern data]
+  (let [errs (zen.match/match data pattern)]
+    (when-not (empty? errs)
+      (->> errs
+           (reduce (fn [acc err]
+                     (add-error ctx acc {:message (or (:message err) (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))
+                                         :type "match"}
+                                {:path (:path err)}))
+                   acc)))))
 
 (defn validate-node-rule* [ctx acc rule rule-val data]
   (try (validate-node-rule ctx acc rule rule-val data)

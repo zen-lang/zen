@@ -237,6 +237,8 @@
                            :enum     {:type     set
                                       :zen/desc "Check value is in enum"
                                       :every    {:type map :keys {:value {:type any}}}}
+                           :match    {:type any
+                                      :zen/desc "Pattern match. {} checks only mentioned keys, [] -- ordered collection match, #{} unordered"}
                            :fail     {:type string}
 
                            :validation {:type     set
