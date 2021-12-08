@@ -27,9 +27,7 @@
    (sut/match
     {:name [{:use "some"} {:use "other"}]}
     {:name #{{:use "official"}}} )
-
-   [{:expected "Collection contains",
-     :message "Collection contains {:use \"official\"}",
+   [{:expected {:use "official"}
      :but [{:use "some"} {:use "other"}],
      :path [:name]}])
 

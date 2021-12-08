@@ -27,7 +27,8 @@
               (let [path (conj path k)
                     ev   (get x k)]
                 (match-recur errors path ev v)))
-            errors pattern)
+            errors
+            pattern)
 
     (and (sequential? pattern)
          (sequential? x))
@@ -44,8 +45,11 @@
          (reduce (fn [errors pat]
                    (if (->> x (filter (fn [x'] (empty? (match x' pat)))) first)
                      errors
-                     (conj errors {:message (str "Expected " (pr-str x) " contains " (pr-str pat))
-                                   :path path})))
+                     (conj errors
+                           {:message (str "Expected " (pr-str x) " contains " (pr-str pat))
+                            :expected pat
+                            :but x
+                            :path path})))
                  errors))
 
     :else (let [err (smart-explain-data pattern x)]
