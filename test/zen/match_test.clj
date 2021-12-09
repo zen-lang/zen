@@ -30,6 +30,21 @@
       :but [{:use "some"} {:use "other"}],
       :path [:name]}])
 
+  (t/testing "Each element provided in #{} array must match at least one element from the instance array"
+    (matcho/match
+      (sut/match
+        {:name [{:use "some"} {:use "other"} {:use "other2"}]}
+        {:name #{{:use "some"} {:use "other"}}})
+      empty?)
+
+    (matcho/match
+      (sut/match
+        {:name [{:use "some"} {:use "other"} {:use "other2"}]}
+        {:name #{{:use "some"} {:use "other3"}}})
+      [{:expected {:use "other3"}
+        :but [{:use "some"} {:use "other"} {:use "other2"}],
+        :path [:name]}]))
+
   (matcho/match
     (sut/match 1 1)
     empty?)
