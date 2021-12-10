@@ -156,7 +156,8 @@
   (let [pure-validation (validate-node ctx (new-validation-acc) schema data)]
     (empty? (:errors (zen.effect/apply-fx ctx pure-validation data)))))
 
-(defmethod slicing-filter :matcho [ctx {:keys [matcho]} data]) ;; TODO
+(defmethod slicing-filter :match [ctx {:keys [match]} data]
+  (empty? (zen.match/match data match)))
 
 (defn determine-slice [ctx slices data]
   (for [[slice-name slice-definition] slices
