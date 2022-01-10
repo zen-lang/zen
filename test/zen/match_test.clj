@@ -95,3 +95,24 @@
            :path [:nested :prop],
            :schema ['test.match/map-match]}]))
 
+
+(deftest internal-functions-test
+  (matcho/match
+   (sut/match
+    "a|1"
+    '(zen.match/one-of #{"a" "a|1"}))
+   empty?)
+
+  (matcho/match
+   (sut/match
+    "a"
+    '(zen.match/one-of #{"a" "a|1"}))
+   empty?)
+
+  (matcho/match
+   (sut/match
+    "b"
+    '(zen.match/one-of #{"a" "a|1"}))
+   [{:expected '(zen.match/one-of #{"a" "a|1"})
+     :but "b"}])
+  )
