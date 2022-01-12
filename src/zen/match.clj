@@ -21,7 +21,7 @@
 
 (defn one-of [errors path data values]
   (if (not-any? (partial = data) values)
-    (let [expected `(zen.match/one-of ~values)]
+    (let [expected `(:zen.match/one-of ~values)]
      (conj errors {:message (str "Expected " (pr-str expected) " but " (pr-str data))
                    :expected expected
                    :but data
@@ -29,7 +29,7 @@
     errors))
 
 (defn match-fn [errors path data [fn-name & args]]
-  (if (= fn-name 'zen.match/one-of)
+  (if (= fn-name :zen.match/one-of)
     (apply one-of errors path data args)
     errors))
 
@@ -43,7 +43,7 @@
             errors
             pattern)
 
-    (and (list? pattern) (qualified-symbol? (first pattern)))
+    (and (list? pattern) (qualified-keyword? (first pattern)))
     (match-fn errors path x pattern)
 
     (and (sequential? pattern)
