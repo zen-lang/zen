@@ -129,6 +129,40 @@ Store functions:
 * get-tag `tag/name`
 * read-ns `my/ns`
 
+## Envs
+
+Some data can be moved from edn to envs using special readers:
+
+* #env - read string
+* #env-integer - read integer
+* #env-symbol - read symbol
+* #env-keyword - read keyword
+* #env-number  - read number
+
+Before reading with envs - zen context should be initialized with envs: `(zen.core/new-context {:env {:ENV_NAME "env-value"}}))`
+or system env variables should be set - `export MY_VAR='value'`.
+
+
+```edn
+{ns test-env
+
+ schema
+ {:zen/tags #{zen/schema zen/tag}
+  :type zen/map
+  :keys {:string {:type zen/string}
+         :int    {:type zen/integer}
+         :sym    {:type zen/symbol}
+         :key    {:type zen/keyword}
+         :num    {:type zen/number}}}
+
+ model
+ {:zen/tags #{schema }
+  :string #env ESTR
+  :int    #env-integer EINT
+  :sym    #env-symbol ESYM
+  :key    #env-keyword EKEY
+  :num    #env-number ENUM}}
+```
 
 ## Schema
 
@@ -245,7 +279,7 @@ path
 
 ### zen/symbol
 
-* :tags - constraint to only symbols with tags
+* :tags - set of symbols - check symbols refers models with
 
 ### zen/map
 

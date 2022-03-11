@@ -167,16 +167,47 @@
     (.openStream resource)
     (slurp resource)))
 
+(defn get-env [env env-name]
+  (or (get env (keyword env-name))
+      (System/getenv (str env-name))))
+
+(defn env-string [env env-name]
+  (when-let [v (get-env env env-name)]
+    v))
+
+(defn env-integer [env env-name]
+  (when-let [v (get-env env env-name)]
+    (Integer/parseInt v)))
+
+(defn env-symbol [env env-name]
+  (when-let [v (get-env env env-name)]
+    (symbol v)))
+
+(defn env-keyword [env env-name]
+  (when-let [v (get-env env env-name)]
+    (keyword v)))
+
+(defn env-number [env env-name]
+  (when-let [v (get-env env env-name)]
+    (Double/parseDouble v)))
 
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [file (find-file ctx (:paths @ctx) pth)]
       (try
         (let [content (read-file file)
-              nmsps (edamame.core/parse-string content)]
+              env (:env @ctx)
+              nmsps (edamame.core/parse-string content {:readers {'env         (fn [v] (env-string  env v))
+                                                                  'env-string  (fn [v] (env-string  env v))
+                                                                  'env-integer (fn [v] (env-integer env v))
+                                                                  'env-symbol  (fn [v] (env-symbol  env v))
+                                                                  'env-number  (fn [v] (env-number  env v))
+                                                                  'env-keyword (fn [v] (env-keyword  env v))
+                                                                  }})]
           (load-ns ctx nmsps {:zen/file pth})
           :zen/loaded)
         (catch Exception e
+          (println :error-while-reading file e)
           (swap! ctx update :errors
                  (fnil conj [])
                  {:message (.getMessage e)

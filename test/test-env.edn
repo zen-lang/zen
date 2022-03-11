@@ -1,0 +1,24 @@
+{ns test-env
+
+ schema
+ {:zen/tags #{zen/schema zen/tag}
+  :type zen/map
+  :keys {:string {:type zen/string}
+         :int    {:type zen/integer}
+         :sym    {:type zen/symbol}
+         :key    {:type zen/keyword}
+         :num    {:type zen/number}
+         }}
+
+ model
+ {:zen/tags #{schema }
+  :string #env ESTR
+  :home #env HOME
+  :int    #env-integer EINT
+  :sym    #env-symbol ESYM
+  :key    #env-keyword EKEY
+  :num    #env-number ENUM
+  }
+
+
+ }
