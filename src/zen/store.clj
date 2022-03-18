@@ -1,5 +1,6 @@
 (ns zen.store
   (:require [zen.validation]
+            [zen.utils]
             [clojure.edn]
             [clojure.java.io :as io]
             [clojure.walk]
@@ -70,9 +71,9 @@
 
 (defn load-alias [ctx nmsps k v]
   (let [ns-name (get nmsps 'ns)
-        ns-str (name ns-name)
-        sym (symbol ns-str (name k))]
-    (swap! ctx assoc-in [:aliases sym] v)))
+        ns-str  (name ns-name)
+        sym     (symbol ns-str (name k))]
+    (swap! ctx update :aliases zen.utils/disj-set-union-push sym v)))
 
 (defn pre-load-ns!
   "Loads symbols from nmsps to ctx without any processing
@@ -237,11 +238,17 @@
 
 (defn get-symbol [ctx nm]
   (or (get-in @ctx [:symbols nm])
-      (when-let [alias-sym (get-in @ctx [:aliases nm])]
-        (recur ctx alias-sym))))
+      (when-let [aliases (get-in @ctx [:aliases nm])]
+        (some #(get-in @ctx [:symbols %])
+              (disj aliases nm)))))
 
 (defn get-tag [ctx tag]
-  (get-in @ctx [:tags tag]))
+  (when-let [aliases (conj (or (get-in @ctx [:aliases tag])
+                               #{})
+                           tag)]
+    (reduce (fn [acc alias] (into acc (get-in @ctx [:tags alias])))
+            #{}
+            aliases)))
 
 (defn new-context [& [opts]]
   (let [ctx (atom (or opts {}))]

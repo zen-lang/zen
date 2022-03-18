@@ -49,7 +49,8 @@
             sym22 {:baz :quux}
 
             tag1 ns1/tag1
-            tagged-sym {:zen/tags #{tag1}}}})
+            tagged-sym1 {:zen/tags #{tag1}}
+            tagged-sym2 {:zen/tags #{ns1/tag1}}}})
 
   (def ztx (zen/new-context {:unsafe true
                              :memory-store test-namespaces}))
@@ -64,8 +65,10 @@
      '{:zen/name ns1/sym1})
 
     (testing "tags alias"
-      (is (= ['myns/tagged-sym]
-             (zen/get-tag ztx 'myns/tag1)
+      (is (= #{'myns/tagged-sym1 'myns/tagged-sym2}
+             (zen/get-tag ztx 'myns/tag1)))
+
+      (is (= #{'myns/tagged-sym1 'myns/tagged-sym2}
              (zen/get-tag ztx 'ns1/tag1)))))
 
   (testing "ns alias"
