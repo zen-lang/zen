@@ -109,3 +109,20 @@
 
 (defn strip-nils [m]
   (strip-when nil? m))
+
+
+(defn disj-set-union-push
+  ([disj-set value]
+   (if (contains? disj-set value)
+     disj-set
+     (assoc disj-set value #{value})))
+  ([disj-set value & aliases]
+   (let [values    (cons value aliases)
+         groups    (keep #(get disj-set %) values)
+         new-group (reduce conj
+                           (or (not-empty (reduce into groups))
+                               #{})
+                           values)]
+     (reduce (fn [acc k] (assoc acc k new-group))
+             (or disj-set {})
+             new-group))))
