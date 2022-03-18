@@ -28,3 +28,39 @@
                 (matcho/match errs exp))))))))
 
   )
+
+
+(deftest ^:kaocha/pending alias-test
+  (def test-namespaces
+    '{ns1 {ns   ns1
+           sym1 {:foo :bar}}
+
+      ns2 {ns    ns2
+           sym21 {:foo1 :bar2}
+           sym22 {:foo2 :bar2}}
+
+      myns {ns     myns
+            import #{ns1}
+            alias  ns2
+
+            sym1  ns1/sym1
+            sym22 {:baz :quux}}})
+
+  (def ztx (zen/new-context {:unsafe true
+                             :memory-store test-namespaces}))
+
+  (zen/read-ns ztx 'myns)
+
+  (is (empty? (zen/errors ztx)))
+
+  (testing "symbol alias"
+    (is (= '{:zen/name ns1/sym1}
+           (zen/get-symbol ztx 'myns/sym1))))
+
+  (testing "ns alias"
+    (is (= '{:zen/name ns2/sym21}
+           (zen/get-symbol ztx 'myns/sym21)))
+
+    (testing "monkey patch"
+      (is (= '{:zen/name myns/sym22}
+             (zen/get-symbol ztx 'myns/sym22))))))
