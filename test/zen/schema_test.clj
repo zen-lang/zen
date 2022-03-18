@@ -49,18 +49,21 @@
   (def ztx (zen/new-context {:unsafe true
                              :memory-store test-namespaces}))
 
-  (zen/read-ns ztx 'myns)
+  (zen/load-ns ztx (get test-namespaces 'myns))
 
   (is (empty? (zen/errors ztx)))
 
   (testing "symbol alias"
-    (is (= '{:zen/name ns1/sym1}
-           (zen/get-symbol ztx 'myns/sym1))))
+    (matcho/match
+     (zen/get-symbol ztx 'myns/sym1)
+     '{:zen/name ns1/sym1}))
 
   (testing "ns alias"
-    (is (= '{:zen/name ns2/sym21}
-           (zen/get-symbol ztx 'myns/sym21)))
+    (matcho/match
+     (zen/get-symbol ztx 'myns/sym21)
+     '{:zen/name ns2/sym21})
 
     (testing "monkey patch"
-      (is (= '{:zen/name myns/sym22}
-             (zen/get-symbol ztx 'myns/sym22))))))
+      (matcho/match
+       (zen/get-symbol ztx 'myns/sym22)
+       '{:zen/name myns/sym22}))))

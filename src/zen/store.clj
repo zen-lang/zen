@@ -68,6 +68,12 @@
       (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
     res))
 
+(defn load-alias [ctx nmsps k v]
+  (let [ns-name (get nmsps 'ns)
+        ns-str (name ns-name)
+        sym (symbol ns-str (name k))]
+    (swap! ctx assoc-in [:aliases sym] v)))
+
 (defn pre-load-ns!
   "Loads symbols from nmsps to ctx without any processing
   so they can be referenced before they're processed"
@@ -102,9 +108,11 @@
 
       (->> (dissoc nmsps ['ns 'import])
            (mapv (fn [[k v]]
-                   (cond (and (symbol? k) (map? v)) (load-symbol ctx nmsps k (merge v opts))
-                         :else                      nil)))
+                   (cond (and (symbol? k) (map? v))    (load-symbol ctx nmsps k (merge v opts))
+                         (and (symbol? k) (qualified-symbol? v)) (load-alias ctx nmsps k v)
+                         :else                         nil)))
            (mapv (fn [res] (validate-resource ctx res)))))))
+
 
 
 (defn load-ns! [ctx nmsps]
@@ -227,9 +235,10 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
-
 (defn get-symbol [ctx nm]
-  (get-in @ctx [:symbols nm]))
+  (or (get-in @ctx [:symbols nm])
+      (when-let [alias-sym (get-in @ctx [:aliases nm])]
+        (recur ctx alias-sym))))
 
 (defn get-tag [ctx tag]
   (get-in @ctx [:tags tag]))
