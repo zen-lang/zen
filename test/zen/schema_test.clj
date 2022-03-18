@@ -33,7 +33,9 @@
 (deftest ^:kaocha/pending alias-test
   (def test-namespaces
     '{ns1 {ns   ns1
-           sym1 {:foo :bar}}
+           sym1 {:foo :bar}
+
+           tag1 {:zen/tags #{zen/tag}}}
 
       ns2 {ns    ns2
            sym21 {:foo1 :bar2}
@@ -44,7 +46,10 @@
             alias  ns2
 
             sym1  ns1/sym1
-            sym22 {:baz :quux}}})
+            sym22 {:baz :quux}
+
+            tag1 ns1/tag1
+            tagged-sym {:zen/tags #{tag1}}}})
 
   (def ztx (zen/new-context {:unsafe true
                              :memory-store test-namespaces}))
@@ -56,7 +61,12 @@
   (testing "symbol alias"
     (matcho/match
      (zen/get-symbol ztx 'myns/sym1)
-     '{:zen/name ns1/sym1}))
+     '{:zen/name ns1/sym1})
+
+    (testing "tags alias"
+      (is (= ['myns/tagged-sym]
+             (zen/get-tag ztx 'myns/tag1)
+             (zen/get-tag ztx 'ns1/tag1)))))
 
   (testing "ns alias"
     (matcho/match
