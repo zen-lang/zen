@@ -30,7 +30,7 @@
   )
 
 
-(deftest ^:kaocha/pending alias-test
+(deftest alias-test
   (def test-namespaces
     '{ns1 {ns   ns1
            sym1 {:foo :bar}

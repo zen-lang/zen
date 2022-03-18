@@ -96,7 +96,9 @@
 
       (pre-load-ns! ctx nmsps)
 
-      (doseq [imp (get nmsps 'import)]
+      (doseq [imp (cond->> (get nmsps 'import)
+                    (contains? nmsps 'alias)
+                    (cons (get nmsps 'alias)))]
         (cond
           (get-in @ctx [:ns imp])
           :already-imported
@@ -107,7 +109,7 @@
           :else
           (read-ns ctx imp {:ns ns-name})))
 
-      (->> (dissoc nmsps ['ns 'import])
+      (->> (dissoc nmsps ['ns 'import 'alias])
            (mapv (fn [[k v]]
                    (cond (and (symbol? k) (map? v))    (load-symbol ctx nmsps k (merge v opts))
                          (and (symbol? k) (qualified-symbol? v)) (load-alias ctx nmsps k v)
@@ -240,7 +242,9 @@
   (or (get-in @ctx [:symbols nm])
       (when-let [aliases (get-in @ctx [:aliases nm])]
         (some #(get-in @ctx [:symbols %])
-              (disj aliases nm)))))
+              (disj aliases nm)))
+      (when-let [ns-alias (get-in @ctx [:ns (symbol (namespace nm)) 'alias])]
+        (recur ctx (symbol (name ns-alias) (name nm))))))
 
 (defn get-tag [ctx tag]
   (when-let [aliases (conj (or (get-in @ctx [:aliases tag])
