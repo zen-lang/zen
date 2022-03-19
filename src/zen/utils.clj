@@ -126,3 +126,13 @@
      (reduce (fn [acc k] (assoc acc k new-group))
              (or disj-set {})
              new-group))))
+
+(defn get-symbol [ctx nm]
+  (when (symbol? nm)
+    (or (get-in @ctx [:symbols nm])
+        (when-let [aliases (get-in @ctx [:aliases nm])]
+          (some #(get-in @ctx [:symbols %])
+                (disj aliases nm)))
+        (let [ns (namespace nm)]
+          (when-let [ns-alias (and ns (get-in @ctx [:ns (symbol ns) 'alias]))]
+            (recur ctx (symbol (name ns-alias) (name nm))))))))

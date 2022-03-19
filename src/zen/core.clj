@@ -2,6 +2,7 @@
   (:require
    [zen.validation]
    [zen.effect]
+   [zen.utils]
    [zen.store]))
 
 
@@ -18,7 +19,7 @@
   (zen.store/new-context (or opts {})))
 
 (defn get-symbol [ctx sym]
-  (zen.store/get-symbol ctx sym))
+  (zen.utils/get-symbol ctx sym))
 
 (defn get-tag [ctx sym]
   (zen.store/get-tag ctx sym))

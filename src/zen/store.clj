@@ -238,13 +238,7 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
-(defn get-symbol [ctx nm]
-  (or (get-in @ctx [:symbols nm])
-      (when-let [aliases (get-in @ctx [:aliases nm])]
-        (some #(get-in @ctx [:symbols %])
-              (disj aliases nm)))
-      (when-let [ns-alias (get-in @ctx [:ns (symbol (namespace nm)) 'alias])]
-        (recur ctx (symbol (name ns-alias) (name nm))))))
+(def get-symbol zen.utils/get-symbol)
 
 (defn get-tag [ctx tag]
   (when-let [aliases (conj (or (get-in @ctx [:aliases tag])
