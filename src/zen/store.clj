@@ -77,6 +77,15 @@
         sym     (symbol ns-str (name k))]
     (swap! ctx update :aliases zen.utils/disj-set-union-push sym v)))
 
+
+(defn symbol-definition? [[k v]]
+  (and (symbol? k) (map? v))) ;; TODO: maybe not only maps?
+
+
+(defn symbol-alias? [[k v]]
+  (and (symbol? k) (qulified-symbol? v)))
+
+
 (defn pre-load-ns!
   "Loads symbols from nmsps to ctx without any processing
   so they can be referenced before they're processed"
@@ -84,12 +93,13 @@
   (let [ns-name (get nmsps 'ns)
         this-ns-symbols
         (into {}
-              (keep (fn [[sym schema]]
-                      (when (map? schema) ;; TODO: maybe not only maps?
+              (keep (fn [[sym schema :as kv]]
+                      (when (symbol-definition? kv)
                         [(symbol (name ns-name) (name sym))
                          (select-keys schema #{:zen/tags})]))) ;; TODO: maybe not only tags must be saved?
               nmsps)]
     (swap! ctx update :symbols (partial merge this-ns-symbols))))
+
 
 (defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (get nmsps 'ns)]
@@ -112,18 +122,19 @@
           (read-ns ctx imp {:ns ns-name})))
 
       (when-let [alias-ns (get nmsps 'alias)]
-        (doseq [[alias-sym alias-v] (get-in @ctx [:ns alias-ns])]
-          (when (and (symbol? alias-sym) (map? alias-v)
-                     (not (contains? nmsps alias-sym)))
-            (load-alias ctx nmsps
-                        (symbol (name ns-name) (name alias-sym))
-                        (symbol (name alias-ns) (name alias-sym))))))
+        (doseq [[alias-sym alias-v :as kv] (get-in @ctx [:ns alias-ns])]
+          (when (symbol-definition? kv)
+            (let [shadowed-here? (contains? nmsps alias-sym)]
+              (when (not shadowed-here?)
+                (load-alias ctx nmsps
+                            (symbol (name ns-name) (name alias-sym))
+                            (symbol (name alias-ns) (name alias-sym))))))))
 
       (->> (dissoc nmsps ['ns 'import 'alias])
-           (mapv (fn [[k v]]
-                   (cond (and (symbol? k) (map? v))    (load-symbol ctx nmsps k (merge v opts))
-                         (and (symbol? k) (qualified-symbol? v)) (load-alias ctx nmsps k v)
-                         :else                         nil)))
+           (mapv (fn [[k v :as kv]]
+                   (cond (symbol-definition? kv) (load-symbol ctx nmsps k (merge v opts))
+                         (symbol-alias? kv)      (load-alias ctx nmsps k v)
+                         :else                   nil)))
            (mapv (fn [res] (validate-resource ctx res)))))))
 
 
