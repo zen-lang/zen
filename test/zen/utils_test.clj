@@ -3,6 +3,14 @@
             [zen.utils :as sut]))
 
 
+(t/deftest mk-symbol-test
+  (t/is (= 'foo/baz (sut/mk-symbol 'foo 'baz)))
+
+  (t/is (= 'foo/baz (sut/mk-symbol 'foo/bar 'baz)))
+
+  (t/is (= 'foo/baz (sut/mk-symbol 'foo/bar 'quux/baz))))
+
+
 (t/deftest disj-set-test
 
   (def acc-test-cases

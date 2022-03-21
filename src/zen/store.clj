@@ -33,16 +33,16 @@
                            {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)
                             :ns ns-name}))
                   x)
-              (do (when-not (get-symbol ctx (symbol (name ns-name) (name x)))
+              (do (when-not (get-symbol ctx (zen.utils/mk-symbol ns-name x))
                     (swap! ctx update :errors
                            (fnil conj [])
                            {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
                             :ns ns-name}))
-                  (symbol ns-str (name x))))
+                  (zen.utils/mk-symbol ns-str x)))
             x))
         resource)
       (assoc ;;TODO :zen/ns ns-name
-        :zen/name (symbol (name ns-name) (name k)))))
+        :zen/name (zen.utils/mk-symbol ns-name k))))
 
 
 (defn validate-resource [ctx res]
@@ -62,7 +62,7 @@
 (defn load-symbol [ctx nmsps k v]
   (let [ns-name (get nmsps 'ns)
         ns-str (name ns-name)
-        sym (symbol ns-str (name k))
+        sym (zen.utils/mk-symbol ns-name k)
         res (eval-resource ctx ns-str ns-name nmsps k v)]
     (swap! ctx (fn [ctx] (update-in ctx [:symbols sym] (fn [x]
                                                         #_(when x (println "WARN: reload" (:zen/name res)))
@@ -73,8 +73,7 @@
 
 (defn load-alias [ctx nmsps k v]
   (let [ns-name (get nmsps 'ns)
-        ns-str  (name ns-name)
-        sym     (symbol ns-str (name k))]
+        sym     (zen.utils/mk-symbol ns-name k)]
     (swap! ctx update :aliases zen.utils/disj-set-union-push sym v)))
 
 
@@ -83,7 +82,7 @@
 
 
 (defn symbol-alias? [[k v]]
-  (and (symbol? k) (qulified-symbol? v)))
+  (and (symbol? k) (qualified-symbol? v)))
 
 
 (defn pre-load-ns!
@@ -95,7 +94,7 @@
         (into {}
               (keep (fn [[sym schema :as kv]]
                       (when (symbol-definition? kv)
-                        [(symbol (name ns-name) (name sym))
+                        [(zen.utils/mk-symbol ns-name sym)
                          (select-keys schema #{:zen/tags})]))) ;; TODO: maybe not only tags must be saved?
               nmsps)]
     (swap! ctx update :symbols (partial merge this-ns-symbols))))
@@ -127,8 +126,8 @@
             (let [shadowed-here? (contains? nmsps alias-sym)]
               (when (not shadowed-here?)
                 (load-alias ctx nmsps
-                            (symbol (name ns-name) (name alias-sym))
-                            (symbol (name alias-ns) (name alias-sym))))))))
+                            (zen.utils/mk-symbol ns-name alias-sym)
+                            (zen.utils/mk-symbol alias-ns alias-sym)))))))
 
       (->> (dissoc nmsps ['ns 'import 'alias])
            (mapv (fn [[k v :as kv]]

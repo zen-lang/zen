@@ -127,9 +127,18 @@
              (or disj-set {})
              new-group))))
 
+
 (defn get-symbol [ctx nm]
   (when (symbol? nm)
     (or (get-in @ctx [:symbols nm])
         (when-let [aliases (get-in @ctx [:aliases nm])]
           (some #(get-in @ctx [:symbols %])
                 (disj aliases nm))))))
+
+
+(defn mk-symbol [ns-part name-part]
+  (symbol
+    (if (qualified-ident? ns-part)
+      (namespace ns-part)
+      (name ns-part))
+    (name name-part)))
