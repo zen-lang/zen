@@ -15,40 +15,40 @@
 
   (def acc-test-cases
     [{:args   [1 2]
-      :assert {1 #{1 2}
-               2 #{1 2}}}
+      :assert {1 {:root 1, :group #{1 2}}
+               2 {:root 1, :group #{1 2}}}}
 
      {:args   [:a]
-      :assert {1  #{1 2}
-               2  #{1 2}
-               :a #{:a}}}
+      :assert {1  {:root 1, :group #{1 2}}
+               2  {:root 1, :group #{1 2}}
+               :a {:root :a, :group #{:a}}}}
 
      {:args   [:b]
-      :assert {1  #{1 2}
-               2  #{1 2}
-               :a #{:a}
-               :b #{:b}}}
+      :assert {1  {:root 1, :group #{1 2}}
+               2  {:root 1, :group #{1 2}}
+               :a {:root :a, :group #{:a}}
+               :b {:root :b, :group #{:b}}}}
 
-     {:args   [:b :a]
-      :assert {1  #{1 2}
-               2  #{1 2}
-               :a #{:a :b}
-               :b #{:a :b}}}
+     {:args   [:a :b]
+      :assert {1  {:root 1, :group #{1 2}}
+               2  {:root 1, :group #{1 2}}
+               :a {:root :a, :group #{:a :b}}
+               :b {:root :a, :group #{:a :b}}}}
 
      {:args   [:c :b]
-      :assert {1  #{1 2}
-               2  #{1 2}
-               :a #{:a :b :c}
-               :b #{:a :b :c}
-               :c #{:a :b :c}}}
+      :assert {1  {:root 1, :group #{1 2}}
+               2  {:root 1, :group #{1 2}}
+               :a {:root :a, :group #{:a :b :c}}
+               :b {:root :a, :group #{:a :b :c}}
+               :c {:root :a, :group #{:a :b :c}}}}
 
      {:args   [:d :a]
-      :assert {1  #{1 2}
-               2  #{1 2}
-               :a #{:a :b :c :d}
-               :b #{:a :b :c :d}
-               :c #{:a :b :c :d}
-               :d #{:a :b :c :d}}}])
+      :assert {1  {:root 1, :group #{1 2}}
+               2  {:root 1, :group #{1 2}}
+               :a {:root :a, :group #{:a :b :c :d}}
+               :b {:root :a, :group #{:a :b :c :d}}
+               :c {:root :a, :group #{:a :b :c :d}}
+               :d {:root :a, :group #{:a :b :c :d}}}}])
 
   (t/is (= (map :assert acc-test-cases)
            (rest

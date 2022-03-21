@@ -111,19 +111,34 @@
   (strip-when nil? m))
 
 
+(defn disj-set-get-group [disj-set value]
+  (get-in disj-set [value :group]))
+
+
+(defn disj-set-get-root [disj-set value]
+  (get-in disj-set [value :root]))
+
+
 (defn disj-set-union-push
   ([disj-set value]
    (if (contains? disj-set value)
      disj-set
-     (assoc disj-set value #{value})))
-  ([disj-set value & aliases]
-   (let [values    (cons value aliases)
-         groups    (keep #(get disj-set %) values)
+     (assoc disj-set
+            value
+            {:root value
+             :group #{value}})))
+  ([disj-set base-value & joining-values]
+   (let [values    (cons base-value joining-values)
+         root      (or (some #(disj-set-get-root disj-set %)
+                             values)
+                       base-value)
+         groups    (keep #(disj-set-get-group disj-set %) values)
          new-group (reduce conj
                            (or (not-empty (reduce into groups))
                                #{})
                            values)]
-     (reduce (fn [acc k] (assoc acc k new-group))
+     (reduce (fn [acc k] (assoc acc k {:root  root
+                                       :group new-group}))
              (or disj-set {})
              new-group))))
 
@@ -131,14 +146,13 @@
 (defn get-symbol [ctx nm]
   (when (symbol? nm)
     (or (get-in @ctx [:symbols nm])
-        (when-let [aliases (get-in @ctx [:aliases nm])]
-          (some #(get-in @ctx [:symbols %])
-                (disj aliases nm))))))
+        (when-let [alias-root (disj-set-get-root (:aliases @ctx) nm)]
+          (get-in @ctx [:symbols alias-root])))))
 
 
 (defn get-tag [ctx tag]
   (let [tag-sym (:zen/name (get-symbol ctx tag))]
-    (when-let [aliases (conj (or (get-in @ctx [:aliases tag])
+    (when-let [aliases (conj (or (disj-set-get-group (:aliases @ctx) tag)
                                  #{})
                              tag)]
       (reduce (fn [acc alias] (into acc (get-in @ctx [:tags alias])))

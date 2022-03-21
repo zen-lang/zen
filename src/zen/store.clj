@@ -76,10 +76,8 @@
       (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
     res))
 
-(defn load-alias [ctx nmsps k v]
-  (let [ns-name (get nmsps 'ns)
-        sym     (zen.utils/mk-symbol ns-name k)]
-    (swap! ctx update :aliases zen.utils/disj-set-union-push sym v)))
+(defn load-alias [ctx alias-dest alias]
+  (swap! ctx update :aliases zen.utils/disj-set-union-push alias-dest alias))
 
 
 (defn symbol-definition? [[k v]]
@@ -125,19 +123,19 @@
           :else
           (read-ns ctx imp {:ns ns-name})))
 
-      (when-let [alias-ns (get nmsps 'alias)]
-        (doseq [[alias-sym alias-v :as kv] (get-in @ctx [:ns alias-ns])]
+      (when-let [aliased-ns (get nmsps 'alias)]
+        (doseq [[aliased-sym alias-v :as kv] (get-in @ctx [:ns aliased-ns])]
           (when (symbol-definition? kv)
-            (let [shadowed-here? (contains? nmsps alias-sym)]
+            (let [shadowed-here? (contains? nmsps aliased-sym)]
               (when (not shadowed-here?)
-                (load-alias ctx nmsps
-                            (zen.utils/mk-symbol ns-name alias-sym)
-                            (zen.utils/mk-symbol alias-ns alias-sym)))))))
+                (load-alias ctx
+                            (zen.utils/mk-symbol aliased-ns aliased-sym)
+                            (zen.utils/mk-symbol ns-name aliased-sym)))))))
 
       (->> (dissoc nmsps ['ns 'import 'alias])
            (mapv (fn [[k v :as kv]]
                    (cond (symbol-definition? kv) (load-symbol ctx nmsps k (merge v opts))
-                         (symbol-alias? kv)      (load-alias ctx nmsps k v)
+                         (symbol-alias? kv)      (load-alias ctx v (zen.utils/mk-symbol ns-name k))
                          :else                   nil)))
            (mapv (fn [res] (validate-resource ctx res)))))))
 
