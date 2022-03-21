@@ -16,7 +16,7 @@
 
 (defn update-types-recur [ctx tp-sym sym]
   (swap! ctx update-in [:tps tp-sym] (fn [x] (conj (or x #{}) sym)))
-  (doseq [tp-sym' (get-in @ctx [:symbols tp-sym :isa])]
+  (doseq [tp-sym' (:isa (get-symbol ctx tp-sym))]
     (update-types-recur ctx tp-sym' sym)))
 
 (declare read-ns)
@@ -54,7 +54,7 @@
   (let [tags (get res :zen/tags)
         schemas (->> tags
                      (mapv (fn [tag]
-                             (when-let [sch (get-in @ctx [:symbols tag])]
+                             (when-let [sch (get-symbol ctx tag)]
                                (when (contains? (:zen/tags sch) 'zen/schema)
                                  tag))))
                      (filter identity)
