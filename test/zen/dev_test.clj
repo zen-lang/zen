@@ -8,6 +8,16 @@
 
 (System/getProperty "java.io.tmpdir")
 
+(defmacro wait-for [expr times]
+  `(loop [t# ~times]
+     (if (neg? t#)
+       (throw (Exception. (str "Timeout: " ~times " x10ms")))
+       (when-not ~expr
+         (Thread/sleep 100)
+         (print ".")
+         (flush)
+         (recur (dec t#))))))
+
 
 (defn delete-directory-recursive
   [^java.io.File file]
@@ -22,6 +32,8 @@
   (doto (io/file project) (.mkdirs))
   (doto (io/file (str project "/lib")) (.mkdirs)))
 
+
+(t/deftest test-zen-dev)
 
 (t/deftest test-zen-dev
   (def project (str "/tmp/zentest/" (str (gensym "zen"))))
@@ -54,7 +66,7 @@
     (spit (str project "/dev-test-app.edn") "{ns dev-test-app import #{lib.dev-test-lib dev-test-broken} Model1 {:zen/tags #{lib.dev-test-lib/model}} Model2 {:zen/tags #{lib.dev-test-lib/model}}}")
     (spit (str project "/dev-test-broken.edn") "{ns dev-test-broken Model {}}")
 
-    (Thread/sleep 200)
+    (wait-for (zen/get-symbol ztx 'lib.dev-test-lib/model) 100)
 
     (t/is (not (nil? (zen/get-symbol ztx 'dev-test-app/Model2))))
     (t/is (not (nil? (zen/get-symbol ztx 'dev-test-app/Model1))))
@@ -97,8 +109,7 @@
 
       (spit (str project "/dev-test-app2.edn") "{ns dev-test-app2 import #{not-imported-yet}}")
 
-      (Thread/sleep 200)
-
+      (wait-for (contains? (:ns @ztx) 'not-imported-yet) 100)
       (t/is (contains? (:ns @ztx) 'not-imported-yet))
 
       (matcho/match
@@ -108,6 +119,8 @@
     (finally
       (println ::stop)
       (dev/stop ztx))))
+
+
 
 
 (t/deftest not-created-but-imported
@@ -120,8 +133,8 @@
 
     (t/testing "imported before created, then created and should be loaded"
       (spit (str project "/dev-test-app3.edn") "{ns dev-test-app3 import #{not-created-yet}}")
-      (Thread/sleep 200)
 
+      (Thread/sleep 1000)
       (t/is (not (contains? (:ns @ztx) 'dev-test-app3)))
 
       (zen/read-ns ztx 'dev-test-app3)
@@ -129,9 +142,10 @@
       (t/is (contains? (:ns @ztx) 'dev-test-app3))
 
       (spit (str project "/not-created-yet.edn") "{ns not-created-yet, foo {}}")
-      (Thread/sleep 200)
 
-      (t/is (contains? (:ns @ztx) 'not-created-yet))
+      (wait-for (contains? (:ns @ztx) 'not-created-yet) 100)
+
+      (t/is (contains? (into #{} (keys (:ns @ztx))) 'not-created-yet))
 
       (matcho/match
         (zen/errors ztx)

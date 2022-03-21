@@ -2,10 +2,10 @@
   (:require [clojure.set]
             [zen.effect]
             [zen.match]
+            [zen.utils]
             [clojure.string :as str]))
 
-(defn get-symbol [ctx nm]
-  (get-in @ctx [:symbols nm]))
+(def get-symbol zen.utils/get-symbol)
 
 (defn update-acc [ctx acc {dp :path sp :schema}]
   (cond-> acc

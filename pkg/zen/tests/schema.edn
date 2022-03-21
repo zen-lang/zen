@@ -56,11 +56,11 @@
                      :cases {:simple {:example {:a "a" :c "c" :d "d"} :valid true}
                              :set-of {:example {:b "b"} :valid true}
                              :invalid-1 {:example {:a "a" :b "b"}
-                                         :result [{:message "Expected only one of keyset :b or :a, but present (:b :a)",          
+                                         :result [{:message "Expected only one of keyset :b or :a, but present (:a :b)",          
                                                    :type "map.exclusive-keys",
                                                    :schema [:exclusive-keys]}]}
                              :invalid-2 {:example {:b "b" :c "c"}
-                                         :result [{:message "Expected only one of keyset #{:c :d} or :b, but present (:c :b)",
+                                         :result [{:message "Expected only one of keyset #{:c :d} or :b, but present (:b :c)",
                                                    :type "map.exclusive-keys",
                                                    :schema [:exclusive-keys]}]}}}
 

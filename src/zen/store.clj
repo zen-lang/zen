@@ -248,11 +248,7 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
-(defn get-symbol [ctx nm]
-  (or (get-in @ctx [:symbols nm])
-      (when-let [aliases (get-in @ctx [:aliases nm])]
-        (some #(get-in @ctx [:symbols %])
-              (disj aliases nm)))))
+(def get-symbol zen.utils/get-symbol)
 
 (defn get-tag [ctx tag]
   (let [tag-sym (:zen/name (get-symbol ctx tag))]

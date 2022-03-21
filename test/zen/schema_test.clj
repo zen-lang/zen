@@ -36,7 +36,12 @@
     '{ns1 {ns   ns1
            sym1 {:foo :bar}
 
-           tag1 {:zen/tags #{zen/tag}}}
+           tag1 {:zen/tags #{zen/tag}}
+
+           sch1
+           {:zen/tags #{zen/schema}
+            :type zen/map
+            :keys {:a {:type zen/string}}}}
 
       ns2 {ns    ns2
            sym21 {:foo1 :bar2}
@@ -46,13 +51,19 @@
            tag22 {:zen/tags #{zen/tag}}
 
            tagged-sym1 {:zen/tags #{tag21}}
-           tagged-sym2 {:zen/tags #{tag22}}}
+           tagged-sym2 {:zen/tags #{tag22}}
+
+           sch2
+           {:zen/tags #{zen/schema}
+            :type zen/map
+            :keys {:a {:type zen/string}}}}
 
       myns {ns     myns
             import #{ns1}
             alias  ns2
 
             sym1  ns1/sym1
+            sch1  ns1/sch1
             sym22 {:baz :quux}
 
             tag1 ns1/tag1
@@ -64,8 +75,7 @@
             tagged-sym221 {:zen/tags #{tag22}}
             tagged-sym222 {:zen/tags #{ns2/tag22}}}})
 
-  (def ztx (zen/new-context {:unsafe true
-                             :memory-store test-namespaces}))
+  (def ztx (zen/new-context {:unsafe true :memory-store test-namespaces}))
 
   (zen/load-ns ztx (get test-namespaces 'myns))
 
@@ -106,4 +116,40 @@
                (zen/get-tag ztx 'myns/tag22)))
 
         (is (= #{'myns/tagged-sym222 'ns2/tagged-sym2}
-               (zen/get-tag ztx 'ns2/tag22)))))))
+               (zen/get-tag ztx 'ns2/tag22))))))
+
+  (testing "validate with alias"
+    (is (zen/get-symbol ztx 'myns/sch1))
+
+    (matcho/match
+     (zen/validate ztx #{'ns1/sch1} {:a 1})
+     '{:errors
+      [{:message "Expected type of 'string, got 'long",
+        :type "string.type",
+        :path [:a],
+        :schema [ns1/sch1 :a]}]})
+
+    (matcho/match
+     (zen/validate ztx #{'myns/sch1} {:a 1})
+     '{:errors
+       [{:message "Expected type of 'string, got 'long",
+         :type "string.type",
+         :path [:a],
+         :schema [myns/sch1 :a]}]})
+
+
+    (matcho/match
+     (zen/validate ztx #{'ns2/sch2} {:a 1})
+     '{:errors
+       [{:message "Expected type of 'string, got 'long",
+         :type "string.type",
+         :path [:a],
+         :schema [ns2/sch2 :a]}]})
+
+    (matcho/match
+     (zen/validate ztx #{'myns/sch2} {:a 1})
+     '{:errors
+       [{:message "Expected type of 'string, got 'long",
+         :type "string.type",
+         :path [:a],
+         :schema [myns/sch2 :a]}]})))
