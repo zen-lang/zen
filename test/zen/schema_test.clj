@@ -31,6 +31,7 @@
 
 
 (deftest alias-test
+  #"TODO: add alias remove test"
   (def test-namespaces
     '{ns1 {ns   ns1
            sym1 {:foo :bar}
@@ -39,7 +40,13 @@
 
       ns2 {ns    ns2
            sym21 {:foo1 :bar2}
-           sym22 {:foo2 :bar2}}
+           sym22 {:foo2 :bar2}
+
+           tag21 {:zen/tags #{zen/tag}}
+           tag22 {:zen/tags #{zen/tag}}
+
+           tagged-sym1 {:zen/tags #{tag21}}
+           tagged-sym2 {:zen/tags #{tag22}}}
 
       myns {ns     myns
             import #{ns1}
@@ -50,7 +57,12 @@
 
             tag1 ns1/tag1
             tagged-sym1 {:zen/tags #{tag1}}
-            tagged-sym2 {:zen/tags #{ns1/tag1}}}})
+            tagged-sym2 {:zen/tags #{ns1/tag1}}
+
+            tag22 {:zen/tags #{zen/tag}}
+            tagged-sym21  {:zen/tags #{tag21}}
+            tagged-sym221 {:zen/tags #{tag22}}
+            tagged-sym222 {:zen/tags #{ns2/tag22}}}})
 
   (def ztx (zen/new-context {:unsafe true
                              :memory-store test-namespaces}))
@@ -62,21 +74,36 @@
   (testing "symbol alias"
     (matcho/match
      (zen/get-symbol ztx 'myns/sym1)
-     '{:zen/name ns1/sym1})
+     '{:zen/name ns1/sym1}))
 
-    (testing "tags alias"
+  (testing "ns alias"
+    (matcho/match
+      (zen/get-symbol ztx 'myns/sym21)
+      '{:zen/name ns2/sym21})
+
+    (testing "monkey patch"
+      (matcho/match
+        (zen/get-symbol ztx 'myns/sym22)
+        '{:zen/name myns/sym22})))
+
+  (testing "tags alias"
+    (testing "symbol alias"
       (is (= #{'myns/tagged-sym1 'myns/tagged-sym2}
              (zen/get-tag ztx 'myns/tag1)))
 
       (is (= #{'myns/tagged-sym1 'myns/tagged-sym2}
-             (zen/get-tag ztx 'ns1/tag1)))))
+             (zen/get-tag ztx 'ns1/tag1))))
 
-  (testing "ns alias"
-    (matcho/match
-     (zen/get-symbol ztx 'myns/sym21)
-     '{:zen/name ns2/sym21})
+    (testing "ns alias"
+      (is (= #{'myns/tagged-sym21 'ns2/tagged-sym1}
+             (zen/get-tag ztx 'myns/tag21)))
 
-    (testing "monkey patch"
-      (matcho/match
-       (zen/get-symbol ztx 'myns/sym22)
-       '{:zen/name myns/sym22}))))
+      (is (= #{'myns/tagged-sym21 'ns2/tagged-sym1}
+             (zen/get-tag ztx 'ns2/tag21)))
+
+      (testing "monkey patch"
+        (is (= #{'myns/tagged-sym221}
+               (zen/get-tag ztx 'myns/tag22)))
+
+        (is (= #{'myns/tagged-sym222 'ns2/tagged-sym2}
+               (zen/get-tag ztx 'ns2/tag22)))))))

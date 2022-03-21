@@ -20,18 +20,20 @@
        (mapv (fn [x] (if (keyword? x) (subs (str x) 1) (str x))))
        (str/join "->" )))
 
+(declare get-symbol)
+
 (defn eval-resource [ctx ns-str ns-name nmsps k resource]
   (-> (clojure.walk/postwalk
         (fn [x]
           (if (symbol? x) ;; TODO: allow symbols namespaced with current namespace
             (if (namespace x)
-              (do (when-not (get-in @ctx [:symbols x])
+              (do (when-not (get-symbol ctx x)
                     (swap! ctx update :errors
                            (fnil conj [])
                            {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)
                             :ns ns-name}))
                   x)
-              (do (when-not (get nmsps x)
+              (do (when-not (get-symbol ctx (symbol (name ns-name) (name x)))
                     (swap! ctx update :errors
                            (fnil conj [])
                            {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
@@ -108,6 +110,14 @@
 
           :else
           (read-ns ctx imp {:ns ns-name})))
+
+      (when-let [alias-ns (get nmsps 'alias)]
+        (doseq [[alias-sym alias-v] (get-in @ctx [:ns alias-ns])]
+          (when (and (symbol? alias-sym) (map? alias-v)
+                     (not (contains? nmsps alias-sym)))
+            (load-alias ctx nmsps
+                        (symbol (name ns-name) (name alias-sym))
+                        (symbol (name alias-ns) (name alias-sym))))))
 
       (->> (dissoc nmsps ['ns 'import 'alias])
            (mapv (fn [[k v]]
@@ -242,17 +252,16 @@
   (or (get-in @ctx [:symbols nm])
       (when-let [aliases (get-in @ctx [:aliases nm])]
         (some #(get-in @ctx [:symbols %])
-              (disj aliases nm)))
-      (when-let [ns-alias (get-in @ctx [:ns (symbol (namespace nm)) 'alias])]
-        (recur ctx (symbol (name ns-alias) (name nm))))))
+              (disj aliases nm)))))
 
 (defn get-tag [ctx tag]
-  (when-let [aliases (conj (or (get-in @ctx [:aliases tag])
-                               #{})
-                           tag)]
-    (reduce (fn [acc alias] (into acc (get-in @ctx [:tags alias])))
-            #{}
-            aliases)))
+  (let [tag-sym (:zen/name (get-symbol ctx tag))]
+    (when-let [aliases (conj (or (get-in @ctx [:aliases tag])
+                                 #{})
+                             tag)]
+      (reduce (fn [acc alias] (into acc (get-in @ctx [:tags alias])))
+              #{}
+              aliases))))
 
 (defn new-context [& [opts]]
   (let [ctx (atom (or opts {}))]
