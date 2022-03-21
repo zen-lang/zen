@@ -136,6 +136,16 @@
                 (disj aliases nm))))))
 
 
+(defn get-tag [ctx tag]
+  (let [tag-sym (:zen/name (get-symbol ctx tag))]
+    (when-let [aliases (conj (or (get-in @ctx [:aliases tag])
+                                 #{})
+                             tag)]
+      (reduce (fn [acc alias] (into acc (get-in @ctx [:tags alias])))
+              #{}
+              aliases))))
+
+
 (defn mk-symbol [ns-part name-part]
   (symbol
     (if (qualified-ident? ns-part)

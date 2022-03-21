@@ -8,6 +8,12 @@
             [clojure.string :as str]))
 
 
+(def get-symbol zen.utils/get-symbol)
+
+
+(def get-tag zen.utils/get-tag)
+
+
 (defn update-types-recur [ctx tp-sym sym]
   (swap! ctx update-in [:tps tp-sym] (fn [x] (conj (or x #{}) sym)))
   (doseq [tp-sym' (get-in @ctx [:symbols tp-sym :isa])]
@@ -20,7 +26,6 @@
        (mapv (fn [x] (if (keyword? x) (subs (str x) 1) (str x))))
        (str/join "->" )))
 
-(declare get-symbol)
 
 (defn eval-resource [ctx ns-str ns-name nmsps k resource]
   (-> (clojure.walk/postwalk
@@ -257,17 +262,6 @@
   (read-ns ctx nmsps)
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
-
-(def get-symbol zen.utils/get-symbol)
-
-(defn get-tag [ctx tag]
-  (let [tag-sym (:zen/name (get-symbol ctx tag))]
-    (when-let [aliases (conj (or (get-in @ctx [:aliases tag])
-                                 #{})
-                             tag)]
-      (reduce (fn [acc alias] (into acc (get-in @ctx [:tags alias])))
-              #{}
-              aliases))))
 
 (defn new-context [& [opts]]
   (let [ctx (atom (or opts {}))]
