@@ -1,0 +1,68 @@
+{ns zen.effects-test
+ import #{zen.test}
+
+ not-fx
+ {}
+
+ only-one
+ {:zen/tags #{zen/schema-fx zen/schema}
+  :type     zen/vector
+  :every    {:type zen/keyword}}
+
+ subj
+ {:zen/tags #{zen/schema}
+  :type     zen/map
+  :keys     {:name  {:type zen/string}
+             :email {:type zen/string}}
+  only-one      [:name :email]}
+
+ schema-with-good-fx
+ {:zen/tags #{zen/schema}
+  :type     zen/map
+  only-one  [:name :email]}
+
+ schema-with-good-fx&bad-arg
+ {:zen/tags #{zen/schema}
+  :type     zen/map
+  only-one  1}
+
+ schema-with-bad-fx
+ {:zen/tags #{zen/schema}
+  :type     zen/map
+  not-fx    :args}
+
+ fx-schema-test
+ {:zen/tags #{zen.test/case}
+  :title "Checks if fx is tagged with zen/schema-fx"
+  :steps
+  [{:desc "Fx is tagged and schema is correct"
+    :do {:type zen.test/validate-schema
+         :schema schema-with-good-fx}
+    :match {:errors [nil]}}
+   {:desc "Fx is tagged but args have errors, schema is incorrect"
+    :do {:type zen.test/validate-schema
+         :schema schema-with-good-fx&bad-arg}
+    :match {:errors [{:type "type",
+                      :path [zen.effects-test/only-one],
+                      :schema [zen/schema :keyname-schemas zen.effects-test/only-one]}
+                     nil]}}
+   {:desc "Fx is not tagged, schema is incorrect"
+    :do {:type zen.test/validate-schema
+         :schema schema-with-bad-fx}
+    :match {:errors [{:type "unknown-key", :path [zen.effects-test/not-fx]}
+                     nil]}}]}
+
+ fx-tests
+ {:zen/tags #{zen.test/case}
+  :title ""
+  :steps
+  [{:desc "FX emit"
+    :do {:type zen.test/validate
+         :schema subj
+         :data {:name "somename" :email "somemail@mail.com"}}
+    :match {:errors zen.test/nil?
+            :effects [{:name   zen.effects-test/only-one
+                       :path   [zen.effects-test/only-one]
+                       :data   {:name "somename" :email "somemail@mail.com"}
+                       :params [:name :email]}
+                      zen.test/nil?]}}]}}

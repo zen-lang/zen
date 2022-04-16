@@ -1,0 +1,246 @@
+{ns zen.slicing-test
+
+ import #{zen.test}
+
+
+ Person
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:telecom {:type    zen/vector
+                   :every   {:type    zen/map
+                             :require #{:system :value}
+                             :keys    {:system {:type zen/string}
+                                       :value  {:type zen/string}}}
+                   :slicing {:slices {"mobile-phone"
+                                      {:filter {:engine :zen
+                                                :zen    {:type zen/map
+                                                         :keys {:system {:const {:value "mobile-phone"}}}}}
+                                       :schema {:type     zen/vector
+                                                :minItems 1
+                                                :every    {:type zen/map
+                                                           :keys {:os {:type zen/keyword
+                                                                       :enum [{:value :ios}
+                                                                              {:value :android}
+                                                                              {:value :other}]}}}
+                                                :slicing  {:slices {"ios"
+                                                                    {:filter {:engine :zen
+                                                                              :zen    {:type zen/map
+                                                                                       :keys {:os {:const {:value :ios}}}}}
+                                                                     :schema {:type     zen/vector
+                                                                              :minItems 1}}}}}}}
+                             :rest   {:type  zen/vector
+                                      :every {:type zen/map, :validation-type :open}}}}}}
+
+ telecom-slicing-test
+ {:zen/tags #{zen.test/case}
+  :title    "Checks if person has atleast one mobile phone and one of his mobile phones runs ios"
+  :steps
+  [{:desc "Has ios, android and email. Valid"
+    :do   {:type   zen.test/validate
+           :schema Person
+           :data   {:telecom [{:system "mobile-phone"
+                               :value  "+72222222222"
+                               :os     :ios}
+                              {:system   "email"
+                               :value    "foo@bar.baz"
+                               :provider "baz"}
+                              {:system "mobile-phone"
+                               :value  "+71111111111"
+                               :os     :android}]}}
+    :match
+    {:errors [nil]}}
+   {:desc "Has only android. Invalid"
+    :do   {:type   zen.test/validate
+           :schema Person
+           :data   {:telecom [{:system "mobile-phone"
+                               :value  "+72222222222"
+                               :os     :android}
+                              {:system   "email"
+                               :value    "foo@bar.baz"
+                               :provider "baz"}
+                              {:system "mobile-phone"
+                               :value  "+71111111111"
+                               :os     :android}]}}
+    :match
+    {:errors [{} nil]}}
+   {:desc "Has extra telecom with invalid system and missing value"
+    :do   {:type   zen.test/validate
+           :schema Person
+           :data   {:telecom [{:system "mobile-phone"
+                               :value  "+71111111111"
+                               :os     :ios}
+                              {:system    :wrong-type
+                               :extra-key "not error"}]}}
+    :match
+    {:errors [{} {} nil]}}]}
+
+
+ required-slice
+ {:zen/tags #{zen/schema}
+  :type zen/vector
+  :every {:type zen/map
+          :require #{:kind}
+          :keys {:kind {:type zen/string}}}
+  :slicing {:slices {"one" {:filter {:engine :zen
+                                     :zen {:type zen/map
+                                           :keys {:kind {:const {:value "one"}}}}}
+                            :schema {:type zen/vector :minItems 1 :maxItems 1}}}}}
+
+ slice-definition
+ {:zen/tags #{zen/schema}
+  :type zen/vector
+  :every {:type zen/map :keys {:kind {:type zen/string}
+                               :value {:type zen/any}}}
+  :slicing {:rest {:type  zen/vector
+                   :every {:type zen/map
+                           :keys {:value {:type zen/string}}}}
+            :slices {"kw"
+                     {:filter {:engine :zen
+                               :zen    {:type zen/map
+                                        :keys {:kind {:const {:value "keyword"}}}}}
+                      :schema {:type  zen/vector
+                               :every {:type zen/map
+                                       :keys {:value {:type zen/keyword}}}}}
+
+                     "number"
+                     {:filter {:engine :zen
+                               :zen    {:type zen/map
+                                        :keys {:kind {:const {:value "number"}}}}}
+                      :schema {:type  zen/vector
+                               :every {:type zen/map
+                                       :keys {:value {:type zen/number}}}}}
+
+                     "nested"
+                     {:filter {:engine :zen
+                               :zen    {:type zen/map
+                                        :keys {:kind {:const {:value "nested"}}}}}
+                      :schema {:type  zen/vector
+                               :every {:type zen/map
+                                       :keys {:value {:type zen/vector
+                                                      :every {:type zen/map
+                                                              :keys {:kind  {:type zen/string}
+                                                                     :value {:type zen/any}}}
+                                                      :slicing
+                                                      {:slices
+                                                       {"nest-kw"
+                                                        {:filter {:engine :zen
+                                                                  :zen    {:type zen/map
+                                                                           :keys {:kind {:const {:value "keyword"}}}}}
+                                                         :schema {:type  zen/vector
+                                                                  :every {:type zen/map
+                                                                          :keys {:value {:type zen/keyword}}}}}}}}}}}}
+
+                     "map"
+                     {:filter {:engine :zen
+                               :zen    {:type zen/map
+                                        :keys {:kind {:const {:value "map"}}}}}
+                      :schema {:type  zen/vector
+                               :every {:type zen/map
+                                       :keys {:value {:type zen/map
+                                                      :keys {:nested {:type zen/vector
+                                                                      :every {:type zen/map
+                                                                              :keys {:kind  {:type zen/string}
+                                                                                     :value {:type zen/any}}}
+                                                                      :slicing
+                                                                      {:slices
+                                                                       {"nest-kw"
+                                                                        {:filter {:engine :zen
+                                                                                  :zen    {:type zen/map
+                                                                                           :keys {:kind {:const {:value "keyword"}}}}}
+                                                                         :schema {:type  zen/vector
+                                                                                  :every {:type zen/map
+                                                                                          :keys {:value {:type zen/keyword}}}}}}}}}}}}}}}}}
+
+ slicing-test
+ {:zen/tags #{zen.test/case}
+  :title    ""
+  :steps
+  [{:desc "Various valid slices"
+    :do   {:type   zen.test/validate
+           :schema slice-definition
+           :data   [{:kind "keyword" :value :hello}
+                    {:kind "keyword" :value :world}
+                    {:kind "number" :value 1}
+                    {:kind "foo"    :value "string"}
+                    {:kind "map"
+                     :value {:nested [{:kind "keyword" :value :world}
+                                      {:kind "number" :value 1}]}}
+                    {:kind "nested"
+                     :value [{:kind "keyword" :value :world}
+                             {:kind "number" :value 1}]}]}
+    :match
+    {:errors [nil]}}
+   {:desc ""
+    :do   {:type   zen.test/validate
+           :schema slice-definition
+           :data   [{:kind "keyword" :value 1}]}
+    :match
+    {:errors [{:path ["[kw]" 0 :value nil]} nil]}}
+   {:desc ""
+    :do   {:type   zen.test/validate
+           :schema slice-definition
+           :data   [{:kind "number" :value "1"}]}
+    :match
+    {:errors [{:path ["[number]" 0 :value nil]} nil]}}
+   {:desc ""
+    :do   {:type   zen.test/validate
+           :schema slice-definition
+           :data   [{:kind "foo" :value 1}]}
+    :match
+    {:errors [{:path ["[:slicing/rest]" 0 :value nil]} nil]}}
+   {:desc ""
+    :do   {:type   zen.test/validate
+           :schema slice-definition
+           :data   [{:kind "map", :value {:nested [{:kind "keyword" :value "not keyword"}]}}]}
+    :match
+    {:errors [{:path ["[map]" 0 :value :nested "[nest-kw]" 0 :value nil]} nil]}}
+   {:desc ""
+    :do   {:type   zen.test/validate
+           :schema slice-definition
+           :data   [{:kind "nested" :value [{:kind "keyword" :value "not keyword"}]}]}
+    :match
+    {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil]} nil]}}
+   {:desc ""
+    :do   {:type   zen.test/validate
+           :schema required-slice
+           :data   [{:kind "two"}]}
+    :match
+    {:errors [{:type "vector"
+               :path ["[one]"]}]}}]}
+
+
+ slicing-path-collision-unknown-key-bug-schema
+ {:zen/tags #{zen/schema}
+  :type zen/vector
+  :every {:type zen/map, :keys {:kind {:type zen/string}}}
+  :slicing {:rest {:type  zen/vector
+                   :every {:type zen/map,
+                           :keys {:rest-key {:type zen/any}}}}
+            :slices {"slice"
+                     {:filter {:engine :zen
+                               :zen    {:type zen/map
+                                        :keys {:kind {:const {:value "slice"}}}}}
+                      :schema {:type  zen/vector
+                               :every {:type zen/map
+                                       :keys {:slice-key {:type zen/string}}}}}}}}
+
+ slicing-path-collision-unknown-key-bug-test
+ {:zen/tags #{zen.test/case}
+  :title    ""
+  :steps [{:desc ""
+           :do   {:type   zen.test/validate
+                  :schema slicing-path-collision-unknown-key-bug-schema
+                  :data   [{:kind "slice", :slice-key "kw-key"}
+                           {:kind "rest", :rest-key "rest-key"}]}
+           :match
+           {:errors [nil]}}
+          {:desc ""
+           :do   {:type   zen.test/validate
+                  :schema slicing-path-collision-unknown-key-bug-schema
+                  :data   [{:kind "rest", :rest-key "rest-key"}
+                           {:kind "slice", :rest-key "kw-key"}
+                           {:kind "slice", :slice-key :kw-key}]}
+           :match
+           {:errors [{:path [1 :rest-key nil]} ;; zen can't know where unknown key came from, thus can't write slice in this path
+                     {:path ["[slice]" 2 :slice-key nil]}
+                     nil]}}]}}}

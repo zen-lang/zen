@@ -1,0 +1,150 @@
+{ns zen.schema-key-test
+
+ import #{zen.test}
+
+ str
+ {:zen/tags #{zen/schema}
+  :type  zen/map
+  :keys {:txt {:type zen/string
+               :minLength 5}}}
+ one
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :schema-key {:key :name :ns "zen.schema-key-test"}
+  :keys {:name {:type zen/string}}}
+
+ one-tests
+ {:zen/tags #{zen.test/case}
+  :title "Schema-key validations in map"
+  :steps
+  [{:desc "Checks if ref type invalid"
+    :do {:type zen.test/validate :schema one :data {:name "str" :txt 43}}
+    :match
+    {:errors [{:path [:txt]
+               :type "string.type"
+               :message "Expected type of 'string, got 'long"
+               :schema [one :schema-key str :keys :txt]}]}}
+   {:desc "Checks if additional rules not passed"
+    :do {:type zen.test/validate :schema one :data {:name "str" :txt "ab"}}
+    :match
+    {:errors [{:path [:txt]
+               :type "string.minLength"
+               :message "Expected length >= 5, got 2"
+               :schema [one :schema-key str :keys :txt :minLength]}]}}
+   {:desc "Checks if there are additional keys"
+    :do {:type zen.test/validate :schema one :data {:name "str" :txt "abcef"
+                                                     :foo "bar"}}
+    :match
+    {:errors [{:path [:foo]
+               :type "unknown-key"
+               :message "unknown key :foo"}]}}
+   {:desc "Valid data given"
+    :do {:type zen.test/validate :schema one :data {:name "str" :txt "foo bar string"}}
+    :match
+    {:errors zen.test/nil?}}]}
+
+ person
+ {:zen/tags #{zen/schema}
+  :type  zen/map
+  :require #{:bar :foo}
+  :keys {:bar {:type zen/integer :min 1}
+         :foo {:type zen/string :minLength 5}}}
+ two
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :schema-key {:key :man :ns "zen.schema-key-test"}
+  :keys {:man {:type zen/string}}}
+
+ two-tests
+ {:zen/tags #{zen.test/case}
+  :title "Schema-key validations in map"
+  :steps
+  [{:desc "Checks if :require not exist"
+    :do {:type zen.test/validate :schema two :data {:man "person"}}
+    :match
+    {:errors [{:path [:bar]
+               :type "require"
+               :message ":bar is required"
+               :schema [two :schema-key person :require]}
+              {:path [:foo]
+               :type "require"
+               :message ":foo is required"
+               :schema [two :schema-key person :require]}]}}
+   {:desc "Checks if :require keys exist partially"
+    :do {:type zen.test/validate :schema two :data {:man "person"
+                                                     :foo "something"}}
+    :match
+    {:errors [{:path [:bar]
+               :type "require"
+               :message ":bar is required"
+               :schema [two :schema-key person :require]}]}}   
+   {:desc "Checks if :require keys exist partially"
+    :do {:type zen.test/validate :schema two :data {:man "person"
+                                                     :bar 0
+                                                     :foo "something"}}
+    :match
+    {:errors [{:path [:bar]
+               :type "integer.min"
+               :message "Expected  >= 1, got 0"
+               :schema [two :schema-key person :keys :bar :min]}]}}
+   {:desc "Checks if there are additional keys"
+    :do {:type zen.test/validate :schema two :data {:man "person"
+                                                     :bar 42
+                                                     :foo "something"
+                                                     :nop "should not be here"}}
+    :match
+    {:errors [{:path [:nop]
+               :type "unknown-key"
+               :message "unknown key :nop"}]}}
+   {:desc "Valid data given"
+    :do {:type zen.test/validate :schema two :data {:man "person"
+                                                     :bar 42
+                                                     :foo "something"}}
+    :match
+    {:errors zen.test/nil?}}]}
+
+ urn:extension:AnimalPatient.species
+ {:zen/tags #{zen/schema}
+  :type     zen/map
+  :keys     {:valueCode {:type zen/string}}}
+
+ AnimalPatient
+ {:zen/tags #{zen/schema}
+  :type     zen/map
+  :keys     {:resourceType {:type  zen/string
+                            :const {:value "Patient"}}
+             :extension    {:type  zen/vector
+                            :every {:type       zen/map
+                                    :keys       {:url {:type zen/string}}
+                                    :schema-key {:key :url, :ns "zen.schema-key-test"}}}}}
+
+ extension-test
+ {:zen/tags #{zen.test/case}
+  :title "Validate fhir extension"
+  :steps
+  [{:desc "Extension defined and correct"
+    :do {:type zen.test/validate
+         :schema AnimalPatient
+         :data {:resourceType "Patient"
+                :extension [{:url "urn:extension:AnimalPatient.species"
+                             :valueCode "dog"}]}}
+    :match
+    {:errors [nil]}}
+
+   {:desc "Extension defined and incorrect"
+    :do {:type zen.test/validate
+         :schema AnimalPatient
+         :data {:resourceType "Patient"
+                :extension [{:url "urn:extension:AnimalPatient.species"
+                             :valueCoding {:code "dog"}}]}}
+    :match
+    {:errors [{:type "unknown-key", :path [:extension 0 :valueCoding]}]}}
+
+   {:desc "Extension undefined"
+    :do {:type zen.test/validate
+         :schema AnimalPatient
+         :data {:resourceType "Patient"
+                :extension [{:url "urn:extension:AnimalPatient.breed"
+                             :valueCode "doge"}]}}
+    :match
+    {:errors [{:type "schema", :path [:extension 0]}]}}]}}

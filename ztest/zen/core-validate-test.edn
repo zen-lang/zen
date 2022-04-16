@@ -1,0 +1,76 @@
+{ns zen.core-validate-test
+
+ import #{zen.test}
+
+ keys-with-different-types
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:keyword {:type zen/keyword}
+         "string" {:type zen/string}}}
+
+ validate-sort-by-error-test
+ {:zen/tags #{zen.test/case}
+  :title    "zen.core/validate sort-by class cast error"
+  :steps [{:desc "Data is valid, no errors"
+           :do {:type zen.test/validate
+                :schema keys-with-different-types
+                :data {:keyword :k
+                       "string" "s"}}
+           :match {:errors [nil]}}
+          {:desc "Data is invalid, errors in return"
+           :do {:type zen.test/validate
+                :schema keys-with-different-types
+                :data {:keyword "s"
+                       "string" :k}}
+           :match {:errors [{} {} nil]}}]}
+
+ bad-schema
+ {:zen/tags #{zen/schema}
+  :invalid-key :should-be-error-on-load}
+
+ good-schema
+ {:zen/tags #{zen/schema}
+  :type zen/any}
+
+ bad-schema-test
+ {:zen/tags #{zen.test/case}
+  :title    "Tests if schema has errors"
+  :steps [{:desc "Schema contains invalid key"
+           :do {:type zen.test/validate-schema
+                :schema bad-schema}
+           :match {:errors [{:path [:invalid-key], :type "unknown-key"}
+                            nil]}}
+          {:desc "Schema is correct"
+           :do {:type zen.test/validate-schema
+                :schema good-schema}
+           :match {:errors [nil]}}]}
+
+ not-schema
+ {}
+
+ schema-with-bad-confirms
+ {:zen/tags #{zen/schema}
+  :confirms #{not-schema}}
+
+ some-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map}
+
+ schema-with-good-confirms
+ {:zen/tags #{zen/schema}
+  :confirms #{some-schema}}
+
+ bad-confirms-test
+ {:zen/tags #{zen.test/case}
+  :title    "Tests each element of :confirms tagged as a schema"
+  :steps [{:desc "Confirms contains schema without schema tag"
+           :do {:type zen.test/validate-schema
+                :schema schema-with-bad-confirms}
+           :match {:errors [{:type "symbol",
+                             :path [:confirms 0],
+                             :schema [zen/schema :keys :confirms :every :tags]}
+                            nil]}}
+          {:desc "Confirms contains schema with schema tag"
+           :do {:type zen.test/validate-schema
+                :schema schema-with-good-confirms}
+           :match {:errors [nil]}}]}}

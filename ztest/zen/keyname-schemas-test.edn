@@ -1,0 +1,49 @@
+{ns     zen.keyname-schemas-test
+ import #{zen.test}
+
+ mytag {:zen/tags #{zen/tag}}
+
+ sch-1 {:zen/tags #{zen/schema mytag}
+        :type     zen/integer}
+
+ sch-2 {:zen/tags #{zen/schema mytag}
+        :type     zen/string}
+
+ sch-3 {:zen/tags #{zen/schema}
+        :type     zen/string}
+
+ kns {:zen/tags        #{zen/schema}
+      :type            zen/map
+      :keyname-schemas {:tags #{mytag}}}
+
+ extension-test
+ {:zen/tags #{zen.test/case}
+  :title    "Deducing schemas by tags"
+  :steps
+  [{:desc "Keyname schemas deduced and valid"
+    :do   {:type   zen.test/validate
+           :schema kns
+           :data   {:zen.keyname-schemas-test/sch-1 1 :zen.keyname-schemas-test/sch-2 "ok"}}
+    :match {:errors [nil]}}
+   {:desc "Keyname schemas deduced and invalid"
+    :do   {:type   zen.test/validate
+           :schema kns
+           :data   {:zen.keyname-schemas-test/sch-1 "a" :zen.keyname-schemas-test/sch-2 1}}
+    :match {:errors [{:type   "primitive-type",
+                      :path   [:zen.keyname-schemas-test/sch-1],
+                      :schema [zen.keyname-schemas-test/kns :keyname-schemas :zen.keyname-schemas-test/sch-1]}
+                     {:type   "string.type",
+                      :path   [:zen.keyname-schemas-test/sch-2],
+                      :schema [zen.keyname-schemas-test/kns :keyname-schemas :zen.keyname-schemas-test/sch-2]}
+                     nil]}}
+   {:desc "Keyname schemas are not found"
+    :do   {:type   zen.test/validate
+           :schema kns
+           :data   {:zen.keyname-schemas-test/sch-1 1 :zen.keyname-schemas-test/sch-2 "ok" :extra "ups"}}
+    :match {:errors [{:type "unknown-key", :path [:extra]}
+                     nil]}}
+   {:desc "Keyname schemas not found because not tagged"
+    :do   {:type   zen.test/validate
+           :schema kns
+           :data   {:zen.keyname-schemas-test/sch-3 "s"}}
+    :match {:errors [{} nil]}}]}}

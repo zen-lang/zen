@@ -33,8 +33,6 @@
   (doto (io/file (str project "/lib")) (.mkdirs)))
 
 
-(t/deftest test-zen-dev)
-
 (t/deftest test-zen-dev
   (def project (str "/tmp/zentest/" (str (gensym "zen"))))
   (init-project project)

@@ -1,0 +1,54 @@
+{ns zen.fn-test
+
+ import #{zen.test}
+
+ fn {:zen/tags #{zen/tag}}
+
+ other-fn {:zen/tags #{zen/fn}
+           :args {:type zen/vector :every {:type zen/keyword}}
+           :ret  {:type zen/string}}
+
+ get {:zen/tags #{zen/fn fn}
+      :args {:type zen/vector :every {:type zen/keyword}}
+      :ret  {:type zen/string}}
+
+ tpl {:zen/tags  #{zen/schema zen/tag}
+      :type zen/map
+      :keys {:path {:type zen/apply :tags #{fn}}}}
+
+ example {:zen/tags #{tpl}
+          :path (get :a :b :c)}
+
+ fn-tests
+ {:zen/tags #{zen.test/case}
+  :title "Fn validation"
+  :steps
+  [{:desc "Fail fn call"
+    :do {:type zen.test/validate :schema tpl :data {:path "1"}}
+    :match
+    {:errors [{:type "apply.type"
+               :path [:path]
+               :schema [zen.fn-test/tpl :keys :path]}]}}
+   {:desc "Fail in tpl tagging (fn shoud contain fn tag)"
+    :do {:type zen.test/validate :schema tpl :data {:path (tpl "1")}}
+    :match
+    {:errors [{:type "apply.fn-tag"
+               :path [:path]
+               :schema [zen.fn-test/tpl :keys :path]}]}}
+   {:desc "Fail in other-fn tagging"
+    :do {:type zen.test/validate
+         :schema tpl
+         :data {:path (other-fn "1")}}
+    :match
+    {:errors [{:type "apply.tags"
+               :path [:path]
+               :schema [zen.fn-test/tpl :keys :path]}]}}
+   {:desc "Fail in args validations"
+    :do {:type zen.test/validate
+         :schema tpl
+         :data {:path (get "1")}}
+    :match
+    {:errors [{:type "primitive-type"
+               :path [:path 0]
+               :schema [zen.fn-test/tpl :keys :path zen.fn-test/get :args :every]}]}}]}
+ }

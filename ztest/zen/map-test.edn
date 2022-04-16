@@ -1,0 +1,148 @@
+{ns zen.map-test
+
+ import #{zen.test}
+
+ m1
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{:key1}
+  :keys {:key1 {:type zen/string}
+         :key2 {:type zen/string}}}
+
+ color-channel
+ {:zen/tags #{zen/schema}
+  :type zen/integer
+  :max 255
+  :min 0}
+
+ picture-map
+ {:zen/tags #{zen/schema}
+  :zen/desc "Map with coordinates as keys and pixels as values"
+  :type zen/map
+  :values {:zen/desc "Pixel map"
+           :type zen/map
+           :require #{:r :g :b}
+           :values {:confirms #{color-channel}}}
+  :key {:type zen/map
+        :zen/desc "Coordinate map"
+        :values {:type zen/integer}
+        :keys {:x {}, :y {}}}}
+
+ values&key-test
+ {:zen/tags #{zen.test/case}
+  :title ":values & :key test"
+  :steps
+  [{:desc "Valid map"
+    :do {:type zen.test/validate
+         :schema picture-map
+         :data {{:x 0,  :y 0} {:r 255, :g 127, :b 0}
+                {:x -1, :y 1} {:r 255, :g 127, :b 0}}}
+    :match
+    {:errors zen.test/nil?}}
+   {:desc "Valid map with undeclared key"
+    :do {:type zen.test/validate
+         :schema picture-map
+         :data {{:x 0, :y 0} {:r 255, :g 127, :b 0, :a 50}}}
+    :match
+    {:errors zen.test/nil?}}
+   {:desc "Invalid map, values do not pass schema"
+    :do {:type zen.test/validate
+         :schema picture-map
+         :data {{:x 0, :y "non-number"} {:r 255, :g 255, :b 300}}}
+    :match
+    {:errors [{:type "integer.max",
+               :path [{:x 0, :y "non-number"} :b],
+               :schema [zen.map-test/picture-map :values :values :confirms zen.map-test/color-channel :max]}
+              {:type "primitive-type",
+               :path [{:x 0, :y "non-number"} :y],
+               :schema [zen.map-test/picture-map :key :values]}
+              nil]}}
+   {:desc "Invalid map, keys do not pass schema"
+    :do {:type zen.test/validate
+         :schema picture-map
+         :data {[0 0] {:r 255, :g 255, :b 127}}}
+    :match
+    {:errors [{:type "type",
+               :path [[0, 0]]
+               :schema [zen.map-test/picture-map :key]}
+              nil]}}]}
+
+ map-with-unknown-keys-open-validation
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :validation-type :open
+  :require #{:a}
+  :keys {:b {:type zen/number}}}
+
+ map-with-unknown-keys-close-validation
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :validation-type :closed
+  :keys {:b {:type zen/number}}}
+
+ validation-types-test
+ {:zen/tags #{zen.test/case}
+  :title "Open/Close validation types test"
+  :steps
+  [{:desc "Close validation"
+    :do {:type zen.test/validate
+         :schema map-with-unknown-keys-close-validation
+         :data {:b 1
+                :a 1}}
+    :match {:errors
+            [{:type "unknown-key" :path [:a]}]}}
+   {:desc "Open validation"
+    :do {:type zen.test/validate
+         :schema map-with-unknown-keys-open-validation
+         :data {:b 1
+                :a 1}}
+    :match {:errors zen.test/nil?}}]}
+
+ exclusive-keys-map
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :values {:type zen/any}
+  :exclusive-keys #{#{:a :b} #{:b #{:c :d}}}}
+
+ exclusive-keys-test
+ {:zen/tags #{zen.test/case}
+  :title "Exclusive keys test"
+  :steps
+  [{:desc "Invalid key-set"
+    :do {:type zen.test/validate
+         :schema exclusive-keys-map
+         :data {:b :beta :c :ceta}}
+    :match
+    {:errors [{:type "map.exclusive-keys"}]}}
+   {:desc "Invalid key-set"
+    :do {:type zen.test/validate
+         :schema exclusive-keys-map
+         :data {:a :aeta :b :beta}}
+    :match
+    {:errors [{:type "map.exclusive-keys"}]}}
+   {:desc "Valid key-set"
+    :do {:type zen.test/validate
+         :schema exclusive-keys-map
+         :data {:b :beta}}
+    :match
+    {:errors zen.test/nil?}}
+   {:desc "Valid key-set"
+    :do {:type zen.test/validate
+         :schema exclusive-keys-map
+         :data {:a :aeta :c :ceta :d :deta}}
+    :match
+    {:errors zen.test/nil?}}
+   ]}
+
+
+ simple-test
+ {:zen/tags #{zen.test/case}
+  :title "Type validation in map"
+  :steps
+  [{:desc "test type validation in map"
+    :do {:type zen.test/validate :schema m1 :data {:key1 1 :key2 true}}
+    :match
+    {:errors [{:path [:key1]
+               :message "Expected type of 'string, got 'long"}
+              {:path [:key2]
+               :message "Expected type of 'string, got 'boolean"}]}}]}}

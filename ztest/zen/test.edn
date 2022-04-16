@@ -1,0 +1,23 @@
+{ns zen.test
+
+ validate
+ {}
+
+ nil?
+ {}
+
+ empty?
+ {}
+
+ case
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :keys {:title {:type zen/string}
+         :steps {:type zen/vector
+                 :every {:type zen/map
+                         :keys {:desc {:type zen/string}
+                                :do {:type zen/map
+                                     :validation-type :open
+                                     :keys {:schema {:type zen/symbol}
+                                            :data {:type zen/any}}}
+                                :match {:type zen/any}}}}}}}
