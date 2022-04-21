@@ -115,4 +115,45 @@
     '(:zen.match/one-of #{"a" "a|1"}))
    [{:expected '(:zen.match/one-of #{"a" "a|1"})
      :but "b"}])
+
+  (t/testing "present?"
+    (matcho/match
+     (sut/match
+      {:a 1}
+      '{:a (:zen.match/present?)})
+     empty?)
+
+    (matcho/match
+     (sut/match
+      {:a 1}
+      '{:x (:zen.match/present?)})
+     [{:expected '(:zen.match/present?)
+       :but nil}])
+
+    (matcho/match
+     (sut/match
+      {:a nil}
+      '{:x (:zen.match/present?)})
+     [{:expected '(:zen.match/present?)
+       :but nil}]))
+
+  (t/testing "nil?"
+    (matcho/match
+     (sut/match
+      {:a 1}
+      '{:a (:zen.match/nil?)})
+     [{:expected '(:zen.match/nil?)
+       :but 1}])
+
+    (matcho/match
+     (sut/match
+      {:a 1}
+      '{:x (:zen.match/nil?)})
+     empty?)
+
+    (matcho/match
+     (sut/match
+      {:a nil}
+      '{:x (:zen.match/nil?)})
+     empty?))
   )

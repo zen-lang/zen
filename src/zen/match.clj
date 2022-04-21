@@ -28,9 +28,30 @@
                    :path path}))
     errors))
 
+(defn present? [errors path data]
+  (if-not data
+    (let [expected `(:zen.match/present?)]
+      (conj errors {:message (str "Expected " (pr-str expected) " but " (pr-str data))
+                    :expected expected
+                    :but data
+                    :path path}))
+    errors))
+
+(defn match-nil? [errors path data]
+  (if data
+    (let [expected `(:zen.match/nil?)]
+      (conj errors {:message (str "Expected " (pr-str expected) " but " (pr-str data))
+                    :expected expected
+                    :but data
+                    :path path}))
+    errors))
+
 (defn match-fn [errors path data [fn-name & args]]
-  (if (= fn-name :zen.match/one-of)
-    (apply one-of errors path data args)
+  (prn errors path data args)
+  (case fn-name
+    :zen.match/one-of (apply one-of errors path data args)
+    :zen.match/present? (present? errors path data)
+    :zen.match/nil? (match-nil? errors path data)
     errors))
 
 (defn- match-recur [errors path x pattern]
