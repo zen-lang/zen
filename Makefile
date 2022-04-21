@@ -16,5 +16,8 @@ test:
   ## TODO rewrite dev test to always finish correctly
 	clj -A:test:kaocha --skip zen.dev-test
 
+test-ci:
+	clojure -A:test:kaocha --skip zen.dev-test
+
 pub:
 	clj -A:deploy
