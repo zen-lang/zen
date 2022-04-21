@@ -1,6 +1,4 @@
-{ns zen.require-test
-
- import #{zen.test}
+{ns zen.tests.require-test
 
  basic-require
  {:zen/tags #{zen/schema}
@@ -92,11 +90,11 @@
     :do {:type zen.test/validate
          :schema or-require
          :data {:some "ups"}}
-    :match {:errors [{:type "require"
+    :match {:errors [{:type "map.require"
                       :schema [or-require :require]
                       :path zen.test/empty?}]}}
 
-   {:desc "nested require"
+   {:desc "nested require on empty data"
     :do {:type zen.test/validate
          :schema nested-require
          :data {}}
@@ -106,8 +104,8 @@
     :do {:type zen.test/validate
          :schema nested-require
          :data {:attr {:some ""}}}
-    :match {:errors [{:type "require"
-                      :schema [nested-require :keys :attr :require]
+    :match {:errors [{:type "map.require"
+                      :schema [nested-require :attr :require]
                       :path [:attr]}]}}
 
    {:desc "require & confirms - fail on empty data"
@@ -117,16 +115,14 @@
     :match {:errors
             [{:type "require",
               :path [:a],
-              :schema [zen.require-test/ab-require :confirms a-require :require]}
+              :schema [zen.tests.require-test/ab-require :confirms a-require :require]}
              {:type "require",
               :path [:b],
-              :schema [zen.require-test/ab-require :confirms b-require :require]}
-             ]}}
+              :schema [zen.tests.require-test/ab-require :confirms b-require :require]}]}}
 
    {:desc "require & confirms"
     :do {:type zen.test/validate
          :schema ab-require
          :data {:a "a"
                 :b "b"}}
-    :match {:errors zen.test/empty?}}
-   ]}}
+    :match {:errors zen.test/empty?}}]}}
