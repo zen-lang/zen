@@ -10,8 +10,9 @@
 
   (zen/read-ns ctx 'zen.tests.schema)
 
-  (is (= 1 1))
+  (zen/get-symbol ctx (first (zen/get-tag ctx 'zen.tests.schema/test-case)))
 
+  ;; TODO rewrite to use zen test runner, move it to utils
   (doseq [case-nm (zen/get-tag ctx 'zen.tests.schema/test-case)]
     (let [{title :title schema :schema cs :cases} (zen/get-symbol ctx case-nm)]
       (println "***" (or title case-nm))
@@ -22,13 +23,12 @@
             (is (empty? errs)))
           (when exp
             (let [merrs (matcho/match* errs exp)]
-              (when-not (empty? merrs)
-                (println "CASE " k ": Expected :"  schema "\n=>" (pr-str exmpl) "\nexpeceted: " (pr-str exp) "\ngot:" (pr-str errs))
-                (println "match errors: " merrs "\n")
-                (matcho/match errs exp))))))))
-
-  )
-
+              (if (empty? merrs)
+                (is true)
+                (do
+                  (println "CASE " k ": Expected :"  schema "\n=>" (pr-str exmpl) "\nexpeceted: " (pr-str exp) "\ngot:" (pr-str errs))
+                  (println "match errors: " merrs "\n")
+                  (matcho/match errs exp))))))))))
 
 (deftest alias-test
   #"TODO: add alias remove test"
@@ -84,16 +84,16 @@
   (testing "symbol alias"
     (matcho/match
      (zen/get-symbol ztx 'myns/sym1)
-     '{:zen/name ns1/sym1}))
+      '{:zen/name ns1/sym1}))
 
   (testing "ns alias"
     (matcho/match
-      (zen/get-symbol ztx 'myns/sym21)
+     (zen/get-symbol ztx 'myns/sym21)
       '{:zen/name ns2/sym21})
 
     (testing "monkey patch"
       (matcho/match
-        (zen/get-symbol ztx 'myns/sym22)
+       (zen/get-symbol ztx 'myns/sym22)
         '{:zen/name myns/sym22})))
 
   (testing "tags alias"
@@ -123,33 +123,32 @@
 
     (matcho/match
      (zen/validate ztx #{'ns1/sch1} {:a 1})
-     '{:errors
-      [{:message "Expected type of 'string, got 'long",
-        :type "string.type",
-        :path [:a],
-        :schema [ns1/sch1 :a]}]})
+      '{:errors
+        [{:message "Expected type of 'string, got 'long",
+          :type "string.type",
+          :path [:a],
+          :schema [ns1/sch1 :a]}]})
 
     (matcho/match
      (zen/validate ztx #{'myns/sch1} {:a 1})
-     '{:errors
-       [{:message "Expected type of 'string, got 'long",
-         :type "string.type",
-         :path [:a],
-         :schema [myns/sch1 :a]}]})
-
+      '{:errors
+        [{:message "Expected type of 'string, got 'long",
+          :type "string.type",
+          :path [:a],
+          :schema [myns/sch1 :a]}]})
 
     (matcho/match
      (zen/validate ztx #{'ns2/sch2} {:a 1})
-     '{:errors
-       [{:message "Expected type of 'string, got 'long",
-         :type "string.type",
-         :path [:a],
-         :schema [ns2/sch2 :a]}]})
+      '{:errors
+        [{:message "Expected type of 'string, got 'long",
+          :type "string.type",
+          :path [:a],
+          :schema [ns2/sch2 :a]}]})
 
     (matcho/match
      (zen/validate ztx #{'myns/sch2} {:a 1})
-     '{:errors
-       [{:message "Expected type of 'string, got 'long",
-         :type "string.type",
-         :path [:a],
-         :schema [myns/sch2 :a]}]})))
+      '{:errors
+        [{:message "Expected type of 'string, got 'long",
+          :type "string.type",
+          :path [:a],
+          :schema [myns/sch2 :a]}]})))

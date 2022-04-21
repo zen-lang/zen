@@ -2,7 +2,6 @@
   (:require [zen.core :as sut]
             [clojure.test :refer [deftest is]]))
 
-
 (deftest core-schema-test
   (def ctx (sut/new-context))
 
@@ -17,15 +16,14 @@
   (keys @ctx)
   (second (:symbols @ctx)))
 
-
 (deftest memory-store-schema-test
   (def data '{ns data
-             import #{check}
-             foo {:foo "bar"}})
+              import #{check}
+              foo {:foo "bar"}})
 
   (def check '{ns check
                check {:zen/tags #{zen/schema}
-                     :keys {:foo {:type zen/string}}}})
+                      :keys {:foo {:type zen/string}}}})
 
   (def memory-store {'check check 'data data})
 
@@ -39,7 +37,6 @@
 
   (is (empty? (:errors (sut/validate ctx ['check/check] (sut/get-symbol ctx 'data/foo))))))
 
-
 (deftest dynamic-paths
   (def wctx (sut/new-context))
   (sut/read-ns wctx 'dyns)
@@ -51,7 +48,6 @@
   (sut/read-ns dctx 'dyns)
   (is (not (nil? (sut/get-symbol dctx 'dyns/model)))))
 
-
 (deftest node-modules
   (def zctx* (sut/new-context {:paths ["test/fixtures/tmp-proj/"]}))
   (sut/read-ns zctx* 'project)
@@ -60,7 +56,6 @@
 
   (is (contains? (:ns @zctx*) 'fhir.r4))
   (is (contains? (:ns @zctx*) 'us-core.patient)))
-
 
 (deftest recursive-import
   (def memory-store
@@ -82,6 +77,5 @@
 
   (is (empty? (:errors @ctx))))
 
-
 (comment
- @ctx)
+  @ctx)
