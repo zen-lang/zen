@@ -1,12 +1,8 @@
 # Zen meta store & schema
 
-[![Build Status](https://travis-ci.org/zen-lang/zen.svg?branch=master)](https://travis-ci.org/zen-lang/zen)
-
 [![Clojars Project](https://img.shields.io/clojars/v/zen-lang/zen.svg)](https://clojars.org/zen-lang/zen)
 
-
 [zen-docs](https://zen-lang.github.io/tags/zen/schema.html)
-
 
 ## Motivation
 
