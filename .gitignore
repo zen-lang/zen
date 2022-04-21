@@ -3,3 +3,4 @@
 .nrepl-port
 target
 .env
+/.clj-kondo
