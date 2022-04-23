@@ -35,6 +35,12 @@
  {:zen/tags #{zen/schema}
   :confirms #{a-require b-require}}
 
+ string-require
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{:name-string}
+  :keys {:name-string {:type zen/string}}}
+
  basic-require-test
  {:zen/tags #{zen.test/case}
   :title ":require"
@@ -68,25 +74,25 @@
          :data {:foo "foo" :bar "bar"}}
     :match {:errors zen.test/empty?}}
 
-   {:desc "require or"
+   {:desc "require or syntax - both foo and bar are present"
     :do {:type zen.test/validate
          :schema or-require
          :data {:foo "foo" :bar "bar"}}
     :match {:errors zen.test/empty?}}
 
-   {:desc "or - :foo key"
+   {:desc "require or syntax - foo is present"
     :do {:type zen.test/validate
          :schema or-require
          :data {:foo "foo"}}
     :match {:errors zen.test/empty?}}
 
-   {:desc "or - :bar key"
+   {:desc "require or syntax - bar is present"
     :do {:type zen.test/validate
          :schema or-require
          :data {:bar "bar"}}
     :match {:errors zen.test/empty?}}
 
-   {:desc "or - no keys"
+   {:desc "require or syntax - no foo no bar"
     :do {:type zen.test/validate
          :schema or-require
          :data {:some "ups"}}
@@ -100,7 +106,7 @@
          :data {}}
     :match {:errors zen.test/empty?}}
 
-   {:desc "nested require"
+   {:desc "nested require when no keys present"
     :do {:type zen.test/validate
          :schema nested-require
          :data {:attr {:some ""}}}
@@ -108,7 +114,19 @@
                       :schema [nested-require :attr :require]
                       :path [:attr]}]}}
 
-   {:desc "require & confirms - fail on empty data"
+   {:desc "nested require when foo is present"
+    :do {:type zen.test/validate
+         :schema nested-require
+         :data {:attr {:foo "my-value"}}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "nested require when bar is present"
+    :do {:type zen.test/validate
+         :schema nested-require
+         :data {:attr {:bar "my-value"}}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "two schemas w confirms fail on empty data"
     :do {:type zen.test/validate
          :schema ab-require
          :data {}}
@@ -120,7 +138,16 @@
               :path [:b],
               :schema [zen.tests.require-test/ab-require :confirms b-require :require]}]}}
 
-   {:desc "require & confirms"
+   {:desc "two schemas w confirms fail when b is not present"
+    :do {:type zen.test/validate
+         :schema ab-require
+         :data {:a "a"}}
+    :match {:errors
+            [{:type "require",
+              :path [:b],
+              :schema [zen.tests.require-test/ab-require :confirms b-require :require]}]}}
+
+   {:desc "two schemas w confirms when a, b are present"
     :do {:type zen.test/validate
          :schema ab-require
          :data {:a "a"
