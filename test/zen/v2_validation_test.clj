@@ -6,6 +6,10 @@
    [zen.v2-validation :as valid]
    [zen.core :as zen]))
 
+(def versions
+  {:v1 zen.core/validate
+   :v2 valid/validate})
+
 (def replacements
   {'zen.test/empty? empty?
    'zen.test/nil? empty?})
@@ -13,14 +17,13 @@
 (defn translate-to-matcho [match]
   (clojure.walk/postwalk (fn [x] (get replacements x x)) match))
 
-(defmulti do-step (fn [_ztx step] (get-in step [:do :type])))
+(defmulti do-step (fn [_ztx step version] (get-in step [:do :type])))
 
-(defmethod do-step :default [_ztx _step]
+(defmethod do-step :default [_ztx _step version]
   (matcho/match :step-type-is-not-implemented true))
 
-(defmethod do-step 'zen.test/validate [ztx step]
-  (zen.core/validate ztx #{(get-in step [:do :schema])} (get-in step [:do :data]))
-  (valid/validate ztx #{(get-in step [:do :schema])} (get-in step [:do :data])))
+(defmethod do-step 'zen.test/validate [ztx step version]
+  (apply (get versions version) [ztx #{(get-in step [:do :schema])} (get-in step [:do :data])]))
 
 #_(defmethod do-step 'zen.test/validate-schema [ztx step]
   (let [sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
@@ -46,9 +49,10 @@
    (filter
     identity
     (for [test-name (zen.core/get-tag ztx 'zen.test/case)
-          step      (:steps (zen/get-symbol ztx test-name))]
+          step      (:steps (zen/get-symbol ztx test-name))
+          version [:v1 :v2]]
       (let [test-def (zen/get-symbol ztx test-name)
-            step-res  (do-step ztx step)
+            step-res  (do-step ztx step version)
             match-res (matcho/match step-res (translate-to-matcho (:match step)))]
         (when-not (true? match-res)
           (report-step ztx step match-res test-def)
@@ -58,11 +62,14 @@
 (defn run-step [ztx test-name step]
   (let [test-def (zen/get-symbol ztx test-name)
         step (get (:steps test-def) step)
-        step-res  (do-step ztx step)
+        step-res  (do-step ztx step :v2)
         match-res (matcho/match step-res (translate-to-matcho (:match step)))]
     (if-not (true? match-res)
       {:desc (:desc step) :expected (:match step) :got step-res}
       'passed)))
+
+(defn read [ztx s]
+  (is (= :zen/loaded (zen.core/read-ns ztx s))))
 
 (deftest test-validation
 
@@ -70,21 +77,13 @@
 
     (def ztx (zen.core/new-context {:unsafe true}))
 
-    #_(zen.core/read-ns ztx 'zen.tests.map-test)
+    (read ztx 'zen.tests.require-test)
 
-    (zen.core/read-ns ztx 'zen.tests.require-test)
+    (read ztx 'zen.tests.boolean-test)
 
     (run-tests ztx))
 
   (comment
-    (zen.core/read-ns ztx 'zen.all-tests)
-    (zen.core/read-ns ztx 'v2.ztest.keys-test)
-    (zen.core/read-ns ztx 'zen.schema-key-test)
-    (zen.core/read-ns ztx 'zen.case-test)
+    "tests that do not pass for v1 impl"
 
-    (zen.core/read-ns ztx 'zen.keyname-schemas-test)
-    (zen.core/read-ns ztx 'zen.fn-test)
-    (zen.core/read-ns ztx 'zen.effects-test)
-    (zen.core/read-ns ztx 'zen.slicing-test)
-
-    (zen.core/read-ns ztx 'zen.core-validate-test)))
+    (zen.core/read-ns ztx 'zen.tests.map-test)))

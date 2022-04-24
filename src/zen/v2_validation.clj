@@ -83,6 +83,15 @@
 
 (defmethod compile-type-check 'zen/vector [_ _] check-vector?)
 
+(defn check-boolean? [vtx data opts]
+  (if-not (boolean? data)
+    (add-error vtx {:type "primitive-type"
+                    :schema (into (:schema vtx) (:path vtx))
+                    :message (str "Expected zen/boolean, got " (type data))})
+    vtx))
+
+(defmethod compile-type-check 'zen/boolean [_ _] check-boolean?)
+
 (defmethod compile-key :type
   [_ ztx tp]
   {:rules [(compile-type-check tp ztx)]})

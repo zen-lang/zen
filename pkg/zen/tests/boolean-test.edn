@@ -2,27 +2,33 @@
 
  import #{zen.test}
 
- schema {:zen/tags #{zen/schema}
-         :type zen/map
-         :keys {:one {:type zen/boolean}
-                :two {:type zen/boolean}
-                :thr {:type zen/boolean}
-                :for {:type zen/boolean}
-                :fiv {:type zen/boolean}}}
+ boolean-keys
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:one {:type zen/boolean}
+         :two {:type zen/boolean}
+         :thr {:type zen/boolean}
+         :for {:type zen/boolean}
+         :fiv {:type zen/boolean}}}
 
+ ;; TODO CHECK returns map type error when used in test case
  smth {:one "Not boolean"
        :two ["Not boolean either"]}
 
- simple-test {:zen/tags #{zen.test/case}
-              :title "Boolean validation in map"
-              :steps
-              [{:desc "test boolean validation in map"
-                :do {:type zen.test/validate
-                     :schema schema
-                     :data smth}
-                :match
-                {:errors
-                 [{:path [:one] :message "Expected type 'zen/boolean got class java.lang.String!!"}
-                  
-                  
-                  ]}}]}}
+ bool-validation-test
+ {:zen/tags #{zen.test/case}
+  :title "Boolean validation in map"
+  :steps
+  [{:desc "test boolean validation in map"
+    :do {:type zen.test/validate
+         :schema boolean-keys
+         :data {:one "Not boolean"
+                :two ["Not boolean either"]}}
+    :match
+    {:errors
+     [{:path [:one]
+       :schema [boolean-keys :one]
+       :type "primitive-type"}
+      {:path [:two]
+       :schema [boolean-keys :two]
+       :type "primitive-type"}]}}]}}

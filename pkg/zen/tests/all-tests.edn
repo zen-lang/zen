@@ -1,7 +1,0 @@
-{ns zen.all-tests
-
- import #{
-          ;; zen.map-test
-          zen.keys-test
-          
-          }}
