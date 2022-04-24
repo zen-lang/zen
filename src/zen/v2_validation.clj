@@ -50,47 +50,31 @@
     (-> (validate-schema ztx sch data)
         (update :errors #(sort-by :path %)))))
 
-(defmethod compile-type-check 'zen/string
-  [_ _]
-  (fn [vtx data _]
-    (if (string? data)
-      vtx
-      (add-error vtx {:message (str "Expected type 'zen/string got " (type data))}))))
+(def types-cfg
+  {'zen/string string?
+   'zen/number number?
+   'zen/set set?
+   'zen/map map?
+   'zen/vector vector?
+   'zen/boolean boolean?
+   'zen/list list?})
 
-(defmethod compile-type-check 'zen/number
-  [_ _]
-  (fn [vtx data _]
-    (if (number? data)
-      vtx
-      (add-error vtx {:message "Expected number" :type :type}))))
+(defn type-fn [sym]
+  (let [type-pred (get types-cfg sym)]
+    (fn [vtx data _]
+      (if (type-pred data)
+        vtx
+        (add-error vtx {:message (str "Expected type " sym " got " (type data))
+                        ;; TODO fix for other types
+                        :type "primitive-type"
+                        :schema (into (:schema vtx) (:path vtx))})))))
 
-(defmethod compile-type-check 'zen/set
-  [_ _]
-  (fn [vtx data _]
-    (if (set? data)
-      vtx
-      (add-error vtx {:message (str "Expected type 'zen/set got " (type data))}))))
-
-(defn check-map? [vtx data _]
-  (if (map? data) vtx
-      (add-error vtx {:message "Expected map" :type :type})))
-
-(defmethod compile-type-check 'zen/map [_ _] check-map?)
-
-(defn check-vector? [vtx data _]
-  (if (vector? data)
-    vtx (add-error vtx {:message "Expected vector" :type :type})))
-
-(defmethod compile-type-check 'zen/vector [_ _] check-vector?)
-
-(defn check-boolean? [vtx data opts]
-  (if-not (boolean? data)
-    (add-error vtx {:type "primitive-type"
-                    :schema (into (:schema vtx) (:path vtx))
-                    :message (str "Expected zen/boolean, got " (type data))})
-    vtx))
-
-(defmethod compile-type-check 'zen/boolean [_ _] check-boolean?)
+(defmethod compile-type-check 'zen/string [_ _] (type-fn 'zen/string))
+(defmethod compile-type-check 'zen/number [_ _] (type-fn 'zen/number))
+(defmethod compile-type-check 'zen/set [_ _] (type-fn 'zen/set))
+(defmethod compile-type-check 'zen/map [_ _] (type-fn 'zen/map))
+(defmethod compile-type-check 'zen/vector [_ _] (type-fn 'zen/vector))
+(defmethod compile-type-check 'zen/boolean [_ _] (type-fn 'zen/boolean))
 
 (defmethod compile-key :type
   [_ ztx tp]

@@ -1,4 +1,4 @@
-{ns zen.boolean-test
+{ns zen.tests.boolean-test
 
  import #{zen.test}
 

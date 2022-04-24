@@ -81,6 +81,10 @@
 
     (read ztx 'zen.tests.boolean-test)
 
+    #_(read ztx 'zen.tests.types-test)
+
+    #_(run-step ztx 'zen.tests.types-test/list-test 0)
+
     (run-tests ztx))
 
   (comment
