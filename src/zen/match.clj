@@ -47,7 +47,6 @@
     errors))
 
 (defn match-fn [errors path data [fn-name & args]]
-  (prn errors path data args)
   (case fn-name
     :zen.match/one-of (apply one-of errors path data args)
     :zen.match/present? (present? errors path data)
