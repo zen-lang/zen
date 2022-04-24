@@ -142,7 +142,7 @@
              (or disj-set {})
              new-group))))
 
-
+;; TODO support set arguments for getting multiple symbols
 (defn get-symbol [ctx nm]
   (when (symbol? nm)
     (or (get-in @ctx [:symbols nm])

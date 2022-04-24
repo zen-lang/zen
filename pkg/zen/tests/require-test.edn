@@ -35,12 +35,6 @@
  {:zen/tags #{zen/schema}
   :confirms #{a-require b-require}}
 
- string-require
- {:zen/tags #{zen/schema}
-  :type zen/map
-  :require #{:name-string}
-  :keys {:name-string {:type zen/string}}}
-
  basic-require-test
  {:zen/tags #{zen.test/case}
   :title ":require"
@@ -99,6 +93,9 @@
     :match {:errors [{:type "map.require"
                       :schema [or-require :require]
                       :path zen.test/empty?}]}}
+
+   ;; TODO add test when or syntax is combined with regular require syntax
+   ;; TODO add test when key require is applied to nested struct
 
    {:desc "nested require on empty data"
     :do {:type zen.test/validate

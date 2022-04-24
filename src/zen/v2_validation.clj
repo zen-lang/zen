@@ -1,9 +1,11 @@
 (ns zen.v2-validation
   (:require [clojure.set]
-            ;; [zen.store]
-            ))
+            [zen.utils :as utils]))
 
 (defmulti compile-key (fn [k ztx kfg] k))
+
+(defmethod compile-key :default [k ztx kfg])
+
 (defmulti compile-type-check (fn [tp ztx] tp))
 
 (defmulti effective-key (fn [k ztx kfg] k))
@@ -28,6 +30,7 @@
                        vtx))
                    vtx)))))
 
+;; TODO precompile schemas tagged with specific tag on ns load
 (defn get-cached [ztx schema]
   (let [sh (hash schema)]
     (or (get-in @ztx [:compiled-schemas sh])
@@ -37,17 +40,15 @@
 
 (defn validate-schema [ztx schema data & [opts]]
   (let [v  (get-cached ztx schema)]
-    (-> (v {:errors [] :path []}data opts)
+    (-> (v {:errors [] :path [] :schema [(:zen/name schema)]} data opts)
         (select-keys [:errors :effects]))))
 
-(defn get-symbol [ctx nm]
-  (get-in @ctx [:symbols nm]))
-
+;; TODO support schemas seq as arg
+;; TODO convert errors to vector here?
 (defn validate [ztx schemas data & [opts]]
-  (let [sch (get-symbol ztx schemas)]
+  (let [sch (utils/get-symbol ztx (first schemas))]
     (-> (validate-schema ztx sch data)
         (update :errors #(sort-by :path %)))))
-
 
 (defmethod compile-type-check 'zen/string
   [_ _]
@@ -56,7 +57,6 @@
       vtx
       (add-error vtx {:message (str "Expected type 'zen/string got " (type data))}))))
 
-
 (defmethod compile-type-check 'zen/number
   [_ _]
   (fn [vtx data _]
@@ -64,14 +64,12 @@
       vtx
       (add-error vtx {:message "Expected number" :type :type}))))
 
-
 (defmethod compile-type-check 'zen/set
   [_ _]
   (fn [vtx data _]
     (if (set? data)
-       vtx
-       (add-error vtx {:message (str "Expected type 'zen/set got " (type data))}))))
-
+      vtx
+      (add-error vtx {:message (str "Expected type 'zen/set got " (type data))}))))
 
 (defn check-map? [vtx data _]
   (if (map? data) vtx
@@ -93,7 +91,6 @@
   [_ ztx tp]
   {:when string? :rules [(fn minLength [vtx data opts] vtx)]})
 
-
 (defmethod compile-key :maxLength
   [_ ztx ml]
   {:when string?
@@ -107,6 +104,7 @@
   {:when map?
    :rules (->> ks
                (mapv (fn [[k sch]]
+                       ;; TODO take from cache instead of compile
                        (let [v (*compile-schema ztx sch)]
                          (fn [vtx data opts]
                            (if-let [d (get data k)]
@@ -114,48 +112,52 @@
                                  (assoc :path (:path vtx)))
                              vtx))))))})
 
+(defmethod compile-key :confirms
+  [_ ztx ks]
+  (let [schemas
+        (->> ks
+             (map #(utils/get-symbol ztx %))
+             (map (fn [sch] [(:zen/name sch) (get-cached ztx sch)])))]
+    {:when map?
+     :rules
+     [(fn [vtx data opts]
+        (reduce (fn [vtx* [schema-name schema]]
+                  (update vtx* :errors into
+                          (-> {:errors [] :path (:path vtx)
+                               :schema (into (:schema vtx) [:confirms schema-name])}
+                              (schema data opts)
+                              :errors)))
+                vtx schemas))]}))
+
 (defmethod compile-key :require
   [_ ztx ks]
-  {:when map?
-   :rules
-   [(fn [vtx data opts]
-      (let [missed (clojure.set/difference ks (into #{} (keys data)))]
-        (if (seq missed)
-          (->> missed
-               (reduce (fn [vtx mk]
-                         (add-error vtx {:message (str "missed " mk)}))
-                       vtx))
-          vtx)))]})
+  (let [set-rule-fn
+        (fn [vtx s]
+          (let [reqs (->> (select-keys (::data vtx) s) (remove nil?))
+                pth
+                (-> (:schema vtx)
+                    (into (:path vtx))
+                    (conj :require))]
+            (if (empty? reqs)
+              (add-error vtx {:type "map.require" :schema pth})
+              vtx)))
 
+        key-rule-fn
+        (fn [vtx mk]
+          ;; TODO fix path for nested req
+          (-> (assoc vtx :path [mk])
+              (add-error {:type "require"
+                          :schema (conj (:schema vtx) :require)})))]
 
-(comment
+    {:when map?
+     :rules
+     [(fn [vtx data opts]
+        (->> (filter set? ks)
+             (reduce set-rule-fn (assoc vtx ::data data))))
 
-  {
+      (fn [vtx data opts]
+        (->> (-> (remove set? ks)
+                 set
+                 (clojure.set/difference (into #{} (keys data))))
+             (reduce key-rule-fn vtx)))]}))
 
-   'S1
-   {:confirms #{'S0}
-    :keys {}}
-
-   'S2
-   {:keys {}}
-
-   'S3
-   {:confirms #{'S1 'S2}
-    :keys {}}
-
-
-   'S3-eff
-   {:keys {}}
-
-   }
-
-
-
-
-
-
-
-
-
-
-  )
