@@ -116,6 +116,41 @@
    [{:expected '(:zen.match/one-of #{"a" "a|1"})
      :but "b"}])
 
+  (matcho/match
+    (sut/match
+      {}
+      '{:foo (:zen.match/one-of
+              #{(:zen.match/nil?)
+                {:bar (:zen.match/nil?)}})})
+    empty?)
+
+  (matcho/match
+    (sut/match
+      {:foo {:baz :quux}}
+      '{:foo (:zen.match/one-of
+              #{(:zen.match/nil?)
+                {:bar (:zen.match/nil?)}})})
+    empty?)
+
+  (matcho/match
+    (sut/match
+      {:foo {:bar nil}}
+      '{:foo (:zen.match/one-of
+              #{(:zen.match/nil?)
+                {:bar (:zen.match/nil?)}})})
+    empty?)
+
+  (matcho/match
+    (sut/match
+      {:foo {:bar "baz"}}
+      '{:foo (:zen.match/one-of
+              #{(:zen.match/nil?)
+                {:bar (:zen.match/nil?)}})})
+    [{:expected '(:zen.match/one-of
+                  #{(:zen.match/nil?)
+                    {:bar (:zen.match/nil?)}})
+      :but {:bar "baz"}}])
+
   (t/testing "present?"
     (matcho/match
      (sut/match
