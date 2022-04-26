@@ -57,7 +57,11 @@
    'zen/map map?
    'zen/vector vector?
    'zen/boolean boolean?
-   'zen/list list?})
+   'zen/keyword keyword?
+   'zen/list list?
+   'zen/integer integer?
+   'zen/symbol symbol?
+   'zen/any (constantly true)})
 
 (defn type-fn [sym]
   (let [type-pred (get types-cfg sym)]
@@ -75,6 +79,11 @@
 (defmethod compile-type-check 'zen/map [_ _] (type-fn 'zen/map))
 (defmethod compile-type-check 'zen/vector [_ _] (type-fn 'zen/vector))
 (defmethod compile-type-check 'zen/boolean [_ _] (type-fn 'zen/boolean))
+(defmethod compile-type-check 'zen/list [_ _] (type-fn 'zen/list))
+(defmethod compile-type-check 'zen/keyword [_ _] (type-fn 'zen/keyword))
+(defmethod compile-type-check 'zen/any [_ _] (type-fn 'zen/any))
+(defmethod compile-type-check 'zen/integer [_ _] (type-fn 'zen/integer))
+(defmethod compile-type-check 'zen/symbol [_ _] (type-fn 'zen/symbol))
 
 (defmethod compile-key :type
   [_ ztx tp]
@@ -92,35 +101,109 @@
                (add-error vtx {:message "Longer than"})
                vtx))]})
 
+(defmethod compile-key :minItems
+  [_ ztx items-count]
+  {:when sequential?
+   :rules
+   [(fn [vtx data opts]
+      (if (< (count data) items-count)
+        (add-error vtx {:message (str "Expected >= " items-count ", got " (count data))
+                        :type "list"
+                        :schema (-> (:schema vtx)
+                                    (into (:path vtx))
+                                    (conj :minItems))})
+        vtx))]})
+
+(defmethod compile-key :maxItems
+  [_ ztx items-count]
+  {:when sequential?
+   :rules
+   [(fn [vtx data opts]
+      (if (> (count data) items-count)
+        (add-error vtx {:message (str "Expected <= " items-count ", got " (count data))
+                        :type "list"
+                        ;; TODO maybe move schema to add error fn?
+                        :schema (-> (:schema vtx)
+                                    (into (:path vtx))
+                                    (conj :maxItems))})
+        vtx))]})
+
+;; TODO think about better message generation
+;; maybe add regex match on message to tests
+
+(defmethod compile-key :const
+  [_ ztx cfg]
+  {:when map?
+   :rules
+   [(fn [vtx data opts]
+      ;; TODO refactor on select-keys and set intersection for perf
+      (->> (:value cfg)
+           (reduce (fn [vtx* [k v]]
+                     (if-not (and (contains? data k) (= (get data k) v))
+                       (add-error vtx*
+                                  {:message (str "Expected '" {k v} "', got '" {k (get data k)} "'")
+                                   :type "schema"
+                                   :path (:path vtx)
+                                   :schema (:schema vtx)})
+                       vtx*))
+                   vtx)))]})
+
 (defmethod compile-key :keys
   [_ ztx ks]
   {:when map?
-   :rules (->> ks
-               (mapv (fn [[k sch]]
-                       ;; TODO take from cache instead of compile
-                       (let [v (*compile-schema ztx sch)]
-                         (fn [vtx data opts]
-                           (if-let [d (get data k)]
-                             (-> (v (update vtx :path conj k) d opts)
-                                 (assoc :path (:path vtx)))
-                             vtx))))))})
+   :rules
+   (->> ks
+        (mapv (fn [[k sch]]
+                ;; TODO take from cache instead of compile
+                (let [v (*compile-schema ztx sch)]
+                  (fn [vtx data opts]
+                    (if-let [d (contains? data k)]
+                      (-> (v (update vtx :path conj k) (get data k) opts)
+                          (assoc :path (:path vtx)))
+                      vtx))))))})
+
+(defmethod compile-key :every
+  [_ ztx sch]
+  (let [v (get-cached ztx sch)]
+    {:when sequential?
+     :rules
+     [(fn [vtx data opts]
+        (reduce (fn [vtx* item]
+                  (let [result
+                        (-> {:errors []
+                             :path (:path vtx)
+                             :schema (conj (:schema vtx) :every)}
+                            (v item opts))]
+                    (update vtx* :errors into (:errors result))))
+                vtx data))]}))
+
+(defmethod compile-key :regex
+  [_ ztx regex]
+  {:when string?
+   :rules
+   [(fn [vtx data opts]
+      (if (not (re-find (re-pattern regex) data))
+        (add-error vtx {:type "string.regex"
+                        :path (:path vtx)
+                        :schema (conj (:schema vtx) :regex)})
+        vtx))]})
 
 (defmethod compile-key :confirms
   [_ ztx ks]
-  (let [schemas
+  (let [vs
         (->> ks
              (map #(utils/get-symbol ztx %))
              (map (fn [sch] [(:zen/name sch) (get-cached ztx sch)])))]
     {:when map?
      :rules
      [(fn [vtx data opts]
-        (reduce (fn [vtx* [schema-name schema]]
-                  (update vtx* :errors into
-                          (-> {:errors [] :path (:path vtx)
-                               :schema (into (:schema vtx) [:confirms schema-name])}
-                              (schema data opts)
-                              :errors)))
-                vtx schemas))]}))
+        (reduce (fn [vtx* [schema-name v]]
+                  (let [result
+                        (-> {:errors [] :path (:path vtx)
+                             :schema (into (:schema vtx) [:confirms schema-name])}
+                            (v data opts))]
+                    (update vtx* :errors into (:errors result))))
+                vtx vs))]}))
 
 (defmethod compile-key :require
   [_ ztx ks]

@@ -25,7 +25,7 @@
 (defmethod do-step 'zen.test/validate [ztx step version]
   (apply (get versions version) [ztx #{(get-in step [:do :schema])} (get-in step [:do :data])]))
 
-#_(defmethod do-step 'zen.test/validate-schema [ztx step]
+(defmethod do-step 'zen.test/validate-schema [ztx step]
   (let [sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
     (zen.core/validate ztx '#{zen/schema} sch)))
 
@@ -38,19 +38,19 @@
   (println "  step: " (:desc step) " \n  "  (get-in step [:do :schema]) "\n  " (get-in step [:do :data]))
   (println (:message (last (get-in result [:results 'zen.validation-test 'test-validation])))))
 
-#_(defmethod report-step 'zen.test/validate-schema [ztx step result test-case]
+(defmethod report-step 'zen.test/validate-schema [ztx step result test-case]
   (let [sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
     (println "## Test: " (or (:title test-case) (:id test-case)))
     (println "  step: " (:desc step) " \n  " (get-in step [:do :schema]) "\n  " sch)
     (println (:message (last (get-in result [:results 'zen.validation-test 'test-validation]))))))
 
-(defn run-tests [ztx]
+(defn run-tests [ztx & versions]
   (doall
    (filter
     identity
     (for [test-name (zen.core/get-tag ztx 'zen.test/case)
           step      (:steps (zen/get-symbol ztx test-name))
-          version [:v1 :v2]]
+          version (or (not-empty versions) [:v1 :v2])]
       (let [test-def (zen/get-symbol ztx test-name)
             step-res  (do-step ztx step version)
             match-res (matcho/match step-res (translate-to-matcho (:match step)))]
@@ -59,6 +59,7 @@
           {:desc (:desc step) :expected (:match step) :got step-res}))))))
 
 ;; TODO add id to steps in zen test
+;; TODO add fun to run a specific test in suite
 (defn run-step [ztx test-name step]
   (let [test-def (zen/get-symbol ztx test-name)
         step (get (:steps test-def) step)
@@ -68,24 +69,57 @@
       {:desc (:desc step) :expected (:match step) :got step-res}
       'passed)))
 
-(defn read [ztx s]
+(defn run-test [ztx test-name & versions]
+  (let [test-def (zen/get-symbol ztx test-name)]
+    (doall
+     (for [step (:steps test-def)
+           version (or (not-empty versions) [:v1 :v2])]
+       (let [step-res  (do-step ztx step version)
+             match-res (matcho/match step-res (translate-to-matcho (:match step)))]
+         (when-not (true? match-res)
+           (report-step ztx step match-res test-def) 
+           {:desc (:desc step) :expected (:match step) :got step-res}))))))
+
+(defn zen-read [ztx s]
   (is (= :zen/loaded (zen.core/read-ns ztx s))))
 
-(deftest test-validation
+(deftest implemented-validations
+  (do
+
+    (def ztx (zen.core/new-context {:unsafe true}))
+
+    (zen-read ztx 'zen.tests.require-test)
+
+    (zen-read ztx 'zen.tests.boolean-test)
+
+    (run-tests ztx)
+
+    (zen-read ztx 'zen.tests.types-test)
+
+    (run-test ztx 'zen.tests.types-test/list-test)
+    (run-test ztx 'zen.tests.types-test/keyword-test)
+    (run-test ztx 'zen.tests.types-test/symbol-test)
+    (run-test ztx 'zen.tests.types-test/boolean-test)
+    (run-test ztx 'zen.tests.types-test/any-test)
+    (run-test ztx 'zen.tests.types-test/const-test)))
+
+(deftest in-progress-validations
 
   (do
 
     (def ztx (zen.core/new-context {:unsafe true}))
 
-    (read ztx 'zen.tests.require-test)
+    (zen-read ztx 'zen.tests.types-test)
 
-    (read ztx 'zen.tests.boolean-test)
+    #_(run-test ztx 'zen.tests.types-test/enums-test)
 
-    #_(read ztx 'zen.tests.types-test)
+    #_(run-test ztx 'zen.tests.types-test/set-test)
 
-    #_(run-step ztx 'zen.tests.types-test/list-test 0)
+    #_(run-test ztx 'zen.tests.types-test/vector-test)
 
-    (run-tests ztx))
+    #_(run-test ztx 'zen.tests.types-test/regex-test)
+
+    #_(run-test ztx 'zen.tests.types-test/string-test))
 
   (comment
     "tests that do not pass for v1 impl"
