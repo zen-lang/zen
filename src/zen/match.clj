@@ -20,7 +20,8 @@
 (declare match)
 
 (defn one-of [errors path data values]
-  (if (not-any? (partial = data) values)
+  (if (not-any? #(empty? (match data %))
+                values)
     (let [expected `(:zen.match/one-of ~values)]
      (conj errors {:message (str "Expected " (pr-str expected) " but " (pr-str data))
                    :expected expected
