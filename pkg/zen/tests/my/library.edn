@@ -1,5 +1,0 @@
-{ns my.library
-
- model {:zen/tags #{tag schema}}
-
- }
