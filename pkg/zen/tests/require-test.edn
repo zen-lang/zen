@@ -41,12 +41,13 @@
   :steps
   [{:desc "Empty data"
     :do {:type zen.test/validate :schema basic-require :data {}}
-    :match {:errors [{:path [:bar]
-                      :type "require"
-                      :schema [basic-require :require]}
-                     {:path [:foo]
-                      :type "require"
-                      :schema [basic-require :require]}]}}
+    :match {:errors
+            [{:path [:bar]
+              :type "require"
+              :schema [basic-require :require]}
+             {:path [:foo]
+              :type "require"
+              :schema [basic-require :require]}]}}
 
    {:desc "foo key missed"
     :do {:type zen.test/validate :schema basic-require :data {:bar 1}}

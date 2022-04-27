@@ -48,12 +48,15 @@
 (defn validate [ztx schemas data & [opts]]
   (let [sch (utils/get-symbol ztx (first schemas))]
     (-> (validate-schema ztx sch data)
-        (update :errors #(sort-by :path %)))))
+        #_(update :errors #(sort-by :path %)))))
 
+;; TODO redesign type errors after v2 release, they are not consistent in v1
 (def types-cfg
-  {'zen/string string?
+  {'zen/string {:fn string?
+                :type-error "string.type"}
    'zen/number number?
-   'zen/set set?
+   'zen/set {:fn set?
+             :type-error "type"}
    'zen/map map?
    'zen/vector vector?
    'zen/boolean boolean?
@@ -64,13 +67,13 @@
    'zen/any (constantly true)})
 
 (defn type-fn [sym]
-  (let [type-pred (get types-cfg sym)]
+  (let [type-cfg (get types-cfg sym)
+        type-pred (if (fn? type-cfg) type-cfg (:fn type-cfg))]
     (fn [vtx data _]
       (if (type-pred data)
         vtx
         (add-error vtx {:message (str "Expected type " sym " got " (type data))
-                        ;; TODO fix for other types
-                        :type "primitive-type"
+                        :type (or (:type-error type-cfg) "primitive-type")
                         :schema (into (:schema vtx) (:path vtx))})))))
 
 (defmethod compile-type-check 'zen/string [_ _] (type-fn 'zen/string))
@@ -89,6 +92,17 @@
   [_ ztx tp]
   {:rules [(compile-type-check tp ztx)]})
 
+(defmethod compile-key :enum
+  [_ ztx values]
+  (let [values* (set (map :value values))]
+    {:rules
+     [(fn [vtx data opts]
+        (if-not (contains? values* data)
+          (add-error vtx {:message (str "Expected '" data "' in " values*)
+                          :type "enum"
+                          :schema (-> (:schema vtx) (into (:path vtx)))})
+          vtx))]}))
+
 (defmethod compile-key :minLength
   [_ ztx tp]
   {:when string? :rules [(fn minLength [vtx data opts] vtx)]})
@@ -103,11 +117,12 @@
 
 (defmethod compile-key :minItems
   [_ ztx items-count]
-  {:when sequential?
+  {:when #(or (sequential? %) (set? %))
    :rules
    [(fn [vtx data opts]
       (if (< (count data) items-count)
         (add-error vtx {:message (str "Expected >= " items-count ", got " (count data))
+                        ;; TODO fix the types here
                         :type "list"
                         :schema (-> (:schema vtx)
                                     (into (:path vtx))
@@ -116,7 +131,7 @@
 
 (defmethod compile-key :maxItems
   [_ ztx items-count]
-  {:when sequential?
+  {:when #(or (sequential? %) (set? %))
    :rules
    [(fn [vtx data opts]
       (if (> (count data) items-count)
@@ -165,17 +180,44 @@
 (defmethod compile-key :every
   [_ ztx sch]
   (let [v (get-cached ztx sch)]
-    {:when sequential?
+    {:when #(or (sequential? %) (set? %))
      :rules
      [(fn [vtx data opts]
-        (reduce (fn [vtx* item]
-                  (let [result
-                        (-> {:errors []
-                             :path (:path vtx)
-                             :schema (conj (:schema vtx) :every)}
-                            (v item opts))]
-                    (update vtx* :errors into (:errors result))))
-                vtx data))]}))
+        (let [err-fn
+              (fn [idx item]
+                (-> {:errors []
+                     :path (conj (:path vtx) idx)
+                     :schema (-> (:schema vtx) (into (:path vtx)) (conj :every))}
+                    (v item opts)))]
+          (->> (map-indexed err-fn data)
+               (reduce (fn [vtx* item]
+                         (update vtx* :errors into (:errors item)))
+                       vtx))))]}))
+
+(defmethod compile-key :subset-of
+  [_ ztx superset]
+  {:when set?
+   :rules
+   [(fn [vtx data opts]
+      (if-not (clojure.set/subset? data superset)
+        (add-error vtx {:path (:path vtx)
+                        :type "set"
+                        :schema
+                        (-> (into (:schema vtx) (:path vtx))
+                            (conj :subset-of))})
+        vtx))]})
+
+(defmethod compile-key :superset-of
+  [_ ztx subset]
+  {:when set?
+   :rules
+   [(fn [vtx data opts]
+      (if-not (clojure.set/subset? subset data)
+        (add-error vtx {:path (:path vtx)
+                        :type "set"
+                        :schema (-> (into (:schema vtx) (:path vtx))
+                                    (conj :superset-of))})
+        vtx))]})
 
 (defmethod compile-key :regex
   [_ ztx regex]
