@@ -98,21 +98,17 @@
 
     (zen-read ztx 'zen.tests.boolean-test)
 
-    (run-tests ztx))
-
-  (do
-    (def ztx (zen.core/new-context {:unsafe true}))
-
     (zen-read ztx 'zen.tests.types-test)
 
-    (run-test ztx 'zen.tests.types-test/list-test)
-    (run-test ztx 'zen.tests.types-test/keyword-test)
-    (run-test ztx 'zen.tests.types-test/symbol-test)
-    (run-test ztx 'zen.tests.types-test/set-test)
-    (run-test ztx 'zen.tests.types-test/boolean-test)
-    (run-test ztx 'zen.tests.types-test/any-test)
-    (run-test ztx 'zen.tests.types-test/enums-test)
-    (run-test ztx 'zen.tests.types-test/const-test)))
+    (run-tests ztx)))
+
+;; simple bench results
+;;  100 cycles: v1 - 1.895s, v2 - 1.869s
+;;  1000 cycles: v1 - 18.937s, v2 - 18.770
+
+;; to implement - exclusive-keys
+;; https://github.com/HealthSamurai/sansara/blob/master/box/zrc/aidbox/rest/acl.edn#L101
+;; case statement
 
 (deftest in-progress-validations
 
@@ -121,11 +117,7 @@
 
     (zen-read ztx 'zen.tests.types-test)
 
-    #_(run-test ztx 'zen.tests.types-test/vector-test)
-
-    #_(run-test ztx 'zen.tests.types-test/regex-test)
-
-    #_(run-test ztx 'zen.tests.types-test/string-test))
+    )
 
   (comment
     "tests that do not pass for v1 impl"

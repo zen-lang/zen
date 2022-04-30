@@ -37,7 +37,7 @@
     {:errors
      [{:path [:a]
        :type "primitive-type"
-       :message "Expected type of 'boolean, got 'string"
+ ;;      :message "Expected type of 'boolean, got 'string"
        :schema [boolean-schema :a]}]}}
 
    {:desc "Valid boolean was given"
@@ -249,7 +249,7 @@
    {:desc "given string length is below :minLength"
     :do {:type zen.test/validate
          :schema string-schema
-         :data {:a "foo"}}
+         :data {:a "420"}}
     :match
     {:errors [{:path [:a]
                :type "string.minLength"
@@ -257,15 +257,19 @@
                :schema [string-schema :a :minLength]}]}}
 
    {:desc "given string length is above :maxLength"
-    :do {:type zen.test/validate :schema string-schema :data {:a "foo bar"}}
+    :do {:type zen.test/validate
+         :schema string-schema
+         :data {:a "420 420 420"}}
     :match
     {:errors [{:path [:a]
                :type "string.maxLength"
-               :message "Expected length <= 6, got 7"
+               :message "Expected length <= 6, got 11"
                :schema [string-schema :a :maxLength]}]}}
 
    {:desc "given string doesn't match to given :regex"
-    :do {:type zen.test/validate :schema string-schema :data {:a "abcde"}}
+    :do {:type zen.test/validate
+         :schema string-schema
+         :data {:a "abcde"}}
     :match
     {:errors [{:path [:a]
                :type "string.regex"
@@ -370,7 +374,7 @@
     {:errors
      [{:path [:a]
        :type "primitive-type"
-       :message "Expected type of 'regex, got 'boolean"
+ ;;      :message "Expected type of 'regex, got 'boolean"
        :schema [regex-schema :a]}]}}
 
    {:desc "Valid regex ws give"
@@ -404,6 +408,57 @@
   :nth {1 {:type zen/string
            :regex "hello"}}}
 
+ vector-test ;; TODO :schema-index validation
+ {:zen/tags #{zen.test/case}
+  :title "Vector validations in map"
+  :only-for #{:v2}
+  :steps
+  [{:desc "fails on boolean"
+    :do {:type zen.test/validate :schema vector-schema :data {:a false}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "primitive-type"
+       :schema [vector-schema :a]}]}}
+
+   {:desc "fewer values in given vector than was defined in :minItems"
+    :do {:type zen.test/validate :schema vector-schema :data {:a [1 2 3]}}
+    :match
+    {:errors
+     [{:path [:a]
+       ;;:type "vector"
+       :message "Expected >= 4, got 3"
+       :schema [vector-schema :a :minItems]}]}}
+
+   {:desc "more values in given vector than was defined in :maxItems"
+    :do {:type zen.test/validate :schema vector-schema :data {:a [1 2 3 4 5 6 7]}}
+    :match
+    {:errors
+     [{:path [:a]
+       ;;:type "vector"
+       :message "Expected <= 6, got 7"
+       :schema [vector-schema :a :maxItems]}]}}
+
+   {:desc "validate every element in vector with regexp"
+    :do {:type zen.test/validate
+         :schema vector-schema-every
+         :data {:a ["hello" "hello" "hello" "unknown"]}}
+    :match
+    {:errors
+     [{:type "string.regex"
+       :path [:a 3]
+       :schema
+       [vector-schema-every :every :a 3 :regex]}]}}
+
+   {:desc "Validate every value in collection"
+    :do {:type zen.test/validate :schema vector-schema-every :data {:a ["hello" "hello" "hello"]}}
+    :match {:errors zen.test/nil?}}
+
+   {:desc "Valid vector was given"
+    :do {:type zen.test/validate :schema vector-schema :data {:a [1 2 3 4 5]}}
+    :match
+    {:errors zen.test/nil?}}]}
+
  #_vector-schema-key&nth-validation
  #_{:zen/tags #{zen.test/case}
     :title "Get schema by index"
@@ -419,55 +474,6 @@
            :schema vector-schema-index
            :data {:a (vector-fn-first-string-is-hello "hello")}}
       :match {:errors zen.test/nil?}}]}
-
- vector-test ;; TODO :schema-index validation
- {:zen/tags #{zen.test/case}
-  :title "Vector validations in map"
-  :steps
-  [{:desc "fails on boolean"
-    :do {:type zen.test/validate :schema vector-schema :data {:a false}}
-    :match
-    {:errors
-     [{:path [:a]
-       :type "type"
-       :schema [vector-schema :a]}]}}
-
-   {:desc "fewer values in given vector than was defined in :minItems"
-    :do {:type zen.test/validate :schema vector-schema :data {:a [1 2 3]}}
-    :match
-    {:errors
-     [{:path [:a]
-       :type "vector"
-       :message "Expected >= 4, got 3"
-       :schema [vector-schema :a :minItems]}]}}
-
-   {:desc "more values in given vector than was defined in :maxItems"
-    :do {:type zen.test/validate :schema vector-schema :data {:a [1 2 3 4 5 6 7]}}
-    :match
-    {:errors [{:path [:a]
-               :type "vector"
-               :message "Expected <= 6, got 7"
-               :schema [vector-schema :a :maxItems]}]}}
-
-   {:desc "validate every element in coll with regexp"
-    :do {:type zen.test/validate
-         :schema vector-schema-every
-         :data {:a ["hello" "hello" "hello" "unknown"]}}
-    :match
-    {:errors
-     [{:type "string.regex"
-       :path [:a 3]
-       :schema
-       [vector-schema-every :a :every :regex]}]}}
-
-   {:desc "Validate every value in collection"
-    :do {:type zen.test/validate :schema vector-schema-every :data {:a ["hello" "hello" "hello"]}}
-    :match {:errors zen.test/nil?}}
-
-   {:desc "Valid vector was given"
-    :do {:type zen.test/validate :schema vector-schema :data {:a [1 2 3 4 5]}}
-    :match
-    {:errors zen.test/nil?}}]}
 
  list-schema
  {:zen/tags #{zen/schema}
@@ -486,6 +492,7 @@
  list-test ;; TODO :schema-index validation
  {:zen/tags #{zen.test/case}
   :title "List validations in map"
+  :only-for #{:v2}
   :steps
   [{:desc "fails on boolean instead of list"
     :do {:type zen.test/validate :schema list-schema :data {:a false}}
@@ -515,12 +522,13 @@
    {:desc "Invalid coll for :every check"
     :do {:type zen.test/validate :schema list-every :data {:a ("beta" "ceta")}}
     :match
+    ;; TODO think about better path in schema
     {:errors
      [{:path [:a 0]
-       :schema [list-every :a :every :regex]
+       :schema [list-every :every :a 0 :regex]
        :type "string.regex"}
       {:path [:a 1]
-       :schema [list-every :a :every :regex]
+       :schema [list-every :every :a 1 :regex]
        :type "string.regex"}]}}
 
    {:desc "Valid coll for :every check"
@@ -555,6 +563,7 @@
  set-test
  {:zen/tags #{zen.test/case}
   :title "Set validations in map"
+  :only-for #{:v2}
   :steps
   [{:desc "fails on boolean"
     :do {:type zen.test/validate :schema set-schema :data {:a false}}
@@ -570,9 +579,12 @@
          :data {:a #{"a" 2 "b" 4}}}
     :match
     {:errors
-     [{:path [:a]
+     [{:path [:a 1]
        :type "primitive-type"
-       :schema [set-schema :a]}]}}
+       :schema [set-schema :every :a 1]}
+      {:path [:a 3]
+       :type "primitive-type"
+       :schema [set-schema :every :a 3]}]}}
 
    {:desc "fewer values in given set than was defined in :minItems"
     :do {:type zen.test/validate

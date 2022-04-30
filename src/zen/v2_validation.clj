@@ -13,9 +13,6 @@
 
 (defn validate-identity [vtx & _] vtx)
 
-(defn add-error [vtx err]
-  (update vtx :errors (fn [x] (conj (or x []) (assoc err :path (:path vtx))))))
-
 (defn *compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name)
                       (mapv (fn [[k kfg]] (compile-key k ztx kfg)))
@@ -50,7 +47,7 @@
     (-> (validate-schema ztx sch data)
         #_(update :errors #(sort-by :path %)))))
 
-;; TODO redesign type errors after v2 release, they are not consistent in v1
+;; TODO redesign type errors after v2 release, they are not consistent with v1
 (def types-cfg
   {'zen/string {:fn string?
                 :type-error "string.type"}
@@ -64,7 +61,22 @@
    'zen/list list?
    'zen/integer integer?
    'zen/symbol symbol?
-   'zen/any (constantly true)})
+   'zen/any (constantly true)
+   'zen/regex {:fn #(and (string? %) (re-pattern %))}})
+
+(defn add-error [vtx err]
+  (-> vtx
+      (update :errors (fn [errs]
+                        (let [schema*
+                              (if-let [rule-fn (::rule-fn err)]
+                                (-> (:schema vtx)
+                                    (into (:path vtx))
+                                    (conj rule-fn))
+                                (:schema err))]
+                          (conj errs
+                                (-> (dissoc err ::rule-fn)
+                                    (assoc :path (:path vtx))
+                                    (assoc :schema schema*))))))))
 
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
@@ -87,6 +99,7 @@
 (defmethod compile-type-check 'zen/any [_ _] (type-fn 'zen/any))
 (defmethod compile-type-check 'zen/integer [_ _] (type-fn 'zen/integer))
 (defmethod compile-type-check 'zen/symbol [_ _] (type-fn 'zen/symbol))
+(defmethod compile-type-check 'zen/regex [_ _] (type-fn 'zen/regex))
 
 (defmethod compile-key :type
   [_ ztx tp]
@@ -104,16 +117,26 @@
           vtx))]}))
 
 (defmethod compile-key :minLength
-  [_ ztx tp]
-  {:when string? :rules [(fn minLength [vtx data opts] vtx)]})
+  [_ ztx min-len]
+  {:when string?
+   :rules
+   [(fn [vtx data opts]
+      (if (< (count data) min-len)
+        (add-error vtx {:type "string.minLength"
+                        :message (str "Expected length >= " min-len ", got " (count data))
+                        ::rule-fn :minLength})
+        vtx))]})
 
 (defmethod compile-key :maxLength
-  [_ ztx ml]
+  [_ ztx max-len]
   {:when string?
-   :rules [(fn maxLength [vtx data opts]
-             (if (> (count data) ml)
-               (add-error vtx {:message "Longer than"})
-               vtx))]})
+   :rules
+   [(fn [vtx data opts]
+      (if (> (count data) max-len)
+        (add-error vtx {:type "string.maxLength"
+                        ::rule-fn :maxLength
+                        :message (str "Expected length <= " max-len ", got " (count data))})
+        vtx))]})
 
 (defmethod compile-key :minItems
   [_ ztx items-count]
@@ -123,10 +146,10 @@
       (if (< (count data) items-count)
         (add-error vtx {:message (str "Expected >= " items-count ", got " (count data))
                         ;; TODO fix the types here
+                        ;; 1. minItems should receive type on which it works in compile time;
+                        ;; 2. runtime introspection using type-cfg (much worse)
                         :type "list"
-                        :schema (-> (:schema vtx)
-                                    (into (:path vtx))
-                                    (conj :minItems))})
+                        ::rule-fn :minItems})
         vtx))]})
 
 (defmethod compile-key :maxItems
@@ -137,10 +160,7 @@
       (if (> (count data) items-count)
         (add-error vtx {:message (str "Expected <= " items-count ", got " (count data))
                         :type "list"
-                        ;; TODO maybe move schema to add error fn?
-                        :schema (-> (:schema vtx)
-                                    (into (:path vtx))
-                                    (conj :maxItems))})
+                        ::rule-fn :maxItems})
         vtx))]})
 
 ;; TODO think about better message generation
@@ -187,7 +207,7 @@
               (fn [idx item]
                 (-> {:errors []
                      :path (conj (:path vtx) idx)
-                     :schema (-> (:schema vtx) (into (:path vtx)) (conj :every))}
+                     :schema (-> (:schema vtx) (conj :every))}
                     (v item opts)))]
           (->> (map-indexed err-fn data)
                (reduce (fn [vtx* item]
@@ -227,7 +247,8 @@
       (if (not (re-find (re-pattern regex) data))
         (add-error vtx {:type "string.regex"
                         :path (:path vtx)
-                        :schema (conj (:schema vtx) :regex)})
+                        :message (str "Expected match /" (str regex) "/, got \"" data "\"")
+                        ::rule-fn :regex})
         vtx))]})
 
 (defmethod compile-key :confirms
