@@ -62,6 +62,8 @@
    'zen/integer integer?
    'zen/symbol symbol?
    'zen/any (constantly true)
+   ;; TODO do we need to do type validation here?
+   'zen/case (constantly true)
    'zen/regex {:fn #(and (string? %) (re-pattern %))}})
 
 (defn add-error [vtx err]
@@ -100,10 +102,43 @@
 (defmethod compile-type-check 'zen/integer [_ _] (type-fn 'zen/integer))
 (defmethod compile-type-check 'zen/symbol [_ _] (type-fn 'zen/symbol))
 (defmethod compile-type-check 'zen/regex [_ _] (type-fn 'zen/regex))
+(defmethod compile-type-check 'zen/case [_ _] (type-fn 'zen/case))
 
 (defmethod compile-key :type
   [_ ztx tp]
   {:rules [(compile-type-check tp ztx)]})
+
+(defmethod compile-key :case
+  [_ ztx cases]
+  (let [vs (map (fn [{:keys [when then]}]
+                  (cond-> {:when (get-cached ztx when)}
+                    (not-empty then) (assoc :then (get-cached ztx then))))
+                cases)]
+    {:rules
+     [(fn [vtx data opts]
+        (loop [[{wh :when th :then :as v} & rest] vs
+               item-idx 0]
+          (if (nil? v)
+            (add-error vtx
+                       {:message (format "Expected one of the cases to be true")
+                        :schema (conj (:schema vtx) :case)
+                        :type "case"})
+            (let [vtx*
+                  {:errors []
+                   :path (:path vtx)
+                   :schema (into (:schema vtx) [:case item-idx :when])}
+                  {errs :errors} (wh vtx* data opts)]
+              (cond
+                (and (empty? errs) th)
+                (let [vtx*
+                      {:errors []
+                       :path (:path vtx)
+                       :schema (into (:schema vtx) [:case item-idx :then])}]
+                  (th vtx* data opts))
+
+                (empty? errs) vtx
+
+                :else (recur rest (inc item-idx)))))))]}))
 
 (defmethod compile-key :enum
   [_ ztx values]
@@ -115,6 +150,28 @@
                           :type "enum"
                           :schema (-> (:schema vtx) (into (:path vtx)))})
           vtx))]}))
+
+(defmethod compile-key :min
+  [_ ztx min]
+  {:when integer?
+   :rules
+   [(fn [vtx data opts]
+      (if (< data min)
+        (add-error vtx {:type "integer.min"
+                        :message (str "Expected >= " min ", got " data)
+                        ::rule-fn :min})
+        vtx))]})
+
+(defmethod compile-key :max
+  [_ ztx max]
+  {:when integer?
+   :rules
+   [(fn [vtx data opts]
+      (if (> data max)
+        (add-error vtx {:type "integer.max"
+                        :message (str "Expected <= " max ", got " data)
+                        ::rule-fn :max})
+        vtx))]})
 
 (defmethod compile-key :minLength
   [_ ztx min-len]
@@ -165,6 +222,8 @@
 
 ;; TODO think about better message generation
 ;; maybe add regex match on message to tests
+
+;; auto generate supported terms based on multi methods?
 
 (defmethod compile-key :const
   [_ ztx cfg]
@@ -253,6 +312,7 @@
 
 (defmethod compile-key :confirms
   [_ ztx ks]
+  ;; TODO think about refactoring on function composition instead of reduce
   (let [vs
         (->> ks
              (map #(utils/get-symbol ztx %))
@@ -278,7 +338,8 @@
                     (into (:path vtx))
                     (conj :require))]
             (if (empty? reqs)
-              (add-error vtx {:type "map.require" :schema pth})
+              (add-error vtx {:type "map.require"
+                              :schema pth})
               vtx)))
 
         key-rule-fn
@@ -286,6 +347,7 @@
           ;; TODO fix path for nested req
           (-> (assoc vtx :path [mk])
               (add-error {:type "require"
+                          :message (str mk " is required")
                           :schema (conj (:schema vtx) :require)})))]
 
     {:when map?

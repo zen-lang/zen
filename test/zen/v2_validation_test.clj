@@ -73,20 +73,22 @@
 
 (defn run-test [ztx test-name & versions]
   (let [test-def (zen/get-symbol ztx test-name)]
+    (assert test-def "test not found")
     (doall
      (filter
       identity
       (for [step (:steps test-def)
             version (or (not-empty versions) [:v1 :v2])]
-        (when (or (nil? (:only-for test-def)) (contains? (:only-for test-def) version))
-          (let [step-res  (-> (do-step ztx step version)
-                              (update :errors #(sort-by :path %)))
-                match-res (matcho/match step-res (translate-to-matcho (:match step)))]
-            (when-not (true? match-res)
-              (report-step ztx step match-res test-def)
-              {:desc (:desc step) :version version :expected (:match step) :got step-res}))))))))
+        (do (prn step)
+            (when (or (nil? (:only-for test-def)) (contains? (:only-for test-def) version))
+              (let [step-res  (-> (do-step ztx step version)
+                                  (update :errors #(sort-by :path %)))
+                    match-res (matcho/match step-res (translate-to-matcho (:match step)))]
+                (when-not (true? match-res)
+                  (report-step ztx step match-res test-def)
+                  {:desc (:desc step) :version version :expected (:match step) :got step-res})))))))))
 
-(defn zen-read [ztx s]
+(defn zen-read-ns [ztx s]
   (is (= :zen/loaded (zen.core/read-ns ztx s))))
 
 (deftest implemented-validations
@@ -94,11 +96,13 @@
 
     (def ztx (zen.core/new-context {:unsafe true}))
 
-    (zen-read ztx 'zen.tests.require-test)
+    (zen-read-ns ztx 'zen.tests.require-test)
 
-    (zen-read ztx 'zen.tests.boolean-test)
+    (zen-read-ns ztx 'zen.tests.boolean-test)
 
-    (zen-read ztx 'zen.tests.types-test)
+    (zen-read-ns ztx 'zen.tests.types-test)
+
+    (zen-read-ns ztx 'zen.tests.case-test)
 
     (run-tests ztx)))
 
@@ -110,14 +114,14 @@
 ;; https://github.com/HealthSamurai/sansara/blob/master/box/zrc/aidbox/rest/acl.edn#L101
 ;; case statement
 
+;; also do not forget to remove :only-for as much as possible so that implementations are similar
+
 (deftest in-progress-validations
 
   (do
     (def ztx (zen.core/new-context {:unsafe true}))
 
-    (zen-read ztx 'zen.tests.types-test)
-
-    )
+    (zen-read-ns ztx 'zen.tests.case-test))
 
   (comment
     "tests that do not pass for v1 impl"

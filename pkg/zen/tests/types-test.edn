@@ -2,6 +2,7 @@
 
  ;; TODO discuss and fix message errors
  ;; TODO discuss and fix type errors
+ ;; TODO maybe fix tests that fail for v1, get-rid of only-for command?
 
  import #{zen.test}
 
@@ -713,7 +714,6 @@
  enums-test
  {:zen/tags #{zen.test/case}
   :title "enums validations in map"
-  ;; TODO fix sometimes because tests fail for v1
   :only-for #{:v2}
   :steps
   [{:desc "given map has integer value"
