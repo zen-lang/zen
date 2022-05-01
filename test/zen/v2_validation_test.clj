@@ -3,6 +3,7 @@
    [clojure.walk]
    [matcho.core :as matcho]
    [clojure.test :refer [deftest is]]
+   [zen.validation :as val-old]
    [zen.v2-validation :as valid]
    [zen.core :as zen]))
 
@@ -127,3 +128,84 @@
     "tests that do not pass for v1 impl"
 
     (zen.core/read-ns ztx 'zen.tests.map-test)))
+
+(defn rand-str [len]
+  (apply str (take len (repeatedly #(char (+ (rand 26) 65))))))
+
+(defn gen-schema* [depth branch]
+  (cond
+    (= depth 0)
+    (case (rand-int 2)
+      0 [{:type 'zen/string} (rand-str 6)]
+      1
+      (let [enums (repeatedly branch #(rand-str 4))]
+        [{:type 'zen/string
+          :enum
+          (->> (shuffle enums)
+               (map (fn [e] {:value e})))}
+         (first enums)]))
+
+    :else
+    (case (rand-int 1)
+      0
+      (let [kws*
+            (->> (repeatedly branch #(rand-str 6))
+                 (map keyword)
+                 (map (fn [k] [k (gen-schema* (- depth 1) branch)])))]
+        [{:type 'zen/map
+          :keys
+          (->> kws*
+               (map (fn [[k [sch _]]] [k sch]))
+               flatten
+               (apply hash-map))}
+         (->> kws*
+              (map (fn [[k [_ data]]]
+                     [k data]))
+              flatten
+              (apply hash-map))])
+      1
+      (let [[sch data] (gen-schema* 2 branch)
+            oth (->> (repeatedly branch #(gen-schema* 0 branch))
+                     (map (fn [[sch* _]]
+                            {:when sch*})))]
+        [{:type 'zen/case
+          :case (conj (vec oth) {:when sch :then sch})}
+         data]))))
+
+(defn gen-schema [{:keys [depth branch]}]
+  (let [[sch data] (gen-schema* depth branch)]
+    [(assoc sch :zen/tags #{'zen/schema})
+     data]))
+
+(defn validate-old [ztx sch data]
+  (val-old/validate-node ztx
+                         (assoc (val-old/new-validation-acc) :schema [])
+                         sch
+                         data))
+
+(defn leaves-count [{:keys [depth branch]}]
+  (Math/pow branch depth))
+
+(deftest depth-benchmark
+  (def ztx (zen.core/new-context {:unsafe true}))
+
+  (def cfg {:depth 3 :branch 2})
+
+  (def result (gen-schema cfg))
+
+  (leaves-count cfg)
+
+  (def sch (first result))
+
+  (def data (second result))
+
+  (is (empty? (:errors (zen.core/validate ztx '#{zen/schema} sch))))
+  (is (empty? (:errors (valid/validate ztx '#{zen/schema} sch))))
+
+  (is (empty? (:errors (validate-old ztx sch data))))
+
+  (is (empty? (:errors (valid/validate-schema ztx sch data))))
+
+  [(time (is (empty? (:errors (validate-old ztx sch data)))))
+   (time (is (empty? (:errors (valid/validate-schema ztx sch data)))))])
+
