@@ -189,7 +189,7 @@
 (deftest depth-benchmark
   (def ztx (zen.core/new-context {:unsafe true}))
 
-  (def cfg {:depth 3 :branch 2})
+  (def cfg {:depth 4 :branch 2})
 
   (def result (gen-schema cfg))
 
@@ -206,6 +206,10 @@
 
   (is (empty? (:errors (valid/validate-schema ztx sch data))))
 
-  [(time (is (empty? (:errors (validate-old ztx sch data)))))
-   (time (is (empty? (:errors (valid/validate-schema ztx sch data)))))])
+  (println " ")
+  (println "bench results:")
+
+  (time (doall (repeatedly 10 #(validate-old ztx sch data))))
+
+  (time (doall (repeatedly 10 #(valid/validate-schema ztx sch data)))))
 
