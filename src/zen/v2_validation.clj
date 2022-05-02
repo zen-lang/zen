@@ -361,4 +361,3 @@
                  set
                  (clojure.set/difference (into #{} (keys data))))
              (reduce key-rule-fn vtx)))]}))
-
