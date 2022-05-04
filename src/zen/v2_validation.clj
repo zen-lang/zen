@@ -1,6 +1,13 @@
 (ns zen.v2-validation
-  (:require [clojure.set]
-            [zen.utils :as utils]))
+  (:require
+   [clojure.set]
+   [clojure.string :as str]
+   [zen.utils :as utils]))
+
+(defn pretty-type [x]
+  (if-let [tp (type x)]
+    (str "'" (str/lower-case (last (str/split (str tp) #"\."))))
+    "nil"))
 
 (defmulti compile-key (fn [k ztx kfg] k))
 
@@ -47,24 +54,29 @@
     (-> (validate-schema ztx sch data)
         #_(update :errors #(sort-by :path %)))))
 
-;; TODO redesign type errors after v2 release, they are not consistent with v1
+;; TODO redesign type errors, they are not consistent with v1
 (def types-cfg
   {'zen/string {:fn string?
-                :type-error "string.type"}
+                :type-error "string.type"
+                :to-str "'string"}
    'zen/number number?
    'zen/set {:fn set?
              :type-error "type"}
    'zen/map map?
    'zen/vector vector?
-   'zen/boolean boolean?
-   'zen/keyword keyword?
+   'zen/boolean {:fn boolean?
+                 :to-str "'boolean"}
+   'zen/keyword {:fn keyword?
+                 :to-str "'keyword"}
    'zen/list list?
-   'zen/integer integer?
-   'zen/symbol symbol?
+   'zen/integer {:fn integer?
+                 :to-str "'integer"}
+   'zen/symbol {:fn symbol?
+                :to-str "'symbol"}
    'zen/any (constantly true)
-   ;; TODO do we need to do type validation here?
    'zen/case (constantly true)
-   'zen/regex {:fn #(and (string? %) (re-pattern %))}})
+   'zen/regex {:fn #(and (string? %) (re-pattern %))
+               :to-str "'regex"}})
 
 (defn add-error [vtx err]
   (-> vtx
@@ -86,9 +98,12 @@
     (fn [vtx data _]
       (if (type-pred data)
         vtx
-        (add-error vtx {:message (str "Expected type " sym " got " (type data))
-                        :type (or (:type-error type-cfg) "primitive-type")
-                        :schema (into (:schema vtx) (:path vtx))})))))
+        (let [error-msg
+              {:message (str "Expected type of " (or (:to-str type-cfg) sym)
+                             ", got " (pretty-type data))
+               :type (or (:type-error type-cfg) "primitive-type")
+               :schema (into (:schema vtx) (:path vtx))}]
+          (add-error vtx error-msg))))))
 
 (defmethod compile-type-check 'zen/string [_ _] (type-fn 'zen/string))
 (defmethod compile-type-check 'zen/number [_ _] (type-fn 'zen/number))
@@ -220,10 +235,8 @@
                         ::rule-fn :maxItems})
         vtx))]})
 
-;; TODO think about better message generation
-;; maybe add regex match on message to tests
-
-;; auto generate supported terms based on multi methods?
+;; TODO auto generate supported terms based on multi methods?
+;; useful for introspection and documentation
 
 (defmethod compile-key :const
   [_ ztx cfg]
@@ -234,11 +247,15 @@
       (->> (:value cfg)
            (reduce (fn [vtx* [k v]]
                      (if-not (and (contains? data k) (= (get data k) v))
-                       (add-error vtx*
-                                  {:message (str "Expected '" {k v} "', got '" {k (get data k)} "'")
-                                   :type "schema"
-                                   :path (:path vtx)
-                                   :schema (:schema vtx)})
+                       (let [got-msg (if (nil? (get data k))
+                                       {}
+                                       {k (get data k)})
+                             msg
+                             {:message (str "Expected '" {k v} "', got '" got-msg "'")
+                              :type "schema"
+                              :path (:path vtx)
+                              :schema (:schema vtx)}]
+                         (add-error vtx* msg))
                        vtx*))
                    vtx)))]})
 
@@ -313,6 +330,8 @@
 (defmethod compile-key :confirms
   [_ ztx ks]
   ;; TODO think about refactoring on function composition instead of reduce
+  ;; TODO composition of confirms - compile and inline inherited schemas
+  ;; check if schema graph contain cycle [loop]
   (let [vs
         (->> ks
              (map #(utils/get-symbol ztx %))

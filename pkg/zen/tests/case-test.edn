@@ -35,8 +35,7 @@
     :match
     {:errors [{:path [:foo]
                :type "primitive-type"
-               ;; TODO fix message assertion, think about whether :keys should be present in schema
-;;               :message "Expected type of 'integer, got 'string"
+               :message "Expected type of 'integer, got 'string"
                :schema [cases :case 2 :then #_:keys :foo]}]}}
 
    {:desc "required key has invalid value"

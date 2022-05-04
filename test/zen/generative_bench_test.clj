@@ -14,9 +14,9 @@
 
 (deftest depth-benchmark
 
-  (def cfg {:depth 5 :branch 2})
+  #_(def cfg {:depth 6 :branch 3})
 
-  #_(def cfg {:depth 8 :branch 6})
+  (def cfg {:depth 3 :branch 2})
 
   (def result (gen-schema cfg))
 

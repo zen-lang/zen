@@ -38,7 +38,7 @@
     {:errors
      [{:path [:a]
        :type "primitive-type"
- ;;      :message "Expected type of 'boolean, got 'string"
+       :message "Expected type of 'boolean, got 'string"
        :schema [boolean-schema :a]}]}}
 
    {:desc "Valid boolean was given"
@@ -61,7 +61,7 @@
     {:errors
      [{:path [:a]
        :type "primitive-type"
-       ;;:message "Expected type of 'keyword, got 'string"
+       :message "Expected type of 'keyword, got 'string"
        :schema [keyword-schema :a]}]}}
 
    {:desc "Valid keyword was given"
@@ -87,7 +87,7 @@
     {:errors
      [{:path [:a]
        :type "primitive-type"
-       ;;:message "Expected type of 'symbol, got 'string"
+       :message "Expected type of 'symbol, got 'string"
        :schema [symbol-schema :a]}]}}
 
    {:desc "Valid symbol was given"
@@ -375,7 +375,7 @@
     {:errors
      [{:path [:a]
        :type "primitive-type"
- ;;      :message "Expected type of 'regex, got 'boolean"
+       :message "Expected type of 'regex, got 'boolean"
        :schema [regex-schema :a]}]}}
 
    {:desc "Valid regex ws give"
@@ -677,27 +677,30 @@
   [{:desc "given map does not contain the key"
     :do {:type zen.test/validate :schema const-schema :data {}}
     :match
-    {:errors [{:path []
-               :type "schema"
-          ;;     :message "Expected '{:age 42}', got '{}'"
-               :schema [const-schema]}]}}
+    {:errors
+     [{:path []
+       :type "schema"
+       :message "Expected '{:age 42}', got '{}'"
+       :schema [const-schema]}]}}
 
    {:desc "given map has wrong value type"
     :do {:type zen.test/validate :schema const-schema :data {:age "a lot"}}
     :match
-    {:errors [{:path []
-               :type "schema"
-               :message "Expected '{:age 42}', got '{:age \"a lot\"}'"
-               :schema [const-schema]}
-              {}]}}
+    {:errors
+     [{:path []
+       :type "schema"
+       :message "Expected '{:age 42}', got '{:age \"a lot\"}'"
+       :schema [const-schema]}
+      {}]}}
 
    {:desc "Checks if giving map holds wrong value"
     :do {:type zen.test/validate :schema const-schema :data {:age 11}}
     :match
-    {:errors [{:path []
-               :type "schema"
-               :message "Expected '{:age 42}', got '{:age 11}'"
-               :schema [const-schema]}]}}
+    {:errors
+     [{:path []
+       :type "schema"
+       :message "Expected '{:age 42}', got '{:age 11}'"
+       :schema [const-schema]}]}}
 
    {:desc "Valis data given"
     :do {:type zen.test/validate :schema const-schema :data {:age 42}}
@@ -727,7 +730,7 @@
 
       {:path [:gender]
        :type "string.type"
-;;       :message string? #_"Expected type of 'string, got 'long"
+       :message "Expected type of 'string, got 'long"
        :schema [enums-schema :gender]}]}}
 
    {:desc "given map has wrong string value"
