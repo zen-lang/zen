@@ -289,38 +289,42 @@
              :min 2
              :max 4}}}
 
- #_integer-test
- #_{:zen/tags #{zen.test/case}
-    :title "Integer validations in map"
-    :steps
-    [{:desc "fails on boolean"
-      :do {:type zen.test/validate :schema integer-schema :data {:a false}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message "Expected type of 'integer, got 'boolean"
-                 :schema [integer-schema :a]}]}}
+ ;; TODO fails on v1 because it returns string not integer
+ integer-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "Integer validations in map"
+  :steps
+  [{:desc "fails on boolean"
+    :do {:type zen.test/validate :schema integer-schema :data {:a false}}
+    :match
+    {:errors [{:path [:a]
+               :type "primitive-type"
+               :message "Expected type of 'integer, got 'boolean"
+               :schema [integer-schema :a]}]}}
 
-     {:desc "given value is above :max"
-      :do {:type zen.test/validate :schema integer-schema :data {:a 5}}
-      :match
-      {:errors [{:path [:a]
-                 :type "integer.max"
-                 :message "Expected  <= 4, got 5"
-                 :schema [integer-schema :a]}]}}
+   {:desc "given value is above :max"
+    :do {:type zen.test/validate :schema integer-schema :data {:a 5}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "integer.max"
+       :message "Expected <= 4, got 5"
+       :schema [integer-schema :a :max]}]}}
 
-     {:desc "given value is below :min"
-      :do {:type zen.test/validate :schema integer-schema :data {:a 1}}
-      :match
-      {:errors [{:path [:a]
-                 :type "integer.min"
-                 :message "Expected  >= 2, got 1"
-                 :schema [integer-schema :a]}]}}
+   {:desc "given value is below :min"
+    :do {:type zen.test/validate :schema integer-schema :data {:a 1}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "integer.min"
+       :message "Expected >= 2, got 1"
+       :schema [integer-schema :a :min]}]}}
 
-     {:desc "Valid integer was given"
-      :do {:type zen.test/validate :schema integer-schema :data {:a 3}}
-      :match
-      {:errors zen.test/nil?}}]}
+   {:desc "Valid integer was given"
+    :do {:type zen.test/validate :schema integer-schema :data {:a 3}}
+    :match
+    {:errors zen.test/nil?}}]}
 
  number-schema
  {:zen/tags #{zen/schema}
@@ -329,36 +333,42 @@
              :min 1.1
              :max 3.3}}}
 
+;; TODO fails on v1 because it returns string not integer
  #_number-test
  #_{:zen/tags #{zen.test/case}
-    :title "Number validations in map"
-    :steps
-    [{:desc "fails on boolean"
-      :do {:type zen.test/validate :schema number-schema :data {:a false}}
-      :match
-      {:errors
-       [{:path [:a]
-         :type "primitive-type"
-         :schema [number-schema :a]}]}}
+  :only-for #{:v2}
+  :title "Number validations in map"
+  :steps
+  [{:desc "fails on boolean"
+    :do {:type zen.test/validate :schema number-schema :data {:a false}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "primitive-type"
+       :schema [number-schema :a]}]}}
 
-     {:desc "Checks if given value is above :max"
-      :do {:type zen.test/validate :schema number-schema :data {:a 4.4}}
-      :match
-      {:errors [{:path [:a]
-                 :type "number.max" ;; WHY?
-                 :message "Expected  <= 3.3, got 4.4"
-                 :schema [number-schema :keys :a]}]}}
-     {:desc "Checks if given value is below :min"
-      :do {:type zen.test/validate :schema number-schema :data {:a 0.7}}
-      :match
-      {:errors [{:path [:a]
-                 :type "number.min" ;; WHY?
-                 :message "Expected  >= 1.1, got 0.7"
-                 :schema [number-schema :keys :a]}]}}
-     {:desc "Valid number was given"
-      :do {:type zen.test/validate :schema number-schema :data {:a 2.2}}
-      :match
-      {:errors zen.test/nil?}}]}
+   {:desc "Checks if given value is above :max"
+    :do {:type zen.test/validate :schema number-schema :data {:a 4.4}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "number.max" ;; WHY?
+       :message "Expected  <= 3.3, got 4.4"
+       :schema [number-schema :a :max]}]}}
+
+   {:desc "Checks if given value is below :min"
+    :do {:type zen.test/validate :schema number-schema :data {:a 0.7}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "number.min" ;; WHY?
+       :message "Expected  >= 1.1, got 0.7"
+       :schema [number-schema :a :min]}]}}
+
+   {:desc "Valid number was given"
+    :do {:type zen.test/validate :schema number-schema :data {:a 2.2}}
+    :match
+    {:errors zen.test/nil?}}]}
 
  regex-schema
  {:zen/tags #{zen/schema}
@@ -452,7 +462,9 @@
        [vector-schema-every :every :a 3 :regex]}]}}
 
    {:desc "Validate every value in collection"
-    :do {:type zen.test/validate :schema vector-schema-every :data {:a ["hello" "hello" "hello"]}}
+    :do {:type zen.test/validate
+         :schema vector-schema-every
+         :data {:a ["hello" "hello" "hello"]}}
     :match {:errors zen.test/nil?}}
 
    {:desc "Valid vector was given"
@@ -515,10 +527,11 @@
    {:desc "fewer values in given list then was defined in :maxItems"
     :do {:type zen.test/validate :schema list-schema :data {:a (1 2 3 4 5 6 7)}}
     :match
-    {:errors [{:path [:a]
-               :type "list"
-               :message "Expected <= 6, got 7"
-               :schema [list-schema :a :maxItems]}]}}
+    {:errors
+     [{:path [:a]
+       :type "list"
+       :message "Expected <= 6, got 7"
+       :schema [list-schema :a :maxItems]}]}}
 
    {:desc "Invalid coll for :every check"
     :do {:type zen.test/validate :schema list-every :data {:a ("beta" "ceta")}}
@@ -533,11 +546,15 @@
        :type "string.regex"}]}}
 
    {:desc "Valid coll for :every check"
-    :do {:type zen.test/validate :schema list-every :data {:a ("hello" "hello" "hello")}}
+    :do {:type zen.test/validate
+         :schema list-every
+         :data {:a ("hello" "hello" "hello")}}
     :match {:errors zen.test/nil?}}
 
    {:desc "Valid vector was given"
-    :do {:type zen.test/validate :schema list-schema :data {:a (1 2 3 4 5)}}
+    :do {:type zen.test/validate
+         :schema list-schema
+         :data {:a (1 2 3 4 5)}}
     :match
     {:errors zen.test/nil?}}]}
 
@@ -612,18 +629,20 @@
          :schema set-schema+subset
          :data {:a #{1 2 3 4 5}}}
     :match
-    {:errors [{:path [:a]
-               :type "set"
-               :schema [set-schema+subset :a :subset-of]}]}}
+    {:errors
+     [{:path [:a]
+       :type "set"
+       :schema [set-schema+subset :a :subset-of]}]}}
 
    {:desc "given set is a superset of :superset-of"
     :do {:type zen.test/validate
          :schema set-schema+superset
          :data {:a #{1 2 3 4 5}}}
     :match
-    {:errors [{:path [:a]
-               :type "set"
-               :schema [set-schema+superset :a :superset-of]}]}}
+    {:errors
+     [{:path [:a]
+       :type "set"
+       :schema [set-schema+superset :a :superset-of]}]}}
 
    {:desc "Valid simple set was given"
     :do {:type zen.test/validate :schema set-schema :data {:a #{1 2 3 4 5}}}
@@ -639,26 +658,32 @@
     :do {:type zen.test/validate :schema set-schema+subset :data {:a #{2 4}}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Given set is narrower than :subset-of"
     :do {:type zen.test/validate :schema set-schema+subset :data {:a #{3}}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Given EMPTY set is also the subset of :subset-of"
     :do {:type zen.test/validate :schema set-schema+subset :data {:a #{}}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Given set is equal to :superset-of set"
     :do {:type zen.test/validate :schema set-schema+superset :data {:a #{0 1 2 3 4 5 6}}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Given set is wider the :superset-of set"
     :do {:type zen.test/validate :schema set-schema+superset :data {:a #{-1 0 1 2 3 4 5 6 7}}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Given set intersects with :superset-of by right bound"
     :do {:type zen.test/validate :schema set-schema+superset :data {:a #{-1 0 1 2 3 4 5 6}}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Given set intersects with :superset-of by left bound"
     :do {:type zen.test/validate :schema set-schema+superset :data {:a #{0 1 2 3 4 5 6 7}}}
     :match

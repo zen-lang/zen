@@ -9,16 +9,35 @@
     (str "'" (str/lower-case (last (str/split (str tp) #"\."))))
     "nil"))
 
+;; TODO redesign type errors, they are not consistent with v1
+(def types-cfg
+  {'zen/string {:fn string?
+                :type-error "string.type"
+                :to-str "'string"}
+   'zen/number number?
+   'zen/set {:fn set?
+             :type-error "type"}
+   'zen/map map?
+   'zen/vector vector?
+   'zen/boolean {:fn boolean?
+                 :to-str "'boolean"}
+   'zen/keyword {:fn keyword?
+                 :to-str "'keyword"}
+   'zen/list list?
+   'zen/integer {:fn integer?
+                 :to-str "'integer"}
+   'zen/symbol {:fn symbol?
+                :to-str "'symbol"}
+   'zen/any (constantly true)
+   'zen/case (constantly true)
+   'zen/regex {:fn #(and (string? %) (re-pattern %))
+               :to-str "'regex"}})
+
 (defmulti compile-key (fn [k ztx kfg] k))
 
 (defmethod compile-key :default [k ztx kfg])
 
 (defmulti compile-type-check (fn [tp ztx] tp))
-
-(defmulti effective-key (fn [k ztx kfg] k))
-(defmulti merge-key (fn [k ztx kfg] k))
-
-(defn validate-identity [vtx & _] vtx)
 
 (defn *compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name)
@@ -53,30 +72,6 @@
   (let [sch (utils/get-symbol ztx (first schemas))]
     (-> (validate-schema ztx sch data)
         #_(update :errors #(sort-by :path %)))))
-
-;; TODO redesign type errors, they are not consistent with v1
-(def types-cfg
-  {'zen/string {:fn string?
-                :type-error "string.type"
-                :to-str "'string"}
-   'zen/number number?
-   'zen/set {:fn set?
-             :type-error "type"}
-   'zen/map map?
-   'zen/vector vector?
-   'zen/boolean {:fn boolean?
-                 :to-str "'boolean"}
-   'zen/keyword {:fn keyword?
-                 :to-str "'keyword"}
-   'zen/list list?
-   'zen/integer {:fn integer?
-                 :to-str "'integer"}
-   'zen/symbol {:fn symbol?
-                :to-str "'symbol"}
-   'zen/any (constantly true)
-   'zen/case (constantly true)
-   'zen/regex {:fn #(and (string? %) (re-pattern %))
-               :to-str "'regex"}})
 
 (defn add-error [vtx err]
   (-> vtx
@@ -168,7 +163,7 @@
 
 (defmethod compile-key :min
   [_ ztx min]
-  {:when integer?
+  {:when number?
    :rules
    [(fn [vtx data opts]
       (if (< data min)
@@ -179,7 +174,7 @@
 
 (defmethod compile-key :max
   [_ ztx max]
-  {:when integer?
+  {:when number?
    :rules
    [(fn [vtx data opts]
       (if (> data max)
@@ -266,10 +261,12 @@
    (->> ks
         (mapv (fn [[k sch]]
                 ;; TODO take from cache instead of compile
-                (let [v (*compile-schema ztx sch)]
+                (let [v (get-cached ztx sch)]
                   (fn [vtx data opts]
                     (if-let [d (contains? data k)]
-                      (-> (v (update vtx :path conj k) (get data k) opts)
+                      (-> (v (update vtx :path conj k)
+                             (get data k)
+                             opts)
                           (assoc :path (:path vtx)))
                       vtx))))))})
 
