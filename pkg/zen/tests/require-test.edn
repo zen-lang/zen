@@ -6,32 +6,32 @@
  {:zen/tags #{zen/schema}
   :type zen/map
   :require #{:foo :bar}
-  :values {:type zen/any}}
+  :values {:type zen/string}}
 
  or-require
  {:zen/tags #{zen/schema}
   :type zen/map
   :require #{#{:foo :bar}}
-  :values {:type zen/any}}
+  :values {:type zen/string}}
 
  nested-require
  {:zen/tags #{zen/schema}
   :type zen/map
   :keys {:attr {:type zen/map
                 :require #{#{:foo :bar}}
-                :values {:type zen/any}}}}
+                :values {:type zen/string}}}}
 
  a-require
  {:zen/tags #{zen/schema}
   :type zen/map
   :require #{:a}
-  :values {:type zen/any}}
+  :values {:type zen/string}}
 
  b-require
  {:zen/tags #{zen/schema}
   :type zen/map
   :require #{:b}
-  :values {:type zen/any}}
+  :values {:type zen/string}}
 
  ab-require
  {:zen/tags #{zen/schema}
@@ -45,7 +45,7 @@
 
  basic-require-test
  {:zen/tags #{zen.test/case}
-  :title ":require"
+  :title "require tests"
   :steps
   [{:desc "Empty data"
     :do {:type zen.test/validate :schema basic-require :data {}}
@@ -59,17 +59,27 @@
 
    {:desc "foo key missed"
     :do {:type zen.test/validate :schema basic-require :data {:bar 1}}
-    :match {:errors [{:path [:foo]
-                      :type "require"
-                      :schema [basic-require :require]}
-                     zen.test/nil?]}}
+    :match
+    {:errors [{:message "Expected type of 'string, got 'long"
+               :type "string.type"
+               :path [:bar]
+               :schema [zen.tests.require-test/basic-require :values]}
+
+              {:path [:foo]
+               :type "require"
+               :schema [basic-require :require]}]}}
 
    {:desc "bar key missed"
     :do {:type zen.test/validate :schema basic-require :data {:foo 1}}
-    :match {:errors [{:path [:bar]
-                      :type "require"
-                      :schema [basic-require :require]}
-                     zen.test/nil?]}}
+    :match
+    {:errors [{:path [:bar]
+               :type "require"
+               :schema [basic-require :require]}
+
+              {:message "Expected type of 'string, got 'long"
+               :type "string.type"
+               :path [:foo]
+               :schema [zen.tests.require-test/basic-require :values]}]}}
 
    {:desc "Valid data"
     :do {:type zen.test/validate

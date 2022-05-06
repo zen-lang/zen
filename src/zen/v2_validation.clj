@@ -281,6 +281,21 @@
                           (assoc :path (:path vtx)))
                       vtx))))))})
 
+(defmethod compile-key :values
+  [_ ztx sch]
+  (let [v (get-cached ztx sch)]
+    {:when map?
+     :rules
+     [(fn [vtx data opts]
+        (reduce (fn [vtx* [key value]]
+                  (let [{:keys [errors]}
+                        (-> {:errors []
+                             :path (conj (:path vtx) key)
+                             :schema (conj (:schema vtx) :values)}
+                            (v value opts))]
+                    (update vtx* :errors into errors)))
+                vtx data))]}))
+
 (defmethod compile-key :every
   [_ ztx sch]
   (let [v (get-cached ztx sch)]

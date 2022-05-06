@@ -131,9 +131,7 @@
          :schema exclusive-keys-map
          :data {:a :aeta :c :ceta :d :deta}}
     :match
-    {:errors zen.test/nil?}}
-   ]}
-
+    {:errors zen.test/nil?}}]}
 
  simple-test
  {:zen/tags #{zen.test/case}

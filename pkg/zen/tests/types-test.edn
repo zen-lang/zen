@@ -113,6 +113,7 @@
 
  #_date-tests
  #_{:zen/tags #{zen.test/case}
+  :only-for #{:v1}
     :title "Date validations in map"
     :steps
     [{:desc "test fails when integer is provided"

@@ -13,6 +13,8 @@
                          sch
                          data))
 
+;; TODO add :values to bench
+
 (deftest depth-benchmark
 
   (def cfg {:depth 6 :branch 6})
