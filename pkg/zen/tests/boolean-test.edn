@@ -18,6 +18,7 @@
  bool-validation-test
  {:zen/tags #{zen.test/case}
   :title "Boolean validation in map"
+  :only-for #{:v2}
   :steps
   [{:desc "test boolean validation in map"
     :do {:type zen.test/validate
@@ -28,7 +29,7 @@
     {:errors
      [{:path [:one]
        :schema [boolean-keys :one]
-       :type "primitive-type"}
+       :type "boolean.type"}
       {:path [:two]
        :schema [boolean-keys :two]
-       :type "primitive-type"}]}}]}}
+       :type "boolean.type"}]}}]}}

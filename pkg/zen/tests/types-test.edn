@@ -30,6 +30,7 @@
 
  boolean-tests
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Boolean validations in map"
   :steps
   [{:desc "fails on string"
@@ -37,7 +38,7 @@
     :match
     {:errors
      [{:path [:a]
-       :type "primitive-type"
+       :type "boolean.type"
        :message "Expected type of 'boolean, got 'string"
        :schema [boolean-schema :a]}]}}
 
@@ -53,6 +54,7 @@
 
  keyword-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Keyword validations in map"
   :steps
   [{:desc "fails on string"
@@ -60,7 +62,7 @@
     :match
     {:errors
      [{:path [:a]
-       :type "primitive-type"
+       :type "keyword.type"
        :message "Expected type of 'keyword, got 'string"
        :schema [keyword-schema :a]}]}}
 
@@ -79,6 +81,7 @@
 
  symbol-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Symbol validations in map"
   :steps
   [{:desc "given value has invalid type"
@@ -86,7 +89,7 @@
     :match
     {:errors
      [{:path [:a]
-       :type "primitive-type"
+       :type "symbol.type"
        :message "Expected type of 'symbol, got 'string"
        :schema [symbol-schema :a]}]}}
 
@@ -299,7 +302,7 @@
     :do {:type zen.test/validate :schema integer-schema :data {:a false}}
     :match
     {:errors [{:path [:a]
-               :type "primitive-type"
+               :type "integer.type"
                :message "Expected type of 'integer, got 'boolean"
                :schema [integer-schema :a]}]}}
 
@@ -334,8 +337,8 @@
              :max 3.3}}}
 
 ;; TODO fails on v1 because it returns string not integer
- #_number-test
- #_{:zen/tags #{zen.test/case}
+ number-test
+ {:zen/tags #{zen.test/case}
   :only-for #{:v2}
   :title "Number validations in map"
   :steps
@@ -344,7 +347,8 @@
     :match
     {:errors
      [{:path [:a]
-       :type "primitive-type"
+       :type "number.type"
+       :message "Expected type of 'number, got 'boolean"
        :schema [number-schema :a]}]}}
 
    {:desc "Checks if given value is above :max"
@@ -352,8 +356,8 @@
     :match
     {:errors
      [{:path [:a]
-       :type "number.max" ;; WHY?
-       :message "Expected  <= 3.3, got 4.4"
+       :type "number.max"
+       :message "Expected <= 3.3, got 4.4"
        :schema [number-schema :a :max]}]}}
 
    {:desc "Checks if given value is below :min"
@@ -361,8 +365,8 @@
     :match
     {:errors
      [{:path [:a]
-       :type "number.min" ;; WHY?
-       :message "Expected  >= 1.1, got 0.7"
+       :type "number.min"
+       :message "Expected >= 1.1, got 0.7"
        :schema [number-schema :a :min]}]}}
 
    {:desc "Valid number was given"
@@ -377,6 +381,7 @@
 
  regex-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Regex validations in map"
   :steps
   [{:desc "fails on boolean"
@@ -384,7 +389,7 @@
     :match
     {:errors
      [{:path [:a]
-       :type "primitive-type"
+       :type "regex.type"
        :message "Expected type of 'regex, got 'boolean"
        :schema [regex-schema :a]}]}}
 
@@ -429,7 +434,7 @@
     :match
     {:errors
      [{:path [:a]
-       :type "primitive-type"
+       :type "vector.type"
        :schema [vector-schema :a]}]}}
 
    {:desc "fewer values in given vector than was defined in :minItems"
@@ -437,7 +442,7 @@
     :match
     {:errors
      [{:path [:a]
-       ;;:type "vector"
+       :type "vector.minItems"
        :message "Expected >= 4, got 3"
        :schema [vector-schema :a :minItems]}]}}
 
@@ -446,7 +451,7 @@
     :match
     {:errors
      [{:path [:a]
-       ;;:type "vector"
+       :type "vector.maxItems"
        :message "Expected <= 6, got 7"
        :schema [vector-schema :a :maxItems]}]}}
 
@@ -502,7 +507,7 @@
              :every {:type zen/string
                      :regex "hello"}}}}
 
- list-test ;; TODO :schema-index validation
+list-test ;; TODO :schema-index validation
  {:zen/tags #{zen.test/case}
   :title "List validations in map"
   :only-for #{:v2}
@@ -512,7 +517,8 @@
     :match
     {:errors
      [{:path [:a]
-       ;;:type "primitive-type"
+       :type "list.type"
+       :message "Expected type of 'list, got 'boolean"
        :schema [list-schema :a]}]}}
 
    {:desc "fewer values in given list than was defined in :minItems"
@@ -520,7 +526,7 @@
     :match
     {:errors
      [{:path [:a]
-       :type "list"
+       :type "list.minItems"
        :message "Expected >= 4, got 3"
        :schema [list-schema :a :minItems]}]}}
 
@@ -529,7 +535,7 @@
     :match
     {:errors
      [{:path [:a]
-       :type "list"
+       :type "list.maxItems"
        :message "Expected <= 6, got 7"
        :schema [list-schema :a :maxItems]}]}}
 
@@ -588,7 +594,8 @@
     :match
     {:errors
      [{:path [:a]
-       :type "type"
+       :type "set.type"
+       :message "Expected type of 'set, got 'boolean"
        :schema [set-schema :a]}]}}
 
    {:desc "some values are of wrong type"
@@ -598,10 +605,10 @@
     :match
     {:errors
      [{:path [:a 1]
-       :type "primitive-type"
+       :type "integer.type"
        :schema [set-schema :every :a 1]}
       {:path [:a 3]
-       :type "primitive-type"
+       :type "integer.type"
        :schema [set-schema :every :a 3]}]}}
 
    {:desc "fewer values in given set than was defined in :minItems"
@@ -610,7 +617,7 @@
          :data {:a #{1 2 3}}}
     :match
     {:errors [{:path [:a]
-;;               :type "vector" ;; WHY?
+               :type "set.minItems"
                :message "Expected >= 4, got 3"
                :schema [set-schema :a :minItems]}]}}
 
@@ -620,7 +627,7 @@
          :data {:a #{1 2 3 4 5 6 7}}}
     :match
     {:errors [{:path [:a]
- ;;              :type "vector" ;; WHY?
+               :type "set.maxItems"
                :message "Expected <= 6, got 7"
                :schema [set-schema :a :maxItems]}]}}
 

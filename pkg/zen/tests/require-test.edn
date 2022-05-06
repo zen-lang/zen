@@ -1,5 +1,7 @@
 {ns zen.tests.require-test
 
+ ;; TODO add deeply nested test with both or and all require
+
  basic-require
  {:zen/tags #{zen/schema}
   :type zen/map
@@ -33,10 +35,12 @@
 
  ab-require
  {:zen/tags #{zen/schema}
+  :type zen/map
   :confirms #{a-require b-require}}
 
  or-a-require
  {:zen/tags #{zen/schema}
+  :type zen/map
   :confirms #{or-require a-require}}
 
  basic-require-test

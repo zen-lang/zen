@@ -6,32 +6,45 @@
 
 (defn pretty-type [x]
   (if-let [tp (type x)]
-    (str "'" (str/lower-case (last (str/split (str tp) #"\."))))
+    (str/lower-case (last (str/split (str tp) #"\.")))
     "nil"))
 
-;; TODO redesign type errors, they are not consistent with v1
 (def types-cfg
   {'zen/string {:fn string?
-                :type-error "string.type"
-                :to-str "'string"}
-   'zen/number number?
+                :to-str "string"}
+
+   'zen/number {:fn number?
+                :to-str "number"}
+
    'zen/set {:fn set?
-             :type-error "type"}
+             :to-str "set"}
+
    'zen/map map?
-   'zen/vector vector?
+
+   'zen/vector {:fn vector?
+                :to-str "vector"}
+
    'zen/boolean {:fn boolean?
-                 :to-str "'boolean"}
+                 :to-str "boolean"}
+
    'zen/keyword {:fn keyword?
-                 :to-str "'keyword"}
-   'zen/list list?
+                 :to-str "keyword"}
+
+   'zen/list {:fn list?
+              :to-str "list"}
+
    'zen/integer {:fn integer?
-                 :to-str "'integer"}
+                 :to-str "integer"}
+
    'zen/symbol {:fn symbol?
-                :to-str "'symbol"}
+                :to-str "symbol"}
+
    'zen/any (constantly true)
    'zen/case (constantly true)
-   'zen/regex {:fn #(and (string? %) (re-pattern %))
-               :to-str "'regex"}})
+
+   'zen/regex
+   {:fn #(and (string? %) (re-pattern %))
+    :to-str "regex"}})
 
 (defmulti compile-key (fn [k ztx kfg] k))
 
@@ -49,7 +62,8 @@
            (reduce (fn [vtx [pred rules]]
                      (if (or (nil? pred) (pred data))
                        (->> rules
-                            (reduce (fn [vtx r] (r vtx data opts)) vtx))
+                            (reduce (fn [vtx r] (r (assoc vtx ::type (:type schema)) data opts))
+                                    vtx))
                        vtx))
                    vtx)))))
 
@@ -73,19 +87,29 @@
     (-> (validate-schema ztx sch data)
         #_(update :errors #(sort-by :path %)))))
 
-(defn add-error [vtx err]
-  (-> vtx
-      (update :errors (fn [errs]
-                        (let [schema*
-                              (if-let [rule-fn (::rule-fn err)]
-                                (-> (:schema vtx)
-                                    (into (:path vtx))
-                                    (conj rule-fn))
-                                (:schema err))]
-                          (conj errs
-                                (-> (dissoc err ::rule-fn)
-                                    (assoc :path (:path vtx))
-                                    (assoc :schema schema*))))))))
+(defn add-error [vtx err & rule-fn]
+  (let [path* (or (:path err) (:path vtx))
+
+        schema*
+        (or (:schema err)
+            (-> (:schema vtx)
+                (into (:path vtx))
+                (into rule-fn)))
+
+        type*
+        (if (not (contains? err :type))
+          (if-let [type-str (get-in types-cfg [(::type vtx) :to-str])]
+            (str  type-str "." (name (first rule-fn)))
+            "primitive-type")
+          (:type err))
+
+        err*
+        (-> err
+            (assoc :path path*)
+            (assoc :schema schema*)
+            (assoc :type type*))]
+
+    (update vtx :errors conj err*)))
 
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
@@ -94,11 +118,10 @@
       (if (type-pred data)
         vtx
         (let [error-msg
-              {:message (str "Expected type of " (or (:to-str type-cfg) sym)
-                             ", got " (pretty-type data))
-               :type (or (:type-error type-cfg) "primitive-type")
+              {:message (str "Expected type of '" (or (:to-str type-cfg) sym)
+                             ", got '" (pretty-type data))
                :schema (into (:schema vtx) (:path vtx))}]
-          (add-error vtx error-msg))))))
+          (add-error vtx error-msg :type))))))
 
 (defmethod compile-type-check 'zen/string [_ _] (type-fn 'zen/string))
 (defmethod compile-type-check 'zen/number [_ _] (type-fn 'zen/number))
@@ -167,9 +190,7 @@
    :rules
    [(fn [vtx data opts]
       (if (< data min)
-        (add-error vtx {:type "integer.min"
-                        :message (str "Expected >= " min ", got " data)
-                        ::rule-fn :min})
+        (add-error vtx {:message (str "Expected >= " min ", got " data)} :min)
         vtx))]})
 
 (defmethod compile-key :max
@@ -178,9 +199,7 @@
    :rules
    [(fn [vtx data opts]
       (if (> data max)
-        (add-error vtx {:type "integer.max"
-                        :message (str "Expected <= " max ", got " data)
-                        ::rule-fn :max})
+        (add-error vtx {:message (str "Expected <= " max ", got " data)} :max)
         vtx))]})
 
 (defmethod compile-key :minLength
@@ -189,9 +208,8 @@
    :rules
    [(fn [vtx data opts]
       (if (< (count data) min-len)
-        (add-error vtx {:type "string.minLength"
-                        :message (str "Expected length >= " min-len ", got " (count data))
-                        ::rule-fn :minLength})
+        (add-error vtx {:message (str "Expected length >= " min-len ", got " (count data))}
+                   :minLength)
         vtx))]})
 
 (defmethod compile-key :maxLength
@@ -200,9 +218,8 @@
    :rules
    [(fn [vtx data opts]
       (if (> (count data) max-len)
-        (add-error vtx {:type "string.maxLength"
-                        ::rule-fn :maxLength
-                        :message (str "Expected length <= " max-len ", got " (count data))})
+        (add-error vtx {:message (str "Expected length <= " max-len ", got " (count data))}
+                   :maxLength)
         vtx))]})
 
 (defmethod compile-key :minItems
@@ -211,12 +228,8 @@
    :rules
    [(fn [vtx data opts]
       (if (< (count data) items-count)
-        (add-error vtx {:message (str "Expected >= " items-count ", got " (count data))
-                        ;; TODO fix the types here
-                        ;; 1. minItems should receive type on which it works in compile time;
-                        ;; 2. runtime introspection using type-cfg (much worse)
-                        :type "list"
-                        ::rule-fn :minItems})
+        (add-error vtx {:message (str "Expected >= " items-count ", got " (count data))}
+                   :minItems)
         vtx))]})
 
 (defmethod compile-key :maxItems
@@ -225,9 +238,8 @@
    :rules
    [(fn [vtx data opts]
       (if (> (count data) items-count)
-        (add-error vtx {:message (str "Expected <= " items-count ", got " (count data))
-                        :type "list"
-                        ::rule-fn :maxItems})
+        (add-error vtx {:message (str "Expected <= " items-count ", got " (count data))}
+                   :maxItems)
         vtx))]})
 
 ;; TODO auto generate supported terms based on multi methods?
@@ -260,7 +272,6 @@
    :rules
    (->> ks
         (mapv (fn [[k sch]]
-                ;; TODO take from cache instead of compile
                 (let [v (get-cached ztx sch)]
                   (fn [vtx data opts]
                     (if-let [d (contains? data k)]
@@ -293,11 +304,7 @@
    :rules
    [(fn [vtx data opts]
       (if-not (clojure.set/subset? data superset)
-        (add-error vtx {:path (:path vtx)
-                        :type "set"
-                        :schema
-                        (-> (into (:schema vtx) (:path vtx))
-                            (conj :subset-of))})
+        (add-error vtx {:path (:path vtx) :type "set"} :subset-of)
         vtx))]})
 
 (defmethod compile-key :superset-of
@@ -306,10 +313,7 @@
    :rules
    [(fn [vtx data opts]
       (if-not (clojure.set/subset? subset data)
-        (add-error vtx {:path (:path vtx)
-                        :type "set"
-                        :schema (-> (into (:schema vtx) (:path vtx))
-                                    (conj :superset-of))})
+        (add-error vtx {:path (:path vtx) :type "set"} :superset-of)
         vtx))]})
 
 (defmethod compile-key :regex
@@ -318,10 +322,8 @@
    :rules
    [(fn [vtx data opts]
       (if (not (re-find (re-pattern regex) data))
-        (add-error vtx {:type "string.regex"
-                        :path (:path vtx)
-                        :message (str "Expected match /" (str regex) "/, got \"" data "\"")
-                        ::rule-fn :regex})
+        (add-error vtx {:message (str "Expected match /" (str regex) "/, got \"" data "\"")}
+                   :regex)
         vtx))]})
 
 (defmethod compile-key :confirms
@@ -346,34 +348,30 @@
 
 (defmethod compile-key :require
   [_ ztx ks]
-  (let [set-rule-fn
+  (let [one-of-fn
         (fn [vtx s]
-          (let [reqs (->> (select-keys (::data vtx) s) (remove nil?))
-                pth
-                (-> (:schema vtx)
-                    (into (:path vtx))
-                    (conj :require))]
+          (let [reqs (->> (select-keys (::data vtx) s) (remove nil?))]
             (if (empty? reqs)
-              (add-error vtx {:type "map.require"
-                              :schema pth})
+              ;; TODO add message
+              (add-error vtx {:type "map.require"} :require)
               vtx)))
 
-        key-rule-fn
+        all-keys-fn
         (fn [vtx mk]
-          ;; TODO fix path for nested req
-          (-> (assoc vtx :path [mk])
-              (add-error {:type "require"
-                          :message (str mk " is required")
-                          :schema (conj (:schema vtx) :require)})))]
+          (add-error vtx
+                     {:type "require"
+                      :path (conj (:path vtx) mk)
+                      :schema (conj (:schema vtx) :require)
+                      :message (str mk " is required")}))]
 
     {:when map?
      :rules
      [(fn [vtx data opts]
         (->> (filter set? ks)
-             (reduce set-rule-fn (assoc vtx ::data data))))
+             (reduce one-of-fn (assoc vtx ::data data))))
 
       (fn [vtx data opts]
         (->> (-> (remove set? ks)
                  set
                  (clojure.set/difference (into #{} (keys data))))
-             (reduce key-rule-fn vtx)))]}))
+             (reduce all-keys-fn vtx)))]}))

@@ -34,8 +34,9 @@
     :do {:type zen.test/validate :schema cases :data {:is true :foo "bar"}}
     :match
     {:errors [{:path [:foo]
-               :type "primitive-type"
+               :type "integer.type"
                :message "Expected type of 'integer, got 'string"
+               ;; TODO think about :keys in schema path
                :schema [cases :case 2 :then #_:keys :foo]}]}}
 
    {:desc "required key has invalid value"
