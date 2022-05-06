@@ -1,6 +1,5 @@
 (ns zen.utils)
 
-
 (defn deep-merge
   "efficient deep merge"
   [a b]
@@ -14,7 +13,6 @@
                       (assoc acc k (deep-merge av v))
                       (assoc acc k v))))))))
 
-
 (defn assoc-when-kv
   ([pred m k v]
    (cond-> m (pred [k v]) (assoc k v)))
@@ -23,7 +21,6 @@
    (reduce (partial apply assoc-when-kv pred)
            (assoc-when-kv pred m k v)
            (partition 2 kvs))))
-
 
 (defn assoc-when-key
   ([pred m k v]
@@ -34,7 +31,6 @@
            (assoc-when-key pred m k v)
            (partition 2 kvs))))
 
-
 (defn assoc-when
   ([pred m k v]
    (cond-> m (pred v) (assoc k v)))
@@ -44,10 +40,8 @@
            (assoc-when pred m k v)
            (partition 2 kvs))))
 
-
 (defn assoc-some [m k v & kvs]
   (apply assoc-when some? m k v kvs))
-
 
 (defn dissoc-when-kv
   ([pred m k]
@@ -60,7 +54,6 @@
            (dissoc-when-kv pred m k)
            ks)))
 
-
 (defn dissoc-when-key
   ([pred m k]
    (cond-> m
@@ -71,7 +64,6 @@
    (reduce (partial dissoc-when-key pred)
            (dissoc-when-key pred m k)
            ks)))
-
 
 (defn dissoc-when
   ([pred m k]
@@ -84,40 +76,32 @@
            (dissoc-when pred m k)
            ks)))
 
-
 (defn dissoc-nil [m k & ks]
   (apply dissoc-when nil? m k ks))
-
 
 (defn strip-when-key [pred m]
   (if-let [ks (seq (keys m))]
     (apply dissoc-when-key pred m ks)
     m))
 
-
 (defn strip-when-kv [pred m]
   (if-let [ks (seq (keys m))]
     (apply dissoc-when-kv pred m ks)
     m))
-
 
 (defn strip-when [pred m]
   (if-let [ks (seq (keys m))]
     (apply dissoc-when pred m ks)
     m))
 
-
 (defn strip-nils [m]
   (strip-when nil? m))
-
 
 (defn disj-set-get-group [disj-set value]
   (get-in disj-set [value :group]))
 
-
 (defn disj-set-get-root [disj-set value]
   (get-in disj-set [value :root]))
-
 
 (defn disj-set-union-push
   ([disj-set value]
@@ -142,13 +126,11 @@
              (or disj-set {})
              new-group))))
 
-;; TODO support set arguments for getting multiple symbols
 (defn get-symbol [ctx nm]
   (when (symbol? nm)
     (or (get-in @ctx [:symbols nm])
         (when-let [alias-root (disj-set-get-root (:aliases @ctx) nm)]
           (get-in @ctx [:symbols alias-root])))))
-
 
 (defn get-tag [ctx tag]
   (let [tag-sym (:zen/name (get-symbol ctx tag))]
@@ -158,7 +140,6 @@
       (reduce (fn [acc alias] (into acc (get-in @ctx [:tags alias])))
               #{}
               aliases))))
-
 
 (defn mk-symbol [ns-part name-part]
   (symbol

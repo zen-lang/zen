@@ -329,8 +329,6 @@
 (defmethod compile-key :confirms
   [_ ztx ks]
   ;; TODO think about refactoring on function composition instead of reduce
-  ;; TODO composition of confirms - compile and inline inherited schemas
-  ;; check if schema graph contain cycle [loop]
   (let [vs
         (->> ks
              (map #(utils/get-symbol ztx %))

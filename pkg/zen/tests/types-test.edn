@@ -1,9 +1,5 @@
 {ns zen.tests.types-test
 
- ;; TODO discuss and fix message errors
- ;; TODO discuss and fix type errors
- ;; TODO maybe fix tests that fail for v1, get-rid of only-for command?
-
  import #{zen.test}
 
  any-schema

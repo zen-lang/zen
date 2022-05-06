@@ -12,7 +12,7 @@
 
   (zen/get-symbol ctx (first (zen/get-tag ctx 'zen.tests.schema/test-case)))
 
-  ;; TODO rewrite to use zen test runner, move it to utils
+  ;; TODO refactor tests and rewrite to use zen test runner, move it to utils
   (doseq [case-nm (zen/get-tag ctx 'zen.tests.schema/test-case)]
     (let [{title :title schema :schema cs :cases} (zen/get-symbol ctx case-nm)]
       (println "***" (or title case-nm))
