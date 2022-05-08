@@ -113,7 +113,7 @@
 
  #_date-tests
  #_{:zen/tags #{zen.test/case}
-  :only-for #{:v1}
+    :only-for #{:v1}
     :title "Date validations in map"
     :steps
     [{:desc "test fails when integer is provided"
@@ -504,7 +504,7 @@
              :every {:type zen/string
                      :regex "hello"}}}}
 
-list-test ;; TODO :schema-index validation
+ list-test ;; TODO :schema-index validation
  {:zen/tags #{zen.test/case}
   :title "List validations in map"
   :only-for #{:v2}
@@ -740,8 +740,11 @@ list-test ;; TODO :schema-index validation
  {:zen/tags #{zen/schema}
   :type zen/map
   :keys {:gender {:type zen/string
-                  :enum [{:value "Female"}
-                         {:value "Male"}]}}}
+                  :enum #{{:value "Female"}
+                          {:value "Male"}}
+                  ;; TODO discuss if we need to change meta for v1
+                  #_[{:value "Female"}
+                     {:value "Male"}]}}}
 
  enums-test
  {:zen/tags #{zen.test/case}

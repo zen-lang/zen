@@ -23,7 +23,10 @@
   (matcho/match :step-type-is-not-implemented true))
 
 (defmethod do-step 'zen.test/validate [ztx step version]
-  (apply (get versions version) [ztx #{(get-in step [:do :schema])} (get-in step [:do :data])]))
+  (let [fn (get versions version)
+        sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
+    (is (empty? (:errors (apply fn [ztx '#{zen/schema} sch]))))
+    (apply fn [ztx #{(get-in step [:do :schema])} (get-in step [:do :data])])))
 
 (defmethod do-step 'zen.test/validate-schema [ztx step]
   (let [sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]

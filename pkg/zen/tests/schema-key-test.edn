@@ -1,6 +1,9 @@
-{ns zen.schema-key-test
+{ns zen.tests.schema-key-test
 
  import #{zen.test}
+
+ test-tag {:zen/tags #{zen/tag}
+           :zen/desc "a tag for test"}
 
  str
  {:zen/tags #{zen/schema test-tag}
@@ -17,7 +20,7 @@
  add-txt-key
  {:zen/tags #{zen/schema}
   :type zen/map
-  :schema-key {:key :name :ns "zen.schema-key-test" :tags #{test-tag}}
+  :schema-key {:key :name :ns "zen.tests.schema-key-test" :tags #{test-tag}}
   :keys {:name {:type zen/string}}}
 
  add-txt-key-tests
@@ -27,11 +30,12 @@
   [{:desc "schema does not contain required tags"
     :do {:type zen.test/validate :schema add-txt-key :data {:name "str-1" :txt "a-string"}}
     :match
-    {:errors [{:path []
-               :type "schema"
-               :message
-               "'zen.schema-key-test/str-1 should be tagged with #{zen.schema-key-test/test-tag}, but #{zen/schema}"
-               :schema [add-txt-key]}]}}
+    {:errors
+     [{:path []
+       :type "schema"
+       :message
+       "'zen.tests.schema-key-test/str-1 should be tagged with #{zen.tests.schema-key-test/test-tag}, but #{zen/schema}"
+       :schema [add-txt-key]}]}}
 
    {:desc "ref type is invalid"
     :do {:type zen.test/validate :schema add-txt-key :data {:name "str" :txt 43}}
@@ -74,7 +78,7 @@
  add-required-keys
  {:zen/tags #{zen/schema}
   :type zen/map
-  :schema-key {:key :man :ns "zen.schema-key-test"}
+  :schema-key {:key :man :ns "zen.tests.schema-key-test"}
   :keys {:man {:type zen/string}}}
 
  add-required-keys-tests
@@ -148,7 +152,7 @@
              :extension    {:type  zen/vector
                             :every {:type       zen/map
                                     :keys       {:url {:type zen/string}}
-                                    :schema-key {:key :url, :ns "zen.schema-key-test"}}}}}
+                                    :schema-key {:key :url, :ns "zen.tests.schema-key-test"}}}}}
 
  extension-test
  {:zen/tags #{zen.test/case}
