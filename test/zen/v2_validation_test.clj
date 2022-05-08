@@ -18,6 +18,8 @@
 
     (r/zen-read-ns ztx 'zen.tests.case-test)
 
+    (r/zen-read-ns ztx 'zen.tests.schema-key-test)
+
     (r/run-tests ztx))
 
   )

@@ -54,7 +54,7 @@
 
 (defn *compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name)
-                      (mapv (fn [[k kfg]] (compile-key k ztx kfg)))
+                      (map (fn [[k kfg]] (compile-key k ztx kfg)))
                       (reduce (fn [acc {w :when rs :rules}]
                                 (update acc w into rs)) {}))]
     (fn [vtx data opts]
@@ -388,3 +388,29 @@
                  set
                  (clojure.set/difference (into #{} (keys data))))
              (reduce all-keys-fn vtx)))]}))
+
+(defmethod compile-key :schema-key
+  [_ ztx {sk :key sk-ns :ns sk-tags :tags}]
+  {:when map?
+   :rules
+   [(fn [vtx data opts]
+      (if-let [sch-nm (get data sk)]
+        (let [sch-symbol (if sk-ns (symbol sk-ns (name sch-nm)) (symbol sch-nm))
+              {tags :zen/tags :as sch} (utils/get-symbol ztx sch-symbol)]
+          (cond
+            (nil? sch)
+            (add-error vtx {:message (str "Could not find schema " sch-symbol) :type "schema"})
+
+            (not (contains? tags 'zen/schema))
+            (add-error vtx {:message (str "'" sch-symbol " should be tagged with zen/schema, but " tags)
+                            :type "schema"})
+
+            (and sk-tags (not (clojure.set/subset? sk-tags tags)))
+            (add-error vtx {:message (str "'" sch-symbol " should be tagged with " sk-tags ", but " tags)
+                            :type "schema"})
+
+            :else
+            (apply (get-cached ztx sch) [(update vtx :schema into [:schema-key sch-symbol]) data opts])))
+        vtx))]})
+
+

@@ -46,7 +46,8 @@
        [{:type 'zen/string
          :enum
          (->> (shuffle enums)
-              (map (fn [e] {:value e})))}
+              (map (fn [e] {:value e}))
+              set)}
         (first enums)]))})
 
 (defn gen-leaves [scale-factor]

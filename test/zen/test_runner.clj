@@ -60,7 +60,7 @@
                 match-res (matcho/match step-res (translate-to-matcho (:match step)))]
             (when-not (true? match-res)
               (report-step ztx step match-res test-def)
-              {:desc (:desc step) :version version :expected (:match step) :got step-res}))))))))
+              {:test test-name :desc (:desc step) :version version :expected (:match step) :got step-res}))))))))
 
 ;; TODO add id to steps in zen test
 (defn run-step [ztx test-name step]
