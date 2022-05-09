@@ -4,6 +4,9 @@
    [clojure.string :as str]
    [zen.utils :as utils]))
 
+;; TODO auto generate supported terms based on multi methods?
+;; useful for introspection and documentation
+
 (defn pretty-type [x]
   (if-let [tp (type x)]
     (str/lower-case (last (str/split (str tp) #"\.")))
@@ -87,29 +90,36 @@
     (-> (validate-schema ztx sch data)
         #_(update :errors #(sort-by :path %)))))
 
-(defn add-error [vtx err & rule-fn]
-  (let [path* (or (:path err) (:path vtx))
-
-        schema*
-        (or (:schema err)
-            (-> (:schema vtx)
-                (into (:path vtx))
-                (into rule-fn)))
-
-        type*
+(defn add-err [vtx sch-key err & data-path]
+  (let [err-type
         (if (not (contains? err :type))
           (if-let [type-str (get-in types-cfg [(::type vtx) :to-str])]
-            (str  type-str "." (name (first rule-fn)))
+            (str  type-str "." (name sch-key))
             "primitive-type")
           (:type err))
 
         err*
         (-> err
-            (assoc :path path*)
-            (assoc :schema schema*)
-            (assoc :type type*))]
-
+            (assoc :path (into (:path vtx) data-path))
+            (assoc :type err-type)
+            (assoc :schema (conj (:schema vtx) sch-key)))]
     (update vtx :errors conj err*)))
+
+(defn into* [acc v]
+  (cond
+    (vector? v) (into acc v)
+    :else (conj acc v)))
+
+(defn node-vtx
+  ([vtx sch-path]
+   (node-vtx vtx sch-path []))
+  ([vtx sch-path path]
+   {:errors []
+    :path (into* (:path vtx) path)
+    :schema (into* (:schema vtx) sch-path)}))
+
+(defn merge-vtx [global-vtx {:keys [errors]}]
+  (update global-vtx :errors into errors))
 
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
@@ -119,9 +129,8 @@
         vtx
         (let [error-msg
               {:message (str "Expected type of '" (or (:to-str type-cfg) sym)
-                             ", got '" (pretty-type data))
-               :schema (into (:schema vtx) (:path vtx))}]
-          (add-error vtx error-msg :type))))))
+                             ", got '" (pretty-type data))}]
+          (add-err vtx :type error-msg))))))
 
 (defmethod compile-type-check 'zen/string [_ _] (type-fn 'zen/string))
 (defmethod compile-type-check 'zen/number [_ _] (type-fn 'zen/number))
@@ -152,22 +161,15 @@
         (loop [[{wh :when th :then :as v} & rest] vs
                item-idx 0]
           (if (nil? v)
-            (add-error vtx
-                       {:message (format "Expected one of the cases to be true")
-                        :schema (conj (:schema vtx) :case)
-                        :type "case"})
-            (let [vtx*
-                  {:errors []
-                   :path (:path vtx)
-                   :schema (into (:schema vtx) [:case item-idx :when])}
+            (add-err vtx
+                     :case
+                     {:message (format "Expected one of the cases to be true") :type "case"})
+            (let [vtx* (node-vtx vtx [:case item-idx :when])
                   {errs :errors} (wh vtx* data opts)]
               (cond
                 (and (empty? errs) th)
-                (let [vtx*
-                      {:errors []
-                       :path (:path vtx)
-                       :schema (into (:schema vtx) [:case item-idx :then])}]
-                  (th vtx* data opts))
+                (->> (th (node-vtx vtx [:case item-idx :then]) data opts)
+                     (merge-vtx vtx))
 
                 (empty? errs) vtx
 
@@ -179,9 +181,7 @@
     {:rules
      [(fn [vtx data opts]
         (if-not (contains? values* data)
-          (add-error vtx {:message (str "Expected '" data "' in " values*)
-                          :type "enum"
-                          :schema (-> (:schema vtx) (into (:path vtx)))})
+          (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
           vtx))]}))
 
 (defmethod compile-key :min
@@ -190,7 +190,7 @@
    :rules
    [(fn [vtx data opts]
       (if (< data min)
-        (add-error vtx {:message (str "Expected >= " min ", got " data)} :min)
+        (add-err vtx :min {:message (str "Expected >= " min ", got " data)})
         vtx))]})
 
 (defmethod compile-key :max
@@ -199,7 +199,7 @@
    :rules
    [(fn [vtx data opts]
       (if (> data max)
-        (add-error vtx {:message (str "Expected <= " max ", got " data)} :max)
+        (add-err vtx :max {:message (str "Expected <= " max ", got " data)})
         vtx))]})
 
 (defmethod compile-key :minLength
@@ -208,8 +208,9 @@
    :rules
    [(fn [vtx data opts]
       (if (< (count data) min-len)
-        (add-error vtx {:message (str "Expected length >= " min-len ", got " (count data))}
-                   :minLength)
+        (add-err vtx
+                 :minLength
+                 {:message (str "Expected length >= " min-len ", got " (count data))})
         vtx))]})
 
 (defmethod compile-key :maxLength
@@ -218,8 +219,9 @@
    :rules
    [(fn [vtx data opts]
       (if (> (count data) max-len)
-        (add-error vtx {:message (str "Expected length <= " max-len ", got " (count data))}
-                   :maxLength)
+        (add-err vtx
+                 :maxLength
+                 {:message (str "Expected length <= " max-len ", got " (count data))})
         vtx))]})
 
 (defmethod compile-key :minItems
@@ -228,8 +230,9 @@
    :rules
    [(fn [vtx data opts]
       (if (< (count data) items-count)
-        (add-error vtx {:message (str "Expected >= " items-count ", got " (count data))}
-                   :minItems)
+        (add-err vtx
+                 :minItems
+                 {:message (str "Expected >= " items-count ", got " (count data))})
         vtx))]})
 
 (defmethod compile-key :maxItems
@@ -238,12 +241,10 @@
    :rules
    [(fn [vtx data opts]
       (if (> (count data) items-count)
-        (add-error vtx {:message (str "Expected <= " items-count ", got " (count data))}
-                   :maxItems)
+        (add-err vtx
+                 :maxItems
+                 {:message (str "Expected <= " items-count ", got " (count data))})
         vtx))]})
-
-;; TODO auto generate supported terms based on multi methods?
-;; useful for introspection and documentation
 
 (defmethod compile-key :const
   [_ ztx cfg]
@@ -251,18 +252,17 @@
    :rules
    [(fn [vtx data opts]
       ;; TODO refactor on select-keys and set intersection for perf
+      ;; TODO can a value be not map?
       (->> (:value cfg)
            (reduce (fn [vtx* [k v]]
                      (if-not (and (contains? data k) (= (get data k) v))
-                       (let [got-msg (if (nil? (get data k))
+                       (let [err-msg (if (nil? (get data k))
                                        {}
                                        {k (get data k)})
                              msg
-                             {:message (str "Expected '" {k v} "', got '" got-msg "'")
-                              :type "schema"
-                              :path (:path vtx)
-                              :schema (:schema vtx)}]
-                         (add-error vtx* msg))
+                             {:message (str "Expected '" {k v} "', got '" err-msg "'")
+                              :type "schema"}]
+                         (add-err vtx* :const msg))
                        vtx*))
                    vtx)))]})
 
@@ -275,10 +275,10 @@
                 (let [v (get-cached ztx sch)]
                   (fn [vtx data opts]
                     (if-let [d (contains? data k)]
-                      (-> (v (update vtx :path conj k)
-                             (get data k)
-                             opts)
-                          (assoc :path (:path vtx)))
+                      (->> (v (node-vtx vtx k k)
+                              (get data k)
+                              opts)
+                           (merge-vtx vtx))
                       vtx))))))})
 
 (defmethod compile-key :values
@@ -304,14 +304,10 @@
      [(fn [vtx data opts]
         (let [err-fn
               (fn [idx item]
-                (-> {:errors []
-                     :path (conj (:path vtx) idx)
-                     :schema (-> (:schema vtx) (conj :every))}
+                (-> (node-vtx vtx [:every idx] idx)
                     (v item opts)))]
           (->> (map-indexed err-fn data)
-               (reduce (fn [vtx* item]
-                         (update vtx* :errors into (:errors item)))
-                       vtx))))]}))
+               (reduce merge-vtx vtx))))]}))
 
 (defmethod compile-key :subset-of
   [_ ztx superset]
@@ -319,7 +315,7 @@
    :rules
    [(fn [vtx data opts]
       (if-not (clojure.set/subset? data superset)
-        (add-error vtx {:path (:path vtx) :type "set"} :subset-of)
+        (add-err vtx :subset-of {:type "set"})
         vtx))]})
 
 (defmethod compile-key :superset-of
@@ -328,7 +324,7 @@
    :rules
    [(fn [vtx data opts]
       (if-not (clojure.set/subset? subset data)
-        (add-error vtx {:path (:path vtx) :type "set"} :superset-of)
+        (add-err vtx :superset-of {:type "set"})
         vtx))]})
 
 (defmethod compile-key :regex
@@ -337,8 +333,8 @@
    :rules
    [(fn [vtx data opts]
       (if (not (re-find (re-pattern regex) data))
-        (add-error vtx {:message (str "Expected match /" (str regex) "/, got \"" data "\"")}
-                   :regex)
+        (add-err vtx :regex
+                 {:message (str "Expected match /" (str regex) "/, got \"" data "\"")})
         vtx))]})
 
 (defmethod compile-key :confirms
@@ -366,16 +362,16 @@
           (let [reqs (->> (select-keys (::data vtx) s) (remove nil?))]
             (if (empty? reqs)
               ;; TODO add message
-              (add-error vtx {:type "map.require"} :require)
+              (add-err vtx :require {:type "map.require"})
               vtx)))
 
         all-keys-fn
         (fn [vtx mk]
-          (add-error vtx
-                     {:type "require"
-                      :path (conj (:path vtx) mk)
-                      :schema (conj (:schema vtx) :require)
-                      :message (str mk " is required")}))]
+          (add-err vtx
+                   :require
+                   {:type "require"
+                    :message (str mk " is required")}
+                   mk))]
 
     {:when map?
      :rules
@@ -399,18 +395,24 @@
               {tags :zen/tags :as sch} (utils/get-symbol ztx sch-symbol)]
           (cond
             (nil? sch)
-            (add-error vtx {:message (str "Could not find schema " sch-symbol) :type "schema"})
+            (add-err vtx :schema-key
+                     {:message (str "Could not find schema " sch-symbol)
+                      :type "schema"})
 
             (not (contains? tags 'zen/schema))
-            (add-error vtx {:message (str "'" sch-symbol " should be tagged with zen/schema, but " tags)
-                            :type "schema"})
+            (add-err vtx :schema-key
+                     {:message (str "'" sch-symbol " should be tagged with zen/schema, but " tags)
+                      :type "schema"})
 
             (and sk-tags (not (clojure.set/subset? sk-tags tags)))
-            (add-error vtx {:message (str "'" sch-symbol " should be tagged with " sk-tags ", but " tags)
-                            :type "schema"})
+            (add-err vtx :schema-key
+                     {:message (str "'" sch-symbol " should be tagged with " sk-tags ", but " tags)
+                      :type "schema"})
 
             :else
-            (apply (get-cached ztx sch) [(update vtx :schema into [:schema-key sch-symbol]) data opts])))
+            (let [v (get-cached ztx sch)
+                  node-vtx* (node-vtx vtx [:schema-key sch-symbol])]
+              (->> (v node-vtx* data opts) (merge-vtx vtx)))))
         vtx))]})
 
 (defmethod compile-key :schema-index
@@ -423,14 +425,14 @@
               sch (utils/get-symbol ztx sch-symbol)]
           (cond
             (nil? sch)
-            (add-error vtx
-                       {:message (format "Could not find schema %s" sch-symbol)
-                        :type "schema"}
-                       :schema-index)
+            (add-err vtx
+                     :schema-index
+                     {:message (format "Could not find schema %s" sch-symbol)
+                      :type "schema"})
 
             :else
-            (apply (get-cached ztx sch)
-                   [(update vtx :schema into [:schema-index sch-symbol]) data opts]))) vtx))]})
+            (apply (get-cached ztx sch) [(node-vtx vtx [:schema-index sch-symbol]) data opts])))
+        vtx))]})
 
 (defmethod compile-key :nth
   [_ ztx cfg]
@@ -440,15 +442,8 @@
      [(fn [vtx data opts]
         (reduce (fn [vtx* [index v]]
                   (if-let [nth-el (get data index)]
-                    (let [{:keys [errors]}
-                          (-> {:errors []
-                               :path (conj (:path vtx) index)
-                               :schema (conj (:schema vtx) :nth)}
-                              (v nth-el opts))]
-                      (update vtx* :errors into errors))
-                    ;; TODO DISC do I need to raise an error here?
-                    (update vtx* :errors conj {:message "nth element not found in provided collection"
-                                               :path (conj (:path vtx*) index)
-                                               :schema (conj (:schema vtx*) :nth)
-                                               :type "schema"})))
-                vtx schemas))]}))
+                    (let [node-vtx* (v (node-vtx vtx* [:nth index] index) nth-el opts)]
+                      (merge-vtx vtx* node-vtx*))
+                    vtx))
+                vtx
+                schemas))]}))

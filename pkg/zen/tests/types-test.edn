@@ -449,7 +449,7 @@
      [{:type "string.regex"
        :path [:a 3]
        :schema
-       [vector-schema-every :every :a 3 :regex]}]}}
+       [vector-schema-every :a :every 3 :regex]}]}}
 
    {:desc "Validate every value in collection"
     :do {:type zen.test/validate
@@ -482,7 +482,18 @@
     :do {:type zen.test/validate
          :schema vector-schema-index
          :data {:a [vector-fn-first-string-is-hello "abc"]}}
-    :match {:errors [{:type "string.regex"}]}}
+    :match {:errors
+            [{:type "string.regex"
+              :path [:a 1]
+              :message "Expected match /hello/, got \"abc\""
+              :schema
+              [zen.tests.types-test/vector-schema-index
+               :a
+               :schema-index
+               zen.tests.types-test/vector-fn-first-string-is-hello
+               :nth
+               1
+               :regex]}]}}
 
    {:desc "valid string provided"
     :do {:type zen.test/validate
@@ -536,16 +547,15 @@
        :message "Expected <= 6, got 7"
        :schema [list-schema :a :maxItems]}]}}
 
-   {:desc "Invalid coll for :every check"
+   {:desc "Invalid list for :every check"
     :do {:type zen.test/validate :schema list-every :data {:a ("beta" "ceta")}}
     :match
-    ;; TODO think about better path in schema
     {:errors
      [{:path [:a 0]
-       :schema [list-every :every :a 0 :regex]
+       :schema [list-every :a :every 0 :regex]
        :type "string.regex"}
       {:path [:a 1]
-       :schema [list-every :every :a 1 :regex]
+       :schema [list-every :a :every 1 :regex]
        :type "string.regex"}]}}
 
    {:desc "Valid coll for :every check"
@@ -603,10 +613,10 @@
     {:errors
      [{:path [:a 1]
        :type "integer.type"
-       :schema [set-schema :every :a 1]}
+       :schema [set-schema :a :every 1 :type]}
       {:path [:a 3]
        :type "integer.type"
-       :schema [set-schema :every :a 3]}]}}
+       :schema [set-schema :a :every 3 :type]}]}}
 
    {:desc "fewer values in given set than was defined in :minItems"
     :do {:type zen.test/validate
@@ -701,6 +711,7 @@
 
  const-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "const validations in map"
   :steps
   [{:desc "given map does not contain the key"
@@ -720,7 +731,10 @@
        :type "schema"
        :message "Expected '{:age 42}', got '{:age \"a lot\"}'"
        :schema [const-schema]}
-      {}]}}
+      {:message "Expected type of 'integer, got 'string",
+       :path [:age],
+       :type "integer.type",
+       :schema [zen.tests.types-test/const-schema :age :type]}]}}
 
    {:desc "Checks if giving map holds wrong value"
     :do {:type zen.test/validate :schema const-schema :data {:age 11}}
@@ -742,7 +756,7 @@
   :keys {:gender {:type zen/string
                   :enum #{{:value "Female"}
                           {:value "Male"}}
-                  ;; TODO discuss if we need to change meta for v1
+                  ;; TODO DISC if we need to change meta for v1
                   #_[{:value "Female"}
                      {:value "Male"}]}}}
 
@@ -757,13 +771,13 @@
     {:errors
      [{:message "Expected '42' in #{\"Male\" \"Female\"}"
        :type "enum"
-       :schema [enums-schema :gender]
+       :schema [enums-schema :gender :enum]
        :path [:gender]}
 
       {:path [:gender]
        :type "string.type"
        :message "Expected type of 'string, got 'long"
-       :schema [enums-schema :gender]}]}}
+       :schema [enums-schema :gender :type]}]}}
 
    {:desc "given map has wrong string value"
     :do {:type zen.test/validate :schema enums-schema :data {:gender "Dunno"}}
@@ -771,7 +785,7 @@
     {:errors [{:path [:gender]
                :type "enum"
                :message "Expected 'Dunno' in #{\"Male\" \"Female\"}"
-               :schema [enums-schema :gender]}]}}
+               :schema [enums-schema :gender :enum]}]}}
 
    {:desc "valid data given"
     :do {:type zen.test/validate :schema enums-schema :data {:gender "Female"}}

@@ -40,10 +40,11 @@
    {:desc "ref type is invalid"
     :do {:type zen.test/validate :schema add-txt-key :data {:name "str" :txt 43}}
     :match
-    {:errors [{:path [:txt]
-               :type "string.type"
-               :message "Expected type of 'string, got 'long"
-               :schema [add-txt-key :schema-key str #_:keys :txt]}]}}
+    {:errors
+     [{:path [:txt]
+       :type "string.type"
+       :message "Expected type of 'string, got 'long"
+       :schema [add-txt-key :schema-key str #_:keys :txt]}]}}
 
    {:desc "minLength constraint is not satisfied"
     :do {:type zen.test/validate :schema add-txt-key :data {:name "str" :txt "ab"}}
