@@ -14,15 +14,13 @@
 
     (r/zen-read-ns ztx 'zen.tests.boolean-test)
 
-    (r/zen-read-ns ztx 'zen.tests.types-test)
-
     (r/zen-read-ns ztx 'zen.tests.case-test)
 
     (r/zen-read-ns ztx 'zen.tests.schema-key-test)
 
-    (r/run-tests ztx))
+    (r/zen-read-ns ztx 'zen.tests.types-test)
 
-  )
+    (r/run-tests ztx)))
 
 ;; to implement - exclusive-keys
 ;; https://github.com/HealthSamurai/sansara/blob/master/box/zrc/aidbox/rest/acl.edn#L101

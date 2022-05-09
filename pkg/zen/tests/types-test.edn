@@ -409,18 +409,6 @@
              :every {:type zen/string
                      :regex "hello"}}}}
 
- vector-schema-index
- {:zen/tags #{zen/schema}
-  :type zen/map
-  :keys {:a {:type zen/vector
-             :schema-index {:index 0 :ns "zen.keys-test"}}}}
-
- vector-fn-first-string-is-hello
- {:zen/tags #{zen/schema}
-  :type zen/vector
-  :nth {1 {:type zen/string
-           :regex "hello"}}}
-
  vector-test ;; TODO :schema-index validation
  {:zen/tags #{zen.test/case}
   :title "Vector validations in map"
@@ -474,21 +462,33 @@
     :match
     {:errors zen.test/nil?}}]}
 
- #_vector-schema-key&nth-validation
- #_{:zen/tags #{zen.test/case}
-    :title "Get schema by index"
-    :steps
-    [{:desc "Invalid coll"
-      :do {:type zen.test/validate
-           :schema vector-schema-index
-           :data {:a (vector-fn-first-string-is-hello "abc")}}
-      :match {:errors [{:type "string.regex"}]}}
+ vector-schema-index
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/vector
+             :schema-index {:index 0 :ns "zen.tests.types-test"}}}}
 
-     {:desc "Valid coll"
-      :do {:type zen.test/validate
-           :schema vector-schema-index
-           :data {:a (vector-fn-first-string-is-hello "hello")}}
-      :match {:errors zen.test/nil?}}]}
+ vector-fn-first-string-is-hello
+ {:zen/tags #{zen/schema}
+  :type zen/vector
+  :nth {1 {:type zen/string
+           :regex "hello"}}}
+
+ vector-schema-key&nth-validation
+ {:zen/tags #{zen.test/case}
+  :title "resolve schema by index"
+  :steps
+  [{:desc "invalid string provided"
+    :do {:type zen.test/validate
+         :schema vector-schema-index
+         :data {:a [vector-fn-first-string-is-hello "abc"]}}
+    :match {:errors [{:type "string.regex"}]}}
+
+   {:desc "valid string provided"
+    :do {:type zen.test/validate
+         :schema vector-schema-index
+         :data {:a [vector-fn-first-string-is-hello "hello"]}}
+    :match {:errors zen.test/nil?}}]}
 
  list-schema
  {:zen/tags #{zen/schema}

@@ -413,4 +413,42 @@
             (apply (get-cached ztx sch) [(update vtx :schema into [:schema-key sch-symbol]) data opts])))
         vtx))]})
 
+(defmethod compile-key :schema-index
+  [_ ztx {si :index si-ns :ns}]
+  {:when sequential?
+   :rules
+   [(fn [vtx data opts]
+      (if-let [sch-nm (or (get data si) (nth data si))]
+        (let [sch-symbol (if si-ns (symbol si-ns (name sch-nm)) sch-nm)
+              sch (utils/get-symbol ztx sch-symbol)]
+          (cond
+            (nil? sch)
+            (add-error vtx
+                       {:message (format "Could not find schema %s" sch-symbol)
+                        :type "schema"}
+                       :schema-index)
 
+            :else
+            (apply (get-cached ztx sch)
+                   [(update vtx :schema into [:schema-index sch-symbol]) data opts]))) vtx))]})
+
+(defmethod compile-key :nth
+  [_ ztx cfg]
+  (let [schemas (map (fn [[index v]] [index (get-cached ztx v)]) cfg)]
+    {:when sequential?
+     :rules
+     [(fn [vtx data opts]
+        (reduce (fn [vtx* [index v]]
+                  (if-let [nth-el (get data index)]
+                    (let [{:keys [errors]}
+                          (-> {:errors []
+                               :path (conj (:path vtx) index)
+                               :schema (conj (:schema vtx) :nth)}
+                              (v nth-el opts))]
+                      (update vtx* :errors into errors))
+                    ;; TODO DISC do I need to raise an error here?
+                    (update vtx* :errors conj {:message "nth element not found in provided collection"
+                                               :path (conj (:path vtx*) index)
+                                               :schema (conj (:schema vtx*) :nth)
+                                               :type "schema"})))
+                vtx schemas))]}))
