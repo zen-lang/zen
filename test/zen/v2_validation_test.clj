@@ -1,4 +1,4 @@
-(ns ten.v2-validation-test
+(ns zen.v2-validation-test
   (:require
    [zen.test-runner :as r]
    [clojure.test :refer [deftest is]]
