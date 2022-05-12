@@ -22,7 +22,8 @@
    'zen/set {:fn set?
              :to-str "set"}
 
-   'zen/map map?
+   'zen/map {:fn map?
+             :to-str "map"}
 
    'zen/vector {:fn vector?
                 :to-str "vector"}
@@ -335,18 +336,21 @@
 
 (defmethod compile-key :confirms
   [_ ztx ks]
-  ;; TODO think about refactoring on function composition instead of reduce
-  (let [vs
+  (let [apply-fn
+        (fn [[schema-name v] [vtx data opts]]
+          [(merge-vtx vtx (v (node-vtx vtx [:confirms schema-name]) data opts))
+           data
+           opts])
+
+        comp-fn
         (->> ks
              (map #(utils/get-symbol ztx %))
-             (map (fn [sch] [(:zen/name sch) (get-cached ztx sch)])))]
-    {:when map?
-     :rules
+             (map (fn [sch] [(:zen/name sch) (get-cached ztx sch)]))
+             (map #(partial apply-fn %))
+             (apply comp))]
+    {:rules
      [(fn [vtx data opts]
-        (reduce (fn [vtx* [schema-name v]]
-                  (merge-vtx vtx* (v (node-vtx vtx* [:confirms schema-name]) data opts)))
-                vtx
-                vs))]}))
+        (first (comp-fn [vtx data opts])))]}))
 
 (defmethod compile-key :require
   [_ ztx ks]
@@ -441,8 +445,6 @@
                 vtx
                 schemas))]}))
 
-
-
 (defmethod compile-key :keyname-schemas
   [_ ztx {:keys [tags]}]
   {:rules
@@ -462,3 +464,46 @@
                   vtx*)
                 vtx*))]
         (reduce rule-fn vtx data)))]})
+
+(defn is-exclusive? [group data]
+  (->> group
+       (filter #(->> (if (set? %) % #{%})
+                     (select-keys data)
+                     seq))
+       (bounded-count 2)
+       (> 2)))
+
+(defmethod compile-key :exclusive-keys
+  [_ ztx groups]
+  (let [err-fn
+        (fn [group [vtx data]]
+          (if (is-exclusive? group data)
+            [vtx data]
+            (let [err-msg
+                  (format "Expected only one of keyset %s, but present %s"
+                          (str/join " or " group)
+                          (keys data))
+                  vtx*
+                  (add-err vtx :exclusive-keys
+                           {:message err-msg
+                            :type "map.exclusive-keys"})]
+              [vtx* data])))
+
+        comp-fn
+        (->> groups
+             (map #(partial err-fn %))
+             (apply comp))]
+
+    {:rules [(fn [vtx data opts]
+               (first (comp-fn [vtx data])))]}))
+
+(defmethod compile-key :key
+  [_ ztx sch]
+  (let [v (get-cached ztx sch)]
+    {:rules
+     [(fn [vtx data opts]
+        (reduce (fn [vtx* [k _]]
+                  (merge-vtx vtx* (v (node-vtx vtx* :key k) k opts)))
+                vtx
+                data))]}))
+

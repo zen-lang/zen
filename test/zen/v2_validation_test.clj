@@ -22,6 +22,8 @@
 
     (r/zen-read-ns ztx 'zen.tests.keyname-schemas-test)
 
+    (r/zen-read-ns ztx 'zen.tests.map-test)
+
     (r/run-tests ztx)))
 
 ;; edn

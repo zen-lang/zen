@@ -1,13 +1,6 @@
-{ns zen.map-test
+{ns zen.tests.map-test
 
  import #{zen.test}
-
- m1
- {:zen/tags #{zen/schema}
-  :type zen/map
-  :require #{:key1}
-  :keys {:key1 {:type zen/string}
-         :key2 {:type zen/string}}}
 
  color-channel
  {:zen/tags #{zen/schema}
@@ -30,6 +23,7 @@
 
  values&key-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title ":values & :key test"
   :steps
   [{:desc "Valid map"
@@ -39,33 +33,40 @@
                 {:x -1, :y 1} {:r 255, :g 127, :b 0}}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Valid map with undeclared key"
     :do {:type zen.test/validate
          :schema picture-map
          :data {{:x 0, :y 0} {:r 255, :g 127, :b 0, :a 50}}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Invalid map, values do not pass schema"
     :do {:type zen.test/validate
          :schema picture-map
          :data {{:x 0, :y "non-number"} {:r 255, :g 255, :b 300}}}
     :match
-    {:errors [{:type "integer.max",
-               :path [{:x 0, :y "non-number"} :b],
-               :schema [zen.map-test/picture-map :values :values :confirms zen.map-test/color-channel :max]}
-              {:type "primitive-type",
-               :path [{:x 0, :y "non-number"} :y],
-               :schema [zen.map-test/picture-map :key :values]}
-              nil]}}
+    {:errors
+     [{:type "integer.max"
+       :message "Expected <= 255, got 300"
+       :path [{:x 0 :y "non-number"} :b]
+       :schema [zen.tests.map-test/picture-map :values :values :confirms zen.tests.map-test/color-channel :max]}
+
+      {:type "integer.type"
+       :message "Expected type of 'integer, got 'string"
+       :path [{:x 0 :y "non-number"} :y]
+       :schema [zen.tests.map-test/picture-map :key :values :type]}]}}
+
    {:desc "Invalid map, keys do not pass schema"
     :do {:type zen.test/validate
          :schema picture-map
          :data {[0 0] {:r 255, :g 255, :b 127}}}
     :match
-    {:errors [{:type "type",
-               :path [[0, 0]]
-               :schema [zen.map-test/picture-map :key]}
-              nil]}}]}
+    {:errors
+     [{:type "map.type"
+       :message"Expected type of 'map, got 'persistentvector"
+       :path [0 0] #_[[0 0]]
+       :schema [zen.tests.map-test/picture-map :key :type]}]}}]}
 
  map-with-unknown-keys-open-validation
  {:zen/tags #{zen/schema}
@@ -80,8 +81,8 @@
   :validation-type :closed
   :keys {:b {:type zen/number}}}
 
- validation-types-test
- {:zen/tags #{zen.test/case}
+ #_validation-types-test
+ #_{:zen/tags #{zen.test/case}
   :title "Open/Close validation types test"
   :steps
   [{:desc "Close validation"
@@ -114,24 +115,34 @@
          :data {:b :beta :c :ceta}}
     :match
     {:errors [{:type "map.exclusive-keys"}]}}
+
    {:desc "Invalid key-set"
     :do {:type zen.test/validate
          :schema exclusive-keys-map
          :data {:a :aeta :b :beta}}
     :match
     {:errors [{:type "map.exclusive-keys"}]}}
+
    {:desc "Valid key-set"
     :do {:type zen.test/validate
          :schema exclusive-keys-map
          :data {:b :beta}}
     :match
     {:errors zen.test/nil?}}
+
    {:desc "Valid key-set"
     :do {:type zen.test/validate
          :schema exclusive-keys-map
          :data {:a :aeta :c :ceta :d :deta}}
     :match
     {:errors zen.test/nil?}}]}
+
+ m1
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{:key1}
+  :keys {:key1 {:type zen/string}
+         :key2 {:type zen/string}}}
 
  simple-test
  {:zen/tags #{zen.test/case}
