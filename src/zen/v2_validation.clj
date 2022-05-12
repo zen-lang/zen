@@ -288,13 +288,9 @@
      :rules
      [(fn [vtx data opts]
         (reduce (fn [vtx* [key value]]
-                  (let [{:keys [errors]}
-                        (-> {:errors []
-                             :path (conj (:path vtx) key)
-                             :schema (conj (:schema vtx) :values)}
-                            (v value opts))]
-                    (update vtx* :errors into errors)))
-                vtx data))]}))
+                  (merge-vtx vtx* (v (node-vtx vtx* :values key) value opts)))
+                vtx
+                data))]}))
 
 (defmethod compile-key :every
   [_ ztx sch]
@@ -348,12 +344,9 @@
      :rules
      [(fn [vtx data opts]
         (reduce (fn [vtx* [schema-name v]]
-                  (let [result
-                        (-> {:errors [] :path (:path vtx)
-                             :schema (into (:schema vtx) [:confirms schema-name])}
-                            (v data opts))]
-                    (update vtx* :errors into (:errors result))))
-                vtx vs))]}))
+                  (merge-vtx vtx* (v (node-vtx vtx* [:confirms schema-name]) data opts)))
+                vtx
+                vs))]}))
 
 (defmethod compile-key :require
   [_ ztx ks]
@@ -447,3 +440,25 @@
                     vtx))
                 vtx
                 schemas))]}))
+
+
+
+(defmethod compile-key :keyname-schemas
+  [_ ztx {:keys [tags]}]
+  {:rules
+   [(fn [vtx data opts]
+      (let [rule-fn
+            (fn [vtx* [schema-key data*]]
+              (if-let [sch (and (qualified-ident? schema-key) (utils/get-symbol ztx (symbol schema-key)))]
+                ;; add test on nil case
+                (if (or (nil? tags)
+                        (clojure.set/subset? tags (:zen/tags sch)))
+                      (merge-vtx
+                       vtx*
+                       (apply (get-cached ztx sch)
+                              [(node-vtx vtx* [:keyname-schemas schema-key] schema-key)
+                               data*
+                               opts]))
+                  vtx*)
+                vtx*))]
+        (reduce rule-fn vtx data)))]})

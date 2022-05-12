@@ -1,4 +1,4 @@
-(ns zen.v2-validation-test
+(ns ten.v2-validation-test
   (:require
    [zen.test-runner :as r]
    [clojure.test :refer [deftest is]]
@@ -20,7 +20,13 @@
 
     (r/zen-read-ns ztx 'zen.tests.types-test)
 
+    (r/zen-read-ns ztx 'zen.tests.keyname-schemas-test)
+
     (r/run-tests ztx)))
+
+;; edn
+;; validator_test
+;; optimize, and benchmark, super compilation
 
 ;; to implement - exclusive-keys
 ;; https://github.com/HealthSamurai/sansara/blob/master/box/zrc/aidbox/rest/acl.edn#L101
