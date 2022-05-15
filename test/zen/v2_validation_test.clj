@@ -24,12 +24,23 @@
 
     (r/zen-read-ns ztx 'zen.tests.map-test)
 
+    (r/zen-read-ns ztx 'zen.tests.core-validate-test)
+
     (r/run-tests ztx)))
+
+(comment
+  (do
+    (def ztx (zen/new-context {:unsafe true}))
+
+    (r/zen-read-ns ztx 'zen.tests.core-validate-test)
+
+    (r/run-test ztx 'zen.tests.core-validate-test/bad-confirms-test)
+
+    #_(r/run-tests ztx)))
 
 ;; edn
 ;; validator_test
 ;; optimize, and benchmark, super compilation
-
 ;; to implement - exclusive-keys
 ;; https://github.com/HealthSamurai/sansara/blob/master/box/zrc/aidbox/rest/acl.edn#L101
 

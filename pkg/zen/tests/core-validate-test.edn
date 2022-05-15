@@ -1,4 +1,4 @@
-{ns zen.core-validate-test
+{ns zen.tests.core-validate-test
 
  import #{zen.test}
 
@@ -10,19 +10,33 @@
 
  validate-sort-by-error-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title    "zen.core/validate sort-by class cast error"
-  :steps [{:desc "Data is valid, no errors"
-           :do {:type zen.test/validate
-                :schema keys-with-different-types
-                :data {:keyword :k
-                       "string" "s"}}
-           :match {:errors [nil]}}
-          {:desc "Data is invalid, errors in return"
-           :do {:type zen.test/validate
-                :schema keys-with-different-types
-                :data {:keyword "s"
-                       "string" :k}}
-           :match {:errors [{} {} nil]}}]}
+  :steps
+  [{:desc "valid data given"
+    :do {:type zen.test/validate
+         :schema keys-with-different-types
+         :data {:keyword :k
+                "string" "s"}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "invalid data given"
+    :do {:type zen.test/validate
+         :schema keys-with-different-types
+         :data {:keyword "s"
+                "string" :k}}
+    :match {:errors
+            [{:message "Expected type of 'string, got 'keyword",
+              :path ["string"],
+              :type "string.type",
+              :schema
+              [zen.tests.core-validate-test/keys-with-different-types "string" :type]}
+
+             {:message "Expected type of 'keyword, got 'string",
+              :path [:keyword],
+              :type "keyword.type",
+              :schema
+              [zen.tests.core-validate-test/keys-with-different-types :keyword :type]}]}}]}
 
  bad-schema
  {:zen/tags #{zen/schema}
@@ -34,16 +48,18 @@
 
  bad-schema-test
  {:zen/tags #{zen.test/case}
-  :title    "Tests if schema has errors"
-  :steps [{:desc "Schema contains invalid key"
-           :do {:type zen.test/validate-schema
-                :schema bad-schema}
-           :match {:errors [{:path [:invalid-key], :type "unknown-key"}
-                            nil]}}
+  :title "Tests if schema has errors"
+  :steps [#_{:desc "Schema contains invalid key"
+             :do {:type zen.test/validate-schema
+                  :schema bad-schema}
+             :match
+             {:errors
+              [{:path [:invalid-key], :type "unknown-key"}]}}
+
           {:desc "Schema is correct"
            :do {:type zen.test/validate-schema
                 :schema good-schema}
-           :match {:errors [nil]}}]}
+           :match {:errors zen.test/empty?}}]}
 
  not-schema
  {}
@@ -62,15 +78,19 @@
 
  bad-confirms-test
  {:zen/tags #{zen.test/case}
-  :title    "Tests each element of :confirms tagged as a schema"
+  :only-for #{:v2}
+  :title "each element of :confirms should be tagged as zen/schema"
   :steps [{:desc "Confirms contains schema without schema tag"
            :do {:type zen.test/validate-schema
                 :schema schema-with-bad-confirms}
-           :match {:errors [{:type "symbol",
-                             :path [:confirms 0],
-                             :schema [zen/schema :keys :confirms :every :tags]}
-                            nil]}}
+           :match
+           {:errors
+            [{:type "symbol"
+              :message "Expected symbol 'zen.tests.core-validate-test/not-schema tagged with '#{zen/schema}, but only #{}"
+              :path [:confirms 0]
+              :schema [zen/schema :confirms :every 0 :tags]}]}}
+
           {:desc "Confirms contains schema with schema tag"
            :do {:type zen.test/validate-schema
                 :schema schema-with-good-confirms}
-           :match {:errors [nil]}}]}}
+           :match {:errors zen.test/empty?}}]}}

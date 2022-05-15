@@ -25,6 +25,7 @@
 
  add-txt-key-tests
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Schema-key validations in map"
   :steps
   [{:desc "schema does not contain required tags"

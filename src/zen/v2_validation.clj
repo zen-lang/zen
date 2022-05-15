@@ -338,19 +338,20 @@
   [_ ztx ks]
   (let [apply-fn
         (fn [[schema-name v] [vtx data opts]]
-          [(merge-vtx vtx (v (node-vtx vtx [:confirms schema-name]) data opts))
-           data
-           opts])
+          (list
+           (merge-vtx vtx (v (node-vtx vtx [:confirms schema-name]) data opts)) data opts))
 
         comp-fn
         (->> ks
              (map #(utils/get-symbol ztx %))
-             (map (fn [sch] [(:zen/name sch) (get-cached ztx sch)]))
+             (map (fn [sch] (list (:zen/name sch) (get-cached ztx sch))))
              (map #(partial apply-fn %))
              (apply comp))]
     {:rules
      [(fn [vtx data opts]
-        (first (comp-fn [vtx data opts])))]}))
+        (-> (list vtx data opts)
+            comp-fn
+            first))]}))
 
 (defmethod compile-key :require
   [_ ztx ks]
@@ -455,12 +456,12 @@
                 ;; add test on nil case
                 (if (or (nil? tags)
                         (clojure.set/subset? tags (:zen/tags sch)))
-                      (merge-vtx
-                       vtx*
-                       (apply (get-cached ztx sch)
-                              [(node-vtx vtx* [:keyname-schemas schema-key] schema-key)
-                               data*
-                               opts]))
+                  (merge-vtx
+                   vtx*
+                   (apply (get-cached ztx sch)
+                          [(node-vtx vtx* [:keyname-schemas schema-key] schema-key)
+                           data*
+                           opts]))
                   vtx*)
                 vtx*))]
         (reduce rule-fn vtx data)))]})
@@ -478,7 +479,7 @@
   (let [err-fn
         (fn [group [vtx data]]
           (if (is-exclusive? group data)
-            [vtx data]
+            (list vtx data)
             (let [err-msg
                   (format "Expected only one of keyset %s, but present %s"
                           (str/join " or " group)
@@ -487,15 +488,18 @@
                   (add-err vtx :exclusive-keys
                            {:message err-msg
                             :type "map.exclusive-keys"})]
-              [vtx* data])))
+              (list vtx* data))))
 
         comp-fn
         (->> groups
              (map #(partial err-fn %))
              (apply comp))]
 
-    {:rules [(fn [vtx data opts]
-               (first (comp-fn [vtx data])))]}))
+    {:rules
+     [(fn [vtx data opts]
+        (-> (list vtx data)
+            comp-fn
+            first))]}))
 
 (defmethod compile-key :key
   [_ ztx sch]
@@ -506,4 +510,17 @@
                   (merge-vtx vtx* (v (node-vtx vtx* :key k) k opts)))
                 vtx
                 data))]}))
+
+(defmethod compile-key :tags
+  [_ ztx sch-tags]
+  {:when symbol?
+   :rules
+   [(fn [vtx data opts]
+      (let [{:keys [zen/tags]} (utils/get-symbol ztx data)]
+        (if (not (clojure.set/superset? tags sch-tags))
+          (add-err vtx :tags
+                   {:message (format "Expected symbol '%s tagged with '%s, but only %s"
+                                     (str data) (str sch-tags) (or tags #{}))
+                    :type "symbol"})
+          vtx)))]})
 

@@ -727,14 +727,14 @@
     :do {:type zen.test/validate :schema const-schema :data {:age "a lot"}}
     :match
     {:errors
-     [{:path []
-       :type "schema"
-       :message "Expected '{:age 42}', got '{:age \"a lot\"}'"
-       :schema [const-schema]}
-      {:message "Expected type of 'integer, got 'string",
+     [{:message "Expected type of 'integer, got 'string",
        :path [:age],
        :type "integer.type",
-       :schema [zen.tests.types-test/const-schema :age :type]}]}}
+       :schema [zen.tests.types-test/const-schema :age :type]}
+      {:path []
+       :type "schema"
+       :message "Expected '{:age 42}', got '{:age \"a lot\"}'"
+       :schema [const-schema]}]}}
 
    {:desc "Checks if giving map holds wrong value"
     :do {:type zen.test/validate :schema const-schema :data {:age 11}}

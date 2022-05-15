@@ -28,9 +28,10 @@
     (is (empty? (:errors (apply fn [ztx '#{zen/schema} sch]))))
     (apply fn [ztx #{(get-in step [:do :schema])} (get-in step [:do :data])])))
 
-(defmethod do-step 'zen.test/validate-schema [ztx step]
-  (let [sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
-    (zen.core/validate ztx '#{zen/schema} sch)))
+(defmethod do-step 'zen.test/validate-schema [ztx step version]
+  (let [fn (get versions version)
+        sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
+    (apply fn [ztx '#{zen/schema} sch])))
 
 (defmulti report-step (fn [_ztx step _result _test-case] (get-in step [:do :type])))
 
@@ -58,8 +59,12 @@
       (let [test-def (zen/get-symbol ztx test-name)
             scope-for (:only-for test-def)]
         (when (or (nil? scope-for) (contains? scope-for version))
-          (let [step-res (-> (do-step ztx step version)
-                             (update :errors #(sort-by :path %)))
+          (let [comp-fn
+                (fn [a b]
+                  (compare (str a) (str b)))
+                step-res (-> (do-step ztx step version)
+                             (update :errors (fn [errs] (sort-by :path comp-fn errs))))
+
                 match-res (matcho/match step-res (translate-to-matcho (:match step)))]
             (when-not (true? match-res)
               (report-step ztx step match-res test-def)
@@ -85,8 +90,10 @@
             version (or (not-empty versions) [:v1 :v2])]
         (do (prn step)
             (when (or (nil? (:only-for test-def)) (contains? (:only-for test-def) version))
-              (let [step-res  (-> (do-step ztx step version)
-                                  (update :errors #(sort-by :path %)))
+              (let [comp-fn (fn [a b]
+                              (compare (str a) (str b)))
+                    step-res  (-> (do-step ztx step version)
+                                  (update :errors (fn [errs] (sort-by :path comp-fn errs))))
                     match-res (matcho/match step-res (translate-to-matcho (:match step)))]
                 (when-not (true? match-res)
                   (report-step ztx step match-res test-def)
