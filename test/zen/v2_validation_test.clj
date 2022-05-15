@@ -26,15 +26,17 @@
 
     (r/zen-read-ns ztx 'zen.tests.core-validate-test)
 
+    (r/zen-read-ns ztx 'zen.tests.effects-test)
+
     (r/run-tests ztx)))
 
 (comment
   (do
     (def ztx (zen/new-context {:unsafe true}))
 
-    (r/zen-read-ns ztx 'zen.tests.core-validate-test)
+    (r/zen-read-ns ztx 'zen.tests.effects-test)
 
-    (r/run-test ztx 'zen.tests.core-validate-test/bad-confirms-test)
+    (r/run-test ztx 'zen.tests.effects-test/fx-schema-test :v2)
 
     #_(r/run-tests ztx)))
 

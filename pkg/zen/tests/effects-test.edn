@@ -1,4 +1,4 @@
-{ns zen.effects-test
+{ns zen.tests.effects-test
  import #{zen.test}
 
  not-fx
@@ -14,7 +14,7 @@
   :type     zen/map
   :keys     {:name  {:type zen/string}
              :email {:type zen/string}}
-  only-one      [:name :email]}
+  only-one [:name :email]}
 
  schema-with-good-fx
  {:zen/tags #{zen/schema}
@@ -33,36 +33,40 @@
 
  fx-schema-test
  {:zen/tags #{zen.test/case}
-  :title "Checks if fx is tagged with zen/schema-fx"
+  :title "fx is tagged with zen/schema-fx"
+  :only-for #{:v2}
   :steps
   [{:desc "Fx is tagged and schema is correct"
     :do {:type zen.test/validate-schema
          :schema schema-with-good-fx}
-    :match {:errors [nil]}}
+    :match {:errors zen.test/empty?}}
+
    {:desc "Fx is tagged but args have errors, schema is incorrect"
     :do {:type zen.test/validate-schema
          :schema schema-with-good-fx&bad-arg}
-    :match {:errors [{:type "type",
-                      :path [zen.effects-test/only-one],
-                      :schema [zen/schema :keyname-schemas zen.effects-test/only-one]}
-                     nil]}}
-   {:desc "Fx is not tagged, schema is incorrect"
-    :do {:type zen.test/validate-schema
-         :schema schema-with-bad-fx}
-    :match {:errors [{:type "unknown-key", :path [zen.effects-test/not-fx]}
-                     nil]}}]}
+    :match {:errors
+            [{:type "vector.type"
+              :message "Expected type of 'vector, got 'long"
+              :path [zen.tests.effects-test/only-one]
+              :schema [zen/schema :keyname-schemas zen.tests.effects-test/only-one :type]}]}}
+
+   #_{:desc "Fx is not tagged, schema is incorrect"
+      :do {:type zen.test/validate-schema
+           :schema schema-with-bad-fx}
+      :match {:errors [{:type "unknown-key"
+                        :path [zen.effects-test/not-fx]}]}}]}
 
  fx-tests
  {:zen/tags #{zen.test/case}
-  :title ""
+  :title "effect is emitted"
   :steps
   [{:desc "FX emit"
     :do {:type zen.test/validate
          :schema subj
          :data {:name "somename" :email "somemail@mail.com"}}
     :match {:errors zen.test/nil?
-            :effects [{:name   zen.effects-test/only-one
-                       :path   [zen.effects-test/only-one]
-                       :data   {:name "somename" :email "somemail@mail.com"}
-                       :params [:name :email]}
-                      zen.test/nil?]}}]}}
+            :effects
+            [{:name   zen.tests.effects-test/only-one
+              :path   [zen.tests.effects-test/only-one]
+              :data   {:name "somename" :email "somemail@mail.com"}
+              :params [:name :email]}]}}]}}

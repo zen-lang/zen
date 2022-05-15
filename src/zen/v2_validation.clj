@@ -52,8 +52,6 @@
 
 (defmulti compile-key (fn [k ztx kfg] k))
 
-(defmethod compile-key :default [k ztx kfg])
-
 (defmulti compile-type-check (fn [tp ztx] tp))
 
 (defn *compile-schema [ztx schema]
@@ -105,6 +103,12 @@
             (assoc :type err-type)
             (assoc :schema (conj (:schema vtx) sch-key)))]
     (update vtx :errors conj err*)))
+
+(defn add-fx [vtx sch-key fx & data-path]
+  (let [fx*
+        (-> fx
+            (assoc :path (conj (:path vtx) sch-key)))]
+    (update vtx :effects conj fx*)))
 
 (defn into* [acc v]
   (cond
@@ -453,7 +457,7 @@
       (let [rule-fn
             (fn [vtx* [schema-key data*]]
               (if-let [sch (and (qualified-ident? schema-key) (utils/get-symbol ztx (symbol schema-key)))]
-                ;; add test on nil case
+                ;; TODO add test on nil case
                 (if (or (nil? tags)
                         (clojure.set/subset? tags (:zen/tags sch)))
                   (merge-vtx
@@ -465,6 +469,20 @@
                   vtx*)
                 vtx*))]
         (reduce rule-fn vtx data)))]})
+
+(defmethod compile-key :default [schema-key ztx sch-params]
+  ;; it is assumed that if no compile key impl found then effect is emitted
+  (let [{:keys [zen/tags] :as sch}
+        (and (qualified-ident? schema-key)
+             (utils/get-symbol ztx (symbol schema-key)))]
+    {:rules
+     [(fn [vtx data opts]
+        (if (contains? tags 'zen/schema-fx)
+          (add-fx vtx (:zen/name sch)
+                  {:name (:zen/name sch)
+                   :params sch-params
+                   :data data})
+          vtx))]}))
 
 (defn is-exclusive? [group data]
   (->> group
