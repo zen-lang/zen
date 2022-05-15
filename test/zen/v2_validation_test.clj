@@ -28,21 +28,7 @@
 
     (r/zen-read-ns ztx 'zen.tests.effects-test)
 
+    (r/zen-read-ns ztx 'zen.tests.fn-test)
+
     (r/run-tests ztx)))
-
-(comment
-  (do
-    (def ztx (zen/new-context {:unsafe true}))
-
-    (r/zen-read-ns ztx 'zen.tests.effects-test)
-
-    (r/run-test ztx 'zen.tests.effects-test/fx-schema-test :v2)
-
-    #_(r/run-tests ztx)))
-
-;; edn
-;; validator_test
-;; optimize, and benchmark, super compilation
-;; to implement - exclusive-keys
-;; https://github.com/HealthSamurai/sansara/blob/master/box/zrc/aidbox/rest/acl.edn#L101
 

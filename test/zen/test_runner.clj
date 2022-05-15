@@ -20,7 +20,7 @@
 (defmulti do-step (fn [_ztx step version] (get-in step [:do :type])))
 
 (defmethod do-step :default [_ztx _step version]
-  (matcho/match :step-type-is-not-implemented true))
+  (assert false "step type not found"))
 
 (defmethod do-step 'zen.test/validate [ztx step version]
   (let [fn (get versions version)
@@ -73,6 +73,7 @@
 ;; TODO add id to steps in zen test
 (defn run-step [ztx test-name step]
   (let [test-def (zen/get-symbol ztx test-name)
+        _ (assert test-def (str "test not found " test-name))
         step (get (:steps test-def) step)
         step-res  (do-step ztx step :v2)
         match-res (matcho/match step-res (translate-to-matcho (:match step)))]
@@ -82,7 +83,7 @@
 
 (defn run-test [ztx test-name & versions]
   (let [test-def (zen/get-symbol ztx test-name)]
-    (assert test-def "test not found")
+    (assert test-def (str "test not found " test-name))
     (doall
      (filter
       identity

@@ -1,15 +1,15 @@
-{ns zen.fn-test
+{ns zen.tests.fn-test
 
  import #{zen.test}
 
  fn {:zen/tags #{zen/tag}}
 
  other-fn {:zen/tags #{zen/fn}
-           :args {:type zen/vector :every {:type zen/keyword}}
+           :args {:type zen/list :every {:type zen/keyword}}
            :ret  {:type zen/string}}
 
  get {:zen/tags #{zen/fn fn}
-      :args {:type zen/vector :every {:type zen/keyword}}
+      :args {:type zen/list :every {:type zen/keyword}}
       :ret  {:type zen/string}}
 
  tpl {:zen/tags  #{zen/schema zen/tag}
@@ -22,33 +22,62 @@
  fn-tests
  {:zen/tags #{zen.test/case}
   :title "Fn validation"
+  :only-for #{:v2}
   :steps
-  [{:desc "Fail fn call"
+  [{:desc "invalid zen/apply type"
     :do {:type zen.test/validate :schema tpl :data {:path "1"}}
     :match
     {:errors [{:type "apply.type"
                :path [:path]
-               :schema [zen.fn-test/tpl :keys :path]}]}}
-   {:desc "Fail in tpl tagging (fn shoud contain fn tag)"
-    :do {:type zen.test/validate :schema tpl :data {:path (tpl "1")}}
+               :message "Expected fn call '(fn-name args-1 arg-2), got 'string"
+               :schema [zen.tests.fn-test/tpl #_:keys :path]}]}}
+
+   {:desc "tpl schema does not contain required tags"
+    :do {:type zen.test/validate
+         :schema tpl
+         :data {:path (tpl "1")}}
     :match
-    {:errors [{:type "apply.fn-tag"
+    {:errors [{:message
+               "fn definition 'zen.tests.fn-test/tpl should be tagged with 'zen/fn, but '#{zen/tag zen/schema}"
+               :type "apply.fn-tag"
                :path [:path]
-               :schema [zen.fn-test/tpl :keys :path]}]}}
-   {:desc "Fail in other-fn tagging"
+               :schema [zen.tests.fn-test/tpl :path :apply]}
+
+              {:type "apply.fn-tag"
+               :message
+               "Expected symbol 'zen.tests.fn-test/tpl tagged with '#{zen.tests.fn-test/fn}, but only #{zen/tag zen/schema}"
+               :path [:path]
+               :schema [zen.tests.fn-test/tpl #_:keys :path :tags]}]}}
+
+   {:desc "other-fn is not tagged with fn tag"
     :do {:type zen.test/validate
          :schema tpl
          :data {:path (other-fn "1")}}
     :match
-    {:errors [{:type "apply.tags"
+    {:errors [{:message "Expected type of 'keyword, got 'string"
+               :type "keyword.type"
+               :path [:path 0]
+               :schema [zen.tests.fn-test/tpl :path zen.tests.fn-test/other-fn :args :every 0 :type]}
+
+              {:type "apply.fn-tag"
                :path [:path]
-               :schema [zen.fn-test/tpl :keys :path]}]}}
-   {:desc "Fail in args validations"
+               :message
+               "Expected symbol 'zen.tests.fn-test/other-fn tagged with '#{zen.tests.fn-test/fn}, but only #{zen/fn}"
+               :schema [zen.tests.fn-test/tpl #_:keys :path :tags]}]}}
+
+   {:desc "fn args are invalid"
     :do {:type zen.test/validate
          :schema tpl
          :data {:path (get "1")}}
     :match
-    {:errors [{:type "primitive-type"
+    {:errors [{:type "keyword.type"
+               :message "Expected type of 'keyword, got 'string"
                :path [:path 0]
-               :schema [zen.fn-test/tpl :keys :path zen.fn-test/get :args :every]}]}}]}
- }
+               :schema [zen.tests.fn-test/tpl #_:keys :path zen.tests.fn-test/get :args :every 0 :type]}]}}
+
+   {:desc "valid data given"
+    :do {:type zen.test/validate
+         :schema tpl
+         :data {:path (get :test :passed)}}
+    :match
+    {:errors zen.test/empty?}}]}}

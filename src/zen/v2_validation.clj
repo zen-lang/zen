@@ -46,6 +46,9 @@
    'zen/any (constantly true)
    'zen/case (constantly true)
 
+   ;; fn is implemented as a separate multimethod
+   'zen/apply {:to-str "apply"}
+
    'zen/regex
    {:fn #(and (string? %) (re-pattern %))
     :to-str "regex"}})
@@ -150,6 +153,34 @@
 (defmethod compile-type-check 'zen/symbol [_ _] (type-fn 'zen/symbol))
 (defmethod compile-type-check 'zen/regex [_ _] (type-fn 'zen/regex))
 (defmethod compile-type-check 'zen/case [_ _] (type-fn 'zen/case))
+
+(defmethod compile-type-check 'zen/apply
+  [tp ztx]
+  (fn [vtx data opts]
+    (cond
+      (not (list? data))
+      (add-err vtx :type {:message (str "Expected fn call '(fn-name args-1 arg-2), got '"
+                                        (pretty-type data))})
+
+      (not (symbol? (first data)))
+      (add-err vtx :apply {:message (str "Expected symbol, got '" (first data))
+                           :type "apply.fn-name"})
+
+      :else
+      (let [sch-sym (first data)
+            {:keys [zen/tags args] :as sch} (utils/get-symbol ztx sch-sym)]
+        (cond
+          (nil? sch)
+          (add-err vtx :apply {:message (str "Could not resolve fn '" sch-sym)
+                               :type "apply.fn-name"})
+
+          (not (contains? tags 'zen/fn))
+          (add-err vtx :apply {:message (format "fn definition '%s should be tagged with 'zen/fn, but '%s" sch-sym tags)
+                               :type "apply.fn-tag"})
+
+          :else
+          (let [v (get-cached ztx args)]
+            (merge-vtx vtx (v (node-vtx vtx [sch-sym :args]) (rest data) opts))))))))
 
 (defmethod compile-key :type
   [_ ztx tp]
@@ -433,7 +464,8 @@
                       :type "schema"})
 
             :else
-            (apply (get-cached ztx sch) [(node-vtx vtx [:schema-index sch-symbol]) data opts])))
+            (let [v (get-cached ztx sch)]
+              (merge-vtx vtx (v (node-vtx vtx [:schema-index sch-symbol]) data opts)))))
         vtx))]})
 
 (defmethod compile-key :nth
@@ -460,12 +492,9 @@
                 ;; TODO add test on nil case
                 (if (or (nil? tags)
                         (clojure.set/subset? tags (:zen/tags sch)))
-                  (merge-vtx
-                   vtx*
-                   (apply (get-cached ztx sch)
-                          [(node-vtx vtx* [:keyname-schemas schema-key] schema-key)
-                           data*
-                           opts]))
+                  (->> (-> (node-vtx vtx* [:keyname-schemas schema-key] schema-key)
+                           ((get-cached ztx sch) data* opts))
+                       (merge-vtx vtx*))
                   vtx*)
                 vtx*))]
         (reduce rule-fn vtx data)))]})
@@ -531,14 +560,16 @@
 
 (defmethod compile-key :tags
   [_ ztx sch-tags]
-  {:when symbol?
+  {:when #(or (symbol? %) (list? %))
    :rules
    [(fn [vtx data opts]
-      (let [{:keys [zen/tags]} (utils/get-symbol ztx data)]
+      (let [sym (if (list? data) (first data) data)
+            {:keys [zen/tags] :as sch} (utils/get-symbol ztx sym)]
         (if (not (clojure.set/superset? tags sch-tags))
           (add-err vtx :tags
                    {:message (format "Expected symbol '%s tagged with '%s, but only %s"
-                                     (str data) (str sch-tags) (or tags #{}))
-                    :type "symbol"})
+                                     (str sym) (str sch-tags) (or tags #{}))
+      ;; currently :tags implements two different usecases
+                    :type (if (list? data) "apply.fn-tag" "symbol")})
           vtx)))]})
 
