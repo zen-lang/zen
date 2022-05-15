@@ -26,11 +26,9 @@
  type     {:zen/tags #{zen/tag}
            :zen/desc "register resource as a schema type"}
 
-
  tags {:zen/tags #{property schema}
        :type set
        :every {:type symbol :tags #{tag}}}
-
 
  string    {:zen/tags #{type schema primitive}
             :zen/desc "sring primitive type"
@@ -45,7 +43,6 @@
  regex    {:zen/tags #{type schema primitive}
            :zen/desc "regexp primitive type"
            :type map}
-
 
  integer   {:zen/tags #{type primitive schema}
             :zen/desc "integer primitive type"
@@ -80,7 +77,6 @@
  symbol    {:zen/tags #{type primitive schema}
             :type map
             :keys {:tags {:confirms #{tagset}}}}
-
 
  keyword   {:zen/tags #{type primitive schema}
             :type map
@@ -148,7 +144,7 @@
                                                                                       {:type map
                                                                                        :keys
                                                                                        {:engine {:type keyword
-                                                                                                 :enum  #{{:value :zen} {:value :zen-fx}}}}}
+                                                                                                 :enum  [{:value :zen} {:value :zen-fx}]}}}
                                                                                       :then {:require #{:zen}
                                                                                              :type map
                                                                                              :keys {:zen {:confirms #{schema}}}}}
@@ -168,8 +164,8 @@
             :keys {:values {:confirms #{schema}}
                    :validation-type {:zen/desc "Type of validation. If open then ignores unknown keys else returns errors. :closed by default"
                                      :type keyword
-                                     :enum #{{:value :open}
-                                             {:value :closed}}}
+                                     :enum [{:value :open}
+                                            {:value :closed}]}
                    :schema-key {:zen/desc "Deduce schema from value of specific key."
                                 :type map
                                 :keys {:key {:type keyword :zen/desc ""}
@@ -201,8 +197,8 @@
                                                             :then {:type set :every {:type keyword}}}]}}}}}
 
  case  {:zen/tags #{type schema}
-         :type map
-         :zen/desc "case definition is a collection of pairs :when and :then.
+        :type map
+        :zen/desc "case definition is a collection of pairs :when and :then.
                     Starting from first pair, go until first :when schema is valid, then it validates with :then schema"
         :keys {:case {:type vector
                       :every {:type map
@@ -210,11 +206,9 @@
                               :keys {:when {:confirms #{schema}}
                                      :then {:confirms #{schema}}}}}}}
 
-
  any {:zen/tags #{type schema primitive}
       :zen/desc "Any type"
       :type zen/map}
-
 
  validation-fn {:zen/desc "Tag for validation functions"
                 :zen/tags #{schema tag}
@@ -234,7 +228,7 @@
                                       :zen/desc "Check constant"
                                       :keys     {:value {:type any}}}
                            ;; TODO: apply top level schema to value
-                           :enum     {:type     set
+                           :enum     {:type     vector #_set
                                       :zen/desc "Check value is in enum"
                                       :every    {:type map :keys {:value {:type any}}}}
                            :match    {:type any

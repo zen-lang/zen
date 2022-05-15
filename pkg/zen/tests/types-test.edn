@@ -754,11 +754,8 @@
  {:zen/tags #{zen/schema}
   :type zen/map
   :keys {:gender {:type zen/string
-                  :enum #{{:value "Female"}
-                          {:value "Male"}}
-                  ;; TODO DISC if we need to change meta for v1
-                  #_[{:value "Female"}
-                     {:value "Male"}]}}}
+                  :enum [{:value "Female"}
+                         {:value "Male"}]}}}
 
  enums-test
  {:zen/tags #{zen.test/case}
