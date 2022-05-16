@@ -32,6 +32,7 @@
 
  telecom-slicing-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Checks if a Person has at least one mobile phone and one of his mobile phones runs ios"
   :steps
   [{:desc "valid data - has ios, android and email contacts"
@@ -48,6 +49,7 @@
                                :os     :android}]}}
     :match
     {:errors zen.test/empty?}}
+
    {:desc "invalid data - no ios contact"
     :do   {:type   zen.test/validate
            :schema Person
@@ -63,7 +65,7 @@
     :match
     {:errors
      [{:message "Expected >= 1, got 0"
-       :type "vector"
+       :type "vector.minItems"
        :path [:telecom "[mobile-phone]" "[ios]"]
        :schema
        [zen.tests.slicing-test/Person
@@ -87,12 +89,12 @@
      [{:message "Expected type of 'string, got 'keyword"
        :type "string.type"
        :path [:telecom 1 :system]
-       :schema [zen.tests.slicing-test/Person :telecom :every :system]}
+       :schema [zen.tests.slicing-test/Person :telecom :every 1 :system :type]}
 
       {:message ":value is required"
        :type "require"
        :path [:telecom 1 :value]
-       :schema [zen.tests.slicing-test/Person :telecom :every :require]}]}}]}
+       :schema [zen.tests.slicing-test/Person :telecom :every 1 :require]}]}}]}
 
  required-slice
  {:zen/tags #{zen/schema}
@@ -173,6 +175,7 @@
 
  slicing-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "slicing tests"
   :steps
   [{:desc "valid data given"
@@ -198,10 +201,10 @@
     :match
     {:errors
      [{:message "Expected type of 'keyword, got 'long"
-       :type "primitive-type"
+       :type "keyword.type"
        :path ["[kw]" 0 :value]
        :schema
-       [zen.tests.slicing-test/slice-definition :slicing "kw" :every :value]}]}}
+       [zen.tests.slicing-test/slice-definition :slicing "kw" :every 0 :value :type]}]}}
 
    {:desc "invalid number slice"
     :do   {:type   zen.test/validate
@@ -209,15 +212,17 @@
            :data   [{:kind "number" :value "1"}]}
     :match
     {:errors
-     [{:message "Expected type of 'integer, got 'string"
-       :type "primitive-type"
+     [{:message "Expected type of 'number, got 'string"
+       :type "number.type"
        :path ["[number]" 0 :value]
        :schema
        [zen.tests.slicing-test/slice-definition
         :slicing
         "number"
         :every
-        :value]}]}}
+        0
+        :value
+        :type]}]}}
 
    {:desc "rest chunk of slice is invalid"
     :do   {:type   zen.test/validate
@@ -233,7 +238,9 @@
         :slicing
         :slicing/rest
         :every
-        :value]}]}}
+        0
+        :value
+        :type]}]}}
 
    {:desc "invalid map slice"
     :do   {:type   zen.test/validate
@@ -241,19 +248,22 @@
            :data   [{:kind "map" :value {:nested [{:kind "keyword" :value "not keyword"}]}}]}
     :match
     {:errors [{:message "Expected type of 'keyword, got 'string"
-               :type "primitive-type"
+               :type "keyword.type"
                :path ["[map]" 0 :value :nested "[nest-kw]" 0 :value]
                :schema
                [zen.tests.slicing-test/slice-definition
                 :slicing
                 "map"
                 :every
+                0
                 :value
                 :nested
                 :slicing
                 "nest-kw"
                 :every
-                :value]}]}}
+                0
+                :value
+                :type]}]}}
 
    {:desc "invalid nested slice"
     :do   {:type   zen.test/validate
@@ -261,18 +271,21 @@
            :data   [{:kind "nested" :value [{:kind "keyword" :value "not keyword"}]}]}
     :match
     {:errors [{:message "Expected type of 'keyword, got 'string"
-               :type "primitive-type"
+               :type "keyword.type"
                :path ["[nested]" 0 :value "[nest-kw]" 0 :value]
                :schema
                [zen.tests.slicing-test/slice-definition
                 :slicing
                 "nested"
                 :every
+                0
                 :value
                 :slicing
                 "nest-kw"
                 :every
-                :value]}]}}
+                0
+                :value
+                :type]}]}}
 
    {:desc "slice attr has invalid value"
     :do   {:type   zen.test/validate
@@ -280,7 +293,7 @@
            :data   [{:kind "two"}]}
     :match
     {:errors [{:message "Expected >= 1, got 0"
-               :type "vector"
+               :type "vector.minItems"
                :path ["[one]"]
                :schema
                [zen.tests.slicing-test/required-slice :slicing "one" :minItems]}]}}]}
@@ -310,7 +323,8 @@
                            {:kind "rest" :rest-key "rest-key"}]}
            :match
            {:errors zen.test/empty?}}
-          {:desc "kind: slice contains rest-key"
+
+          #_{:desc "kind: slice contains rest-key"
            :do   {:type   zen.test/validate
                   :schema slicing-path-collision-unknown-key-bug-schema
                   :data   [{:kind "rest" :rest-key "rest-key"}
@@ -327,6 +341,6 @@
                        :every
                        :slice-key]}
 
-                     {:type "unknown-key"
+                     #_{:type "unknown-key"
                       :message "unknown key :rest-key"
                       :path [1 :rest-key]}]}}]}}

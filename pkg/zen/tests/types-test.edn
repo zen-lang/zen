@@ -709,6 +709,7 @@
   :keys {:age {:type zen/integer}}
   :const {:value {:age 42}}}
 
+ ;; TODO add test when const is primitive type
  const-test
  {:zen/tags #{zen.test/case}
   :only-for #{:v2}

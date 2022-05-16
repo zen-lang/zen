@@ -30,13 +30,9 @@
 
     (r/zen-read-ns ztx 'zen.tests.fn-test)
 
-    (r/run-tests ztx)
-
-    (def ztx (zen/new-context {:unsafe true}))
-
     (r/zen-read-ns ztx 'zen.tests.slicing-test)
 
-    (r/run-tests ztx :v1)))
+    (r/run-tests ztx)))
 
 (comment
 
@@ -46,4 +42,6 @@
 
     (r/zen-read-ns ztx 'zen.tests.slicing-test)
 
-    (r/run-tests ztx :v1)))
+    (r/run-step ztx 'zen.tests.slicing-test/slicing-path-collision-unknown-key-bug-test 1)
+
+    #_(r/run-tests ztx :v2)))

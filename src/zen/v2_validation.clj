@@ -74,6 +74,7 @@
 
 ;; TODO precompile schemas tagged with specific tag on ns load
 (defn get-cached [ztx schema]
+  ;; TODO how performant is this call? maybe change to .hashCode
   (let [sh (hash schema)]
     (or (get-in @ztx [:compiled-schemas sh])
         (let [v (*compile-schema ztx schema)]
@@ -283,24 +284,14 @@
         vtx))]})
 
 (defmethod compile-key :const
-  [_ ztx cfg]
-  {:when map?
-   :rules
+  [_ ztx {:keys [value]}]
+  {:rules
    [(fn [vtx data opts]
-      ;; TODO refactor on select-keys and set intersection for perf
-      ;; TODO can a value be not map?
-      (->> (:value cfg)
-           (reduce (fn [vtx* [k v]]
-                     (if-not (and (contains? data k) (= (get data k) v))
-                       (let [err-msg (if (nil? (get data k))
-                                       {}
-                                       {k (get data k)})
-                             msg
-                             {:message (str "Expected '" {k v} "', got '" err-msg "'")
-                              :type "schema"}]
-                         (add-err vtx* :const msg))
-                       vtx*))
-                   vtx)))]})
+      (if (not= value data)
+        (add-err vtx :const
+                 {:message (str "Expected '" value "', got '" data "'")
+                  :type "schema"})
+        vtx))]})
 
 (defmethod compile-key :keys
   [_ ztx ks]
@@ -569,7 +560,56 @@
           (add-err vtx :tags
                    {:message (format "Expected symbol '%s tagged with '%s, but only %s"
                                      (str sym) (str sch-tags) (or tags #{}))
-      ;; currently :tags implements two different usecases
+                    ;; currently :tags implements two different usecases
                     :type (if (list? data) "apply.fn-tag" "symbol")})
           vtx)))]})
 
+(defmethod compile-key :slicing
+  [_ ztx {slices :slices rest-schema :rest}]
+  (let [schemas
+        (->> slices
+             (map (fn [[slice-name {:keys [schema]}]]
+                    [slice-name (get-cached ztx schema)]))
+             (into {}))
+
+        rest-fn
+        (when (not-empty rest-schema)
+          (get-cached ztx rest-schema))
+
+        slice-fns
+        (map (fn [[slice-name {:keys [filter]}]]
+               (let [v (get-cached ztx (:zen filter))]
+                 (fn [vtx el opts]
+                   (let [vtx* (v (node-vtx vtx :slicing) el opts)]
+                     (when (empty? (:errors vtx*))
+                       slice-name)))))
+             slices)
+
+        slices-templ
+        (->> slices
+             (map (fn [[slice-name _]]
+                    [slice-name []]))
+             (into {}))]
+
+    {:when sequential?
+     :rules
+     [(fn [vtx data opts]
+        (let [slices-idx
+              (group-by (fn [datum]
+                          (some #(apply % [vtx datum opts]) slice-fns))
+                        data)
+
+              slices-errs
+              (->> (dissoc slices-idx nil)
+                   (merge slices-templ)
+                   (map (fn [[slice-name slice]]
+                          (let [v (get schemas slice-name)]
+                            (v (node-vtx vtx [:slicing slice-name] (str "[" slice-name "]")) slice opts)))))
+
+              rest-errs
+              (when (and (not-empty rest-schema) (not-empty (get slices-idx nil)))
+                (rest-fn (node-vtx vtx [:slicing :slicing/rest] (str "[" :slicing/rest "]"))
+                         (get slices-idx nil)
+                         opts))]
+
+          (reduce #(merge-vtx %1 %2) vtx (conj slices-errs rest-errs))))]}))
