@@ -30,5 +30,20 @@
 
     (r/zen-read-ns ztx 'zen.tests.fn-test)
 
-    (r/run-tests ztx)))
+    (r/run-tests ztx)
 
+    (def ztx (zen/new-context {:unsafe true}))
+
+    (r/zen-read-ns ztx 'zen.tests.slicing-test)
+
+    (r/run-tests ztx :v1)))
+
+(comment
+
+  (do
+
+    (def ztx (zen/new-context {:unsafe true}))
+
+    (r/zen-read-ns ztx 'zen.tests.slicing-test)
+
+    (r/run-tests ztx :v1)))
