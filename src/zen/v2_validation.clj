@@ -327,10 +327,14 @@
      [(fn [vtx data opts]
         (let [err-fn
               (fn [idx item]
-                (-> (node-vtx vtx [:every idx] idx)
-                    (v item opts)))]
-          (->> (map-indexed err-fn data)
-               (reduce merge-vtx vtx))))]}))
+                (v (node-vtx vtx [:every idx] idx) item opts))
+
+              data*
+              (if-let [indices (not-empty (:indices opts))]
+                (map err-fn indices data)
+                (map-indexed err-fn data))]
+
+          (reduce merge-vtx vtx data*)))]}))
 
 (defmethod compile-key :subset-of
   [_ ztx superset]
@@ -577,39 +581,48 @@
           (get-cached ztx rest-schema))
 
         slice-fns
-        (map (fn [[slice-name {:keys [filter]}]]
-               (let [v (get-cached ztx (:zen filter))]
+        (map (fn [[slice-name slice-schema]]
+               ;; TODO support other slicing engines
+               (if-let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
                  (fn [vtx el opts]
                    (let [vtx* (v (node-vtx vtx :slicing) el opts)]
                      (when (empty? (:errors vtx*))
-                       slice-name)))))
+                       slice-name)))
+                 (constantly nil)))
              slices)
 
         slices-templ
         (->> slices
              (map (fn [[slice-name _]]
                     [slice-name []]))
-             (into {}))]
+             (into {}))
+
+        err-fn
+        (fn [vtx opts [slice-name slice]]
+          (let [data* (mapv second slice)
+                indices (map first slice)]
+            (cond
+              (and (nil? slice-name) (empty? rest-schema))
+              (node-vtx vtx :slicing)
+
+              (and (nil? slice-name) (not-empty rest-schema))
+              (rest-fn (node-vtx vtx [:slicing :slicing/rest] (str "[" :slicing/rest "]"))
+                       data*
+                       (assoc opts :indices indices))
+
+              :else
+              (let [v (get schemas slice-name)]
+                (v (node-vtx vtx [:slicing slice-name] (str "[" slice-name "]"))
+                   data*
+                   (assoc opts :indices indices))))))]
 
     {:when sequential?
      :rules
      [(fn [vtx data opts]
-        (let [slices-idx
-              (group-by (fn [datum]
-                          (some #(apply % [vtx datum opts]) slice-fns))
-                        data)
-
-              slices-errs
-              (->> (dissoc slices-idx nil)
-                   (merge slices-templ)
-                   (map (fn [[slice-name slice]]
-                          (let [v (get schemas slice-name)]
-                            (v (node-vtx vtx [:slicing slice-name] (str "[" slice-name "]")) slice opts)))))
-
-              rest-errs
-              (when (and (not-empty rest-schema) (not-empty (get slices-idx nil)))
-                (rest-fn (node-vtx vtx [:slicing :slicing/rest] (str "[" :slicing/rest "]"))
-                         (get slices-idx nil)
-                         opts))]
-
-          (reduce #(merge-vtx %1 %2) vtx (conj slices-errs rest-errs))))]}))
+        (->> data
+             (map-indexed vector)
+             (group-by (fn [[_ datum]]
+                         (some #(apply % [vtx datum opts]) slice-fns)))
+             (merge slices-templ)
+             (map (partial err-fn vtx opts))
+             (reduce merge-vtx vtx)))]}))

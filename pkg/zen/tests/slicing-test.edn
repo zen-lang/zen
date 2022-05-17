@@ -315,6 +315,7 @@
 
  slicing-path-collision-unknown-key-bug-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "slice definition contains collision between slice and rest"
   :steps [{:desc "valid data given"
            :do   {:type   zen.test/validate
@@ -324,7 +325,7 @@
            :match
            {:errors zen.test/empty?}}
 
-          #_{:desc "kind: slice contains rest-key"
+          {:desc "kind: slice contains rest-key"
            :do   {:type   zen.test/validate
                   :schema slicing-path-collision-unknown-key-bug-schema
                   :data   [{:kind "rest" :rest-key "rest-key"}
@@ -339,7 +340,9 @@
                        :slicing
                        "slice"
                        :every
-                       :slice-key]}
+                       2
+                       :slice-key
+                       :type]}
 
                      #_{:type "unknown-key"
                       :message "unknown key :rest-key"

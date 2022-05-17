@@ -44,4 +44,6 @@
 
     (r/run-step ztx 'zen.tests.slicing-test/slicing-path-collision-unknown-key-bug-test 1)
 
+    #_(r/run-step ztx 'zen.tests.slicing-test/slicing-test 1)
+
     #_(r/run-tests ztx :v2)))
