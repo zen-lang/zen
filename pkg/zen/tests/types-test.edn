@@ -709,13 +709,32 @@
   :keys {:age {:type zen/integer}}
   :const {:value {:age 42}}}
 
+ str-const-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:str-key {:const {:value "str-value"}}}}
+
  ;; TODO add test when const is primitive type
  const-test
  {:zen/tags #{zen.test/case}
   :only-for #{:v2}
   :title "const validations in map"
   :steps
-  [{:desc "given map does not contain the key"
+  [{:desc ":str-key has number type"
+    :do {:type zen.test/validate :schema str-const-schema :data {:str-key 1}}
+    :match
+    {:errors
+     [{:message "Expected 'str-value', got '1'",
+       :type "schema",
+       :path [:str-key],
+       :schema [zen.tests.types-test/str-const-schema :str-key :const]}]}}
+
+   {:desc ":str-key has number type"
+    :do {:type zen.test/validate :schema str-const-schema :data {:str-key "str-value"}}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "given map does not contain the key"
     :do {:type zen.test/validate :schema const-schema :data {}}
     :match
     {:errors

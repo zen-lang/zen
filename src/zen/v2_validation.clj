@@ -121,14 +121,26 @@
 
 (defn node-vtx
   ([vtx sch-path]
-   (node-vtx vtx sch-path []))
+   (node-vtx vtx sch-path [] :no-log))
   ([vtx sch-path path]
-   {:errors []
-    :path (into* (:path vtx) path)
-    :schema (into* (:schema vtx) sch-path)}))
+   (node-vtx vtx sch-path path :no-log))
+  ([vtx sch-path path opt]
+   (cond-> {:errors []
+            :path (into* (:path vtx) path)
+            :schema (into* (:schema vtx) sch-path)}
+     (= opt :log-visited)
+     (update ::visited
+             (fn [vis] (conj (or vis #{})
+                             (into* (:path vtx) path)))))))
 
-(defn merge-vtx [global-vtx {:keys [errors]}]
-  (update global-vtx :errors into errors))
+(defn merge-vtx [global-vtx *node-vtx]
+  (cond-> global-vtx
+    :always
+    (update :errors into (:errors *node-vtx))
+
+    (contains? *node-vtx ::visited)
+    (update ::visited
+            (fn [vis] (into (or vis #{}) (::visited *node-vtx))))))
 
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
@@ -295,18 +307,24 @@
 
 (defmethod compile-key :keys
   [_ ztx ks]
-  {:when map?
-   :rules
-   (->> ks
+  (let [key-rules
         (mapv (fn [[k sch]]
                 (let [v (get-cached ztx sch)]
                   (fn [vtx data opts]
                     (if-let [d (contains? data k)]
-                      (->> (v (node-vtx vtx k k)
+                      (->> (v (node-vtx vtx k k #_:log-visited)
                               (get data k)
                               opts)
                            (merge-vtx vtx))
-                      vtx))))))})
+                      vtx))))
+              ks)
+
+        unknown-rule
+        (fn [vtx data opts]
+          vtx)]
+
+    {:when map?
+     :rules (conj key-rules unknown-rule)}))
 
 (defmethod compile-key :values
   [_ ztx sch]
@@ -386,8 +404,8 @@
 (defmethod compile-key :require
   [_ ztx ks]
   (let [one-of-fn
-        (fn [vtx s]
-          (let [reqs (->> (select-keys (::data vtx) s) (remove nil?))]
+        (fn [data vtx s]
+          (let [reqs (->> (select-keys data s) (remove nil?))]
             (if (empty? reqs)
               ;; TODO add message
               (add-err vtx :require {:type "map.require"})
@@ -405,7 +423,7 @@
      :rules
      [(fn [vtx data opts]
         (->> (filter set? ks)
-             (reduce one-of-fn (assoc vtx ::data data))))
+             (reduce (partial one-of-fn data) vtx)))
 
       (fn [vtx data opts]
         (->> (-> (remove set? ks)

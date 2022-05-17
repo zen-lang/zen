@@ -36,14 +36,19 @@
 
 (comment
 
+  ;; cases
+
+  ;; validation type:
+
+  ;; closed validation on empty map
+  ;; multiple :keys on one level due to dynamic schemas
+  ;; open validation on map due to :key or :vals
+  ;; single keys :validation
+
   (do
 
     (def ztx (zen/new-context {:unsafe true}))
 
-    (r/zen-read-ns ztx 'zen.tests.slicing-test)
+    (r/zen-read-ns ztx 'zen.tests.schema-key-test)
 
-    (r/run-step ztx 'zen.tests.slicing-test/slicing-path-collision-unknown-key-bug-test 1)
-
-    #_(r/run-step ztx 'zen.tests.slicing-test/slicing-test 1)
-
-    #_(r/run-tests ztx :v2)))
+    (r/run-step ztx 'zen.tests.schema-key-test/add-txt-key-tests 3)))

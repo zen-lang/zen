@@ -57,9 +57,11 @@
 
    ;; TODO think about how to implement ignore-additional-keys validation
    #_{:desc "Checks if there are additional keys"
-      :do {:type zen.test/validate :schema add-txt-key :data {:name "str"
-                                                              :txt "abcef"
-                                                              :foo "bar"}}
+      :do {:type zen.test/validate
+           :schema add-txt-key
+           :data {:name "str"
+                  :txt "abcef"
+                  :foo "bar"}}
       :match
       {:errors [{:path [:foo]
                  :type "unknown-key"
