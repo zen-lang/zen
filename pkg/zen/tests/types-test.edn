@@ -244,6 +244,7 @@
     :do {:type zen.test/validate :schema string-schema :data {:a false}}
     :match
     {:errors [{:path [:a]
+               :message "Expected type of 'string, got 'boolean"
                :type "string.type"
                :schema [string-schema :a]}]}}
 

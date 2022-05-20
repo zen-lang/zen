@@ -52,8 +52,10 @@
     :match {:errors
             [{:path [:bar]
               :type "require"
+              :message ":bar is required"
               :schema [basic-require :require]}
              {:path [:foo]
+              :message ":foo is required"
               :type "require"
               :schema [basic-require :require]}]}}
 
@@ -67,12 +69,14 @@
 
               {:path [:foo]
                :type "require"
+               :message ":foo is required"
                :schema [basic-require :require]}]}}
 
    {:desc "bar key missed"
     :do {:type zen.test/validate :schema basic-require :data {:foo 1}}
     :match
     {:errors [{:path [:bar]
+               :message ":bar is required"
                :type "require"
                :schema [basic-require :require]}
 
@@ -109,9 +113,11 @@
     :do {:type zen.test/validate
          :schema or-require
          :data {:some "ups"}}
-    :match {:errors [{:type "map.require"
-                      :schema [or-require :require]
-                      :path zen.test/empty?}]}}
+    :match {:errors
+            [{:type "map.require"
+              :message "one of keys #{:bar :foo} is required"
+              :schema [or-require :require]
+              :path zen.test/empty?}]}}
 
    {:desc "require either foo or bar and a - no foo no bar"
     :do {:type zen.test/validate
@@ -119,6 +125,7 @@
          :data {:a "value"}}
     :match {:errors
             [{:type "map.require"
+              :message "one of keys #{:bar :foo} is required"
               :schema [or-a-require :confirms or-require :require]
               :path zen.test/empty?}]}}
 
@@ -139,9 +146,11 @@
     :do {:type zen.test/validate
          :schema nested-require
          :data {:attr {:some ""}}}
-    :match {:errors [{:type "map.require"
-                      :schema [nested-require :attr :require]
-                      :path [:attr]}]}}
+    :match {:errors
+            [{:type "map.require"
+              :schema [nested-require :attr :require]
+              :message "one of keys #{:bar :foo} is required"
+              :path [:attr]}]}}
 
    {:desc "nested require when foo is present"
     :do {:type zen.test/validate
@@ -160,11 +169,13 @@
          :schema ab-require
          :data {}}
     :match {:errors
-            [{:type "require",
-              :path [:a],
+            [{:type "require"
+              :message ":a is required"
+              :path [:a]
               :schema [zen.tests.require-test/ab-require :confirms a-require :require]}
-             {:type "require",
-              :path [:b],
+             {:type "require"
+              :message ":b is required"
+              :path [:b]
               :schema [zen.tests.require-test/ab-require :confirms b-require :require]}]}}
 
    {:desc "two schemas w confirms fail when b is not present"
@@ -172,8 +183,9 @@
          :schema ab-require
          :data {:a "a"}}
     :match {:errors
-            [{:type "require",
-              :path [:b],
+            [{:type "require"
+              :message ":b is required"
+              :path [:b]
               :schema [zen.tests.require-test/ab-require :confirms b-require :require]}]}}
 
    {:desc "two schemas w confirms when a, b are present"

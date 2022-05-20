@@ -50,11 +50,13 @@
               :path [zen.tests.effects-test/only-one]
               :schema [zen/schema :keyname-schemas zen.tests.effects-test/only-one :type]}]}}
 
-   #_{:desc "Fx is not tagged, schema is incorrect"
-      :do {:type zen.test/validate-schema
-           :schema schema-with-bad-fx}
-      :match {:errors [{:type "unknown-key"
-                        :path [zen.effects-test/not-fx]}]}}]}
+   {:desc "Fx is not tagged, schema is incorrect"
+    :do {:type zen.test/validate-schema
+         :schema schema-with-bad-fx}
+    :match {:errors
+            [{:type "unknown-key"
+              :message "unknown key zen.tests.effects-test/not-fx"
+              :path [zen.tests.effects-test/not-fx]}]}}]}
 
  fx-tests
  {:zen/tags #{zen.test/case}

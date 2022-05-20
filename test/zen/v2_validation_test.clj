@@ -41,14 +41,22 @@
   ;; validation type:
 
   ;; closed validation on empty map
+  ;; open validation on map with explicit :validation-type
   ;; multiple :keys on one level due to dynamic schemas
   ;; open validation on map due to :key or :vals
   ;; single keys :validation
+
+  ;; all functions that work on keys should add to :visited set!
+  ;; double check dynamic functions!
 
   (do
 
     (def ztx (zen/new-context {:unsafe true}))
 
-    (r/zen-read-ns ztx 'zen.tests.schema-key-test)
+    (r/zen-read-ns ztx 'zen.tests.slicing-test)
 
-    (r/run-step ztx 'zen.tests.schema-key-test/add-txt-key-tests 3)))
+    (r/run-tests ztx)
+
+
+    ))
+

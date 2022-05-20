@@ -344,6 +344,6 @@
                        :slice-key
                        :type]}
 
-                     #_{:type "unknown-key"
+                     {:type "unknown-key"
                       :message "unknown key :rest-key"
                       :path [1 :rest-key]}]}}]}}

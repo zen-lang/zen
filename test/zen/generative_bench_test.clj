@@ -31,7 +31,7 @@
   (def ztx-new (zen.core/new-context {:unsafe true}))
 
   (is (empty? (:errors (zen/validate ztx-old '#{zen/schema} sch))))
-  (is (empty? (:errors (valid/validate ztx-new '#{zen/schema} sch))))
+  (is (empty? (:errors (valid/validate ztx-new '#{zen/schema} (dissoc sch :zen/tags)))))
 
   (is (empty? (:errors (validate-old ztx-old sch data))))
   (is (empty? (:errors (valid/validate-schema ztx-new sch data))))
@@ -41,45 +41,7 @@
   (println "bench results:")
 
   (println "old:")
-  (time (doall (repeatedly 10 #(validate-old ztx-old sch data))))
+  (time (doall (repeatedly 100 #(validate-old ztx-old sch data))))
 
   (println "new:")
-  (time (doall (repeatedly 10 #(valid/validate-schema ztx-new sch data)))))
-
-(comment
-
-  "criterium bench"
-
-  "2x faster on single schema"
-
-  (c/with-progress-reporting (c/bench (validate-old ztx-old sch data) :verbose))
-
-  (c/with-progress-reporting (c/bench (valid/validate-schema ztx-new sch data) :verbose))
-
-  "2x faster on 10 validations of single schema"
-
-  (c/with-progress-reporting (c/bench
-                              (doseq [_ (range 10)]
-                                (validate-old ztx-old sch data))
-                              :verbose))
-
-  (c/with-progress-reporting (c/bench
-                              (doseq [_ (range 10)]
-                                (valid/validate-schema ztx-new sch data))
-                              :verbose))
-
-  "2x faster on 10 validations of different schemas"
-
-  (def schemas (map (fn [_] (gen-schema cfg)) (range 10)))
-
-  (c/with-progress-reporting (c/bench
-                              (doseq [[sch data] schemas]
-                                (validate-old ztx-old sch data))
-                              :verbose))
-
-  (c/with-progress-reporting (c/bench
-                              (doseq [[sch data] schemas]
-                                (valid/validate-schema ztx-new sch data))
-                              :verbose))
-
-  )
+  (time (doall (repeatedly 100 #(valid/validate-schema ztx-new sch data)))))

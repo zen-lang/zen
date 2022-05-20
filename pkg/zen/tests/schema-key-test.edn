@@ -32,7 +32,11 @@
     :do {:type zen.test/validate :schema add-txt-key :data {:name "str-1" :txt "a-string"}}
     :match
     {:errors
-     [{:path []
+     [{:path [:txt]
+       :type "unknown-key"
+       :message "unknown key :txt"}
+
+      {:path []
        :type "schema"
        :message
        "'zen.tests.schema-key-test/str-1 should be tagged with #{zen.tests.schema-key-test/test-tag}, but #{zen/schema}"
@@ -55,17 +59,16 @@
                :message "Expected length >= 5, got 2"
                :schema [add-txt-key :schema-key str #_:keys :txt :minLength]}]}}
 
-   ;; TODO think about how to implement ignore-additional-keys validation
-   #_{:desc "Checks if there are additional keys"
-      :do {:type zen.test/validate
-           :schema add-txt-key
-           :data {:name "str"
-                  :txt "abcef"
-                  :foo "bar"}}
-      :match
-      {:errors [{:path [:foo]
-                 :type "unknown-key"
-                 :message "unknown key :foo"}]}}
+   {:desc "Checks if there are additional keys"
+    :do {:type zen.test/validate
+         :schema add-txt-key
+         :data {:name "str"
+                :txt "abcef"
+                :foo "bar"}}
+    :match
+    {:errors [{:path [:foo]
+               :type "unknown-key"
+               :message "unknown key :foo"}]}}
 
    {:desc "Valid data given"
     :do {:type zen.test/validate :schema add-txt-key :data {:name "str" :txt "foo bar string"}}
@@ -126,15 +129,17 @@
                :message "Expected >= 1, got 0"
                :schema [add-required-keys :schema-key person #_:keys :bar :min]}]}}
 
-   #_{:desc "Checks if there are additional keys"
-      :do {:type zen.test/validate :schema add-required-keys :data {:man "person"
-                                                                    :bar 42
-                                                                    :foo "something"
-                                                                    :nop "should not be here"}}
-      :match
-      {:errors [{:path [:nop]
-                 :type "unknown-key"
-                 :message "unknown key :nop"}]}}
+   {:desc "Checks if there are additional keys"
+    :do {:type zen.test/validate
+         :schema add-required-keys
+         :data {:man "person"
+                :bar 42
+                :foo "something"
+                :nop "should not be here"}}
+    :match
+    {:errors [{:path [:nop]
+               :type "unknown-key"
+               :message "unknown key :nop"}]}}
 
    {:desc "Valid data given"
     :do {:type zen.test/validate :schema add-required-keys :data {:man "person"
@@ -188,7 +193,11 @@
                 :extension [{:url "urn:extension:AnimalPatient.breed"
                              :valueCode "doge"}]}}
     :match
-    {:errors [{:type "schema"
+    {:errors [{:path [:extension 0 :valueCode],
+               :type "unknown-key",
+               :message "unknown key :valueCode"}
+
+              {:type "schema"
                :path [:extension 0]
                :schema [zen.tests.schema-key-test/AnimalPatient :extension :every 0 :schema-key]
                :message "Could not find schema zen.tests.schema-key-test/urn:extension:AnimalPatient.breed"}]}}]}}

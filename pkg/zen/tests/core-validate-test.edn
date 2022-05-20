@@ -49,12 +49,14 @@
  bad-schema-test
  {:zen/tags #{zen.test/case}
   :title "Tests if schema has errors"
-  :steps [#_{:desc "Schema contains invalid key"
-             :do {:type zen.test/validate-schema
-                  :schema bad-schema}
-             :match
-             {:errors
-              [{:path [:invalid-key], :type "unknown-key"}]}}
+  :steps [{:desc "Schema contains invalid key"
+           :do {:type zen.test/validate-schema
+                :schema bad-schema}
+           :match
+           {:errors
+            [{:path [:invalid-key]
+              :message "unknown key :invalid-key"
+              :type "unknown-key"}]}}
 
           {:desc "Schema is correct"
            :do {:type zen.test/validate-schema

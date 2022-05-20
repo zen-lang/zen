@@ -4,15 +4,18 @@
    [clojure.walk]
    [matcho.core :as matcho]
    [zen.core :as zen]
-   [zen.v2-validation :as valid]))
+   [zen.v2-validation :as v2]))
 
 (def versions
-  {:v1 zen/validate
-   :v2 valid/validate})
+  {:v1 #'zen/validate
+   :v2 #'v2/validate})
 
 (def replacements
   {'zen.test/empty? empty?
    'zen.test/nil? empty?})
+
+(defn comp-fn [a b]
+  (compare (str a) (str b)))
 
 (defn translate-to-matcho [match]
   (clojure.walk/postwalk (fn [x] (get replacements x x)) match))
@@ -23,15 +26,21 @@
   (assert false "step type not found"))
 
 (defmethod do-step 'zen.test/validate [ztx step version]
-  (let [fn (get versions version)
-        sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
-    (is (empty? (:errors (apply fn [ztx '#{zen/schema} sch]))))
-    (apply fn [ztx #{(get-in step [:do :schema])} (get-in step [:do :data])])))
+  (let [f (get versions version)
+        sch (zen.core/get-symbol ztx (get-in step [:do :schema]))
+
+        validated-sch (f ztx #{'zen/schema} (dissoc sch :zen/name :zen/file :zen/desc :zen/tags))]
+
+    (is (empty? (:errors validated-sch)))
+
+    (f ztx #{(get-in step [:do :schema])} (get-in step [:do :data]))))
 
 (defmethod do-step 'zen.test/validate-schema [ztx step version]
-  (let [fn (get versions version)
+  (let [f (get versions version)
         sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
-    (apply fn [ztx '#{zen/schema} sch])))
+    ;; TODO revisit this later
+    ;; why this attrs are not in zen.edn?
+    (f ztx #{'zen/schema} (dissoc sch :zen/name :zen/file :zen/tags :zen/desc))))
 
 (defmulti report-step (fn [_ztx step _result _test-case] (get-in step [:do :type])))
 
@@ -55,19 +64,16 @@
     identity
     (for [test-name (zen.core/get-tag ztx 'zen.test/case)
           step      (:steps (zen/get-symbol ztx test-name))
-          version (or (not-empty versions) [:v1 :v2])]
+          version (or (not-empty versions) [:v2 :v1])]
       (let [test-def (zen/get-symbol ztx test-name)
             scope-for (:only-for test-def)]
         (when (or (nil? scope-for) (contains? scope-for version))
-          (let [comp-fn
-                (fn [a b]
-                  (compare (str a) (str b)))
-                step-res (-> (do-step ztx step version)
+          (let [step-res (-> (do-step ztx step version)
                              (update :errors (fn [errs] (sort-by :path comp-fn errs))))
 
                 match-res (matcho/match step-res (translate-to-matcho (:match step)))]
             (when-not (true? match-res)
-              (report-step ztx step match-res test-def)
+              #_(report-step ztx step match-res test-def)
               {:test test-name :desc (:desc step) :version version :expected (:match step) :got step-res}))))))))
 
 ;; TODO add id to steps in zen test
@@ -75,7 +81,8 @@
   (let [test-def (zen/get-symbol ztx test-name)
         _ (assert test-def (str "test not found " test-name))
         step (get (:steps test-def) step)
-        step-res  (do-step ztx step :v2)
+        step-res  (-> (do-step ztx step :v2)
+                      (update :errors (fn [errs] (sort-by :path comp-fn errs))))
         match-res (matcho/match step-res (translate-to-matcho (:match step)))]
     (if-not (true? match-res)
       {:desc (:desc step) :expected (:match step) :got step-res}
@@ -89,16 +96,13 @@
       identity
       (for [step (:steps test-def)
             version (or (not-empty versions) [:v1 :v2])]
-        (do (prn step)
-            (when (or (nil? (:only-for test-def)) (contains? (:only-for test-def) version))
-              (let [comp-fn (fn [a b]
-                              (compare (str a) (str b)))
-                    step-res  (-> (do-step ztx step version)
-                                  (update :errors (fn [errs] (sort-by :path comp-fn errs))))
-                    match-res (matcho/match step-res (translate-to-matcho (:match step)))]
-                (when-not (true? match-res)
-                  (report-step ztx step match-res test-def)
-                  {:desc (:desc step) :version version :expected (:match step) :got step-res})))))))))
+        (when (or (nil? (:only-for test-def)) (contains? (:only-for test-def) version))
+          (let [step-res  (-> (do-step ztx step version)
+                              (update :errors (fn [errs] (sort-by :path comp-fn errs))))
+                match-res (matcho/match step-res (translate-to-matcho (:match step)))]
+            (when-not (true? match-res)
+              #_(report-step ztx step match-res test-def)
+              {:desc (:desc step) :version version :expected (:match step) :got step-res}))))))))
 
 (defn zen-read-ns [ztx s]
   (is (= :zen/loaded (zen.core/read-ns ztx s))))

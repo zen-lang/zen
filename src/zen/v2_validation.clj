@@ -1,11 +1,8 @@
 (ns zen.v2-validation
   (:require
-   [clojure.set]
+   [clojure.set :as cljset]
    [clojure.string :as str]
    [zen.utils :as utils]))
-
-;; TODO auto generate supported terms based on multi methods?
-;; useful for introspection and documentation
 
 (defn pretty-type [x]
   (if-let [tp (type x)]
@@ -58,7 +55,9 @@
 (defmulti compile-type-check (fn [tp ztx] tp))
 
 (defn *compile-schema [ztx schema]
-  (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name)
+  (let [open-world? (or (:key schema) (:values schema) (= (:validation-type schema) :open))
+        node-type (:type schema)
+        rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name)
                       (map (fn [[k kfg]] (compile-key k ztx kfg)))
                       (reduce (fn [acc {w :when rs :rules}]
                                 (update acc w into rs)) {}))]
@@ -67,12 +66,13 @@
            (reduce (fn [vtx [pred rules]]
                      (if (or (nil? pred) (pred data))
                        (->> rules
-                            (reduce (fn [vtx r] (r (assoc vtx ::type (:type schema)) data opts))
+                            (reduce (fn [vtx r] (r (assoc vtx :type node-type)
+                                                   data
+                                                   (assoc opts :open-world? open-world?)))
                                     vtx))
                        vtx))
                    vtx)))))
 
-;; TODO precompile schemas tagged with specific tag on ns load
 (defn get-cached [ztx schema]
   ;; TODO how performant is this call? maybe change to .hashCode
   (let [sh (hash schema)]
@@ -82,21 +82,33 @@
           v))))
 
 (defn validate-schema [ztx schema data & [opts]]
-  (let [v  (get-cached ztx schema)]
-    (-> (v {:errors [] :path [] :schema [(:zen/name schema)]} data opts)
+  (let [v  (get-cached ztx schema)
+        vtx {:errors []
+             :path []
+             :schema [(:zen/name schema)]
+             :visited #{}
+             :unknown-keys #{}}
+        vtx* (v vtx data opts)
+        unknown-errs
+        (map (fn [path]
+               {:path path
+                :type "unknown-key"
+                :message (str "unknown key " (last path))})
+             (:unknown-keys vtx*))]
+
+    (-> vtx*
+        (update :errors into unknown-errs)
         (select-keys [:errors :effects]))))
 
 ;; TODO support schemas seq as arg
 ;; TODO convert errors to vector here?
 (defn validate [ztx schemas data & [opts]]
-  (let [sch (utils/get-symbol ztx (first schemas))]
-    (-> (validate-schema ztx sch data)
-        #_(update :errors #(sort-by :path %)))))
+  (validate-schema ztx (utils/get-symbol ztx (first schemas)) data))
 
 (defn add-err [vtx sch-key err & data-path]
   (let [err-type
         (if (not (contains? err :type))
-          (if-let [type-str (get-in types-cfg [(::type vtx) :to-str])]
+          (if-let [type-str (get-in types-cfg [(:type vtx) :to-str])]
             (str  type-str "." (name sch-key))
             "primitive-type")
           (:type err))
@@ -114,33 +126,47 @@
             (assoc :path (conj (:path vtx) sch-key)))]
     (update vtx :effects conj fx*)))
 
-(defn into* [acc v]
-  (cond
-    (vector? v) (into acc v)
-    :else (conj acc v)))
-
 (defn node-vtx
   ([vtx sch-path]
-   (node-vtx vtx sch-path [] :no-log))
+   {:errors []
+    :path (:path vtx)
+    :schema (into (:schema vtx) sch-path)
+    :unknown-keys (:unknown-keys vtx)
+    :visited (:visited vtx)})
   ([vtx sch-path path]
-   (node-vtx vtx sch-path path :no-log))
-  ([vtx sch-path path opt]
-   (cond-> {:errors []
-            :path (into* (:path vtx) path)
-            :schema (into* (:schema vtx) sch-path)}
-     (= opt :log-visited)
-     (update ::visited
-             (fn [vis] (conj (or vis #{})
-                             (into* (:path vtx) path)))))))
+   {:errors []
+    :path (into (:path vtx) path)
+    :unknown-keys (:unknown-keys vtx)
+    :visited (:visited vtx)
+    :schema (into (:schema vtx) sch-path)})
+  ([vtx sch-path path opts]
+   {:errors []
+    :path (into (:path vtx) path)
+    :unknown-keys (:unknown-keys vtx)
+    :schema (into (:schema vtx) sch-path)
+    :visited
+    (cond
+      (:open-world? opts)
+      (:visited vtx)
+
+      (not-empty (:slices opts))
+      (conj (:visited vtx)
+            (->> path
+                 (into (:path vtx))
+                 (remove #(contains? (:slices opts) %))
+                 vec))
+
+      :else
+      (conj (:visited vtx) (into (:path vtx) path)))}))
 
 (defn merge-vtx [global-vtx *node-vtx]
-  (cond-> global-vtx
-    :always
-    (update :errors into (:errors *node-vtx))
+  (-> global-vtx
+      (update :errors into (:errors *node-vtx))
+      (assoc :visited (:visited *node-vtx))
+      (assoc :unknown-keys (:unknown-keys *node-vtx))))
 
-    (contains? *node-vtx ::visited)
-    (update ::visited
-            (fn [vis] (into (or vis #{}) (::visited *node-vtx))))))
+(defn update-vtx [vtx & keyvals]
+  (merge vtx (apply hash-map keyvals)))
 
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
@@ -213,14 +239,14 @@
             (add-err vtx
                      :case
                      {:message (format "Expected one of the cases to be true") :type "case"})
-            (let [vtx* (node-vtx vtx [:case item-idx :when])
-                  {errs :errors} (wh vtx* data opts)]
+            (let [vtx* (wh (node-vtx vtx [:case item-idx :when]) data opts)]
               (cond
-                (and (empty? errs) th)
-                (->> (th (node-vtx vtx [:case item-idx :then]) data opts)
+                (and (empty? (:errors vtx*)) th)
+                ;; TODO refactor this call
+                (->> (th (node-vtx (merge-vtx vtx vtx*) [:case item-idx :then]) data opts)
                      (merge-vtx vtx))
 
-                (empty? errs) vtx
+                (empty? (:errors vtx*)) (merge vtx vtx*)
 
                 :else (recur rest (inc item-idx)))))))]}))
 
@@ -307,23 +333,42 @@
 
 (defmethod compile-key :keys
   [_ ztx ks]
+  ;; TODO refactor keys function to iterate over data
   (let [key-rules
-        (mapv (fn [[k sch]]
-                (let [v (get-cached ztx sch)]
-                  (fn [vtx data opts]
-                    (if-let [d (contains? data k)]
-                      (->> (v (node-vtx vtx k k #_:log-visited)
-                              (get data k)
-                              opts)
-                           (merge-vtx vtx))
-                      vtx))))
-              ks)
+        (map (fn [[k sch]]
+               (let [v (get-cached ztx sch)]
+                 (fn [vtx data opts]
+                   ;; TODO refactor this
+                   (if-let [d (contains? data k)]
+                     (->> (v (node-vtx vtx [k] [k] opts)
+                             (get data k)
+                             opts)
+                          (merge-vtx vtx))
+                     vtx))))
+             ks)
 
         unknown-rule
         (fn [vtx data opts]
-          vtx)]
+          (if (:open-world? opts)
+            vtx
+            (let [cur-keys
+                  (->> (keys data)
+                       (map (fn [k]
+                              (let [pth*
+                                    (if-let [slices (not-empty (:slices opts))]
+                                      (vec (remove #(contains? slices %) (:path vtx)))
+                                      (:path vtx))]
+                                (conj pth* k))))
+                       set)]
+
+              (update-vtx vtx :unknown-keys
+                          (into
+                           (cljset/difference (:unknown-keys vtx)
+                                              (:visited vtx))
+                           (cljset/difference cur-keys (:visited vtx)))))))]
 
     {:when map?
+     ;; order of execution is important - unknown executed last
      :rules (conj key-rules unknown-rule)}))
 
 (defmethod compile-key :values
@@ -333,7 +378,7 @@
      :rules
      [(fn [vtx data opts]
         (reduce (fn [vtx* [key value]]
-                  (merge-vtx vtx* (v (node-vtx vtx* :values key) value opts)))
+                  (merge-vtx vtx* (v (node-vtx vtx* [:values] [key]) value opts)))
                 vtx
                 data))]}))
 
@@ -344,15 +389,15 @@
      :rules
      [(fn [vtx data opts]
         (let [err-fn
-              (fn [idx item]
-                (v (node-vtx vtx [:every idx] idx) item opts))
+              (fn [vtx [idx item]]
+                (merge-vtx vtx (v (node-vtx vtx [:every idx] [idx]) item (dissoc opts :indices))))
 
               data*
               (if-let [indices (not-empty (:indices opts))]
-                (map err-fn indices data)
-                (map-indexed err-fn data))]
+                (map vector indices data)
+                (map-indexed vector data))]
 
-          (reduce merge-vtx vtx data*)))]}))
+          (reduce err-fn vtx data*)))]}))
 
 (defmethod compile-key :subset-of
   [_ ztx superset]
@@ -407,8 +452,8 @@
         (fn [data vtx s]
           (let [reqs (->> (select-keys data s) (remove nil?))]
             (if (empty? reqs)
-              ;; TODO add message
-              (add-err vtx :require {:type "map.require"})
+              (add-err vtx :require {:type "map.require"
+                                     :message (str "one of keys " s " is required")})
               vtx)))
 
         all-keys-fn
@@ -489,7 +534,7 @@
      [(fn [vtx data opts]
         (reduce (fn [vtx* [index v]]
                   (if-let [nth-el (get data index)]
-                    (let [node-vtx* (v (node-vtx vtx* [:nth index] index) nth-el opts)]
+                    (let [node-vtx* (v (node-vtx vtx* [:nth index] [index]) nth-el opts)]
                       (merge-vtx vtx* node-vtx*))
                     vtx))
                 vtx
@@ -505,7 +550,7 @@
                 ;; TODO add test on nil case
                 (if (or (nil? tags)
                         (clojure.set/subset? tags (:zen/tags sch)))
-                  (->> (-> (node-vtx vtx* [:keyname-schemas schema-key] schema-key)
+                  (->> (-> (node-vtx vtx* [:keyname-schemas schema-key] [schema-key] opts)
                            ((get-cached ztx sch) data* opts))
                        (merge-vtx vtx*))
                   vtx*)
@@ -514,6 +559,7 @@
 
 (defmethod compile-key :default [schema-key ztx sch-params]
   ;; it is assumed that if no compile key impl found then effect is emitted
+  ;; TODO do not return fn if :schema-key is not qualified
   (let [{:keys [zen/tags] :as sch}
         (and (qualified-ident? schema-key)
              (utils/get-symbol ztx (symbol schema-key)))]
@@ -567,7 +613,7 @@
     {:rules
      [(fn [vtx data opts]
         (reduce (fn [vtx* [k _]]
-                  (merge-vtx vtx* (v (node-vtx vtx* :key k) k opts)))
+                  (merge-vtx vtx* (v (node-vtx vtx* [:key] [k]) k opts)))
                 vtx
                 data))]}))
 
@@ -582,7 +628,8 @@
           (add-err vtx :tags
                    {:message (format "Expected symbol '%s tagged with '%s, but only %s"
                                      (str sym) (str sch-tags) (or tags #{}))
-                    ;; currently :tags implements two different usecases
+                    ;; currently :tags implements two different usecases:
+                    ;; schema apply and schema tags check
                     :type (if (list? data) "apply.fn-tag" "symbol")})
           vtx)))]})
 
@@ -602,8 +649,8 @@
         (map (fn [[slice-name slice-schema]]
                ;; TODO support other slicing engines
                (if-let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
-                 (fn [vtx el opts]
-                   (let [vtx* (v (node-vtx vtx :slicing) el opts)]
+                 (fn [vtx [idx el] opts]
+                   (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)]
                      (when (empty? (:errors vtx*))
                        slice-name)))
                  (constantly nil)))
@@ -616,31 +663,44 @@
              (into {}))
 
         err-fn
-        (fn [vtx opts [slice-name slice]]
-          (let [data* (mapv second slice)
-                indices (map first slice)]
-            (cond
-              (and (nil? slice-name) (empty? rest-schema))
-              (node-vtx vtx :slicing)
+        (fn [opts vtx [slice-name slice]]
+          (cond
+            (and (= slice-name :slicing/rest) (empty? rest-schema))
+            (merge-vtx vtx (node-vtx vtx [:slicing]))
 
-              (and (nil? slice-name) (not-empty rest-schema))
-              (rest-fn (node-vtx vtx [:slicing :slicing/rest] (str "[" :slicing/rest "]"))
-                       data*
-                       (assoc opts :indices indices))
+            :else
+            (let [v (if (= slice-name :slicing/rest)
+                      rest-fn
+                      (get schemas slice-name))
 
-              :else
-              (let [v (get schemas slice-name)]
-                (v (node-vtx vtx [:slicing slice-name] (str "[" slice-name "]"))
-                   data*
-                   (assoc opts :indices indices))))))]
+                  slice-path (str "[" slice-name "]")
+
+                  opts*
+                  (-> opts
+                      (assoc :indices (map first slice))
+                      (update :slices #(conj (or % #{}) slice-path)))]
+
+              (->> (v (node-vtx vtx [:slicing slice-name] [slice-path])
+                      (mapv second slice)
+                      opts*)
+                   (merge-vtx vtx)))))]
 
     {:when sequential?
      :rules
      [(fn [vtx data opts]
         (->> data
              (map-indexed vector)
-             (group-by (fn [[_ datum]]
-                         (some #(apply % [vtx datum opts]) slice-fns)))
+             (group-by (fn [indexed-el]
+                         (or (some #(apply % [vtx indexed-el opts]) slice-fns)
+                             :slicing/rest)))
              (merge slices-templ)
-             (map (partial err-fn vtx opts))
-             (reduce merge-vtx vtx)))]}))
+             (reduce (partial err-fn opts) vtx)))]}))
+
+(defmethod compile-key :validation-type
+  [_ ztx val-type]
+  {:rules
+   [(fn [vtx data opts]
+      (if (= val-type :open)
+        ;; TODO will this work for deeply nested schemas?
+        (assoc vtx :unknown-keys #{})
+        vtx))]})

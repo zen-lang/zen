@@ -45,8 +45,9 @@
            :data   {:zen.tests.keyname-schemas-test/sch-1 1
                     :zen.tests.keyname-schemas-test/sch-2 "ok"
                     :extra "ups"}}
-    :match {:errors [{:type "unknown-key", :path [:extra]}
-                     nil]}}
+    :match {:errors
+            [{:type "unknown-key", :path [:extra]}
+             true]}}
 
    {:desc "Keyname schemas not found because not tagged"
     :do   {:type   zen.test/validate

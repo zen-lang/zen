@@ -10,14 +10,14 @@
 
  picture-map
  {:zen/tags #{zen/schema}
-  :zen/desc "Map with coordinates as keys and pixels as values"
+  #_:zen/desc #_"Map with coordinates as keys and pixels as values"
   :type zen/map
-  :values {:zen/desc "Pixel map"
+  :values {#_:zen/desc #_"Pixel map"
            :type zen/map
            :require #{:r :g :b}
            :values {:confirms #{color-channel}}}
   :key {:type zen/map
-        :zen/desc "Coordinate map"
+        #_:zen/desc #_"Coordinate map"
         :values {:type zen/integer}
         :keys {:x {}, :y {}}}}
 
@@ -64,8 +64,8 @@
     :match
     {:errors
      [{:type "map.type"
-       :message"Expected type of 'map, got 'persistentvector"
-       :path [0 0] #_[[0 0]]
+       :message "Expected type of 'map, got 'persistentvector"
+       :path [[0 0]]
        :schema [zen.tests.map-test/picture-map :key :type]}]}}]}
 
  map-with-unknown-keys-open-validation
@@ -81,8 +81,8 @@
   :validation-type :closed
   :keys {:b {:type zen/number}}}
 
- #_validation-types-test
- #_{:zen/tags #{zen.test/case}
+ validation-types-test
+ {:zen/tags #{zen.test/case}
   :title "Open/Close validation types test"
   :steps
   [{:desc "Close validation"
@@ -91,7 +91,10 @@
          :data {:b 1
                 :a 1}}
     :match {:errors
-            [{:type "unknown-key" :path [:a]}]}}
+            [{:type "unknown-key"
+              :message "unknown key :a"
+              :path [:a]}]}}
+
    {:desc "Open validation"
     :do {:type zen.test/validate
          :schema map-with-unknown-keys-open-validation
@@ -114,14 +117,22 @@
          :schema exclusive-keys-map
          :data {:b :beta :c :ceta}}
     :match
-    {:errors [{:type "map.exclusive-keys"}]}}
+    {:errors
+     [{:type "map.exclusive-keys"
+       :path []
+       :schema [zen.tests.map-test/exclusive-keys-map :exclusive-keys]
+       :message "Expected only one of keyset #{:c :d} or :b, but present (:b :c)"}]}}
 
    {:desc "Invalid key-set"
     :do {:type zen.test/validate
          :schema exclusive-keys-map
          :data {:a :aeta :b :beta}}
     :match
-    {:errors [{:type "map.exclusive-keys"}]}}
+    {:errors
+     [{:type "map.exclusive-keys"
+       :path []
+       :schema [zen.tests.map-test/exclusive-keys-map :exclusive-keys]
+       :message "Expected only one of keyset :b or :a, but present (:a :b)"}]}}
 
    {:desc "Valid key-set"
     :do {:type zen.test/validate
@@ -151,7 +162,13 @@
   [{:desc "test type validation in map"
     :do {:type zen.test/validate :schema m1 :data {:key1 1 :key2 true}}
     :match
-    {:errors [{:path [:key1]
-               :message "Expected type of 'string, got 'long"}
-              {:path [:key2]
-               :message "Expected type of 'string, got 'boolean"}]}}]}}
+    {:errors
+     [{:path [:key1]
+       :type "string.type"
+       :schema [zen.tests.map-test/m1 :key1]
+       :message "Expected type of 'string, got 'long"}
+
+      {:path [:key2]
+       :schema [zen.tests.map-test/m1 :key2]
+       :type "string.type"
+       :message "Expected type of 'string, got 'boolean"}]}}]}}
