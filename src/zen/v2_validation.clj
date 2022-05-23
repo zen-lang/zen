@@ -55,23 +55,28 @@
 (defmulti compile-type-check (fn [tp ztx] tp))
 
 (defn *compile-schema [ztx schema]
-  (let [open-world? (or (:key schema) (:values schema) (= (:validation-type schema) :open))
-        node-type (:type schema)
-        rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name)
+  (let [node-type (:type schema)
+        rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
                       (map (fn [[k kfg]] (compile-key k ztx kfg)))
                       (reduce (fn [acc {w :when rs :rules}]
-                                (update acc w into rs)) {}))]
+                                (update acc w into rs)) {}))
+        open-world? (or (:key schema) (:values schema) (= (:validation-type schema) :open))
+        {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world?)]
     (fn [vtx data opts]
-      (->> rulesets
-           (reduce (fn [vtx [pred rules]]
-                     (if (or (nil? pred) (pred data))
-                       (->> rules
-                            (reduce (fn [vtx r] (r (assoc vtx :type node-type)
-                                                   data
-                                                   (assoc opts :open-world? open-world?)))
-                                    vtx))
-                       vtx))
-                   vtx)))))
+      (let [vtx*
+            (reduce (fn [vtx [pred rules]]
+                      (if (or (nil? pred) (pred data))
+                        (->> rules
+                             (reduce (fn [vtx r] (r (assoc vtx :type node-type)
+                                                    data
+                                                    opts))
+                                     vtx))
+                        vtx))
+                    vtx
+                    rulesets)]
+        (if (valtype-pred data)
+          (valtype-rule vtx* data opts)
+          vtx*)))))
 
 (defn get-cached [ztx schema]
   ;; TODO how performant is this call? maybe change to .hashCode
@@ -146,9 +151,6 @@
     :schema (into (:schema vtx) sch-path)
     :visited
     (cond
-      (:open-world? opts)
-      (:visited vtx)
-
       (not-empty (:slices opts))
       (conj (:visited vtx)
             (->> path
@@ -333,43 +335,29 @@
 
 (defmethod compile-key :keys
   [_ ztx ks]
-  ;; TODO refactor keys function to iterate over data
   (let [key-rules
-        (map (fn [[k sch]]
-               (let [v (get-cached ztx sch)]
-                 (fn [vtx data opts]
-                   ;; TODO refactor this
-                   (if-let [d (contains? data k)]
-                     (->> (v (node-vtx vtx [k] [k] opts)
-                             (get data k)
-                             opts)
-                          (merge-vtx vtx))
-                     vtx))))
-             ks)
-
-        unknown-rule
-        (fn [vtx data opts]
-          (if (:open-world? opts)
-            vtx
-            (let [cur-keys
-                  (->> (keys data)
-                       (map (fn [k]
-                              (let [pth*
-                                    (if-let [slices (not-empty (:slices opts))]
-                                      (vec (remove #(contains? slices %) (:path vtx)))
-                                      (:path vtx))]
-                                (conj pth* k))))
-                       set)]
-
-              (update-vtx vtx :unknown-keys
-                          (into
-                           (cljset/difference (:unknown-keys vtx)
-                                              (:visited vtx))
-                           (cljset/difference cur-keys (:visited vtx)))))))]
-
+        (->> ks
+             (map (fn [[k sch]]
+                    [k (get-cached ztx sch)]))
+             (into {}))]
     {:when map?
-     ;; order of execution is important - unknown executed last
-     :rules (conj key-rules unknown-rule)}))
+     :rules
+     [(fn [vtx data opts]
+        (reduce (fn [vtx* [k v]]
+                  (cond
+                    (and (not (contains? key-rules k)) (empty? (:slices opts)))
+                    (update vtx* :unknown-keys conj (conj (:path vtx) k))
+
+                    (not (contains? key-rules k))
+                    (update vtx* :unknown-keys conj
+                            (->> (conj (:path vtx) k)
+                                 (remove #(contains? (:slices opts) %))
+                                 vec))
+
+                    :else
+                    (merge-vtx vtx* ((get key-rules k) (node-vtx vtx* [k] [k] opts) v opts))))
+                vtx
+                data))]}))
 
 (defmethod compile-key :values
   [_ ztx sch]
@@ -696,11 +684,28 @@
              (merge slices-templ)
              (reduce (partial err-fn opts) vtx)))]}))
 
+(defn cur-keyset [vtx data opts]
+  (->> (keys data)
+       (map (fn [k]
+              (let [pth*
+                    (if-let [slices (not-empty (:slices opts))]
+                      (vec (remove #(contains? slices %) (:path vtx)))
+                      (:path vtx))]
+                (conj pth* k))))
+       set))
+
 (defmethod compile-key :validation-type
-  [_ ztx val-type]
-  {:rules
-   [(fn [vtx data opts]
-      (if (= val-type :open)
+  [_ ztx open-world?]
+  {:when map?
+   :rule
+   (fn [vtx data opts]
+     (if open-world?
         ;; TODO will this work for deeply nested schemas?
-        (assoc vtx :unknown-keys #{})
-        vtx))]})
+       (assoc vtx :unknown-keys #{})
+       (update vtx :unknown-keys (fn [unknown]
+                                   (cond (and (empty? unknown) (not-empty (:visited vtx)))
+                                         (cljset/difference (cur-keyset vtx data opts)
+                                                            (:visited vtx))
+
+                                         (not-empty unknown)
+                                         (cljset/difference unknown (:visited vtx)))))))})

@@ -28,11 +28,9 @@
 (defmethod do-step 'zen.test/validate [ztx step version]
   (let [f (get versions version)
         sch (zen.core/get-symbol ztx (get-in step [:do :schema]))
-
         validated-sch (f ztx #{'zen/schema} (dissoc sch :zen/name :zen/file :zen/desc :zen/tags))]
 
     (is (empty? (:errors validated-sch)))
-
     (f ztx #{(get-in step [:do :schema])} (get-in step [:do :data]))))
 
 (defmethod do-step 'zen.test/validate-schema [ztx step version]

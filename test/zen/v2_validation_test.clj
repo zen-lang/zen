@@ -53,10 +53,9 @@
 
     (def ztx (zen/new-context {:unsafe true}))
 
-    (r/zen-read-ns ztx 'zen.tests.slicing-test)
+    (r/zen-read-ns ztx 'zen.tests.require-test)
 
-    (r/run-tests ztx)
+    (r/run-step ztx 'zen.tests.require-test/basic-require-test 8)
 
-
-    ))
+    #_(r/run-tests ztx)))
 

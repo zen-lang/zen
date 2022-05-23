@@ -177,14 +177,14 @@
     :match
     {:errors zen.test/empty?}}
 
-   #_{:desc "Extension defined and incorrect"
-      :do {:type zen.test/validate
-           :schema AnimalPatient
-           :data {:resourceType "Patient"
-                  :extension [{:url "urn:extension:AnimalPatient.species"
-                               :valueCoding {:code "dog"}}]}}
-      :match
-      {:errors [{:type "unknown-key", :path [:extension 0 :valueCoding]}]}}
+   {:desc "Extension defined and incorrect"
+    :do {:type zen.test/validate
+         :schema AnimalPatient
+         :data {:resourceType "Patient"
+                :extension [{:url "urn:extension:AnimalPatient.species"
+                             :valueCoding {:code "dog"}}]}}
+    :match
+    {:errors [{:type "unknown-key", :path [:extension 0 :valueCoding]}]}}
 
    {:desc "Extension undefined"
     :do {:type zen.test/validate

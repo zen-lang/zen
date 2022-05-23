@@ -39,15 +39,14 @@
               :path   [:zen.tests.keyname-schemas-test/sch-2],
               :schema [zen.tests.keyname-schemas-test/kns :keyname-schemas :zen.tests.keyname-schemas-test/sch-2 :type]}]}}
 
-   #_{:desc "Keyname schemas are not found"
+   {:desc "Keyname schemas are not found"
     :do   {:type   zen.test/validate
            :schema kns
            :data   {:zen.tests.keyname-schemas-test/sch-1 1
                     :zen.tests.keyname-schemas-test/sch-2 "ok"
                     :extra "ups"}}
     :match {:errors
-            [{:type "unknown-key", :path [:extra]}
-             true]}}
+            [{:type "unknown-key", :path [:extra]}]}}
 
    {:desc "Keyname schemas not found because not tagged"
     :do   {:type   zen.test/validate
