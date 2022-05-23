@@ -102,11 +102,10 @@
              (:unknown-keys vtx*))]
 
     (-> vtx*
-        (update :errors into unknown-errs)
+        (update :errors #(vec (into % unknown-errs)))
         (select-keys [:errors :effects]))))
 
 ;; TODO support schemas seq as arg
-;; TODO convert errors to vector here?
 (defn validate [ztx schemas data & [opts]]
   (validate-schema ztx (utils/get-symbol ztx (first schemas)) data))
 
@@ -133,33 +132,20 @@
 
 (defn node-vtx
   ([vtx sch-path]
-   {:errors []
-    :path (:path vtx)
-    :schema (into (:schema vtx) sch-path)
-    :unknown-keys (:unknown-keys vtx)
-    :visited (:visited vtx)})
+   (node-vtx vtx sch-path []))
   ([vtx sch-path path]
    {:errors []
     :path (into (:path vtx) path)
     :unknown-keys (:unknown-keys vtx)
     :visited (:visited vtx)
-    :schema (into (:schema vtx) sch-path)})
-  ([vtx sch-path path opts]
-   {:errors []
-    :path (into (:path vtx) path)
-    :unknown-keys (:unknown-keys vtx)
-    :schema (into (:schema vtx) sch-path)
-    :visited
-    (cond
-      (not-empty (:slices opts))
-      (conj (:visited vtx)
-            (->> path
-                 (into (:path vtx))
-                 (remove #(contains? (:slices opts) %))
-                 vec))
+    :schema (into (:schema vtx) sch-path)}))
 
-      :else
-      (conj (:visited vtx) (into (:path vtx) path)))}))
+(defn node-vtx&log [vtx sch-path path opts]
+  {:errors []
+   :path (into (:path vtx) path)
+   :unknown-keys (:unknown-keys vtx)
+   :schema (into (:schema vtx) sch-path)
+   :visited (conj (:visited vtx) (into (:path vtx) path))})
 
 (defn merge-vtx [global-vtx *node-vtx]
   (-> global-vtx
@@ -345,17 +331,11 @@
      [(fn [vtx data opts]
         (reduce (fn [vtx* [k v]]
                   (cond
-                    (and (not (contains? key-rules k)) (empty? (:slices opts)))
+                    (not (contains? key-rules k))
                     (update vtx* :unknown-keys conj (conj (:path vtx) k))
 
-                    (not (contains? key-rules k))
-                    (update vtx* :unknown-keys conj
-                            (->> (conj (:path vtx) k)
-                                 (remove #(contains? (:slices opts) %))
-                                 vec))
-
                     :else
-                    (merge-vtx vtx* ((get key-rules k) (node-vtx vtx* [k] [k] opts) v opts))))
+                    (merge-vtx vtx* ((get key-rules k) (node-vtx&log vtx* [k] [k] opts) v opts))))
                 vtx
                 data))]}))
 
@@ -538,7 +518,7 @@
                 ;; TODO add test on nil case
                 (if (or (nil? tags)
                         (clojure.set/subset? tags (:zen/tags sch)))
-                  (->> (-> (node-vtx vtx* [:keyname-schemas schema-key] [schema-key] opts)
+                  (->> (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key] opts)
                            ((get-cached ztx sch) data* opts))
                        (merge-vtx vtx*))
                   vtx*)
@@ -661,17 +641,18 @@
                       rest-fn
                       (get schemas slice-name))
 
-                  slice-path (str "[" slice-name "]")
+                  append-slice-path
+                  (fn [p]
+                    (let [prev-path (:path vtx)]
+                      (-> (conj prev-path (str "[" slice-name "]"))
+                          (concat (drop (count prev-path) p))
+                          vec)))]
 
-                  opts*
-                  (-> opts
-                      (assoc :indices (map first slice))
-                      (update :slices #(conj (or % #{}) slice-path)))]
-
-              (->> (v (node-vtx vtx [:slicing slice-name] [slice-path])
-                      (mapv second slice)
-                      opts*)
-                   (merge-vtx vtx)))))]
+              (merge-vtx vtx
+                         (-> (node-vtx vtx [:slicing slice-name])
+                             (v (mapv second slice)
+                                (assoc opts :indices (map first slice)))
+                             (update :errors (fn [errs] (map #(update % :path append-slice-path) errs))))))))]
 
     {:when sequential?
      :rules
@@ -686,12 +667,7 @@
 
 (defn cur-keyset [vtx data opts]
   (->> (keys data)
-       (map (fn [k]
-              (let [pth*
-                    (if-let [slices (not-empty (:slices opts))]
-                      (vec (remove #(contains? slices %) (:path vtx)))
-                      (:path vtx))]
-                (conj pth* k))))
+       (map #(conj (:path vtx) %))
        set))
 
 (defmethod compile-key :validation-type
