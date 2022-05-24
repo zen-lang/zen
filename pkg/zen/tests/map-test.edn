@@ -81,6 +81,46 @@
   :validation-type :closed
   :keys {:b {:type zen/number}}}
 
+ map-with-mixed-validation-types
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:coll {:type zen/vector
+                :every {:type zen/map
+                        :require #{:a}
+                        :keys {:a {:type zen/string}}}}
+
+         :coll-1 {:type zen/vector
+                  :nth {0 {:type zen/string}
+                        1 {:type zen/map
+                           :keys {:b {:type zen/string}
+                                  :c {:type zen/keyword}}}
+                        2 {:type zen/map
+                           :validation-type :open}}}}}
+
+ map-with-unknown-keys-allowed-by-open-validation
+ {:zen/tags #{zen/schema}
+  :type zen/vector
+  :every {:type zen/map
+          :keys {:kind {:type zen/string}}}
+  :slicing
+  {:rest {:type zen/vector
+          :minItems 1
+          :every {:type zen/map
+                  :validation-type :open}}
+   :slices
+   {"first"
+    {:filter {:engine :zen
+              :zen {:type zen/map
+                    :keys {:kind {:const {:value "first"}}}}}
+     :schema {:type zen/vector
+              :minItems 1
+              :every {:type zen/map
+                      :keys {:a-key {:type zen/string}}}}}}}}
+
+ map-with-extra-keys
+ {:zen/tags #{zen/schema}
+  :type zen/map}
+
  validation-types-test
  {:zen/tags #{zen.test/case}
   :title "Open/Close validation types test"
@@ -100,7 +140,50 @@
          :schema map-with-unknown-keys-open-validation
          :data {:b 1
                 :a 1}}
-    :match {:errors zen.test/nil?}}]}
+    :match {:errors zen.test/nil?}}
+
+   {:desc "mixed validation types in one schema"
+    :do {:type zen.test/validate
+         :schema map-with-mixed-validation-types
+         :data
+         {:coll [{:a "hello"}
+                 {:a "hello again"}
+                 {:a "hello!" :b "extra-value"}]
+          :coll-1 ["just a string"
+                   {:b "string" :c :keyword :d "extra-value"}
+                   {:d "open" :e "validation" :allows :everything}]}}
+    :match
+    {:errors
+     [{:path [:coll 2 :b]
+       :type "unknown-key"
+       :message "unknown key :b"}
+
+      {:path [:coll-1 1 :d]
+       :type "unknown-key"
+       :message "unknown key :d"}]}}
+
+   {:desc "key unknown by first part of schema is allowed by open validation"
+    :do {:type zen.test/validate
+         :schema map-with-unknown-keys-allowed-by-open-validation
+         :data
+         [{:kind "first" :a-key "a-value"}
+          {:kind "first" :a-key "a-value" :extra-key "extra-value"}
+          {:kind "rest" :every :key :is "permitted"}]}
+    :match
+    {:errors
+     [{:path [1 :extra-key],
+       :type "unknown-key",
+       :message "unknown key :extra-key"}]}}
+
+   {:desc "map with extra keys"
+    :do {:type zen.test/validate
+         :schema map-with-extra-keys
+         :data {:key-a "extra-value"
+                :key-b "extra-value"}}
+    :match
+    {:errors
+     [{:path [:key-a], :type "unknown-key", :message "unknown key :key-a"}
+      {:path [:key-b], :type "unknown-key", :message "unknown key :key-b"}]}}]}
 
  exclusive-keys-map
  {:zen/tags #{zen/schema}

@@ -52,4 +52,7 @@
     :do   {:type   zen.test/validate
            :schema kns
            :data   {:zen.tests.keyname-schemas-test/sch-3 "s"}}
-    :match {:errors zen.test/empty?}}]}}
+    :match {:errors
+            [{:path [:zen.tests.keyname-schemas-test/sch-3],
+              :type "unknown-key",
+              :message "unknown key :zen.tests.keyname-schemas-test/sch-3"}]}}]}}

@@ -53,9 +53,9 @@
 
     (def ztx (zen/new-context {:unsafe true}))
 
-    (r/zen-read-ns ztx 'zen.tests.require-test)
+    (r/zen-read-ns ztx 'zen.tests.map-test)
 
-    (r/run-step ztx 'zen.tests.require-test/basic-require-test 8)
+    (r/run-step ztx 'zen.tests.map-test/validation-types-test 4)
 
     #_(r/run-tests ztx)))
 

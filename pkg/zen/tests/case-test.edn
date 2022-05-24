@@ -48,14 +48,25 @@
                :schema [cases :case 2 :then #_:keys :foo :min]}]}}
 
    {:desc "empty data is given"
-    :do {:type zen.test/validate :schema cases :data {:nothing-given :here}}
+    :do {:type zen.test/validate
+         :schema cases
+         :data {:nothing-given :here}}
     :match
-    {:errors [{:path []
-               :type "case"
-;;               :message "Expected one of ({:type zen/map, :require #{:is}, :keys {:is {:type zen/boolean}}}), but none is conformant"
-               :schema [cases :case]}]}}
+    {:errors
+     [{:path [:nothing-given],
+       :type "unknown-key",
+       :message "unknown key :nothing-given"}
+
+      {:path []
+       :type "case"
+       :message "Expected one of the cases to be true"
+
+       #_"Expected one of ({:type zen/map, :require #{:is}, :keys {:is {:type zen/boolean}}}), but none is conformant"
+       :schema [cases :case]}]}}
 
    {:desc "valid data given"
-    :do {:type zen.test/validate :schema cases :data {:is true :foo 1}}
+    :do {:type zen.test/validate
+         :schema cases
+         :data {:is true :foo 1}}
     :match
     {:errors zen.test/nil?}}]}}

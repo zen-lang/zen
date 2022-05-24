@@ -346,7 +346,7 @@
      :rules
      [(fn [vtx data opts]
         (reduce (fn [vtx* [key value]]
-                  (merge-vtx vtx* (v (node-vtx vtx* [:values] [key]) value opts)))
+                  (merge-vtx vtx* (v (node-vtx&log vtx* [:values] [key] opts) value opts)))
                 vtx
                 data))]}))
 
@@ -581,7 +581,7 @@
     {:rules
      [(fn [vtx data opts]
         (reduce (fn [vtx* [k _]]
-                  (merge-vtx vtx* (v (node-vtx vtx* [:key] [k]) k opts)))
+                  (merge-vtx vtx* (v (node-vtx&log vtx* [:key] [k] opts) k opts)))
                 vtx
                 data))]}))
 
@@ -675,13 +675,26 @@
   {:when map?
    :rule
    (fn [vtx data opts]
-     (if open-world?
-        ;; TODO will this work for deeply nested schemas?
-       (assoc vtx :unknown-keys #{})
-       (update vtx :unknown-keys (fn [unknown]
-                                   (cond (and (empty? unknown) (not-empty (:visited vtx)))
-                                         (cljset/difference (cur-keyset vtx data opts)
-                                                            (:visited vtx))
+     (let [filter-allowed
+           (fn [unknown]
+             (->> unknown
+                  (remove #(= (vec (butlast %)) (:path vtx)))
+                  set))
 
-                                         (not-empty unknown)
-                                         (cljset/difference unknown (:visited vtx)))))))})
+           set-unknown
+           (fn [unknown]
+             (let [empty-unknown? (empty? unknown)
+                   empty-visited? (empty? (:visited vtx))]
+               (cond (and empty-unknown? (not empty-visited?))
+                     (cljset/difference (cur-keyset vtx data opts)
+                                        (:visited vtx))
+
+                     (and empty-unknown? empty-visited?)
+                     (set (cur-keyset vtx data opts))
+
+                     (not empty-unknown?)
+                     (cljset/difference unknown (:visited vtx)))))]
+
+       (if open-world?
+         (update vtx :unknown-keys filter-allowed)
+         (update vtx :unknown-keys set-unknown))))})
