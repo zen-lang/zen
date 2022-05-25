@@ -1,5 +1,6 @@
 (ns zen.v2-validation
   (:require
+   [zen.match]
    [clojure.set :as cljset]
    [clojure.string :as str]
    [zen.utils :as utils]))
@@ -661,13 +662,24 @@
 
         slice-fns
         (map (fn [[slice-name slice-schema]]
-               ;; TODO support other slicing engines
-               (if-let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
-                 (fn [vtx [idx el] opts]
-                   (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)]
-                     (when (empty? (:errors vtx*))
-                       slice-name)))
-                 (constantly nil)))
+               (let [eng (get-in slice-schema [:filter :engine])]
+                 ;; TODO add tests on zen/fx slicing engine
+                 (cond
+                   (= eng :zen)
+                   (let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
+                     (fn [vtx [idx el] opts]
+                       (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)]
+                         (when (empty? (:errors vtx*))
+                           slice-name))))
+
+                   (= eng :match)
+                   (fn [vtx [idx el] opts]
+                     (let [errs
+                           (->> (get-in slice-schema [:filter :match])
+                                (zen.match/match el))]
+                       (when (empty? errs)
+                         slice-name))))))
+
              slices)
 
         slices-templ

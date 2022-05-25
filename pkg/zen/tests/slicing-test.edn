@@ -346,4 +346,50 @@
 
                      {:type "unknown-key"
                       :message "unknown key :rest-key"
-                      :path [1 :rest-key]}]}}]}}
+                      :path [1 :rest-key]}]}}]}
+
+ match-engine-slicing
+ {:zen/tags #{zen/schema}
+  :type zen/vector
+  :every {:type zen/map :keys {:kind {:type zen/string}}}
+  :slicing {:rest {:type  zen/vector
+                   :every {:type zen/map
+                           :keys {:rest-key {:type zen/any}}}}
+            :slices {"slice"
+                     {:filter {:engine :match
+                               :zen {:kind "slice"}}
+                      :schema {:type  zen/vector
+                               :every {:type zen/map
+                                       :keys {:slice-key {:type zen/string}}}}}}}}
+
+ match-engine-slicing-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "slice by zen.match"
+  :steps
+  [{:desc "valid data given"
+    :do   {:type   zen.test/validate
+           :schema slicing-path-collision-unknown-key-bug-schema
+           :data   [{:kind "slice" :slice-key "kw-key"}
+                    {:kind "rest" :rest-key :keyword}]}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "valid data given"
+    :do   {:type   zen.test/validate
+           :schema slicing-path-collision-unknown-key-bug-schema
+           :data   [{:kind "slice" :slice-key :keyword}
+                    {:kind "rest" :rest-key :keyword}]}
+    :match
+    {:errors
+     [{:message "Expected type of 'string, got 'keyword",
+       :path ["[slice]" 0 :slice-key],
+       :type "string.type",
+       :schema
+       [zen.tests.slicing-test/slicing-path-collision-unknown-key-bug-schema
+        :slicing
+        "slice"
+        :every
+        0
+        :slice-key
+        :type]}]}}]}}
