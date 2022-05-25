@@ -9,9 +9,23 @@
     (str/lower-case (last (str/split (str tp) #"\.")))
     "nil"))
 
+(def fhir-date-regex
+  "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?")
+
+(def fhir-datetime-regex
+"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?")
+
 (def types-cfg
   {'zen/string {:fn string?
                 :to-str "string"}
+
+   'zen/date
+   {:fn #(and (string? %) (re-matches (re-pattern fhir-date-regex) %))
+    :to-str "date"}
+
+   'zen/datetime
+   {:fn #(and (string? %) (re-matches (re-pattern fhir-datetime-regex) %))
+    :to-str "datetime"}
 
    'zen/number {:fn number?
                 :to-str "number"}
@@ -190,6 +204,8 @@
 (defmethod compile-type-check 'zen/symbol [_ _] (type-fn 'zen/symbol))
 (defmethod compile-type-check 'zen/regex [_ _] (type-fn 'zen/regex))
 (defmethod compile-type-check 'zen/case [_ _] (type-fn 'zen/case))
+(defmethod compile-type-check 'zen/date [_ _] (type-fn 'zen/date))
+(defmethod compile-type-check 'zen/datetime [_ _] (type-fn 'zen/datetime))
 
 (defmethod compile-type-check 'zen/apply
   [tp ztx]

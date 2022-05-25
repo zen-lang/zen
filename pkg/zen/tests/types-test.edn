@@ -111,122 +111,167 @@
   :keys {:a {:type zen/date
              :in-future true}}}
 
- #_date-tests
- #_{:zen/tags #{zen.test/case}
-    :only-for #{:v1}
-    :title "Date validations in map"
-    :steps
-    [{:desc "test fails when integer is provided"
-      :do {:type zen.test/validate :schema date-schema :data {:a 42}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message string?
-                 :schema [date-schema :a]}]}}
+ date-tests
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "Date validations in map"
+  :steps
+  [{:desc "invalid data - integer is provided"
+    :do {:type zen.test/validate
+         :schema date-schema
+         :data {:a 42}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "date.type"
+       :message "Expected type of 'date, got 'long"
+       :schema [date-schema :a :type]}]}}
 
-     {:desc "Cheks if given str does not seem to be a date"
-      :do {:type zen.test/validate :schema date-schema :data {:a "not a date at all"}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message "Expected type of 'date, got \"not a date at all\""
-                 :schema [date-schema :keys :a]}]}}
-     {:desc "Cheks if given str with month less than 1"
-      :do {:type zen.test/validate :schema date-schema :data {:a "2021-00-06"}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message "Expected type of 'date, got \"2021-00-06\""
-                 :schema [date-schema :keys :a]}]}}
-     {:desc "Cheks if given str with month greater than 12"
-      :do {:type zen.test/validate :schema date-schema :data {:a "2021-33-06"}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message "Expected type of 'date, got \"2021-33-06\""
-                 :schema [date-schema :keys :a]}]}}
-     {:desc "Cheks if given str with day of month less than 1"
-      :do {:type zen.test/validate :schema date-schema :data {:a "2021-06-00"}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message "Expected type of 'date, got \"2021-06-00\""
-                 :schema [date-schema :keys :a]}]}}
-     {:desc "Cheks if given str with day of month greater than 31"
-      :do {:type zen.test/validate :schema date-schema :data {:a "2021-06-44"}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message "Expected type of 'date, got \"2021-06-44\""
-                 :schema [date-schema :keys :a]}]}}
-     {:desc "Cheks if given str with day from past"
+   {:desc "invalid data - string provided"
+    :do {:type zen.test/validate
+         :schema date-schema
+         :data {:a "not a date at all"}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "date.type"
+       :message "Expected type of 'date, got 'string"
+       :schema [date-schema #_:keys :a :type]}]}}
+
+   {:desc "invalid data - 00 day"
+    :do {:type zen.test/validate
+         :schema date-schema
+         :data {:a "2021-00-06"}}
+    :match
+    {:errors [{:path [:a]
+               :type "date.type"
+               :message "Expected type of 'date, got 'string"
+               :schema [date-schema #_:keys :a :type]}]}}
+
+   {:desc "invalid data - 33 day"
+    :do {:type zen.test/validate
+         :schema date-schema
+         :data {:a "2021-33-06"}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "date.type"
+       :message "Expected type of 'date, got 'string"
+       :schema [date-schema #_:keys :a :type]}]}}
+
+   {:desc "invalid data - 00 month"
+    :do {:type zen.test/validate
+         :schema date-schema
+         :data {:a "2021-06-00"}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "date.type"
+       :message "Expected type of 'date, got 'string"
+       :schema [date-schema #_:keys :a :type]}]}}
+
+   {:desc "invalid data - 44 month"
+    :do {:type zen.test/validate
+         :schema date-schema
+         :data {:a "2021-06-44"}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "date.type"
+       :message "Expected type of 'date, got 'string"
+       :schema [date-schema #_:keys :a :type]}]}}
+
+   ;; TODO in-past and in-future flags are not implemented
+
+   #_{:desc "Cheks if given str with day from past"
       :do {:type zen.test/validate :schema date-schema-past :data {:a "2021-06-20"}}
       :match
       {:errors zen.test/nil?}}
-     {:desc "Cheks if given str with day from past incorrect"
+
+   #_{:desc "Cheks if given str with day from past incorrect"
       :do {:type zen.test/validate :schema date-schema-past :data {:a "3021-06-20"}}
       :match
       {:errors [{} nil]}}
-     {:desc "Cheks if given str with day from future"
+
+   #_{:desc "Cheks if given str with day from future"
       :do {:type zen.test/validate :schema date-schema-future :data {:a "2100-06-20"}}
       :match
       {:errors zen.test/nil?}}
-     {:desc "Cheks if given str with day from future incorrect"
+
+   #_{:desc "Cheks if given str with day from future incorrect"
       :do {:type zen.test/validate :schema date-schema-future :data {:a "1100-06-20"}}
       :match
       {:errors [{} nil]}}
-     {:desc "Valid keyword was given"
-      :do {:type zen.test/validate :schema date-schema :data {:a "2021-08-06"}}
-      :match
-      {:errors zen.test/nil?}}]}
+
+   {:desc "valid date given"
+    :do {:type zen.test/validate :schema date-schema :data {:a "2021-08-06"}}
+    :match
+    {:errors zen.test/empty?}}]}
 
  datetime-schema
  {:zen/tags #{zen/schema}
   :type zen/map
   :keys {:a {:type zen/datetime}}}
 
- #_datetime-tests
- #_{:zen/tags #{zen.test/case}
-    :title "date time validation in zen/map"
-    :steps
-    [{:desc "fails when integer is provided instead of string"
-      :do {:type zen.test/validate :schema datetime-schema :data {:a 42}}
-      :match
-      {:errors
-       [{:path [:a]
-         :type "primitive-type"
-         :schema [datetime-schema :a]}]}}
+ datetime-tests
+ {:zen/tags #{zen.test/case}
+  :title "date time validation in zen/map"
+  :only-for #{:v2}
+  :steps
+  [{:desc "invalid data - integer is provided"
+    :do {:type zen.test/validate
+         :schema datetime-schema
+         :data {:a 42}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "datetime.type"
+       :message "Expected type of 'datetime, got 'long"
+       :schema [datetime-schema :a :type]}]}}
 
-     {:desc "fails when hour equals 25"
-      :do {:type zen.test/validate :schema date-schema :data {:a "2021-09-06T25:17:42z"}}
-      :match
-      {:errors
-       [{:path [:a]
-         :type "primitive-type"
-         :schema [date-schema :a]}]}}
+   {:desc "invalid data - hour equals 25"
+    :do {:type zen.test/validate :schema date-schema :data {:a "2021-09-06T25:17:42z"}}
+    :match
+    {:errors
+     [{:path [:a]
+       :message "Expected type of 'date, got 'string"
+       :type "date.type"
+       :schema [date-schema :a :type]}]}}
 
-     {:desc "Cheks if given str with minute greater than 59"
-      :do {:type zen.test/validate :schema date-schema :data {:a "2021-09-06T19:77:42z"}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message "Expected type of 'date, got \"2021-09-06T19:77:42z\""
-                 :schema [date-schema :keys :a]}]}}
-     {:desc "Cheks if given str with second greater than 59"
-      :do {:type zen.test/validate :schema date-schema :data {:a "2021-09-06T19:17:99z"}}
-      :match
-      {:errors [{:path [:a]
-                 :type "primitive-type"
-                 :message "Expected type of 'date, got \"2021-09-06T19:17:99z\""
-                 :schema [date-schema :keys :a]}]}}
-     {:desc "Valid keyword was given"
-      :do {:type zen.test/validate :schema datetime-schema :data {:a "2021-08-06T19:17:42Z"}}
-      :match
-      {:errors zen.test/nil?}}
-     {:desc "Valid keyword with all cases"
-      :do {:type zen.test/validate :schema datetime-schema :data {:a "2021-08-06t19:17:42z"}}
-      :match
-      {:errors zen.test/nil?}}]}
+   {:desc "invalid data - minute char is greater than 59"
+    :do {:type zen.test/validate
+         :schema date-schema
+         :data {:a "2021-09-06T19:77:42z"}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "date.type"
+       :message "Expected type of 'date, got 'string"
+       :schema [date-schema #_:keys :a :type]}]}}
+
+   {:desc "invalid data - second char is greater than 59"
+    :do {:type zen.test/validate
+         :schema date-schema
+         :data {:a "2021-09-06T19:17:99z"}}
+    :match
+    {:errors
+     [{:path [:a]
+       :type "date.type"
+       :message "Expected type of 'date, got 'string"
+       :schema [date-schema #_:keys :a :type]}]}}
+
+   {:desc "valid datetime given"
+    :do {:type zen.test/validate
+         :schema datetime-schema
+         :data {:a "2021-08-06T19:17:42Z"}}
+    :match
+    {:errors zen.test/empty?}}
+
+   ;; fhir regex does not allow lowercase timezone
+   #_{:desc "Valid keyword with all cases"
+    :do {:type zen.test/validate :schema datetime-schema :data {:a "2021-08-06t19:17:42z"}}
+    :match
+    {:errors zen.test/nil?}}]}
 
  string-schema
  {:zen/tags #{zen/schema}
