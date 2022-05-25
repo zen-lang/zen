@@ -193,4 +193,36 @@
          :schema ab-require
          :data {:a "a"
                 :b "b"}}
-    :match {:errors zen.test/empty?}}]}}
+    :match {:errors zen.test/empty?}}]}
+
+ schema-a-recursive
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/string}}
+  :confirms #{schema-b-recursive}}
+
+ schema-b-recursive
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:b {:type zen/string}}
+  :confirms #{schema-a-recursive}}
+
+ recursive-confirms-test
+ {:zen/tags #{zen.test/case}
+  :title "recursive confirms resolve correctly"
+  :steps
+  [{:desc "invalid data given"
+    :do {:type zen.test/validate
+         :schema schema-b-recursive
+         :data {:c "value"}}
+    :match
+    {:errors
+     [{:path [:c], :type "unknown-key", :message "unknown key :c"}]}}
+
+   {:desc "valid data given"
+    :do {:type zen.test/validate
+         :schema schema-b-recursive
+         :data {:a "value"
+                :b "value"}}
+    :match
+    {:errors zen.test/empty?}}]}}

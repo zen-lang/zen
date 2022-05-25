@@ -80,11 +80,21 @@
 
 (defn get-cached [ztx schema]
   ;; TODO how performant is this call? maybe change to .hashCode
-  (let [sh (hash schema)]
-    (or (get-in @ztx [:compiled-schemas sh])
+  (let [hash* (hash schema)
+        v (get-in @ztx [:compiled-schemas hash*])]
+    (cond
+      (fn? v)
+      v
+
+      (true? (get-in @ztx [:visited-schemas hash*]))
+      (fn [vtx data opts] vtx)
+
+      :else
+      (do
+        (swap! ztx assoc-in [:visited-schemas hash*] true)
         (let [v (*compile-schema ztx schema)]
-          (swap! ztx assoc-in [:compiled-schemas sh] v)
-          v))))
+          (swap! ztx assoc-in [:compiled-schemas hash*] v)
+          v)))))
 
 (defn validate-schema [ztx schema data & [opts]]
   (let [v  (get-cached ztx schema)
@@ -147,7 +157,7 @@
    :schema (into (:schema vtx) sch-path)
    :visited (conj (:visited vtx) (into (:path vtx) path))})
 
-(defn merge-vtx [global-vtx *node-vtx]
+(defn merge-vtx [*node-vtx global-vtx]
   (-> global-vtx
       (update :errors into (:errors *node-vtx))
       (assoc :visited (:visited *node-vtx))
@@ -207,7 +217,9 @@
 
           :else
           (let [v (get-cached ztx args)]
-            (merge-vtx vtx (v (node-vtx vtx [sch-sym :args]) (rest data) opts))))))))
+            (-> (node-vtx vtx [sch-sym :args])
+                (v (rest data) opts)
+                (merge-vtx vtx))))))))
 
 (defmethod compile-key :type
   [_ ztx tp]
@@ -230,9 +242,10 @@
             (let [vtx* (wh (node-vtx vtx [:case item-idx :when]) data opts)]
               (cond
                 (and (empty? (:errors vtx*)) th)
-                ;; TODO refactor this call
-                (->> (th (node-vtx (merge-vtx vtx vtx*) [:case item-idx :then]) data opts)
-                     (merge-vtx vtx))
+                (-> (merge-vtx vtx* vtx)
+                    (node-vtx [:case item-idx :then])
+                    (th  data opts)
+                    (merge-vtx vtx))
 
                 (empty? (:errors vtx*)) (merge vtx vtx*)
 
@@ -335,7 +348,9 @@
                     (update vtx* :unknown-keys conj (conj (:path vtx) k))
 
                     :else
-                    (merge-vtx vtx* ((get key-rules k) (node-vtx&log vtx* [k] [k] opts) v opts))))
+                    (-> (node-vtx&log vtx* [k] [k] opts)
+                        ((get key-rules k) v opts)
+                        (merge-vtx vtx*))))
                 vtx
                 data))]}))
 
@@ -346,7 +361,9 @@
      :rules
      [(fn [vtx data opts]
         (reduce (fn [vtx* [key value]]
-                  (merge-vtx vtx* (v (node-vtx&log vtx* [:values] [key] opts) value opts)))
+                  (-> (node-vtx&log vtx* [:values] [key] opts)
+                      (v value opts)
+                      (merge-vtx vtx*)))
                 vtx
                 data))]}))
 
@@ -358,7 +375,9 @@
      [(fn [vtx data opts]
         (let [err-fn
               (fn [vtx [idx item]]
-                (merge-vtx vtx (v (node-vtx vtx [:every idx] [idx]) item (dissoc opts :indices))))
+                (-> (node-vtx vtx [:every idx] [idx])
+                    (v item (dissoc opts :indices))
+                    (merge-vtx vtx)))
 
               data*
               (if-let [indices (not-empty (:indices opts))]
@@ -399,8 +418,14 @@
   [_ ztx ks]
   (let [apply-fn
         (fn [[schema-name v] [vtx data opts]]
-          (list
-           (merge-vtx vtx (v (node-vtx vtx [:confirms schema-name]) data opts)) data opts))
+          (if (get-in vtx [:confirms (:path vtx) schema-name])
+            (list vtx data opts)
+            ;; to prevent infinite cycle of :confirms
+            (-> (assoc-in vtx [:confirms (:path vtx) schema-name] true)
+                (node-vtx [:confirms schema-name])
+                (v data opts)
+                (merge-vtx vtx)
+                (list data opts))))
 
         comp-fn
         (->> ks
@@ -469,9 +494,10 @@
                       :type "schema"})
 
             :else
-            (let [v (get-cached ztx sch)
-                  node-vtx* (node-vtx vtx [:schema-key sch-symbol])]
-              (->> (v node-vtx* data opts) (merge-vtx vtx)))))
+            (let [v (get-cached ztx sch)]
+              (-> (node-vtx vtx [:schema-key sch-symbol])
+                  (v data opts)
+                  (merge-vtx vtx)))))
         vtx))]})
 
 (defmethod compile-key :schema-index
@@ -491,7 +517,9 @@
 
             :else
             (let [v (get-cached ztx sch)]
-              (merge-vtx vtx (v (node-vtx vtx [:schema-index sch-symbol]) data opts)))))
+              (-> (node-vtx vtx [:schema-index sch-symbol])
+                  (v data opts)
+                  (merge-vtx vtx)))))
         vtx))]})
 
 (defmethod compile-key :nth
@@ -502,9 +530,10 @@
      [(fn [vtx data opts]
         (reduce (fn [vtx* [index v]]
                   (if-let [nth-el (get data index)]
-                    (let [node-vtx* (v (node-vtx vtx* [:nth index] [index]) nth-el opts)]
-                      (merge-vtx vtx* node-vtx*))
-                    vtx))
+                    (-> (node-vtx vtx* [:nth index] [index])
+                        (v nth-el opts)
+                        (merge-vtx vtx*))
+                    vtx*))
                 vtx
                 schemas))]}))
 
@@ -518,27 +547,26 @@
                 ;; TODO add test on nil case
                 (if (or (nil? tags)
                         (clojure.set/subset? tags (:zen/tags sch)))
-                  (->> (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key] opts)
-                           ((get-cached ztx sch) data* opts))
-                       (merge-vtx vtx*))
+                  (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key] opts)
+                      ((get-cached ztx sch) data* opts)
+                      (merge-vtx vtx*))
                   vtx*)
                 vtx*))]
         (reduce rule-fn vtx data)))]})
 
 (defmethod compile-key :default [schema-key ztx sch-params]
   ;; it is assumed that if no compile key impl found then effect is emitted
-  ;; TODO do not return fn if :schema-key is not qualified
-  (let [{:keys [zen/tags] :as sch}
-        (and (qualified-ident? schema-key)
-             (utils/get-symbol ztx (symbol schema-key)))]
-    {:rules
-     [(fn [vtx data opts]
-        (if (contains? tags 'zen/schema-fx)
-          (add-fx vtx (:zen/name sch)
-                  {:name (:zen/name sch)
-                   :params sch-params
-                   :data data})
-          vtx))]}))
+  (if (qualified-ident? schema-key)
+    (let [{:keys [zen/tags] :as sch} (utils/get-symbol ztx (symbol schema-key))]
+      {:rules
+       [(fn [vtx data opts]
+          (if (contains? tags 'zen/schema-fx)
+            (add-fx vtx (:zen/name sch)
+                    {:name (:zen/name sch)
+                     :params sch-params
+                     :data data})
+            vtx))]})
+    {:rules [(fn [vtx data opts] vtx)]}))
 
 (defn is-exclusive? [group data]
   (->> group
@@ -581,7 +609,9 @@
     {:rules
      [(fn [vtx data opts]
         (reduce (fn [vtx* [k _]]
-                  (merge-vtx vtx* (v (node-vtx&log vtx* [:key] [k] opts) k opts)))
+                  (-> (node-vtx&log vtx* [:key] [k] opts)
+                      (v k opts)
+                      (merge-vtx vtx*)))
                 vtx
                 data))]}))
 
@@ -634,7 +664,7 @@
         (fn [opts vtx [slice-name slice]]
           (cond
             (and (= slice-name :slicing/rest) (empty? rest-schema))
-            (merge-vtx vtx (node-vtx vtx [:slicing]))
+            vtx
 
             :else
             (let [v (if (= slice-name :slicing/rest)
@@ -647,12 +677,11 @@
                       (-> (conj prev-path (str "[" slice-name "]"))
                           (concat (drop (count prev-path) p))
                           vec)))]
-
-              (merge-vtx vtx
-                         (-> (node-vtx vtx [:slicing slice-name])
-                             (v (mapv second slice)
-                                (assoc opts :indices (map first slice)))
-                             (update :errors (fn [errs] (map #(update % :path append-slice-path) errs))))))))]
+              (-> (node-vtx vtx [:slicing slice-name])
+                  (v (mapv second slice)
+                     (assoc opts :indices (map first slice)))
+                  (update :errors (fn [errs] (map #(update % :path append-slice-path) errs)))
+                  (merge-vtx vtx)))))]
 
     {:when sequential?
      :rules

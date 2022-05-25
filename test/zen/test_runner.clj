@@ -29,7 +29,6 @@
   (let [f (get versions version)
         sch (zen.core/get-symbol ztx (get-in step [:do :schema]))
         validated-sch (f ztx #{'zen/schema} (dissoc sch :zen/name :zen/file :zen/desc :zen/tags))]
-
     (is (empty? (:errors validated-sch)))
     (f ztx #{(get-in step [:do :schema])} (get-in step [:do :data]))))
 
