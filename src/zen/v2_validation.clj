@@ -14,7 +14,7 @@
   "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?")
 
 (def fhir-datetime-regex
-"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?")
+  "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?")
 
 (def types-cfg
   {'zen/string {:fn string?
@@ -177,9 +177,6 @@
       (update :errors into (:errors *node-vtx))
       (assoc :visited (:visited *node-vtx))
       (assoc :unknown-keys (:unknown-keys *node-vtx))))
-
-(defn update-vtx [vtx & keyvals]
-  (merge vtx (apply hash-map keyvals)))
 
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
@@ -435,14 +432,10 @@
   [_ ztx ks]
   (let [apply-fn
         (fn [[schema-name v] [vtx data opts]]
-          (if (get-in vtx [:confirms (:path vtx) schema-name])
-            (list vtx data opts)
-            ;; to prevent infinite cycle of :confirms
-            (-> (assoc-in vtx [:confirms (:path vtx) schema-name] true)
-                (node-vtx [:confirms schema-name])
-                (v data opts)
-                (merge-vtx vtx)
-                (list data opts))))
+          (-> (node-vtx vtx [:confirms schema-name])
+              (v data opts)
+              (merge-vtx vtx)
+              (list data opts)))
 
         comp-fn
         (->> ks
