@@ -1,9 +1,18 @@
 (ns zen.v2-validation-test
   (:require
+   [zen.effect :as fx]
    [zen.test-runner :as r]
    [clojure.test :refer [deftest is]]
    [zen.v2-validation :as v]
    [zen.core :as zen]))
+
+;; see slicing-test/zen-fx-engine-slicing-test
+(defmethod fx/fx-evaluator 'zen.tests.slicing-test/slice-key-check
+  [ztx {:keys [params path]} data]
+  (if (= (get data (first params)) "fx-value")
+    {:errors []}
+    {:errors [{:message "wrong slice key value"
+               :type "fx.apply"}]}))
 
 (deftest implemented-validations
   (do

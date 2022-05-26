@@ -1,5 +1,6 @@
 (ns zen.v2-validation
   (:require
+   [zen.effect]
    [zen.match]
    [clojure.set :as cljset]
    [clojure.string :as str]
@@ -111,14 +112,15 @@
           (swap! ztx assoc-in [:compiled-schemas hash*] v)
           v)))))
 
-(defn validate-schema [ztx schema data & [opts]]
+(defn validate-schema [ztx vtx schema data & [opts]]
   (let [v  (get-cached ztx schema)
-        vtx {:errors []
-             :path []
-             :schema [(:zen/name schema)]
-             :visited #{}
-             :unknown-keys #{}}
-        vtx* (v vtx data opts)
+        vtx*
+        (-> (merge vtx {:schema [(:zen/name schema)]
+                        :path []
+                        :visited #{}
+                        :unknown-keys #{}})
+            (v data opts))
+
         unknown-errs
         (map (fn [path]
                {:path path
@@ -126,13 +128,19 @@
                 :message (str "unknown key " (last path))})
              (:unknown-keys vtx*))]
 
-    (-> vtx*
-        (update :errors #(vec (into % unknown-errs)))
-        (select-keys [:errors :effects]))))
+    (update vtx* :errors #(vec (into % unknown-errs)))))
 
-;; TODO support schemas seq as arg
 (defn validate [ztx schemas data & [opts]]
-  (validate-schema ztx (utils/get-symbol ztx (first schemas)) data))
+  (reduce (fn [vtx* sym]
+            (if-let [schema (utils/get-symbol ztx sym)]
+              (select-keys (validate-schema ztx vtx* schema data opts)
+                           [:errors :effects])
+              (update vtx* :errors conj
+                      {:message (str "Could not resolve schema '" sym)
+                       :type "schema"})))
+          {:errors []
+           :effects []}
+          schemas))
 
 (defn add-err [vtx sch-key err & data-path]
   (let [err-type
@@ -641,6 +649,54 @@
                     :type (if (list? data) "apply.fn-tag" "symbol")})
           vtx)))]})
 
+(defn slice-fn [ztx [slice-name slice-schema]]
+  (let [eng (get-in slice-schema [:filter :engine])]
+    ;; TODO add error if engine is not found?
+    (cond
+      (= eng :zen)
+      (let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
+        (fn [vtx [idx el] opts]
+          (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)]
+            (when (empty? (:errors vtx*))
+              slice-name))))
+
+      (= eng :match)
+      (fn [vtx [idx el] opts]
+        (let [errs
+              (->> (get-in slice-schema [:filter :match])
+                   (zen.match/match el))]
+          (when (empty? errs)
+            slice-name)))
+
+      (= eng :zen-fx)
+      (let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
+        (fn [vtx [idx el] opts]
+          (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)
+                effect-errs (zen.effect/apply-fx ztx vtx* el)]
+            (when (empty? (:errors effect-errs))
+              slice-name)))))))
+
+(defn err-fn [schemas rest-fn opts vtx [slice-name slice]]
+  (cond
+    (and (= slice-name :slicing/rest) (nil? rest-fn)) vtx
+
+    :else
+    (let [v (if (= slice-name :slicing/rest)
+              rest-fn
+              (get schemas slice-name))
+
+          append-slice-path
+          (fn [p]
+            (let [prev-path (:path vtx)]
+              (-> (conj prev-path (str "[" slice-name "]"))
+                  (concat (drop (count prev-path) p))
+                  vec)))]
+      (-> (node-vtx vtx [:slicing slice-name])
+          (v (mapv second slice)
+             (assoc opts :indices (map first slice)))
+          (update :errors (fn [errs] (map #(update % :path append-slice-path) errs)))
+          (merge-vtx vtx)))))
+
 (defmethod compile-key :slicing
   [_ ztx {slices :slices rest-schema :rest}]
   (let [schemas
@@ -653,56 +709,13 @@
         (when (not-empty rest-schema)
           (get-cached ztx rest-schema))
 
-        slice-fns
-        (map (fn [[slice-name slice-schema]]
-               (let [eng (get-in slice-schema [:filter :engine])]
-                 ;; TODO add tests on zen/fx slicing engine
-                 (cond
-                   (= eng :zen)
-                   (let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
-                     (fn [vtx [idx el] opts]
-                       (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)]
-                         (when (empty? (:errors vtx*))
-                           slice-name))))
-
-                   (= eng :match)
-                   (fn [vtx [idx el] opts]
-                     (let [errs
-                           (->> (get-in slice-schema [:filter :match])
-                                (zen.match/match el))]
-                       (when (empty? errs)
-                         slice-name))))))
-
-             slices)
+        slice-fns (map (partial slice-fn ztx) slices)
 
         slices-templ
         (->> slices
              (map (fn [[slice-name _]]
                     [slice-name []]))
-             (into {}))
-
-        err-fn
-        (fn [opts vtx [slice-name slice]]
-          (cond
-            (and (= slice-name :slicing/rest) (empty? rest-schema))
-            vtx
-
-            :else
-            (let [v (if (= slice-name :slicing/rest)
-                      rest-fn
-                      (get schemas slice-name))
-
-                  append-slice-path
-                  (fn [p]
-                    (let [prev-path (:path vtx)]
-                      (-> (conj prev-path (str "[" slice-name "]"))
-                          (concat (drop (count prev-path) p))
-                          vec)))]
-              (-> (node-vtx vtx [:slicing slice-name])
-                  (v (mapv second slice)
-                     (assoc opts :indices (map first slice)))
-                  (update :errors (fn [errs] (map #(update % :path append-slice-path) errs)))
-                  (merge-vtx vtx)))))]
+             (into {}))]
 
     {:when sequential?
      :rules
@@ -713,7 +726,7 @@
                          (or (some #(apply % [vtx indexed-el opts]) slice-fns)
                              :slicing/rest)))
              (merge slices-templ)
-             (reduce (partial err-fn opts) vtx)))]}))
+             (reduce (partial err-fn schemas rest-fn opts) vtx)))]}))
 
 (defn cur-keyset [vtx data opts]
   (->> (keys data)

@@ -34,7 +34,7 @@
   (is (empty? (:errors (valid/validate ztx-new '#{zen/schema} (dissoc sch :zen/tags)))))
 
   (is (empty? (:errors (validate-old ztx-old sch data))))
-  (is (empty? (:errors (valid/validate-schema ztx-new sch data))))
+  (is (empty? (:errors (valid/validate-schema ztx-new {:errors [] :effects []} sch data))))
 
   (println " ")
   (println "leaves count: " (leaves-count cfg))
@@ -44,4 +44,4 @@
   (time (doall (repeatedly 100 #(validate-old ztx-old sch data))))
 
   (println "new:")
-  (time (doall (repeatedly 100 #(valid/validate-schema ztx-new sch data)))))
+  (time (doall (repeatedly 100 #(valid/validate-schema ztx-new {:errors [] :effects []} sch data)))))

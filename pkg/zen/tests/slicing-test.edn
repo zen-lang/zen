@@ -392,4 +392,50 @@
         :every
         0
         :slice-key
-        :type]}]}}]}}
+        :type]}]}}]}
+
+ slice-key-check
+ {:zen/tags #{zen/schema-fx zen/schema}
+  :type     zen/vector
+  :every    {:type zen/keyword}}
+
+ zen-fx-slicing
+ {:zen/tags #{zen/schema}
+  :type zen/vector
+  :every {:type zen/map :keys {:kind {:type zen/string}}}
+  :slicing {:slices {"slice"
+                     {:filter {:engine :zen-fx
+                               :zen {:type zen/map
+                                     :keys {:kind  {:type zen/string}
+                                            :slice-key {:type zen/string}}
+                                     slice-key-check [:slice-key]}}
+                      :schema {:type  zen/vector
+                               :minItems 1
+                               :every {:type zen/map
+                                       :keys {:slice-key {:type zen/string}}}}}}}}
+
+ zen-fx-engine-slicing-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "slice by zen-fx"
+  :steps
+  [{:desc "valid data given"
+    :do   {:type   zen.test/validate
+           :schema zen-fx-slicing
+           :data   [{:kind "slice" :slice-key "fx-value"}]}
+    :match
+    {:errors zen.test/empty?}}
+   {:desc "invalid slice key value"
+    :do   {:type   zen.test/validate
+           :schema zen-fx-slicing
+           :data   [{:kind "slice" :slice-key "wrong value"}]}
+    :match
+    {:errors
+     [{:message "Expected >= 1, got 0",
+       :path ["[slice]"],
+       :type "vector.minItems",
+       :schema
+       [zen.tests.slicing-test/zen-fx-slicing :slicing "slice" :minItems]}
+      {:path [0 :slice-key],
+       :type "unknown-key",
+       :message "unknown key :slice-key"}]}}]}}
