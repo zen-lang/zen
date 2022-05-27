@@ -438,18 +438,24 @@
 
 (defmethod compile-key :confirms
   [_ ztx ks]
-  (let [apply-fn
-        (fn [[schema-name v] [vtx data opts]]
-          (-> (node-vtx vtx [:confirms schema-name])
-              (v data opts)
-              (merge-vtx vtx)
-              (list data opts)))
+  (let [confirms-fn
+        (fn [sym]
+          (let [sch (utils/get-symbol ztx sym)
+                v (when-not (nil? sch)
+                    (get-cached ztx sch))]
+            (fn [[vtx data opts]]
+              (if (fn? v)
+                (-> (node-vtx vtx [:confirms (:zen/name sch)])
+                    (v data opts)
+                    (merge-vtx vtx)
+                    (list data opts))
+                (-> (add-err vtx :confirms
+                             {:message (str "Could not resolve schema '" sym)})
+                    (list data opts))))))
 
         comp-fn
         (->> ks
-             (map #(utils/get-symbol ztx %))
-             (map (fn [sch] (list (:zen/name sch) (get-cached ztx sch))))
-             (map #(partial apply-fn %))
+             (map confirms-fn)
              (apply comp))]
     {:rules
      [(fn [vtx data opts]

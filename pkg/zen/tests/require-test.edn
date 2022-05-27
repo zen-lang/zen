@@ -225,4 +225,51 @@
          :data {:a "value"
                 :b "value"}}
     :match
-    {:errors zen.test/empty?}}]}}
+    {:errors zen.test/empty?}}]}
+
+ schema-c
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:c {:type zen/string}}}
+
+ schema-a
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/string}}
+  :confirms #{schema-b schema-c}}
+
+ schema-not-found-confirms-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "if schema is not found confirms returns an error"
+  :steps
+  [{:desc "invalid data given"
+    :do {:type zen.test/validate
+         :schema schema-a
+         :data {:a "value"
+                :c :wrong-value}}
+    :match
+    {:errors
+     ;;schema-c is validated even if schema-b is not found
+     [{:message "Expected type of 'string, got 'keyword"
+       :path [:c]
+       :type "string.type"
+       :schema
+       [zen.tests.require-test/schema-a
+        :confirms
+        zen.tests.require-test/schema-c
+        :c
+        :type]}
+
+     ;; error from schema validation
+      {:message
+       "Expected symbol 'zen.tests.require-test/schema-b tagged with '#{zen/schema}, but only #{}"
+       :type "symbol"
+       :path [:confirms 1]
+       :schema [zen/schema :confirms :every 1 :tags]}
+
+      ;; error from data validation
+      {:message "Could not resolve schema 'zen.tests.require-test/schema-b"
+       :type "map.confirms"
+       :path []
+       :schema [zen.tests.require-test/schema-a :confirms]}]}}]}}
