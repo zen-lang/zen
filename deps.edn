@@ -19,7 +19,7 @@
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
 
   :test {:extra-paths ["test" "lib/example" "lib/auth"]
-         :extra-deps {healthsamurai/matcho {:mvn/version "0.3.9"}}}
+         :extra-deps {criterium/criterium {:mvn/version "0.4.6"}}}
 
   :outdated {:extra-deps {olical/depot {:mvn/version "1.7.0"}}
              :main-opts ["-m" "depot.outdated.main"]}
@@ -39,7 +39,7 @@
   {:extra-paths ["build"]
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
    :extra-deps {cambada/cambada {:git/url "https://github.com/HealthSamurai/cambada"
-                         :sha     "a8ccf922e516e3249e96ae63dadd91d5f01e83f5"}}
+                                 :sha     "a8ccf922e516e3249e96ae63dadd91d5f01e83f5"}}
    :main-opts  ["-m" "build"]}
 
   :depstar {:extra-deps
