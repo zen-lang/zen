@@ -1,0 +1,389 @@
+{:pt
+ {:schema-sym :hl7-fhir-r4-core.Patient
+  :data
+  {:address [{:use "home" :line ["2222 Home Street"]}]
+   :meta {:lastUpdated "2012-05-29T23:45:32Z"}
+   :managingOrganization {:reference "Organization/hl7"}
+   :name [{:use "official" :family "Everywoman" :given ["Eve"]}]
+   :birthDate "1973-05-31"
+   :resourceType "Patient"
+   :active true
+   :id "1"
+   :identifier
+   [{:type
+     {:coding
+      [{:system "http://terminology.hl7.org/CodeSystem/v2-0203"
+        :code "SS"}]}
+     :system "http://hl7.org/fhir/sid/us-ssn"
+     :value "444222222"}]
+   :telecom [{:system "phone" :value "555-555-2003" :use "work"}]
+   :gender "female"
+   :text
+   {:status "generated"
+    :div
+    "<div xmlns=\"http://www.w3.org/1999/xhtml\">Everywoman Eve. SSN:\n            444222222</div>"}}}
+
+ :pt-1
+ {:schema-sym :hl7-fhir-r4-core.Patient
+  :data
+  {:address
+   [{:use "home"
+     :city "PleasantVille"
+     :type "both"
+     :state "Vic"
+     :line ["534 Erewhon St"]
+     :postalCode "3999"
+     :period {:start "1974-12-25"}
+     :district "Rainbow"
+     :text "534 Erewhon St PeasantVille Rainbow Vic  3999"}]
+   :managingOrganization {:reference "Organization/1"}
+   :deceasedBoolean false
+   :name
+   [{:use "official" :family "Chalmers" :given ["Peter" "James"]}
+    {:use "usual" :given ["Jim"]}
+    {:use "maiden"
+     :family "Windsor"
+     :given ["Peter" "James"]
+     :period {:end "2002"}}]
+   :birthDate "1974-12-25"
+   :_birthDate
+   {:extension
+    [{:url "http://hl7.org/fhir/StructureDefinition/patient-birthTime"
+      :valueDateTime "1974-12-25T14:35:45-05:00"}]}
+   :resourceType "Patient"
+   :active true
+   :id "example"
+   :identifier
+   [{:use "usual"
+     :type
+     {:coding
+      [{:system "http://terminology.hl7.org/CodeSystem/v2-0203"
+        :code "MR"}]}
+     :system "urn:oid:1.2.36.146.595.217.0.1"
+     :value "12345"
+     :period {:start "2001-05-06"}
+     :assigner {:display "Acme Healthcare"}}]
+   :telecom
+   [{:use "home"}
+    {:system "phone" :value "(03) 5555 6473" :use "work" :rank 1}
+    {:system "phone" :value "(03) 3410 5613" :use "mobile" :rank 2}
+    {:system "phone"
+     :value "(03) 5555 8834"
+     :use "old"
+     :period {:end "2014"}}]
+   :gender "male"
+   :contact
+   [{:relationship
+     [{:coding
+       [{:system "http://terminology.hl7.org/CodeSystem/v2-0131"
+         :code "N"}]}]
+     :name
+     {:family "du Marché"
+      :_family
+      {:extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/humanname-own-prefix"
+         :valueString "VV"}]}
+      :given ["Bénédicte"]}
+     :telecom [{:system "phone" :value "+33 (237) 998327"}]
+     :address
+     {:use "home"
+      :type "both"
+      :line ["534 Erewhon St"]
+      :city "PleasantVille"
+      :district "Rainbow"
+      :state "Vic"
+      :postalCode "3999"
+      :period {:start "1974-12-25"}}
+     :gender "female"
+     :period {:start "2012"}}]}}
+
+ :enc
+ {:schema-sym :hl7-fhir-r4-core.Encounter
+  :data
+  {:resourceType "Encounter"
+   :classHistory
+   [{:class
+     {:system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+      :code "EMER"
+      :display "emergency"}
+     :period
+     {:start "2017-02-01T07:15:00+10:00"
+      :end "2017-02-01T09:27:00+10:00"}}
+    {:class
+     {:system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+      :code "IMP"
+      :display "inpatient encounter"}
+     :period {:start "2017-02-01T09:27:00+10:00"}}]
+   :status "in-progress"
+   :id "emerg"
+   :class
+   {:system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+    :code "IMP"
+    :display "inpatient encounter"}
+   :hospitalization
+   {:admitSource
+    {:coding
+     [{:system "http://terminology.hl7.org/CodeSystem/admit-source"
+       :code "emd"
+       :display "From accident/emergency department"}]}}
+   :period {:start "2017-02-01T07:15:00+10:00"}
+   :location
+   [{:location {:display "Emergency Waiting Room"}
+     :status "active"
+     :period
+     {:start "2017-02-01T07:15:00+10:00"
+      :end "2017-02-01T08:45:00+10:00"}}
+    {:location {:display "Emergency"}
+     :status "active"
+     :period
+     {:start "2017-02-01T08:45:00+10:00"
+      :end "2017-02-01T09:27:00+10:00"}}
+    {:location {:display "Ward 1 Room 42 Bed 1"}
+     :status "active"
+     :period
+     {:start "2017-02-01T09:27:00+10:00"
+      :end "2017-02-01T12:15:00+10:00"}}
+    {:location {:display "Ward 1 Room 42 Bed 1"}
+     :status "reserved"
+     :period
+     {:start "2017-02-01T12:15:00+10:00"
+      :end "2017-02-01T12:45:00+10:00"}}
+    {:location {:display "Ward 1 Room 42 Bed 1"}
+     :status "active"
+     :period {:start "2017-02-01T12:45:00+10:00"}}]
+   :subject {:reference "Patient/example"}
+   :statusHistory
+   [{:status "arrived"
+     :period
+     {:start "2017-02-01T07:15:00+10:00"
+      :end "2017-02-01T07:35:00+10:00"}}
+    {:status "triaged"
+     :period
+     {:start "2017-02-01T07:35:00+10:00"
+      :end "2017-02-01T08:45:00+10:00"}}
+    {:status "in-progress"
+     :period
+     {:start "2017-02-01T08:45:00+10:00"
+      :end "2017-02-01T12:15:00+10:00"}}
+    {:status "onleave"
+     :period
+     {:start "2017-02-01T12:15:00+10:00"
+      :end "2017-02-01T12:45:00+10:00"}}
+    {:status "in-progress"
+     :period {:start "2017-02-01T12:45:00+10:00"}}]
+   :text
+   {:status "generated"
+    :div
+    "<div xmlns=\"http://www.w3.org/1999/xhtml\">Emergency visit that escalated into inpatient patient @example</div>"}}}
+
+ :enc-1
+ {:schema-sym :hl7-fhir-r4-core.Encounter
+  :data
+  {:appointment [{:reference "Appointment/example"}]
+   :diagnosis
+   [{:condition {:reference "Condition/stroke"}
+     :use
+     {:coding
+      [{:system "http://terminology.hl7.org/CodeSystem/diagnosis-role"
+        :code "AD"
+        :display "Admission diagnosis"}]}
+     :rank 1}
+    {:condition {:reference "Condition/f201"}
+     :use
+     {:coding
+      [{:system "http://terminology.hl7.org/CodeSystem/diagnosis-role"
+        :code "DD"
+        :display "Discharge diagnosis"}]}}]
+   :serviceProvider {:reference "Organization/2"}
+   :episodeOfCare [{:reference "EpisodeOfCare/example"}]
+   :reasonCode
+   [{:text
+     "The patient seems to suffer from bilateral pneumonia and renal insufficiency most likely due to chemotherapy."}]
+   :type
+   [{:coding
+     [{:system "http://snomed.info/sct"
+       :code "183807002"
+       :display "Inpatient stay for nine days"}]}]
+   :participant
+   [{:type
+     [{:coding
+       [{:system
+         "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
+         :code "PART"}]}]
+     :individual {:reference "Practitioner/f201"}}]
+   :resourceType "Encounter"
+   :account [{:reference "Account/example"}]
+   :priority
+   {:coding
+    [{:system "http://snomed.info/sct"
+      :code "394849002"
+      :display "High priority"}]}
+   :status "finished"
+   :id "f203"
+   :class
+   {:system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+    :code "IMP"
+    :display "inpatient encounter"}
+   :identifier [{:use "temp" :value "Encounter_Roel_20130311"}]
+   :hospitalization
+   {:origin {:reference "Location/2"}
+    :admitSource
+    {:coding
+     [{:system "http://snomed.info/sct"
+       :code "309902002"
+       :display "Clinical Oncology Department"}]}
+    :reAdmission {:coding [{:display "readmitted"}]}
+    :dietPreference
+    [{:coding
+      [{:system "http://snomed.info/sct"
+        :code "276026009"
+        :display "Fluid balance regulation"}]}]
+    :specialCourtesy
+    [{:coding
+      [{:system
+        "http://terminology.hl7.org/CodeSystem/v3-EncounterSpecialCourtesy"
+        :code "NRM"
+        :display "normal courtesy"}]}]
+    :specialArrangement
+    [{:coding
+      [{:system
+        "http://terminology.hl7.org/CodeSystem/encounter-special-arrangements"
+        :code "wheel"
+        :display "Wheelchair"}]}]
+    :destination {:reference "Location/2"}}
+   :period {:start "2013-03-11" :end "2013-03-20"}
+   :basedOn [{:reference "ServiceRequest/myringotomy"}]
+   :partOf {:reference "Encounter/f203"}
+   :subject {:reference "Patient/f201" :display "Roel"}
+   :statusHistory [{:status "arrived" :period {:start "2013-03-08"}}]}}
+
+ :obs
+ {:schema-sym :hl7-fhir-r4-core.Observation
+  :data
+  {:referenceRange
+   [{:low
+     {:value 4.8
+      :unit "kPa"
+      :system "http://unitsofmeasure.org"
+      :code "kPa"}
+     :high
+     {:value 6
+      :unit "kPa"
+      :system "http://unitsofmeasure.org"
+      :code "kPa"}}]
+   :interpretation
+   [{:coding
+     [{:system
+       "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+       :code "H"
+       :display "High"}]}]
+   :valueQuantity
+   {:value 6.2
+    :unit "kPa"
+    :system "http://unitsofmeasure.org"
+    :code "kPa"}
+   :resourceType "Observation"
+   :status "final"
+   :id "f003"
+   :code
+   {:coding
+    [{:system "http://loinc.org"
+      :code "11557-6"
+      :display "Carbon dioxide in blood"}]}
+   :identifier
+   [{:use "official"
+     :system "http://www.bmc.nl/zorgportal/identifiers/observations"
+     :value "6325"}]
+   :issued "2013-04-03T15:30:10+01:00"
+   :subject {:reference "Patient/f001" :display "P. van de Heuvel"}
+   :performer
+   [{:reference "Practitioner/f005" :display "A. Langeveld"}]
+   :effectivePeriod
+   {:start "2013-04-02T10:30:10+01:00"
+    :end "2013-04-05T10:30:10+01:00"}}}
+
+ :obs-1
+ {:schema-sym :hl7-fhir-r4-core.Observation
+  :data
+  {:referenceRange
+   [{:high
+     {:value 8 :system "http://unitsofmeasure.org" :code "{score}"}
+     :type {:text "Severe TBI"}}
+    {:low
+     {:value 9 :system "http://unitsofmeasure.org" :code "{score}"}
+     :high
+     {:value 12 :system "http://unitsofmeasure.org" :code "{score}"}
+     :type {:text "Moderate TBI"}}
+    {:low
+     {:value 13 :system "http://unitsofmeasure.org" :code "{score}"}
+     :type {:text "Mild TBI"}}]
+   :valueQuantity
+   {:value 13 :system "http://unitsofmeasure.org" :code "{score}"}
+   :resourceType "Observation"
+   :component
+   [{:code
+     {:coding
+      [{:system "http://loinc.org"
+        :code "9268-4"
+        :display "Glasgow coma score motor"}]
+      :text "GCS Motor"}
+     :valueCodeableConcept
+     {:coding
+      [{:system "http://acme.ec/codes"
+        :code "5"
+        :display "Localizes painful stimuli"}
+       {:extension
+        [{:url "http://hl7.org/fhir/StructureDefinition/ordinalValue"
+          :valueDecimal 5}]
+        :system "http://loinc.org"
+        :code "LA6566-9"
+        :display "Localizing pain"}]
+      :text "5 (Localizes painful stimuli)"}}
+    {:code
+     {:coding
+      [{:system "http://loinc.org"
+        :code "9270-0"
+        :display "Glasgow coma score verbal"}]
+      :text "GSC Verbal"}
+     :valueCodeableConcept
+     {:coding
+      [{:system "http://acme.ec/codes"
+        :code "4"
+        :display "Confused disoriented"}
+       {:extension
+        [{:url "http://hl7.org/fhir/StructureDefinition/ordinalValue"
+          :valueDecimal 4}]
+        :system "http://loinc.org"
+        :code "LA6560-2"
+        :display "Confused"}]
+      :text "4 (Confused disoriented)"}}
+    {:code
+     {:coding
+      [{:system "http://loinc.org"
+        :code "9267-6"
+        :display "Glasgow coma score eye opening"}]
+      :text "Eyes"}
+     :valueCodeableConcept
+     {:coding
+      [{:system "http://acme.ec/codes"
+        :code "4"
+        :display "Opens eyes spontaneously"}
+       {:extension
+        [{:url "http://hl7.org/fhir/StructureDefinition/ordinalValue"
+          :valueDecimal 4}]
+        :system "http://loinc.org"
+        :code "LA6556-0"
+        :display "Eyes open spontaneously"}]
+      :text "4 (Opens eyes spontaneously)"}}]
+   :effectiveDateTime "2014-12-11T04:44:16Z"
+   :status "final"
+   :id "glasgow"
+   :code
+   {:coding
+    [{:system "http://loinc.org"
+      :code "9269-2"
+      :display "Glasgow coma score total"}]
+    :text "Glasgow Coma Scale  (GCS)"}
+   :subject
+   {:reference "Patient/example" :display "Peter James Chalmers"}}}}
