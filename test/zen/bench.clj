@@ -2,6 +2,7 @@
   (:require
    ;; start cider with :test alias to get the criterium dependency
    [clojure.java.io :as io]
+   [clj-async-profiler.core :as prof]
    [criterium.core :as c]
    [zen.core :as zen]
    [zen.v2-validation :as v]))
@@ -32,6 +33,24 @@
         (v/validate ztx #{schema-name} data)]))))
 
 (comment
+
+  (def pt (:data (:pt (read-string (slurp (io/resource "zen/bench_data.edn"))))))
+
+  (def ztx (zen/new-context {:unsafe true}))
+
+  (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
+
+  (prof/profile #_{:event :alloc}
+   (doseq [_ (range 5000)]
+     (v/validate ztx #{'hl7-fhir-r4-core.Patient/schema} pt)))
+
+  (prof/profile #_{:event :alloc}
+   (doseq [_ (range 5000)]
+     (zen.core/validate ztx #{'hl7-fhir-r4-core.Patient/schema} pt)))
+
+  (prof/list-event-types)
+
+  (prof/serve-files 8080)
 
   (def res (bench "zen/bench_data.edn"))
 
