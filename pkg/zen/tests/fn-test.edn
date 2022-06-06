@@ -37,17 +37,17 @@
          :schema tpl
          :data {:path (tpl "1")}}
     :match
-    {:errors [{:type "apply.fn-tag"
-               :message
-               "Expected symbol 'zen.tests.fn-test/tpl tagged with '#{zen.tests.fn-test/fn}, but only #{zen/tag zen/schema}"
-               :path [:path]
-               :schema [zen.tests.fn-test/tpl #_:keys :path :tags]}
-
-              {:message
+    {:errors [{:message
                "fn definition 'zen.tests.fn-test/tpl should be tagged with 'zen/fn, but '#{zen/tag zen/schema}"
                :type "apply.fn-tag"
                :path [:path]
-               :schema [zen.tests.fn-test/tpl :path :apply]}]}}
+               :schema [zen.tests.fn-test/tpl :path :apply]}
+
+              {:type "apply.fn-tag"
+               :message
+               "Expected symbol 'zen.tests.fn-test/tpl tagged with '#{zen.tests.fn-test/fn}, but only #{zen/tag zen/schema}"
+               :path [:path]
+               :schema [zen.tests.fn-test/tpl #_:keys :path :tags]}]}}
 
    {:desc "other-fn is not tagged with fn tag"
     :do {:type zen.test/validate

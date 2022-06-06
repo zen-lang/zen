@@ -269,9 +269,9 @@
 
    ;; fhir regex does not allow lowercase timezone
    #_{:desc "Valid keyword with all cases"
-    :do {:type zen.test/validate :schema datetime-schema :data {:a "2021-08-06t19:17:42z"}}
-    :match
-    {:errors zen.test/nil?}}]}
+      :do {:type zen.test/validate :schema datetime-schema :data {:a "2021-08-06t19:17:42z"}}
+      :match
+      {:errors zen.test/nil?}}]}
 
  string-schema
  {:zen/tags #{zen/schema}
@@ -832,15 +832,15 @@
     :do {:type zen.test/validate :schema enums-schema :data {:gender 42}}
     :match
     {:errors
-     [{:message "Expected '42' in #{\"Male\" \"Female\"}"
-       :type "enum"
-       :schema [enums-schema :gender :enum]
-       :path [:gender]}
-
-      {:path [:gender]
+     [{:path [:gender]
        :type "string.type"
        :message "Expected type of 'string, got 'long"
-       :schema [enums-schema :gender :type]}]}}
+       :schema [enums-schema :gender :type]}
+
+      {:message "Expected '42' in #{\"Male\" \"Female\"}"
+       :type "enum"
+       :schema [enums-schema :gender :enum]
+       :path [:gender]}]}}
 
    {:desc "given map has wrong string value"
     :do {:type zen.test/validate :schema enums-schema :data {:gender "Dunno"}}

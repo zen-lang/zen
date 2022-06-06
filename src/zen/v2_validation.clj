@@ -71,19 +71,20 @@
 (defmulti compile-type-check (fn [tp ztx] tp))
 
 (defn *compile-schema [ztx schema]
-  (let [node-type (:type schema)
-        rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
+  (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
                       (map (fn [[k kfg]]
-                             (let [{w :when r :rule} (compile-key k ztx kfg)]
-                               (fn [[vtx data opts]]
-                                 (if (or (nil? w) (w data))
-                                   (list (r vtx data opts) data opts)
-                                   (list vtx data opts))))))
-                      (apply comp))
+                             (compile-key k ztx kfg)))
+                      doall)
         open-world? (or (:key schema) (:values schema) (= (:validation-type schema) :open))
         {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world?)]
     (fn [vtx data opts]
-      (let [vtx* (first (rulesets (list (assoc vtx :type node-type) data opts)))]
+      (let [vtx*
+            (reduce (fn [vtx* {w :when r :rule}]
+                        (if (or (nil? w) (w data))
+                          (r vtx* data opts)
+                          vtx*))
+                      (assoc vtx :type (:type schema))
+                      rulesets)]
         (if (valtype-pred data)
           (valtype-rule vtx* data opts)
           vtx*)))))
@@ -432,30 +433,26 @@
 
 (defmethod compile-key :confirms
   [_ ztx ks]
-  (let [confirms-fn
+  (let [compile-confirms
         (fn [sym]
-          (let [sch (utils/get-symbol ztx sym)
-                v (when-not (nil? sch)
-                    (get-cached ztx sch))]
-            (fn [[vtx data opts]]
-              (if (fn? v)
-                (-> (node-vtx vtx [:confirms (:zen/name sch)])
-                    (v data opts)
-                    (merge-vtx vtx)
-                    (list data opts))
-                (-> (add-err vtx :confirms
-                             {:message (str "Could not resolve schema '" sym)})
-                    (list data opts))))))
+          (if-let [sch (utils/get-symbol ztx sym)]
+            [sym (:zen/name sch) (get-cached ztx sch)]
+            [sym]))
 
-        comp-fn
+        comp-fns
         (->> ks
-             (map confirms-fn)
-             (apply comp))]
+             (map compile-confirms)
+             doall)]
     {:rule
      (fn [vtx data opts]
-       (-> (list vtx data opts)
-           comp-fn
-           first))}))
+       (reduce (fn [vtx* [sym sch-nm v]]
+                 (if (fn? v)
+                   (-> (node-vtx vtx* [:confirms sch-nm])
+                       (v data opts)
+                       (merge-vtx vtx*))
+                   (add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)})))
+               vtx
+               comp-fns))}))
 
 (defmethod compile-key :require
   [_ ztx ks]
@@ -467,15 +464,16 @@
                                      :message (str "one of keys " s " is required")})
               vtx)))]
     {:when map?
-     :rule (fn [vtx data opts]
-             (reduce (fn [vtx* k]
-                       (cond
-                         (set? k) (one-of-fn vtx* data k)
-                         (contains? data k) vtx*
-                         :else
-                         (add-err vtx* :require {:type "require" :message (str k " is required")} k)))
-                     vtx
-                     ks))}))
+     :rule
+     (fn [vtx data opts]
+       (reduce (fn [vtx* k]
+                 (cond
+                   (set? k) (one-of-fn vtx* data k)
+                   (contains? data k) vtx*
+                   :else
+                   (add-err vtx* :require {:type "require" :message (str k " is required")} k)))
+               vtx
+               ks))}))
 
 (defmethod compile-key :schema-key
   [_ ztx {sk :key sk-ns :ns sk-tags :tags}]

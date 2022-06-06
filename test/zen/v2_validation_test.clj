@@ -15,29 +15,44 @@
                :type "fx.apply"}]}))
 
 (deftest implemented-validations
-  (def ztx (zen/new-context {:unsafe true}))
 
-  (r/zen-read-ns ztx 'zen.tests.require-test)
+  (do
+    (def ztx (zen/new-context {:unsafe true}))
 
-  (r/zen-read-ns ztx 'zen.tests.boolean-test)
+    (r/zen-read-ns ztx 'zen.tests.require-test)
 
-  (r/zen-read-ns ztx 'zen.tests.case-test)
+    (r/zen-read-ns ztx 'zen.tests.boolean-test)
 
-  (r/zen-read-ns ztx 'zen.tests.schema-key-test)
+    (r/zen-read-ns ztx 'zen.tests.case-test)
 
-  (r/zen-read-ns ztx 'zen.tests.types-test)
+    (r/zen-read-ns ztx 'zen.tests.schema-key-test)
 
-  (r/zen-read-ns ztx 'zen.tests.keyname-schemas-test)
+    (r/zen-read-ns ztx 'zen.tests.types-test)
 
-  (r/zen-read-ns ztx 'zen.tests.map-test)
+    (r/zen-read-ns ztx 'zen.tests.keyname-schemas-test)
 
-  (r/zen-read-ns ztx 'zen.tests.core-validate-test)
+    (r/zen-read-ns ztx 'zen.tests.map-test)
 
-  (r/zen-read-ns ztx 'zen.tests.effects-test)
+    (r/zen-read-ns ztx 'zen.tests.core-validate-test)
 
-  (r/zen-read-ns ztx 'zen.tests.fn-test)
+    (r/zen-read-ns ztx 'zen.tests.effects-test)
 
-  (r/zen-read-ns ztx 'zen.tests.slicing-test)
+    (r/zen-read-ns ztx 'zen.tests.fn-test)
 
-  (r/run-tests ztx))
+    (r/zen-read-ns ztx 'zen.tests.slicing-test)
+
+    (r/run-tests ztx)))
+
+(comment
+
+  (do
+
+    (def ztx (zen/new-context {:unsafe true}))
+
+    (r/zen-read-ns ztx 'zen.tests.require-test)
+
+    (r/run-test ztx 'zen.tests.require-test/recursive-confirms-test))
+
+
+  )
 

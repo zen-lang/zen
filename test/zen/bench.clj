@@ -2,7 +2,7 @@
   (:require
    ;; start cider with :test alias to get the criterium dependency
    [clojure.java.io :as io]
-   [clj-async-profiler.core :as prof]
+   #_[clj-async-profiler.core :as prof]
    [criterium.core :as c]
    [zen.core :as zen]
    [zen.v2-validation :as v]))
