@@ -12,21 +12,23 @@
     "nil"))
 
 (def fhir-date-regex
-  "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?")
+  (re-pattern
+      "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?"))
 
 (def fhir-datetime-regex
-  "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?")
+  (re-pattern
+   "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?"))
 
 (def types-cfg
   {'zen/string {:fn string?
                 :to-str "string"}
 
    'zen/date
-   {:fn #(and (string? %) (re-matches (re-pattern fhir-date-regex) %))
+   {:fn #(and (string? %) (re-matches fhir-date-regex %))
     :to-str "date"}
 
    'zen/datetime
-   {:fn #(and (string? %) (re-matches (re-pattern fhir-datetime-regex) %))
+   {:fn #(and (string? %) (re-matches fhir-datetime-regex %))
     :to-str "datetime"}
 
    'zen/number {:fn number?
@@ -77,14 +79,14 @@
                       doall)
         open-world? (or (:key schema) (:values schema) (= (:validation-type schema) :open))
         {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world?)]
-    (fn [vtx data opts]
+    (fn compiled-sch [vtx data opts]
       (let [vtx*
             (reduce (fn [vtx* {w :when r :rule}]
-                        (if (or (nil? w) (w data))
-                          (r vtx* data opts)
-                          vtx*))
-                      (assoc vtx :type (:type schema))
-                      rulesets)]
+                      (if (or (nil? w) (w data))
+                        (r vtx* data opts)
+                        vtx*))
+                    (assoc vtx :type (:type schema))
+                    rulesets)]
         (if (valtype-pred data)
           (valtype-rule vtx* data opts)
           vtx*)))))
@@ -244,10 +246,11 @@
 
 (defmethod compile-key :case
   [_ ztx cases]
-  (let [vs (map (fn [{:keys [when then]}]
-                  (cond-> {:when (get-cached ztx when)}
-                    (not-empty then) (assoc :then (get-cached ztx then))))
-                cases)]
+  (let [vs (doall
+            (map (fn [{:keys [when then]}]
+                   (cond-> {:when (get-cached ztx when)}
+                     (not-empty then) (assoc :then (get-cached ztx then))))
+                 cases))]
     {:rule
      (fn [vtx data opts]
        (loop [[{wh :when th :then :as v} & rest] vs
@@ -358,7 +361,7 @@
              (into {}))]
     {:when map?
      :rule
-     (fn [vtx data opts]
+     (fn keys-sch [vtx data opts]
        (reduce (fn [vtx* [k v]]
                  (cond
                    (not (contains? key-rules k))
@@ -530,7 +533,9 @@
 
 (defmethod compile-key :nth
   [_ ztx cfg]
-  (let [schemas (map (fn [[index v]] [index (get-cached ztx v)]) cfg)]
+  (let [schemas (doall
+                 (map (fn [[index v]] [index (get-cached ztx v)])
+                      cfg))]
     {:when sequential?
      :rule
      (fn [vtx data opts]
@@ -725,7 +730,7 @@
   [_ ztx open-world?]
   {:when map?
    :rule
-   (fn [vtx data opts]
+   (fn validation-type-sch [vtx data opts]
      (let [filter-allowed
            (fn [unknown]
              (->> unknown
