@@ -45,16 +45,16 @@
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
 
     (prof/profile #_{:event :alloc}
-     (doseq [_ (range 5000)]
-       (v/validate ztx #{'hl7-fhir-r4-core.Encounter/schema} data))))
+                  (doseq [_ (range 5000)]
+                    (v/validate ztx #{'hl7-fhir-r4-core.Encounter/schema} data)))
 
-  (prof/profile #_{:event :alloc}
-   (doseq [_ (range 5000)]
-     (zen.core/validate ztx #{'hl7-fhir-r4-core.Patient/schema} data)))
+    #_(prof/profile {:event :alloc}
+                  (doseq [_ (range 5000)]
+                    (zen.core/validate ztx #{'hl7-fhir-r4-core.Encounter/schema} data))))
 
   (prof/list-event-types)
 
-  (prof/serve-files 8080)
+  (def srv (prof/serve-files 8080))
 
   (def res (bench "zen/bench_data.edn"))
 

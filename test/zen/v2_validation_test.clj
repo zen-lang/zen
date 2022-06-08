@@ -43,16 +43,4 @@
 
     (r/run-tests ztx)))
 
-(comment
-
-  (do
-
-    (def ztx (zen/new-context {:unsafe true}))
-
-    (r/zen-read-ns ztx 'zen.tests.require-test)
-
-    (r/run-test ztx 'zen.tests.require-test/recursive-confirms-test))
-
-
-  )
 

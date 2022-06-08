@@ -80,16 +80,20 @@
         open-world? (or (:key schema) (:values schema) (= (:validation-type schema) :open))
         {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world?)]
     (fn compiled-sch [vtx data opts]
-      (let [vtx*
-            (reduce (fn [vtx* {w :when r :rule}]
-                      (if (or (nil? w) (w data))
-                        (r vtx* data opts)
-                        vtx*))
-                    (assoc vtx :type (:type schema))
-                    rulesets)]
-        (if (valtype-pred data)
+      (loop [rs rulesets
+             vtx* (assoc vtx :type (:type schema))]
+        (cond
+          (and (empty? rs) (valtype-pred data))
           (valtype-rule vtx* data opts)
-          vtx*)))))
+
+          (empty? rs) vtx*
+
+          :else
+          (let [r (first rs)]
+            (if (or (nil? (get r :when)) ((get r :when) data))
+              (recur (rest rs)
+                     ((get r :rule) vtx* data opts))
+              (recur (rest rs) vtx*))))))))
 
 (defn get-cached [ztx schema]
   ;; TODO how performant is this call? maybe change to .hashCode
@@ -264,7 +268,7 @@
                (and (empty? (:errors vtx*)) th)
                (-> (merge-vtx vtx* vtx)
                    (node-vtx [:case item-idx :then])
-                   (th  data opts)
+                   (th data opts)
                    (merge-vtx vtx))
 
                (empty? (:errors vtx*)) (merge vtx vtx*)
@@ -362,17 +366,18 @@
     {:when map?
      :rule
      (fn keys-sch [vtx data opts]
-       (reduce (fn [vtx* [k v]]
-                 (cond
-                   (not (contains? key-rules k))
-                   (update vtx* :unknown-keys conj (conj (:path vtx) k))
-
-                   :else
-                   (-> (node-vtx&log vtx* [k] [k] opts)
-                       ((get key-rules k) v opts)
-                       (merge-vtx vtx*))))
-               vtx
-               data))}))
+       (loop [data (seq data)
+              unknown (transient [])
+              vtx* vtx]
+         (if (empty? data)
+           (update vtx* :unknown-keys into (persistent! unknown))
+           (let [[k v] (first data)]
+             (if (not (contains? key-rules k))
+               (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
+               (recur (rest data) unknown
+                      (-> (node-vtx&log vtx* [k] [k] opts)
+                          ((get key-rules k) v opts)
+                          (merge-vtx vtx*))))))))}))
 
 (defmethod compile-key :values
   [_ ztx sch]
@@ -447,15 +452,19 @@
              (map compile-confirms)
              doall)]
     {:rule
-     (fn [vtx data opts]
-       (reduce (fn [vtx* [sym sch-nm v]]
-                 (if (fn? v)
-                   (-> (node-vtx vtx* [:confirms sch-nm])
-                       (v data opts)
-                       (merge-vtx vtx*))
-                   (add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)})))
-               vtx
-               comp-fns))}))
+     (fn confirms-sch [vtx data opts]
+       (loop [comp-fns comp-fns
+              vtx* vtx]
+         (if (empty? comp-fns)
+           vtx*
+           (let [[sym sch-nm v] (first comp-fns)]
+             (if (fn? v)
+               (recur (rest comp-fns)
+                      (-> (node-vtx vtx* [:confirms sch-nm])
+                          (v data opts)
+                          (merge-vtx vtx*)))
+               (recur (rest comp-fns)
+                      (add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)})))))))}))
 
 (defmethod compile-key :require
   [_ ztx ks]
