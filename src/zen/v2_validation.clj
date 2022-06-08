@@ -222,12 +222,12 @@
       (add-err vtx :type {:message (str "Expected fn call '(fn-name args-1 arg-2), got '"
                                         (pretty-type data))})
 
-      (not (symbol? (first data)))
+      (not (symbol? (nth data 0)))
       (add-err vtx :apply {:message (str "Expected symbol, got '" (first data))
                            :type "apply.fn-name"})
 
       :else
-      (let [sch-sym (first data)
+      (let [sch-sym (nth data 0)
             {:keys [zen/tags args] :as sch} (utils/get-symbol ztx sch-sym)]
         (cond
           (nil? sch)
@@ -621,7 +621,7 @@
      (fn [vtx data opts]
        (-> (list vtx data)
            comp-fn
-           first))}))
+           (nth 0)))}))
 
 (defmethod compile-key :key
   [_ ztx sch]
@@ -640,7 +640,7 @@
   {:when #(or (symbol? %) (list? %))
    :rule
    (fn [vtx data opts]
-     (let [sym (if (list? data) (first data) data)
+     (let [sym (if (list? data) (nth data 0) data)
            {:keys [zen/tags] :as sch} (utils/get-symbol ztx sym)]
        (if (not (clojure.set/superset? tags sch-tags))
          (add-err vtx :tags
@@ -694,8 +694,8 @@
                   (concat (drop (count prev-path) p))
                   vec)))]
       (-> (node-vtx vtx [:slicing slice-name])
-          (v (mapv second slice)
-             (assoc opts :indices (map first slice)))
+          (v (mapv #(nth % 1) slice)
+             (assoc opts :indices (map #(nth % 0) slice)))
           (update :errors (fn [errs] (map #(update % :path append-slice-path) errs)))
           (merge-vtx vtx)))))
 
