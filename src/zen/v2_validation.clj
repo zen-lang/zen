@@ -113,35 +113,37 @@
           (swap! ztx assoc-in [:compiled-schemas hash*] v)
           v)))))
 
-(defn validate-schema [ztx vtx schema data & [opts]]
-  (let [v  (get-cached ztx schema)
-        vtx*
-        (-> (merge vtx {:schema [(:zen/name schema)]
-                        :path []
-                        :visited #{}
-                        :unknown-keys #{}})
-            (v data opts))
-
-        unknown-errs
-        (map (fn [path]
-               {:path path
-                :type "unknown-key"
-                :message (str "unknown key " (last path))})
-             (:unknown-keys vtx*))]
-
-    (update vtx* :errors #(vec (into % unknown-errs)))))
+(defn validate-schema
+  "internal, use validate function"
+  [ztx vtx schema data & [opts]]
+  (-> vtx
+      (assoc :schema [(:zen/name schema)])
+      (assoc :path [])
+      ((get-cached ztx schema) data opts)))
 
 (defn validate [ztx schemas data & [opts]]
-  (reduce (fn [vtx* sym]
-            (if-let [schema (utils/get-symbol ztx sym)]
-              (select-keys (validate-schema ztx vtx* schema data opts)
-                           [:errors :effects])
-              (update vtx* :errors conj
-                      {:message (str "Could not resolve schema '" sym)
-                       :type "schema"})))
-          {:errors []
-           :effects []}
-          schemas))
+  (loop [schemas (seq schemas)
+         vtx {:errors []
+              :visited #{}
+              :unknown-keys #{}
+              :effects []}]
+    (if (empty? schemas)
+      (update vtx :errors
+              (fn [errs]
+                (->> (:unknown-keys vtx)
+                     (map (fn [path]
+                            {:path path
+                             :type "unknown-key"
+                             :message (str "unknown key " (peek path))}))
+                     (into errs)
+                     vec)))
+      (if-let [schema (utils/get-symbol ztx (first schemas))]
+        (recur (rest schemas)
+               (validate-schema ztx vtx schema data opts))
+        (recur (rest schemas)
+               (update vtx :errors conj
+                       {:message (str "Could not resolve schema '" (first schemas))
+                        :type "schema"}))))))
 
 (defn add-err [vtx sch-key err & data-path]
   (let [err-type
@@ -271,7 +273,7 @@
                    (th data opts)
                    (merge-vtx vtx))
 
-               (empty? (:errors vtx*)) (merge vtx vtx*)
+               (empty? (:errors vtx*)) (merge-vtx vtx vtx*)
 
                :else (recur rest (inc item-idx)))))))}))
 
@@ -721,7 +723,7 @@
 
     {:when sequential?
      :rule
-     (fn [vtx data opts]
+     (fn slicing-sch [vtx data opts]
        (->> data
             (map-indexed vector)
             (group-by (fn [indexed-el]

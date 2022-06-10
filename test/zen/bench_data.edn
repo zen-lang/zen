@@ -1,4 +1,67 @@
-{:pt
+{:plannet-org
+ {:schema-sym [:hl7-fhir-r4-core.Organization :hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization]
+  :data
+  {:address
+   [{:line ["123 Main Street"],
+     :city "Anytown",
+     :state "CT",
+     :postalCode "00014-1234"}],
+   :meta
+   {:lastUpdated "2020-07-07T13:26:22.0314215+00:00",
+    :profile
+    ["http://hl7.org/fhir/us/davinci-pdex-plan-net/StructureDefinition/plannet-Organization"]},
+   :name "Burr Clinic",
+   ;; type is omitted to get the error
+   #_:type
+   #_[{:coding
+       [{:system
+         "http://hl7.org/fhir/us/davinci-pdex-plan-net/CodeSystem/OrgTypeCS",
+         :code "fac",
+         :display "Facility"}]}],
+   :resourceType "Organization",
+   :language "en-US",
+   :active true,
+   :id "BurrClinic",
+   :identifier
+   [{:system "http://hl7.org/fhir/sid/us-npi", :value "NPI999"}],
+   :telecom
+   [{:system "phone", :value "(111)-222-3333", :rank 2}
+    {:system "url", :value "https://www.burrclinic.com", :rank 1}],
+   :contact
+   [{:telecom [{:system "phone", :value "(111)-222-3333", :rank 1}]}]}}
+
+ :plannet-org-1
+ {:schema-sym [:hl7-fhir-r4-core.Organization :hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization]
+  :data
+  {:address
+   [{:line ["123 Main Street"],
+     :city "Anytown",
+     :state "CT",
+     :postalCode "00014-1234"}],
+   :meta
+   {:lastUpdated "2020-07-07T13:26:22.0314215+00:00",
+    :profile
+    ["http://hl7.org/fhir/us/davinci-pdex-plan-net/StructureDefinition/plannet-Organization"]},
+   :name "Hamilton Clinic",
+   :type
+   [{:coding
+     [{:system
+       "http://hl7.org/fhir/us/davinci-pdex-plan-net/CodeSystem/OrgTypeCS",
+       :code "fac",
+       :display "Facility"}]}],
+   :resourceType "Organization",
+   :language "en-US",
+   :active true,
+   :id "CancerClinic",
+   :identifier
+   [{:system "http://hl7.org/fhir/sid/us-npi", :value "NPI788"}],
+   :telecom
+   [{:system "phone", :value "(111)-222-3333", :rank 2}
+    {:system "url", :value "https://www.Hospital.com", :rank 1}],
+   :contact
+   [{:telecom [{:system "phone", :value "(111)-222-3333", :rank 1}]}]}}
+
+ :pt
  {:schema-sym :hl7-fhir-r4-core.Patient
   :data
   {:address [{:use "home" :line ["2222 Home Street"]}]
@@ -7,7 +70,7 @@
    :name [{:use "official" :family "Everywoman" :given ["Eve"]}]
    :birthDate "1973-05-31"
    :resourceType "Patient"
-   :active true
+   :active "wrong value" #_true
    :id "1"
    :identifier
    [{:type
