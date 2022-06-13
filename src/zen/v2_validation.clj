@@ -13,7 +13,7 @@
 
 (def fhir-date-regex
   (re-pattern
-      "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?"))
+   "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?"))
 
 (def fhir-datetime-regex
   (re-pattern
@@ -72,6 +72,43 @@
 
 (defmulti compile-type-check (fn [tp ztx] tp))
 
+(defn setmap? [a]
+  (or (set? a) (map? a)))
+
+(defn deep-merge
+  "efficient deep merge"
+  [a b]
+  (loop [[[k v :as i] & ks] b, acc a]
+    (if (nil? i)
+      acc
+      (let [av (get a k)]
+        (if (= v av)
+          (recur ks acc)
+          (recur ks (cond
+                      (and (map? v) (map? av)) (assoc acc k (deep-merge av v))
+                      (and (setmap? v) (nil? av)) (assoc acc k v)
+                      (and (setmap? v) (setmap? av)) (assoc acc k (into av v))
+                      :else
+                      (assoc acc k v))))))))
+
+(defn *resolve-confirms [ztx in-compile sch]
+  (let [hsh (hash sch)]
+    (if (or (contains? in-compile hsh) (nil? sch))
+      {}
+      (let [sch* (dissoc sch :confirms :zen/file :zen/name :zen/tags :zen/desc)
+            root
+            (->> sch*
+                 (filter (fn [[_ v]] (map? v)))
+                 (map (fn [[k v]] [k (*resolve-confirms ztx (conj in-compile hsh) v)]))
+                 (into {})
+                 (merge sch*))]
+        (->> (:confirms sch)
+             (map (fn [k] (*resolve-confirms ztx (conj in-compile hsh) (utils/get-symbol ztx k))))
+             (reduce deep-merge root))))))
+
+(defn resolve-confirms [ztx sch]
+  (*resolve-confirms ztx #{} sch))
+
 (defn *compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
                       (map (fn [[k kfg]]
@@ -95,23 +132,29 @@
                      ((get r :rule) vtx* data opts))
               (recur (rest rs) vtx*))))))))
 
-(defn get-cached [ztx schema]
-  ;; TODO how performant is this call? maybe change to .hashCode
-  (let [hash* (hash schema)
-        v (get-in @ztx [:compiled-schemas hash*])]
-    (cond
-      (fn? v)
-      v
+(defn get-cached
+  ([ztx schema resolve-confirms?]
+   (let [hash* (hash schema)
+         v (get-in @ztx [:compiled-schemas hash*])]
+     (cond
+       (fn? v) v
 
-      (true? (get-in @ztx [:visited-schemas hash*]))
-      (fn [vtx data opts] vtx)
+       :else
+       (let [v (->> (resolve-confirms ztx schema)
+                    (*compile-schema ztx))]
+         (swap! ztx assoc-in [:compiled-schemas hash*] v)
+         v))))
 
-      :else
-      (do
-        (swap! ztx assoc-in [:visited-schemas hash*] true)
-        (let [v (*compile-schema ztx schema)]
-          (swap! ztx assoc-in [:compiled-schemas hash*] v)
-          v)))))
+  ([ztx schema]
+   (let [hash* (hash schema)
+         v (get-in @ztx [:compiled-schemas hash*])]
+     (cond
+       (fn? v) v
+
+       :else
+       (let [v (*compile-schema ztx schema)]
+         (swap! ztx assoc-in [:compiled-schemas hash*] v)
+         v)))))
 
 (defn validate-schema
   "internal, use validate function"
@@ -119,7 +162,7 @@
   (-> vtx
       (assoc :schema [(:zen/name schema)])
       (assoc :path [])
-      ((get-cached ztx schema) data opts)))
+      ((get-cached ztx schema true) data opts)))
 
 (defn validate [ztx schemas data & [opts]]
   (loop [schemas (seq schemas)

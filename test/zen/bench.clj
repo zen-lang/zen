@@ -74,17 +74,21 @@
 
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.Organization)
 
+    (v/validate ztx #{'hl7-fhir-r4-core.Organization/schema
+                      'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
+                data)
+
+    (prof/profile {:event :alloc}
+     (doseq [_ (range 5000)]
+       (v/validate ztx #{'hl7-fhir-r4-core.Organization/schema
+                         'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
+                   data)))
+
     #_(prof/profile #_{:event :alloc}
        (doseq [_ (range 5000)]
-         (v/validate ztx #{'hl7-fhir-r4-core.Organization/schema
-                           'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
-                     data)))
-
-    (prof/profile #_{:event :alloc}
-     (doseq [_ (range 5000)]
-       (zen.core/validate ztx #{'hl7-fhir-r4-core.Organization/schema
-                                'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
-                          data))))
+         (zen.core/validate ztx #{'hl7-fhir-r4-core.Organization/schema
+                                  'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
+                            data))))
 
   (prof/list-event-types)
 

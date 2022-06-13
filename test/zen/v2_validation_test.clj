@@ -1,5 +1,6 @@
 (ns zen.v2-validation-test
   (:require
+   [zen.utils]
    [zen.effect :as fx]
    [zen.test-runner :as r]
    [clojure.test :refer [deftest is]]
@@ -43,4 +44,39 @@
 
     (r/run-tests ztx)))
 
+(deftest resolve-confirms-test
 
+  (def ztx (zen/new-context {:unsafe true}))
+
+  (zen.core/read-ns ztx 'zen.tests.confirms-test)
+
+  (def data (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/data-example)
+                    :zen/file :zen/name))
+
+  #_(is
+     (empty?
+      (:errors
+       (v/validate ztx #{'zen.tests.confirms-test/to-test}
+                   data))))
+
+  (is
+   (empty?
+    (:errors
+     (v/validate ztx #{'zen.tests.confirms-test/confirms-resolved}
+                 data))))
+
+  (is (= (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/confirms-resolved)
+                 :zen/file
+                 :zen/name)
+
+         (dissoc (->> (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test)
+                      (v/resolve-confirms ztx))
+                 :zen/name))))
+
+(comment
+
+  (zen.core/read-ns ztx 'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization)
+
+  (v/resolve-confirms ztx
+                      (zen.utils/get-symbol ztx
+                                            'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema)))

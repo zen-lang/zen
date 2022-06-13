@@ -1,0 +1,119 @@
+{ns zen.tests.confirms-test
+
+ import #{zen.test}
+
+ k
+ {:zen/tags #{:zen/schema}
+  :confirms #{j}}
+
+ j
+ {:zen/tags #{:zen/schema}
+  :confirms #{k}}
+
+ h
+ {:zen/tags #{zen/schema}
+  :confirms #{j}
+  :keys {:key-g {:type zen/number}}}
+
+ g
+ {:zen/tags #{zen/schema}
+  :keys
+  {:key-c {:type zen/vector
+           :every
+           {:type zen/map
+            :keys {:key-d
+                   {:type zen/map
+                    :require #{:key-p}
+                    :keys {:key-p {:type zen/boolean}
+                           :key-g {:type zen/number}}}}}}}}
+
+ f
+ {:zen/tags #{zen/schema}
+  :require #{:key-n}
+  :keys {:key-c {:type zen/vector
+                 :every {:type zen/map
+                         :keys {:key-z {:type zen/vector
+                                        :minItems 2}}}}
+         :key-n {:type zen/boolean}}}
+
+ e
+ {:zen/tags #{zen/schema}
+  :zen/desc "just a desc 2"
+  :keys {:key-p {:type zen/boolean}}}
+
+ d
+ {:zen/tags #{zen/schema}
+  :keys {:key-z {:type zen/vector
+                 :every {:type zen/number}}}}
+
+ c
+ {:zen/tags #{zen/schema}
+  :confirms #{h}
+  :require #{:key-f}
+  :keys {:key-f {:type zen/string}}}
+
+ b
+ {:zen/tags #{zen/schema}
+  :keys {:key-b {:minLength 4}}}
+
+ a
+ {:zen/tags #{zen/schema}
+  :confirms #{f g}
+  :require #{:key-a}
+  :keys {:key-a {:type zen/map
+                 :confirms #{c}
+                 :keys {:key-e {:type zen/string}}}}}
+
+ data-example
+ {:key-a {:key-e "a value"
+          :key-f "another value"
+          :key-g 420}
+  :key-n true
+  :key-b "a value"
+  :key-c [{:key-d {:keys-y "another value"
+                   :key-g 420
+                   :key-p true}
+           :key-z [1 2 3]}]}
+
+ to-test
+ {:zen/tags #{zen/schema}
+  :confirms #{a b not-found}
+  :require #{:key-a :key-b}
+  :type zen/map
+  :keys {:key-a {:confirms #{c}}
+         :key-b {:type zen/string}
+         :key-c {:type zen/vector
+                 :minItems 1
+                 :every {:type zen/map
+                         :confirms #{d}
+                         :require #{:key-d}
+                         :keys {:key-d
+                                {:type zen/map
+                                 :keys {:keys-y {:type zen/string}}
+                                 :zen/desc "just a desc"
+                                 :confirms #{e not-found-1}}}}}}}
+
+ confirms-resolved
+ {:require #{:key-a :key-b :key-n}
+  :type zen/map
+  :keys {:key-a {:type zen/map
+                 :keys {:key-e {:type zen/string}
+                        :key-f {:type zen/string}
+                        :key-g {:type zen/number}}
+                 :require #{:key-f}}
+         :key-b {:type zen/string
+                 :minLength 4}
+         :key-n {:type zen/boolean}
+         :key-c {:type zen/vector
+                 :minItems 1
+                 :every {:type zen/map
+                         :require #{:key-d}
+                         :keys {:key-z {:type zen/vector
+                                        :every {:type zen/number}
+                                        :minItems 2}
+                                :key-d
+                                {:type zen/map
+                                 :require #{:key-p}
+                                 :keys {:keys-y {:type zen/string}
+                                        :key-p {:type zen/boolean}
+                                        :key-g {:type zen/number}}}}}}}}}
