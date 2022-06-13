@@ -81,26 +81,33 @@
                                (add-error ctx acc
                                           {:message fail}
                                           {:schema [:fail]})
-                               (let [acc (if-let [sch (get ks k)]
+                               (let [sch (get ks k)
+                                     prop-sch (or (resolve-property ctx k)
+                                                  (resolve-keyname-schema ctx kns k))
+                                     acc (cond
+                                           sch
                                            (let [acc' (validate-node ctx (update-acc ctx acc {:path [k] :schema [k]}) sch v)
                                                  acc' (update-in acc' [:keys (conj (:path acc) k)] (fnil conj #{}) (:schema acc))]
                                              (restore-acc acc' acc))
-                                           (if-let [prop-sch (or (resolve-property ctx k)
-                                                                 (resolve-keyname-schema ctx kns k))]
-                                             (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
-                                                 (restore-acc acc)
-                                                 (update-in [:keys (conj (:path acc) k)] (fnil conj #{}) (:schema acc)))
-                                             (if ignore-unknown-keys
-                                               acc
-                                               (update-in acc [:keys (conj (:path acc) k)] #(or % #{})))))
-                                     acc (if vls
-                                           (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
-                                               (restore-acc acc))
-                                           acc)
-                                     acc (if ky
-                                           (-> (validate-node ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
-                                               (restore-acc acc))
-                                           acc)]
+
+                                           prop-sch
+                                           (-> (validate-node ctx (update-acc ctx acc {:path [k] :schema (if kns [:keyname-schemas k] [:property k])}) prop-sch v)
+                                               (restore-acc acc)
+                                               (update-in [:keys (conj (:path acc) k)] (fnil conj #{}) (:schema acc)))
+
+                                           ignore-unknown-keys
+                                           acc
+
+                                           :else
+                                           (update-in acc [:keys (conj (:path acc) k)] #(or % #{})))
+                                     acc (if (and vls (nil? sch) (nil? prop-sch))
+                                             (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
+                                                 (restore-acc acc))
+                                             acc)
+                                     acc (if (and ky (nil? sch) (nil? prop-sch))
+                                             (-> (validate-node ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
+                                                 (restore-acc acc))
+                                             acc)]
                                  acc)))
                            acc))
           acc (->> reqs
