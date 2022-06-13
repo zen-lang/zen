@@ -13,10 +13,16 @@
   {:extra-paths []
    :extra-deps {org.clojure/tools.nrepl       {:mvn/version "0.2.13"}
                 org.clojure/core.rrb-vector   {:mvn/version "0.0.13"}
-                cider/cider-nrepl             {:mvn/version "0.25.6"}
-                refactor-nrepl/refactor-nrepl {:mvn/version "2.4.0"}}
+                cider/cider-nrepl             {:mvn/version "LATEST"}
+                refactor-nrepl/refactor-nrepl {:mvn/version "LATEST"}}
 
-   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
+   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
+   :main-opts   ["-m" "nrepl.cmdline"
+                 "-b" "0.0.0.0"
+                 "--middleware"
+                 "[refactor-nrepl.middleware/wrap-refactor,cider.nrepl/cider-middleware]"]
+
+   }
 
   :test {:extra-paths ["test" "lib/example" "lib/auth"]
          :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
