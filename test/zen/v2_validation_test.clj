@@ -53,6 +53,11 @@
   (def data (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/data-example)
                     :zen/file :zen/name))
 
+  (->> (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test)
+       (v/resolve-confirms ztx))
+
+  (seq (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test))
+
   #_(is
      (empty?
       (:errors

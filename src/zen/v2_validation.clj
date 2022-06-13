@@ -91,23 +91,42 @@
                       :else
                       (assoc acc k v))))))))
 
-(defn *resolve-confirms [ztx in-compile sch]
-  (let [hsh (hash sch)]
-    (if (or (contains? in-compile hsh) (nil? sch))
-      {}
-      (let [sch* (dissoc sch :confirms :zen/file :zen/name :zen/tags :zen/desc)
-            root
-            (->> sch*
-                 (filter (fn [[_ v]] (map? v)))
-                 (map (fn [[k v]] [k (*resolve-confirms ztx (conj in-compile hsh) v)]))
-                 (into {})
-                 (merge sch*))]
-        (->> (:confirms sch)
-             (map (fn [k] (*resolve-confirms ztx (conj in-compile hsh) (utils/get-symbol ztx k))))
-             (reduce deep-merge root))))))
+(defn collect-confirms [sch]
+  (loop [nodes (seq sch)
+         cur-path (list)
+         paths []]
+    (if (= ::child (first nodes))
+      (recur (rest nodes) (rest cur-path) paths)
+      (let [[[k v] & oth] nodes]
+        (cond
+          (= :confirms k)
+          (recur oth cur-path (conj paths [cur-path v]))
+
+          (map? v)
+          (recur (into (conj oth ::child) v) (conj cur-path k) paths)
+
+          (empty? oth)
+          paths
+
+          :else
+          (recur oth cur-path paths))))))
 
 (defn resolve-confirms [ztx sch]
-  (*resolve-confirms ztx #{} sch))
+  (->> (collect-confirms sch)
+       (mapcat (fn [[path confirms]]
+                 (map (fn [cf] [(reverse path) cf]) confirms)))
+       (reduce (fn [sch* [path schema-sym]]
+                 (let [to-confirm (utils/get-symbol ztx schema-sym)]
+                   (if (nil? to-confirm)
+                     ;; TODO add schema not found err
+                     sch*
+                     (if (empty? path)
+                       (deep-merge (dissoc sch* :confirms) to-confirm)
+                       (update-in sch* path
+                                  (fn [node]
+                                    (-> (dissoc node :confirms)
+                                        (deep-merge (dissoc to-confirm :zen/tags :zen/name :zen/file)))))))))
+               sch)))
 
 (defn *compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
