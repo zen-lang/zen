@@ -916,3 +916,51 @@
 
   (vmatch tctx #{'myapp/some-number} 1/3
           {:errors [nil?]}))
+
+(deftest recursive-schema-validation-test
+
+  (def ztx (zen.core/new-context {:unsafe true}))
+
+  (zen.core/load-ns ztx '{ns my-ns
+
+                          op
+                          {:zen/tags #{zen/tag}}
+
+                          api
+                          {:zen/tags #{zen/tag zen/schema}
+                           :type zen/map
+                           :keys {:get {:type zen/symbol :tags #{op}}
+                                  :post {:type zen/symbol :tags #{op}}
+                                  :apis {:type zen/set :every {:type zen/symbol :tags #{api}}}}
+                           :key {:type zen/case
+                                 :case [{:when {:type zen/string} :then {:type zen/string}}
+                                        {:when {:type zen/vector} :then {:type zen/vector
+                                                                         :every {:type zen/keyword}
+                                                                         :minItems 1
+                                                                         :maxItems 1}}]}
+                           :values {:type zen/map
+                                    :confirms #{api}}}
+
+                          index-op
+                          {:zen/tags #{op}}
+
+                          get-by-rt-and-id
+                          {:zen/tags #{op}}
+
+                          get-pt
+                          {:zen/tags #{op}}
+
+                          my-api
+                          {:zen/tags #{api}
+                           :get index-op
+                           [:resourceType] {[:id] {:get get-by-rt-and-id}}
+                           :apis #{pt-api}}
+
+                          pt-api
+                          {:zen/tags #{api}
+                           "Patient" {[:id] {:get get-pt}}}})
+
+
+  (is (= [] (zen.core/errors ztx)))
+
+  )
