@@ -111,22 +111,39 @@
           :else
           (recur oth cur-path paths))))))
 
+(defn strip-meta [sch]
+  (-> sch
+      (dissoc :zen/tags :zen/name :zen/file :zen/desc)))
+
 (defn resolve-confirms [ztx sch]
-  (->> (collect-confirms sch)
-       (mapcat (fn [[path confirms]]
-                 (map (fn [cf] [(reverse path) cf]) confirms)))
-       (reduce (fn [sch* [path schema-sym]]
-                 (let [to-confirm (utils/get-symbol ztx schema-sym)]
-                   (if (nil? to-confirm)
-                     ;; TODO add schema not found err
-                     sch*
-                     (if (empty? path)
-                       (deep-merge (dissoc sch* :confirms) to-confirm)
-                       (update-in sch* path
-                                  (fn [node]
-                                    (-> (dissoc node :confirms)
-                                        (deep-merge (dissoc to-confirm :zen/tags :zen/name :zen/file)))))))))
-               sch)))
+  ;; maybe add schema hash to confirmed?
+  (loop [confirmed #{}
+         sch sch]
+    (let [merge-confirms
+          (fn [sch* [path schema-sym]]
+            (let [to-confirm (utils/get-symbol ztx schema-sym)]
+              (if (nil? to-confirm)
+                ;; TODO add schema not found err
+                sch*
+                (if (empty? path)
+                  (deep-merge (dissoc sch* :confirms) (strip-meta to-confirm))
+                  (update-in sch* path
+                             (fn [node]
+                               (-> (dissoc node :confirms)
+                                   (deep-merge (strip-meta to-confirm)))))))))
+
+          confirms
+          (->> (collect-confirms sch)
+               (mapcat (fn [[path confirms]]
+                         (map (fn [cf] [(reverse path) cf]) confirms)))
+               (remove #(contains? confirmed %)))]
+      (cond
+        (empty? confirms) sch
+
+        :else
+        (->> confirms
+             (reduce merge-confirms sch)
+             (recur (into confirmed confirms)))))))
 
 (defn *compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
@@ -513,11 +530,12 @@
 
         comp-fns
         (->> ks
-             (map compile-confirms)
+             #_(map compile-confirms)
              doall)]
     {:rule
      (fn confirms-sch [vtx data opts]
-       (loop [comp-fns comp-fns
+       vtx
+       #_(loop [comp-fns comp-fns
               vtx* vtx]
          (if (empty? comp-fns)
            vtx*

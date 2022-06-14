@@ -53,10 +53,10 @@
   (def data (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/data-example)
                     :zen/file :zen/name))
 
-  (->> (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test)
-       (v/resolve-confirms ztx))
+  #_(->> (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test)
+         (v/resolve-confirms ztx))
 
-  (seq (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test))
+  (v/collect-confirms (zen.utils/get-symbol ztx 'zen.tests.confirms-test/confirms-resolved))
 
   #_(is
      (empty?
@@ -70,13 +70,13 @@
      (v/validate ztx #{'zen.tests.confirms-test/confirms-resolved}
                  data))))
 
-  (is (= (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/confirms-resolved)
-                 :zen/file
-                 :zen/name)
+  (def to-match (zen.utils/get-symbol ztx 'zen.tests.confirms-test/confirms-resolved))
 
-         (dissoc (->> (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test)
-                      (v/resolve-confirms ztx))
-                 :zen/name))))
+  (def resolved (->> (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test)
+                     (v/resolve-confirms ztx)))
+
+  (is (= (dissoc to-match :zen/file :zen/name)
+         (dissoc resolved :zen/file :zen/name))))
 
 (comment
 
@@ -84,4 +84,8 @@
 
   (v/resolve-confirms ztx
                       (zen.utils/get-symbol ztx
-                                            'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema)))
+                                            'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema))
+
+
+
+  )

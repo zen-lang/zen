@@ -94,13 +94,15 @@
                                  :confirms #{e not-found-1}}}}}}}
 
  confirms-resolved
- {:require #{:key-a :key-b :key-n}
+ {:zen/tags #{zen/schema}
+  :require #{:key-a :key-b :key-n}
   :type zen/map
   :keys {:key-a {:type zen/map
                  :keys {:key-e {:type zen/string}
                         :key-f {:type zen/string}
                         :key-g {:type zen/number}}
-                 :require #{:key-f}}
+                 :require #{:key-f}
+                 :confirms #{zen.tests.confirms-test/j}}
          :key-b {:type zen/string
                  :minLength 4}
          :key-n {:type zen/boolean}
@@ -114,6 +116,7 @@
                                 :key-d
                                 {:type zen/map
                                  :require #{:key-p}
+                                 :zen/desc "just a desc"
                                  :keys {:keys-y {:type zen/string}
                                         :key-p {:type zen/boolean}
                                         :key-g {:type zen/number}}}}}}}}}
