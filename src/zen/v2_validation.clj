@@ -1,5 +1,6 @@
 (ns zen.v2-validation
   (:require
+   [clojure.zip :as z]
    [zen.effect]
    [zen.match]
    [clojure.set :as cljset]
@@ -72,6 +73,78 @@
 
 (defmulti compile-type-check (fn [tp ztx] tp))
 
+(defn setmap? [a]
+  (or (set? a) (map? a)))
+
+(defn deep-merge
+  "efficient deep merge"
+  [a b]
+  (loop [[[k v :as i] & ks] b, acc a]
+    (if (nil? i)
+      acc
+      (let [av (get a k)]
+        (if (= v av)
+          (recur ks acc)
+          (recur ks (cond
+                      (and (map? v) (map? av)) (assoc acc k (deep-merge av v))
+                      (and (setmap? v) (nil? av)) (assoc acc k v)
+                      (and (setmap? v) (setmap? av)) (assoc acc k (into av v))
+                      :else
+                      (assoc acc k v))))))))
+
+(defn map-zipper [m]
+  (z/zipper
+   (fn [x] (or (map? x) (map? (nth x 1))))
+   (fn [x] (seq (if (map? x) x (nth x 1))))
+   (fn [x children]
+     (if (map? x)
+       (into {} children)
+       (assoc x 1 (into {} children))))
+   m))
+
+(defn strip-meta [sch]
+  (-> sch
+      (dissoc :zen/tags :zen/name :zen/file :zen/desc)))
+
+(defn get-v [node]
+  (if (map? node)
+    node
+    (nth node 1)))
+
+(defn resolve-confirms [ztx sch num]
+  (loop [cur-node (z/next (map-zipper sch))
+         num num]
+    (cond
+      (= num 0) (z/root cur-node)
+      (z/end? cur-node) (z/root cur-node)
+      :else
+      (let [[k v] (z/node cur-node)]
+        (cond
+          (and (= :confirms k) (set? v))
+          (let [resolved (::resolved (get-v (z/node (z/up cur-node))))]
+            (if (and (not-empty resolved)
+                     (clojure.set/subset? v resolved))
+              (recur (z/next cur-node) num)
+              (-> (z/replace cur-node nil)
+                  (z/up)
+                  (z/edit
+                   (fn [node confirms]
+                     (let [node*
+                           (reduce (fn [node* cf]
+                                     (if-let [to-confirm (strip-meta (zen.utils/get-symbol ztx cf))]
+                                       (deep-merge node* to-confirm)
+                                       node*))
+                                   (-> (get-v node)
+                                       (update ::resolved #(into (or % #{}) confirms)))
+                                   confirms)]
+                       (if (vector? node)
+                         [(nth node 0) node*]
+                         node*)))
+                   v)
+                  (z/next)
+                  (recur (- num 1)))))
+          :else (recur (z/next cur-node) num))))))
+
 (defn *compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
                       (map (fn [[k kfg]]
@@ -96,7 +169,7 @@
               (recur (rest rs) vtx*))))))))
 
 (defn get-cached
-  [ztx schema]
+  [ztx schema resolve-confirms?]
   (let [hash* (hash schema)
         v (get-in @ztx [:compiled-schemas hash*])]
     (cond
@@ -109,7 +182,11 @@
       :else
       (do
         (swap! ztx assoc-in [:visited-schemas hash*] true)
-        (let [v (*compile-schema ztx schema)]
+        (let [v
+              (->> (if resolve-confirms?
+                     (resolve-confirms ztx schema 200)
+                     schema)
+                  (*compile-schema ztx))]
           (swap! ztx assoc-in [:compiled-schemas hash*] v)
           v)))))
 
@@ -119,7 +196,7 @@
   (-> vtx
       (assoc :schema [(:zen/name schema)])
       (assoc :path [])
-      ((get-cached ztx schema) data opts)))
+      ((get-cached ztx schema true) data opts)))
 
 (defn validate [ztx schemas data & [opts]]
   (loop [schemas (seq schemas)
@@ -241,7 +318,7 @@
                                :type "apply.fn-tag"})
 
           :else
-          (let [v (get-cached ztx args)]
+          (let [v (get-cached ztx args false)]
             (-> (node-vtx vtx [sch-sym :args])
                 (v (rest data) opts)
                 (merge-vtx vtx))))))))
@@ -254,8 +331,8 @@
   [_ ztx cases]
   (let [vs (doall
             (map (fn [{:keys [when then]}]
-                   (cond-> {:when (get-cached ztx when)}
-                     (not-empty then) (assoc :then (get-cached ztx then))))
+                   (cond-> {:when (get-cached ztx when false)}
+                     (not-empty then) (assoc :then (get-cached ztx then false))))
                  cases))]
     {:rule
      (fn [vtx data opts]
@@ -363,7 +440,7 @@
   (let [key-rules
         (->> ks
              (map (fn [[k sch]]
-                    [k (get-cached ztx sch)]))
+                    [k (get-cached ztx sch false)]))
              (into {}))]
     {:when map?
      :rule
@@ -383,7 +460,7 @@
 
 (defmethod compile-key :values
   [_ ztx sch]
-  (let [v (get-cached ztx sch)]
+  (let [v (get-cached ztx sch false)]
     {:when map?
      :rule
      (fn [vtx data opts]
@@ -396,7 +473,7 @@
 
 (defmethod compile-key :every
   [_ ztx sch]
-  (let [v (get-cached ztx sch)]
+  (let [v (get-cached ztx sch false)]
     {:when #(or (sequential? %) (set? %))
      :rule
      (fn [vtx data opts]
@@ -446,7 +523,7 @@
   (let [compile-confirms
         (fn [sym]
           (if-let [sch (utils/get-symbol ztx sym)]
-            [sym (:zen/name sch) (get-cached ztx sch)]
+            [sym (:zen/name sch) (get-cached ztx sch false)]
             [sym]))
 
         comp-fns
@@ -515,7 +592,7 @@
                      :type "schema"})
 
            :else
-           (let [v (get-cached ztx sch)]
+           (let [v (get-cached ztx sch false)]
              (-> (node-vtx vtx [:schema-key sch-symbol])
                  (v data opts)
                  (merge-vtx vtx)))))
@@ -537,7 +614,7 @@
                      :type "schema"})
 
            :else
-           (let [v (get-cached ztx sch)]
+           (let [v (get-cached ztx sch false)]
              (-> (node-vtx vtx [:schema-index sch-symbol])
                  (v data opts)
                  (merge-vtx vtx)))))
@@ -546,7 +623,7 @@
 (defmethod compile-key :nth
   [_ ztx cfg]
   (let [schemas (doall
-                 (map (fn [[index v]] [index (get-cached ztx v)])
+                 (map (fn [[index v]] [index (get-cached ztx v false)])
                       cfg))]
     {:when sequential?
      :rule
@@ -571,7 +648,7 @@
                (if (or (nil? tags)
                        (clojure.set/subset? tags (:zen/tags sch)))
                  (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key] opts)
-                     ((get-cached ztx sch) data* opts)
+                     ((get-cached ztx sch false) data* opts)
                      (merge-vtx vtx*))
                  vtx*)
                vtx*))]
@@ -628,7 +705,7 @@
 
 (defmethod compile-key :key
   [_ ztx sch]
-  (let [v (get-cached ztx sch)]
+  (let [v (get-cached ztx sch false)]
     {:rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [k _]]
@@ -659,7 +736,7 @@
     ;; TODO add error if engine is not found?
     (cond
       (= eng :zen)
-      (let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
+      (let [v (get-cached ztx (get-in slice-schema [:filter :zen]) false)]
         (fn [vtx [idx el] opts]
           (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)]
             (when (empty? (:errors vtx*))
@@ -674,7 +751,7 @@
             slice-name)))
 
       (= eng :zen-fx)
-      (let [v (get-cached ztx (get-in slice-schema [:filter :zen]))]
+      (let [v (get-cached ztx (get-in slice-schema [:filter :zen]) false)]
         (fn [vtx [idx el] opts]
           (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)
                 effect-errs (zen.effect/apply-fx ztx vtx* el)]
@@ -707,12 +784,12 @@
   (let [schemas
         (->> slices
              (map (fn [[slice-name {:keys [schema]}]]
-                    [slice-name (get-cached ztx schema)]))
+                    [slice-name (get-cached ztx schema false)]))
              (into {}))
 
         rest-fn
         (when (not-empty rest-schema)
-          (get-cached ztx rest-schema))
+          (get-cached ztx rest-schema false))
 
         slice-fns (map (partial slice-fn ztx) slices)
 

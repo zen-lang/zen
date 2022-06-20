@@ -26,25 +26,25 @@
 
        (println)
        (println)
-       (println (str k " OLD VERSION ERRORS"))
-       (clojure.pprint/pprint (zen.core/validate ztx schema-names data))
-
-       (println)
-       (println)
-       (println (str k " NEW VERSION ERRORS"))
-       (clojure.pprint/pprint (v/validate ztx schema-names data))
-
-       (println)
-       (println)
        (println (str k " OLD VERSION BENCH"))
        (c/with-progress-reporting
          (c/bench (zen.core/validate ztx schema-names data) #_:verbose))
 
        (println)
        (println)
+       (println (str k " OLD VERSION ERRORS"))
+       (clojure.pprint/pprint (zen.core/validate ztx schema-names data))
+
+       (println)
+       (println)
        (println (str k " NEW VERSION BENCH"))
        (c/with-progress-reporting
          (c/bench (v/validate ztx schema-names data) #_:verbose))
+
+       (println)
+       (println)
+       (println (str k " NEW VERSION ERRORS"))
+       (clojure.pprint/pprint (v/validate ztx schema-names data))
 
        [(zen.core/validate ztx schema-names data) (v/validate ztx schema-names data)]))))
 
@@ -54,13 +54,13 @@
 
   (do
 
-    (def plannet (:data (:plannet-org-1 (read-string (slurp (io/resource "zen/bench_data.edn"))))))
+    (def plannet (:data (:plannet-org (read-string (slurp (io/resource "zen/bench_data.edn"))))))
 
     (def ztx (zen/new-context {:unsafe true}))
 
     (zen.core/read-ns ztx 'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization)
 
-    (zen.core/validate ztx #{'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema} plannet)
+    #_(zen.core/validate ztx #{'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema} plannet)
 
     (v/validate ztx #{'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema} plannet))
 

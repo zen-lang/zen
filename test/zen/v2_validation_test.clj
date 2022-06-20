@@ -1,5 +1,6 @@
 (ns zen.v2-validation-test
   (:require
+   [clojure.zip :as z]
    [zen.utils]
    [zen.effect :as fx]
    [zen.test-runner :as r]
@@ -43,3 +44,19 @@
     (r/zen-read-ns ztx 'zen.tests.slicing-test)
 
     (r/run-tests ztx)))
+
+(def ztx (zen/new-context {:unsafe true}))
+
+(r/zen-read-ns ztx 'zen.tests.confirms-test)
+
+(comment
+
+  (v/resolve-confirms ztx (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test) 50)
+
+  (def ztx (zen/new-context {:unsafe true}))
+
+  (zen.core/read-ns ztx 'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization)
+
+  (v/resolve-confirms ztx
+                      (zen.utils/get-symbol ztx 'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema)
+                      10000))
