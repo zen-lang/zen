@@ -78,13 +78,13 @@
                       'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
                 data)
 
-    #_(prof/profile #_{:event :alloc}
+    (prof/profile #_{:event :alloc}
      (doseq [_ (range 5000)]
        (v/validate ztx #{'hl7-fhir-r4-core.Organization/schema
                          'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
                    data)))
 
-    (prof/profile {:event :alloc}
+    #_(prof/profile {:event :alloc}
        (doseq [_ (range 5000)]
          (zen.core/validate ztx #{'hl7-fhir-r4-core.Organization/schema
                                   'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
@@ -94,10 +94,4 @@
 
   (def srv (prof/serve-files 8080))
 
-  (def res (bench "zen/bench_data.edn"))
-
-  (def pt-sch (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema))
-
-  (zen.core/validate ztx #{'zen/schema} pt-sch)
-
-  (v/validate ztx #{'hl7-fhir-r4-core.Patient/schema} pt))
+  (def res (bench "zen/bench_data.edn")))

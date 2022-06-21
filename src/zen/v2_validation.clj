@@ -1,6 +1,5 @@
 (ns zen.v2-validation
   (:require
-   [clojure.zip :as z]
    [zen.effect]
    [zen.match]
    [clojure.set :as cljset]
@@ -79,71 +78,53 @@
 (defn deep-merge
   "efficient deep merge"
   [a b]
-  (loop [[[k v :as i] & ks] b, acc a]
+  (loop [[[k v :as i] & ks] b,
+         acc (transient a)]
     (if (nil? i)
-      acc
+      (persistent! acc)
       (let [av (get a k)]
         (if (= v av)
           (recur ks acc)
           (recur ks (cond
-                      (and (map? v) (map? av)) (assoc acc k (deep-merge av v))
-                      (and (setmap? v) (nil? av)) (assoc acc k v)
-                      (and (setmap? v) (setmap? av)) (assoc acc k (into av v))
+                      (and (map? v) (map? av)) (assoc! acc k (deep-merge av v))
+                      (and (setmap? v) (nil? av)) (assoc! acc k v)
+                      (and (setmap? v) (setmap? av)) (assoc! acc k (into av v))
                       :else
-                      (assoc acc k v))))))))
+                      (assoc! acc k v))))))))
 
-(defn map-zipper [m]
-  (z/zipper
-   (fn [x] (or (map? x) (map? (nth x 1))))
-   (fn [x] (seq (if (map? x) x (nth x 1))))
-   (fn [x children]
-     (if (map? x)
-       (into {} children)
-       (assoc x 1 (into {} children))))
-   m))
+(defn *resolve-confirms [ztx in-compile sch]
+  (let [hsh (hash sch)]
+    ;; TODO add schema not found errors
+    (if (or (get in-compile hsh) (nil? sch))
+      {}
+      (let [confirms-defined? (and (:confirms sch) (set? (:confirms sch)))
+            sch*
+            (-> (if confirms-defined? (dissoc sch :confirms) sch)
+                (dissoc sch :zen/file :zen/name :zen/tags :zen/desc))
+            node
+            (loop [[[k v :as el] & ks] sch*
+                   acc (transient sch*)]
+              (cond
+                (nil? el) (persistent! acc)
+                (not (map? v)) (recur ks acc)
+                :else
+                (recur ks
+                       (assoc! acc k (*resolve-confirms ztx (conj in-compile hsh) v)))))]
+        (if confirms-defined?
+          (loop [cs (seq (:confirms sch))
+                 node* node]
+            (cond
+              (empty? cs) node*
+              :else
+              (let [resolved
+                    (*resolve-confirms ztx
+                                       (conj in-compile hsh)
+                                       (utils/get-symbol ztx (first cs)))]
+                (recur (rest cs) (deep-merge node* resolved)))))
+          node)))))
 
-(defn strip-meta [sch]
-  (-> sch
-      (dissoc :zen/tags :zen/name :zen/file :zen/desc)))
-
-(defn get-v [node]
-  (if (map? node)
-    node
-    (nth node 1)))
-
-(defn resolve-confirms [ztx sch num]
-  (loop [cur-node (z/next (map-zipper sch))
-         num num]
-    (cond
-      (= num 0) (z/root cur-node)
-      (z/end? cur-node) (z/root cur-node)
-      :else
-      (let [[k v] (z/node cur-node)]
-        (cond
-          (and (= :confirms k) (set? v))
-          (let [resolved (::resolved (get-v (z/node (z/up cur-node))))]
-            (if (and (not-empty resolved)
-                     (clojure.set/subset? v resolved))
-              (recur (z/next cur-node) num)
-              (-> (z/replace cur-node nil)
-                  (z/up)
-                  (z/edit
-                   (fn [node confirms]
-                     (let [node*
-                           (reduce (fn [node* cf]
-                                     (if-let [to-confirm (strip-meta (zen.utils/get-symbol ztx cf))]
-                                       (deep-merge node* to-confirm)
-                                       node*))
-                                   (-> (get-v node)
-                                       (update ::resolved #(into (or % #{}) confirms)))
-                                   confirms)]
-                       (if (vector? node)
-                         [(nth node 0) node*]
-                         node*)))
-                   v)
-                  (z/next)
-                  (recur (- num 1)))))
-          :else (recur (z/next cur-node) num))))))
+(defn resolve-confirms [ztx sch]
+  (*resolve-confirms ztx #{} sch))
 
 (defn *compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
@@ -184,9 +165,9 @@
         (swap! ztx assoc-in [:visited-schemas hash*] true)
         (let [v
               (->> (if resolve-confirms?
-                     (resolve-confirms ztx schema 200)
+                     (resolve-confirms ztx schema)
                      schema)
-                  (*compile-schema ztx))]
+                   (*compile-schema ztx))]
           (swap! ztx assoc-in [:compiled-schemas hash*] v)
           v)))))
 

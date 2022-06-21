@@ -45,18 +45,12 @@
 
     (r/run-tests ztx)))
 
-(def ztx (zen/new-context {:unsafe true}))
-
-(r/zen-read-ns ztx 'zen.tests.confirms-test)
-
-(comment
-
-  (v/resolve-confirms ztx (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test) 50)
+(deftest resolve-confirms-test
 
   (def ztx (zen/new-context {:unsafe true}))
 
-  (zen.core/read-ns ztx 'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization)
+  (r/zen-read-ns ztx 'zen.tests.confirms-test)
 
-  (v/resolve-confirms ztx
-                      (zen.utils/get-symbol ztx 'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema)
-                      10000))
+  (is
+   (= (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/confirms-resolved) :zen/file :zen/name)
+      (v/resolve-confirms ztx (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test)))))

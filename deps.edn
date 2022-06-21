@@ -20,13 +20,7 @@
    :main-opts   ["-m" "nrepl.cmdline"
                  "-b" "0.0.0.0"
                  "--middleware"
-                 "[refactor-nrepl.middleware/wrap-refactor,cider.nrepl/cider-middleware]"]
-
-   }
-
-  :test {:extra-paths ["test" "lib/example" "lib/auth"]
-         :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
-                      com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.1"}}}
+                 "[refactor-nrepl.middleware/wrap-refactor,cider.nrepl/cider-middleware]"]}
 
   :profile {:extra-paths ["test"]
             :jvm-opts ["-Djdk.attach.allowAttachSelf"
