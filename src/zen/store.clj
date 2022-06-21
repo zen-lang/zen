@@ -238,8 +238,17 @@
                                                                   'env-number  (fn [v] (env-number  env v))
                                                                   'env-keyword (fn [v] (env-keyword  env v))
                                                                   }})]
-          (load-ns ctx nmsps {:zen/file pth})
-          :zen/loaded)
+          (if (= nm (get nmsps 'ns))
+            (do (load-ns ctx nmsps {:zen/file pth})
+                :zen/loaded)
+            (do (println :file-doesnt-match-namespace file nm (get nmsps 'ns))
+                (swap! ctx update :errors
+                       (fnil conj [])
+                       {:message (str "Filename should match contained namespace. Expected "
+                                      nm " got " (get nmsps 'ns))
+                        :file (:path file)
+                        :ns nm})
+                :zen/load-failed)))
         (catch Exception e
           (println :error-while-reading file e)
           (swap! ctx update :errors
