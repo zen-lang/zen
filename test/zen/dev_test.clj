@@ -152,3 +152,35 @@
     (finally
       (println ::stop)
       (dev/stop ztx))))
+
+(t/deftest ^:kaocha/pending reload-dependent-namespaces
+  (def project (str "/tmp/zentest/" (str (gensym "zen"))))
+  (init-project project)
+  (def ztx (zen/new-context {:paths [project]}))
+
+  (spit (str project "/main.edn") "{ns main import #{lib.dependence} Model1 {:zen/tags #{lib.dependence/dep1}} Model2 {:zen/tags #{lib.dependence/dep2}}}")
+  (spit (str project "/lib/dependence.edn") "{ns lib.dependence dep1 {:zen/tags #{zen/tag}}}")
+  (try
+    (dev/watch ztx)
+    (zen/read-ns ztx 'main)
+    (zen/read-ns ztx 'lib.dependence)
+
+    (matcho/match
+     (zen/errors ztx)
+     [{:message
+       "Could not resolve symbol 'lib.dependence/dep2 in main/Model2",
+       :ns 'main}])
+
+    (spit (str project "/lib/dependence.edn") "{ns lib.dependence dep1 {:zen/tags #{zen/tag}} dep2 {:zen/tags #{zen/tag}}}")
+    (wait-for (zen/get-symbol ztx 'lib.dependence/dep2) 100)
+
+    (get-in @ztx [:ns 'main 'import])
+    (:ns-reloads @ztx)
+
+    (matcho/match
+     (zen/errors ztx)
+     empty?)
+
+    (finally
+      (println ::stop)
+      (dev/stop ztx))))
