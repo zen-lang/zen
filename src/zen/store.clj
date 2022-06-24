@@ -147,27 +147,15 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
-
-(defn get-file [ctx pth]
-  (or (when-let [resource (io/resource pth)]
-        {:type     :resource
-         :resource resource
-         :path     (.getPath resource)})
-      (some-> (get (:paths/cache @ctx) pth)
-              (assoc :path (str "paths/cache:" pth)))))
-
-
 ;; TODO: cache find file
 (defn find-file [ctx paths pth]
-  (or (get-file ctx pth)
+  (or (io/resource pth)
       (loop [[p & ps] paths]
         (when p
           (let [fpth (str p "/" pth)
                 file (io/file fpth)]
             (if (.exists file)
-              {:type :file
-               :file file
-               :path (.getPath file)}
+              file
               (let [modules (io/file (str p "/node_modules"))]
                 (if (and (.exists modules) (.isDirectory modules))
                   (or (->> (.listFiles modules)
@@ -179,27 +167,6 @@
                            (some (fn [x] (find-file ctx [x] pth))))
                       (recur ps))
                   (recur ps)))))))))
-
-
-(defmulti read-file (fn [file-map] (:type file-map)))
-
-
-(defmethod read-file :string [{s :string, :keys [return-input-stream]}]
-  (if return-input-stream
-    (java.io.ByteArrayInputStream. (.getBytes s))
-    s))
-
-
-(defmethod read-file :file [{:keys [file return-input-stream]}]
-  (if return-input-stream
-    (java.io.FileInputStream. file)
-    (slurp file)))
-
-
-(defmethod read-file :resource [{:keys [resource return-input-stream]}]
-  (if return-input-stream
-    (.openStream resource)
-    (slurp resource)))
 
 (defn get-env [env env-name]
   (or (get env (keyword env-name))
@@ -229,7 +196,7 @@
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [file (find-file ctx (:paths @ctx) pth)]
       (try
-        (let [content (read-file file)
+        (let [content (slurp file)
               env (:env @ctx)
               nmsps (edamame.core/parse-string content {:readers {'env         (fn [v] (env-string  env v))
                                                                   'env-string  (fn [v] (env-string  env v))
@@ -241,20 +208,20 @@
           (if (= nm (get nmsps 'ns))
             (do (load-ns ctx nmsps {:zen/file pth})
                 :zen/loaded)
-            (do (println :file-doesnt-match-namespace file nm (get nmsps 'ns))
+            (do (println :file-doesnt-match-namespace (.getPath file) nm (get nmsps 'ns))
                 (swap! ctx update :errors
                        (fnil conj [])
                        {:message (str "Filename should match contained namespace. Expected "
                                       nm " got " (get nmsps 'ns))
-                        :file (:path file)
+                        :file (.getPath file)
                         :ns nm})
                 :zen/load-failed)))
         (catch Exception e
-          (println :error-while-reading file e)
+          (println :error-while-reading (.getPath file) e)
           (swap! ctx update :errors
                  (fnil conj [])
                  {:message (.getMessage e)
-                  :file (:path file)
+                  :file (.getPath file)
                   :ns nm})
           :zen/load-failed))
       (do (swap! ctx update :errors
