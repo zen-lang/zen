@@ -254,4 +254,23 @@
       {:path [:key2]
        :schema [zen.tests.map-test/m1 :key2]
        :type "string.type"
-       :message "Expected type of 'string, got 'boolean"}]}}]}}
+       :message "Expected type of 'string, got 'boolean"}]}}]}
+
+ nested-any-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:key-a {:type zen/string}
+         :any-key {:type zen/any}}}
+
+ nested-any-test
+ {:zen/tags #{zen.test/case}
+  :title "zen/any for nested zen/map value"
+  :steps
+  [{:desc "valid data"
+    :do {:type zen.test/validate
+         :schema nested-any-schema
+         :data {:key-a "just a value"
+                :any-key {:key-b "just another value"
+                          :nested {:key-c "another value"}}}}
+    :match
+    {:errors zen.test/empty?}}]}}

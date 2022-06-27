@@ -131,7 +131,10 @@
                       (map (fn [[k kfg]]
                              (compile-key k ztx kfg)))
                       doall)
-        open-world? (or (:key schema) (:values schema) (= (:validation-type schema) :open))
+        open-world? (or (:key schema)
+                        (:values schema)
+                        (= (:validation-type schema) :open)
+                        (= (:type schema) 'zen/any))
         {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world?)]
     (fn compiled-sch [vtx data opts]
       (loop [rs rulesets

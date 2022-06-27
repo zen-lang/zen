@@ -61,6 +61,6 @@
   (do
     (def ztx (zen/new-context {:unsafe true}))
 
-    (r/zen-read-ns ztx 'zen.tests.confirms-test)
+    (r/zen-read-ns ztx 'zen.tests.map-test)
 
-    (r/run-tests ztx)))
+    (r/run-test ztx 'zen.tests.map-test/nested-any-test)))
