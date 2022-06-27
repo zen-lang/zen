@@ -126,7 +126,7 @@
 (defn resolve-confirms [ztx sch]
   (*resolve-confirms ztx #{} sch))
 
-(defn *compile-schema [ztx schema]
+(defn compile-schema [ztx schema]
   (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
                       (map (fn [[k kfg]]
                              (compile-key k ztx kfg)))
@@ -167,7 +167,7 @@
               (->> (if resolve-confirms?
                      (resolve-confirms ztx schema)
                      schema)
-                   (*compile-schema ztx))]
+                   (compile-schema ztx))]
           (swap! ztx assoc-in [:compiled-schemas hash*] v)
           v)))))
 
@@ -182,6 +182,7 @@
 (defn validate [ztx schemas data & [opts]]
   (loop [schemas (seq schemas)
          vtx {:errors []
+              :warnings []
               :visited #{}
               :unknown-keys #{}
               :effects []}]
@@ -226,13 +227,14 @@
 
 (defn node-vtx
   ([vtx sch-path]
-   (node-vtx vtx sch-path []))
+   (-> vtx
+       (assoc :errors [])
+       (assoc :schema (into (:schema vtx) sch-path))))
   ([vtx sch-path path]
-   {:errors []
-    :path (into (:path vtx) path)
-    :unknown-keys (:unknown-keys vtx)
-    :visited (:visited vtx)
-    :schema (into (:schema vtx) sch-path)}))
+   (-> vtx
+       (assoc :errors [])
+       (assoc :path (into (:path vtx) path))
+       (assoc :schema (into (:schema vtx) sch-path)))))
 
 (defn node-vtx&log [vtx sch-path path opts]
   {:errors []
@@ -245,7 +247,8 @@
   (-> global-vtx
       (update :errors into (:errors *node-vtx))
       (assoc :visited (:visited *node-vtx))
-      (assoc :unknown-keys (:unknown-keys *node-vtx))))
+      (assoc :unknown-keys (:unknown-keys *node-vtx))
+      (merge (dissoc *node-vtx :path :schema :errors :visited :unknown-keys))))
 
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
@@ -434,7 +437,8 @@
            (let [[k v] (first data)]
              (if (not (contains? key-rules k))
                (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
-               (recur (rest data) unknown
+               (recur (rest data)
+                      unknown
                       (-> (node-vtx&log vtx* [k] [k] opts)
                           ((get key-rules k) v opts)
                           (merge-vtx vtx*))))))))}))
@@ -513,22 +517,29 @@
              doall)]
     {:rule
      (fn confirms-sch [vtx data opts]
-       vtx
        (loop [comp-fns comp-fns
               vtx* vtx]
          (if (empty? comp-fns)
            vtx*
            (let [[sym sch-nm v] (first comp-fns)]
-             (if (fn? v)
+             (cond
+               (true? (get-in vtx* [::confirmed (:path vtx*) sch-nm]))
+               (recur (rest comp-fns) vtx*)
+
+               (fn? v)
                (recur (rest comp-fns)
-                      (-> (node-vtx vtx* [:confirms sch-nm])
+                      (-> (assoc-in vtx* [::confirmed (:path vtx*) sch-nm] true)
+                          (node-vtx [:confirms sch-nm])
                           (v data opts)
                           (merge-vtx vtx*)))
+
+               :else
                (recur (rest comp-fns)
                       (add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)})))))))}))
 
 (defmethod compile-key :require
   [_ ztx ks]
+  ;; TODO decide if require should add to :visited keys vector
   (let [one-of-fn
         (fn [vtx data s]
           (let [reqs (->> (select-keys data s) (remove nil?))]

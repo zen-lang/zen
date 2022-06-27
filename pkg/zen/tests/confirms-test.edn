@@ -118,4 +118,28 @@
                                  #_:zen/desc #_"just a desc"
                                  :keys {:keys-y {:type zen/string}
                                         :key-p {:type zen/boolean}
-                                        :key-g {:type zen/number}}}}}}}}}
+                                        :key-g {:type zen/number}}}}}}}}
+
+ node-schema
+ {:zen/tags #{zen/schema}
+  :confirms #{root-schema}
+  :keys {:a-key {:type zen/string}}}
+
+ root-schema
+ {:zen/tags #{zen/schema}
+  :schema-key {:key :type}
+  :type zen/map
+  :require #{:type}
+  :keys {:type {:type zen/string}}}
+
+ dynamic-cycle-test
+ {:zen/tags #{zen.test/case}
+  :title "no stackoverflow for dynamically cycled schema resolution"
+  :only-for #{:v2}
+  :steps
+  [{:desc "valid data"
+    :do {:type zen.test/validate
+         :schema root-schema
+         :data {:type "zen.tests.confirms-test/node-schema"
+                :a-key "just a value"}}
+    :match {:errors zen.test/empty?}}]}}

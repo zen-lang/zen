@@ -1,5 +1,6 @@
 (ns zen.core
   (:require
+   [zen.misc]
    [zen.validation]
    [zen.effect]
    [zen.utils]

@@ -43,6 +43,8 @@
 
     (r/zen-read-ns ztx 'zen.tests.slicing-test)
 
+    (r/zen-read-ns ztx 'zen.tests.confirms-test)
+
     (r/run-tests ztx)))
 
 (deftest resolve-confirms-test
@@ -54,3 +56,11 @@
   (is
    (= (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/confirms-resolved) :zen/file :zen/name)
       (v/resolve-confirms ztx (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test)))))
+
+(comment
+  (do
+    (def ztx (zen/new-context {:unsafe true}))
+
+    (r/zen-read-ns ztx 'zen.tests.confirms-test)
+
+    (r/run-tests ztx)))
