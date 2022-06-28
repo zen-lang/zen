@@ -601,11 +601,17 @@
        (global-errors&warnings))))
 
 (defn validate
-  [ctx schemas data]
-  (->> schemas
-       (reduce (fn [acc sym]
-                 (if-let [sch (get-symbol ctx sym)]
-                   (validate-node ctx (assoc acc :schema [sym]) sch data)
-                   (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
-               (new-validation-acc))
+  ([ctx schemas data] ; NOTE: we want to be able to call validate recursivelly without calling (global-errors&warnings) on nested validate calls
+   (-> (validate ctx schemas data (new-validation-acc))
        (global-errors&warnings)))
+  ([ctx schemas data init-acc]
+   (reduce (fn [acc sym]
+             (if-let [sch (get-symbol ctx sym)]
+               (validate-node ctx
+                              (-> acc
+                                  (assoc :schema [sym])
+                                  (assoc-in [:confirms (:path acc) sym] true))
+                              sch
+                              data)
+               (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
+           init-acc schemas)))
