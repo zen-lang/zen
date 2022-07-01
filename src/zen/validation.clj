@@ -607,11 +607,6 @@
   ([ctx schemas data init-acc]
    (reduce (fn [acc sym]
              (if-let [sch (get-symbol ctx sym)]
-               (validate-node ctx
-                              (-> acc
-                                  (assoc :schema [sym])
-                                  (assoc-in [:confirms (:path acc) sym] true))
-                              sch
-                              data)
+               (validate-node ctx (assoc acc :schema [sym]) sch data)
                (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
            init-acc schemas)))
