@@ -961,6 +961,31 @@
                            "Patient" {[:id] {:get get-pt}}}})
 
 
-  (is (= [] (zen.core/errors ztx)))
+  (is (= [] (zen.core/errors ztx))))
 
-  )
+(deftest validate+confirms-no-recheck-test
+  (zen.core/load-ns!
+    tctx {'ns 'validate+confirms
+
+          'base-sch
+          {:zen/tags #{'zen/schema}
+           :type 'zen/map
+           :keys {:foo {:type 'zen/keyword
+                        :const {:value :bar}}}}
+
+          'confirms-sch
+          {:zen/tags #{'zen/schema}
+           :confirms #{'base-sch}}})
+
+  (matcho/match (zen.core/validate tctx
+                                   #{'validate+confirms/confirms-sch
+                                     'validate+confirms/base-sch}
+                                   {:foo :baz})
+                {:errors [{} nil]})
+
+  (matcho/match (zen.core/validate tctx
+                                   #{'validate+confirms/base-sch
+                                     'validate+confirms/confirms-sch}
+                                   {:foo :baz})
+                {:errors [{} nil]}))
+

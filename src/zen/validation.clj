@@ -512,17 +512,21 @@
   (when (and const (not= (:value const) data))
     (add-error ctx acc {:message (format "Expected '%s', got '%s'" (:value const) data) :type "schema"})))
 
+
+(defn validate-sch [ctx {pth :path :as acc} sym data & {:keys [schema]}]
+  (if (get-in acc [:confirms pth sym])
+    acc
+    (let [acc (assoc-in acc [:confirms pth sym] true)]
+      (if-let [sch (get-symbol ctx sym)]
+        (-> (validate-node ctx (update-acc ctx acc {:schema schema})
+                           sch data)
+            (restore-acc acc))
+        (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))))
+
 (defmethod validate-node-rule :confirms [ctx {pth :path :as acc} _ cfs data]
-  (->> cfs
-       (reduce (fn [acc sym]
-                 (if (get-in acc [:confirms pth sym])
-                   acc
-                   (let [acc (assoc-in acc [:confirms pth sym] true)]
-                     (if-let [sch (get-symbol ctx sym)]
-                       (-> (validate-node ctx (update-acc ctx acc {:schema [:confirms sym]}) sch data)
-                           (restore-acc acc))
-                       (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))))
-               acc)))
+  (reduce (fn [acc sym] (validate-sch ctx acc sym data {:schema [:confirms sym]}))
+          acc
+          cfs))
 
 (defmethod validate-node-rule :enum [_ctx {path :path :as acc} _ enum data]
   (when (and enum (not (get-in acc [:enums path :match])))
@@ -606,7 +610,10 @@
        (global-errors&warnings)))
   ([ctx schemas data init-acc]
    (reduce (fn [acc sym]
-             (if-let [sch (get-symbol ctx sym)]
-               (validate-node ctx (assoc acc :schema [sym]) sch data)
-               (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))
-           init-acc schemas)))
+             (validate-sch ctx
+                           (assoc acc :schema [])
+                           sym
+                           data
+                           {:schema [sym]}))
+           init-acc
+           schemas)))
