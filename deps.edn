@@ -3,7 +3,7 @@
  :lib "zen-lang/zen"
  :version "0.0.1-SNAPSHOT"
 
- :deps {org.clojure/clojure  {:mvn/version "1.10.1"}
+ :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
         borkdude/edamame     {:mvn/version "0.0.19"}
         hawk/hawk            {:mvn/version "0.2.11"}
         healthsamurai/matcho {:mvn/version "0.3.9"}}
