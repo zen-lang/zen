@@ -1,15 +1,11 @@
 (ns zen.v2-validation
   (:require
+   [zen.validation.utils :refer :all]
    [zen.effect]
    [zen.match]
    [clojure.set :as cljset]
    [clojure.string :as str]
    [zen.utils :as utils]))
-
-(defn pretty-type [x]
-  (if-let [tp (type x)]
-    (str/lower-case (last (str/split (str tp) #"\.")))
-    "nil"))
 
 (def fhir-date-regex
   (re-pattern
@@ -68,29 +64,11 @@
    {:fn #(and (string? %) (re-pattern %))
     :to-str "regex"}})
 
+(def add-err (partial add-err* types-cfg))
+
 (defmulti compile-key (fn [k ztx kfg] k))
 
 (defmulti compile-type-check (fn [tp ztx] tp))
-
-(defn setmap? [a]
-  (or (set? a) (map? a)))
-
-(defn deep-merge
-  "efficient deep merge"
-  [a b]
-  (loop [[[k v :as i] & ks] b,
-         acc (transient a)]
-    (if (nil? i)
-      (persistent! acc)
-      (let [av (get a k)]
-        (if (= v av)
-          (recur ks acc)
-          (recur ks (cond
-                      (and (map? v) (map? av)) (assoc! acc k (deep-merge av v))
-                      (and (setmap? v) (nil? av)) (assoc! acc k v)
-                      (and (setmap? v) (setmap? av)) (assoc! acc k (into av v))
-                      :else
-                      (assoc! acc k v))))))))
 
 (defn *resolve-confirms [ztx in-compile sch]
   (let [hsh (hash sch)]
@@ -206,52 +184,6 @@
                (update vtx :errors conj
                        {:message (str "Could not resolve schema '" (first schemas))
                         :type "schema"}))))))
-
-(defn add-err [vtx sch-key err & data-path]
-  (let [err-type
-        (if (not (contains? err :type))
-          (if-let [type-str (get-in types-cfg [(:type vtx) :to-str])]
-            (str  type-str "." (name sch-key))
-            "primitive-type")
-          (:type err))
-
-        err*
-        (-> err
-            (assoc :path (into (:path vtx) data-path))
-            (assoc :type err-type)
-            (assoc :schema (conj (:schema vtx) sch-key)))]
-    (update vtx :errors conj err*)))
-
-(defn add-fx [vtx sch-key fx & data-path]
-  (let [fx*
-        (-> fx
-            (assoc :path (conj (:path vtx) sch-key)))]
-    (update vtx :effects conj fx*)))
-
-(defn node-vtx
-  ([vtx sch-path]
-   (-> vtx
-       (assoc :errors [])
-       (assoc :schema (into (:schema vtx) sch-path))))
-  ([vtx sch-path path]
-   (-> vtx
-       (assoc :errors [])
-       (assoc :path (into (:path vtx) path))
-       (assoc :schema (into (:schema vtx) sch-path)))))
-
-(defn node-vtx&log [vtx sch-path path opts]
-  {:errors []
-   :path (into (:path vtx) path)
-   :unknown-keys (:unknown-keys vtx)
-   :schema (into (:schema vtx) sch-path)
-   :visited (conj (:visited vtx) (into (:path vtx) path))})
-
-(defn merge-vtx [*node-vtx global-vtx]
-  (-> global-vtx
-      (update :errors into (:errors *node-vtx))
-      (assoc :visited (:visited *node-vtx))
-      (assoc :unknown-keys (:unknown-keys *node-vtx))
-      (merge (dissoc *node-vtx :path :schema :errors :visited :unknown-keys))))
 
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
@@ -442,7 +374,7 @@
                (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
                (recur (rest data)
                       unknown
-                      (-> (node-vtx&log vtx* [k] [k] opts)
+                      (-> (node-vtx&log vtx* [k] [k])
                           ((get key-rules k) v opts)
                           (merge-vtx vtx*))))))))}))
 
@@ -453,7 +385,7 @@
      :rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [key value]]
-                 (-> (node-vtx&log vtx* [:values] [key] opts)
+                 (-> (node-vtx&log vtx* [:values] [key])
                      (v value opts)
                      (merge-vtx vtx*)))
                vtx
@@ -642,7 +574,7 @@
                 ;; TODO add test on nil case
                (if (or (nil? tags)
                        (clojure.set/subset? tags (:zen/tags sch)))
-                 (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key] opts)
+                 (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key])
                      ((get-cached ztx sch false) data* opts)
                      (merge-vtx vtx*))
                  vtx*)
@@ -704,7 +636,7 @@
     {:rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [k _]]
-                 (-> (node-vtx&log vtx* [:key] [k] opts)
+                 (-> (node-vtx&log vtx* [:key] [k])
                      (v k opts)
                      (merge-vtx vtx*)))
                vtx
