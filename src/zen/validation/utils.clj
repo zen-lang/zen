@@ -48,6 +48,13 @@
             (assoc :path (conj (:path vtx) sch-key)))]
     (update vtx :effects conj fx*)))
 
+(defn empty-vtx []
+  {:errors []
+   :warnings []
+   :visited #{}
+   :unknown-keys #{}
+   :effects []})
+
 (defn node-vtx
   ([vtx sch-path]
    (-> (transient vtx)
