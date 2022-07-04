@@ -161,21 +161,15 @@
       ((get-cached ztx schema true) data opts)))
 
 (defn validate-schema [ztx schema data & [opts]]
-  (*validate-schema ztx (empty-vtx) schema data opts))
+  (-> ztx
+      (*validate-schema (empty-vtx) schema data opts)
+      (unknown-errs)))
 
 (defn validate [ztx schemas data & [opts]]
   (loop [schemas (seq schemas)
          vtx (empty-vtx)]
     (if (empty? schemas)
-      (update vtx :errors
-              (fn [errs]
-                (->> (:unknown-keys vtx)
-                     (map (fn [path]
-                            {:path path
-                             :type "unknown-key"
-                             :message (str "unknown key " (peek path))}))
-                     (into errs)
-                     vec)))
+      (unknown-errs vtx)
       (if-let [schema (utils/get-symbol ztx (first schemas))]
         (recur (rest schemas)
                (*validate-schema ztx vtx schema data opts))

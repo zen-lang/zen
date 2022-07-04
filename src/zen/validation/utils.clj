@@ -27,6 +27,17 @@
                       :else
                       (assoc! acc k v))))))))
 
+(defn unknown-errs [vtx]
+  (update vtx :errors
+          (fn [errs]
+            (->> (:unknown-keys vtx)
+                 (map (fn [path]
+                        {:path path
+                         :type "unknown-key"
+                         :message (str "unknown key " (peek path))}))
+                 (into errs)
+                 vec))))
+
 (defn add-err* [types-cfg vtx sch-key err & data-path]
   (let [err-type
         (if (not (contains? err :type))
