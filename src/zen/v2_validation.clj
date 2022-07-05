@@ -741,6 +741,12 @@
             (merge slices-templ)
             (reduce (partial err-fn schemas rest-fn opts) vtx)))}))
 
+(defmethod compile-key :fail
+  [_ ztx err-msg]
+  {:rule
+   (fn fail-fn [vtx data opts]
+     (add-err vtx :fail {:message err-msg}))})
+
 (defn cur-keyset [vtx data opts]
   (->> (keys data)
        (map #(conj (:path vtx) %))

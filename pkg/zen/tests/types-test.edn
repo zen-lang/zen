@@ -291,10 +291,14 @@
              :regex "[0-9].+"}
 
          :b {:type zen/string
-             :tags #{myTag}}}}
+             :tags #{myTag}}
+
+         :c {:type zen/string
+             :fail "not supported yet"}}}
 
  string-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "String validations in map"
   :steps
   [{:desc "valid schema string passed for tags check"
@@ -364,6 +368,16 @@
                :type "string.regex"
                :message "Expected match /[0-9].+/, got \"abcde\""
                :schema [string-schema :a :regex]}]}}
+
+   {:desc "fail rule returns string"
+    :do {:type zen.test/validate
+         :schema string-schema
+         :data {:c "123"}}
+    :match
+    {:errors
+     [{:message "not supported yet"
+       :path [:c]
+       :schema [zen.tests.types-test/string-schema :c :fail]}]}}
 
    {:desc "Valid string was given"
     :do {:type zen.test/validate :schema string-schema :data {:a "12345"}}
