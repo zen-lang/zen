@@ -263,14 +263,13 @@
         :type]}
 
      ;; error from schema validation
-      {:message
-       "Expected symbol 'zen.tests.require-test/schema-b tagged with '#{zen/schema}, but only #{}"
-       :type "symbol"
-       :path [:confirms 1]
+      {:message "No symbol 'zen.tests.require-test/schema-b found",
+       :type "symbol",
+       :path [:confirms 1],
        :schema [zen/schema :confirms :every 1 :tags]}
 
       ;; error from data validation
       #_{:message "Could not resolve schema 'zen.tests.require-test/schema-b"
-       :type "map.confirms"
-       :path []
-       :schema [zen.tests.require-test/schema-a :confirms]}]}}]}}
+         :type "map.confirms"
+         :path []
+         :schema [zen.tests.require-test/schema-a :confirms]}]}}]}}

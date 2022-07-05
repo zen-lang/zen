@@ -637,18 +637,29 @@
 
 (defmethod compile-key :tags
   [_ ztx sch-tags]
-  {:when #(or (symbol? %) (list? %))
+  ;; currently :tags implements three usecases:
+  ;; tags check where schema name is string or symbol
+  ;; and zen.apply tags check (list notation)
+  {:when #(or (symbol? %)
+              (list? %)
+              (string? %))
    :rule
    (fn [vtx data opts]
-     (let [sym (if (list? data) (nth data 0) data)
+     (let [[sym type-err]
+           (cond
+             (list? data) [(nth data 0) "apply.fn-tag"]
+             (string? data) [(symbol data) "string"]
+             (symbol? data) [data "symbol"])
            {:keys [zen/tags] :as sch} (utils/get-symbol ztx sym)]
        (if (not (clojure.set/superset? tags sch-tags))
          (add-err vtx :tags
-                  {:message (format "Expected symbol '%s tagged with '%s, but only %s"
-                                    (str sym) (str sch-tags) (or tags #{}))
-                    ;; currently :tags implements two different usecases:
-                    ;; schema apply and schema tags check
-                   :type (if (list? data) "apply.fn-tag" "symbol")})
+                  {:message
+                   (cond
+                     (nil? sch) (format "No symbol '%s found" sym)
+                     :else
+                     (format "Expected symbol '%s tagged with '%s, but only %s"
+                             (str sym) (str sch-tags) (or tags #{})))
+                   :type type-err})
          vtx)))})
 
 (defn slice-fn [ztx [slice-name slice-schema]]

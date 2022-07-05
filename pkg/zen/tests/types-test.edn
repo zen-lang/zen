@@ -273,19 +273,61 @@
       :match
       {:errors zen.test/nil?}}]}
 
+ myTag
+ {:zen/tags #{zen/tag}}
+
+ ex-schema
+ {:zen/tags #{zen/schema}}
+
+ tags-check-schema
+ {:zen/tags #{zen/schema myTag}}
+
  string-schema
  {:zen/tags #{zen/schema}
   :type zen/map
   :keys {:a {:type zen/string
              :minLength 4
              :maxLength 6
-             :regex "[0-9].+"}}}
+             :regex "[0-9].+"}
 
- string-test ;; TODO add :tags validation
+         :b {:type zen/string
+             :tags #{myTag}}}}
+
+ string-test
  {:zen/tags #{zen.test/case}
   :title "String validations in map"
   :steps
-  [{:desc "fails if boolean is provided"
+  [{:desc "valid schema string passed for tags check"
+    :do {:type zen.test/validate
+         :schema string-schema
+         :data {:b "zen.tests.types-test/tags-check-schema"}}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "invalid schema string passed for tags check"
+    :do {:type zen.test/validate
+         :schema string-schema
+         :data {:b "just a random value"}}
+    :match
+    {:errors
+     [{:message "No symbol 'just a random value found"
+       :type "string"
+       :path [:b]
+       :schema [zen.tests.types-test/string-schema :b :tags]}]}}
+
+   {:desc "schema is not tagged with myTag"
+    :do {:type zen.test/validate
+         :schema string-schema
+         :data {:b "zen.tests.types-test/ex-schema"}}
+    :match
+    {:errors
+     [{:message
+       "Expected symbol 'zen.tests.types-test/ex-schema tagged with '#{zen.tests.types-test/myTag}, but only #{zen/schema}"
+       :type "string"
+       :path [:b]
+       :schema [zen.tests.types-test/string-schema :b :tags]}]}}
+
+   {:desc "fails if boolean is provided"
     :do {:type zen.test/validate :schema string-schema :data {:a false}}
     :match
     {:errors [{:path [:a]

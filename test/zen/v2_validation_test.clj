@@ -72,7 +72,12 @@
     (v/validate ztx #{'zen.tests.confirms-test/to-test} data))
 
   (is (empty? (:errors resolved-results)))
-  (is (empty? (:errors confirms-results)))
+  (is (empty? (:errors confirms-results))))
 
+(comment
+  (do
+    (def ztx (zen/new-context {:unsafe true}))
 
-  )
+    (r/zen-read-ns ztx 'zen.tests.types-test)
+
+    (r/run-test ztx 'zen.tests.types-test/string-test :v2)))
