@@ -46,10 +46,34 @@
  {:zen/tags #{zen/schema}
   :type zen/any}
 
+ invalid-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a-key 420}}
+
  bad-schema-test
  {:zen/tags #{zen.test/case}
-  :title "Tests if schema has errors"
-  :steps [{:desc "Schema contains invalid key"
+  :only-for #{:v2}
+  :title "checks zen schemas for errors"
+  :steps [{:desc ":keys instruction is invalid"
+           :do {:type zen.test/validate-schema
+                :schema invalid-schema}
+           :match
+           {:errors
+            [{:message "Expected type of 'map, got 'long"
+              :path [:keys :a-key]
+              :type "map.type"
+              :schema
+              [zen/schema
+               :schema-key
+               zen/map
+               :keys
+               :values
+               :confirms
+               zen/schema
+               :type]}]}}
+
+          {:desc "Schema contains invalid key"
            :do {:type zen.test/validate-schema
                 :schema bad-schema}
            :match

@@ -909,4 +909,33 @@
    {:desc "valid data given"
     :do {:type zen.test/validate :schema enums-schema :data {:gender "Female"}}
     :match
-    {:errors zen.test/nil?}}]}}
+    {:errors zen.test/nil?}}]}
+
+ custom-type-def
+ {:zen/tags #{zen/type zen/primitive zen/schema}
+  :type zen/map}
+
+ custom-type-schema
+ {:zen/tags #{zen/schema}
+  :type custom-type-def}
+
+ custom-type-test
+ {:zen/tags #{zen.test/case}
+  :title "custom types test"
+  :only-for #{:v2}
+  :steps
+  [{:desc "undefined custom type returns an error"
+    :do {:type zen.test/validate
+         :schema custom-type-schema
+         :data {:just-a-key "just a value"}}
+    :match
+    {:errors
+     [{:path [:just-a-key],
+       :type "unknown-key",
+       :message "unknown key :just-a-key"}
+
+      {:message
+       "No validate-type multimethod for 'zen.tests.types-test/custom-type-def",
+       :path [],
+       :type "primitive-type",
+       :schema [zen.tests.types-test/custom-type-schema :type]}]}}]}}

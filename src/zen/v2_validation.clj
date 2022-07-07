@@ -105,7 +105,7 @@
   (*resolve-confirms ztx #{} sch))
 
 (defn compile-schema [ztx schema]
-  (let [rulesets (->> (dissoc schema :zen/tags :zen/desc :zen/file :zen/name :validation-type)
+  (let [rulesets (->> (dissoc schema :validation-type)
                       (map (fn [[k kfg]]
                              (compile-key k ztx kfg)))
                       doall)
@@ -204,6 +204,11 @@
 (defmethod compile-type-check 'zen/case [_ _] (type-fn 'zen/case))
 (defmethod compile-type-check 'zen/date [_ _] (type-fn 'zen/date))
 (defmethod compile-type-check 'zen/datetime [_ _] (type-fn 'zen/datetime))
+
+(defmethod compile-type-check :default
+  [tp ztx]
+  (fn [vtx data opts]
+    (add-err vtx :type {:message (format "No validate-type multimethod for '%s" tp)})))
 
 (defmethod compile-type-check 'zen/apply
   [tp ztx]
@@ -549,7 +554,7 @@
      :rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [index v]]
-                 (if-let [nth-el (get data index)]
+                 (if-let [nth-el (nth data index)]
                    (-> (node-vtx vtx* [:nth index] [index])
                        (v nth-el opts)
                        (merge-vtx vtx*))
@@ -559,7 +564,8 @@
 
 (defmethod compile-key :keyname-schemas
   [_ ztx {:keys [tags]}]
-  {:rule
+  {:when map?
+   :rule
    (fn [vtx data opts]
      (let [rule-fn
            (fn [vtx* [schema-key data*]]
@@ -575,18 +581,21 @@
        (reduce rule-fn vtx data)))})
 
 (defmethod compile-key :default [schema-key ztx sch-params]
-  ;; it is assumed that if no compile key impl found then effect is emitted
-  (if (qualified-ident? schema-key)
+  (cond
+    (qualified-ident? schema-key)
     (let [{:keys [zen/tags] :as sch} (utils/get-symbol ztx (symbol schema-key))]
       {:rule
        (fn [vtx data opts]
-         (if (contains? tags 'zen/schema-fx)
+         (cond
+           (contains? tags 'zen/schema-fx)
            (add-fx vtx (:zen/name sch)
                    {:name (:zen/name sch)
                     :params sch-params
                     :data data})
-           vtx))})
-    {:rule (fn [vtx data opts] vtx)}))
+
+           :else vtx))})
+
+    :else {:rule (fn [vtx data opts] vtx)}))
 
 (defn is-exclusive? [group data]
   (->> group

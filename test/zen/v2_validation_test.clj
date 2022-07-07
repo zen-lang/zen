@@ -1,6 +1,5 @@
 (ns zen.v2-validation-test
   (:require
-   #_[com.rpl.specter :as s]
    [zen.utils]
    [zen.effect :as fx]
    [zen.test-runner :as r]

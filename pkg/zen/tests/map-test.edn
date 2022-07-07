@@ -10,14 +10,14 @@
 
  picture-map
  {:zen/tags #{zen/schema}
-  #_:zen/desc #_"Map with coordinates as keys and pixels as values"
+  :zen/desc "Map with coordinates as keys and pixels as values"
   :type zen/map
-  :values {#_:zen/desc #_"Pixel map"
+  :values {:zen/desc "Pixel map"
            :type zen/map
            :require #{:r :g :b}
            :values {:confirms #{color-channel}}}
   :key {:type zen/map
-        #_:zen/desc #_"Coordinate map"
+        :zen/desc "Coordinate map"
         :values {:type zen/integer}
         :keys {:x {}, :y {}}}}
 
