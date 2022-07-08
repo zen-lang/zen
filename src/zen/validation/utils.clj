@@ -11,7 +11,6 @@
   (or (set? a) (map? a)))
 
 (defn deep-merge
-  "efficient deep merge"
   [a b]
   (loop [[[k v :as i] & ks] b,
          acc (transient a)]
@@ -23,6 +22,7 @@
           (recur ks (cond
                       (and (map? v) (map? av)) (assoc! acc k (deep-merge av v))
                       (and (setmap? v) (nil? av)) (assoc! acc k v)
+                      (and (vector? v) (vector? av)) (assoc! acc k (into v av))
                       (and (setmap? v) (setmap? av)) (assoc! acc k (into av v))
                       :else
                       (assoc! acc k v))))))))

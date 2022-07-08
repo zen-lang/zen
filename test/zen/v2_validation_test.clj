@@ -5,7 +5,8 @@
    [zen.test-runner :as r]
    [clojure.test :refer [deftest is]]
    [zen.v2-validation :as v]
-   [zen.core :as zen]))
+   [zen.core :as zen]
+   [zen.v2-validation :as v2]))
 
 ;; see slicing-test/zen-fx-engine-slicing-test
 (defmethod fx/fx-evaluator 'zen.tests.slicing-test/slice-key-check
@@ -73,10 +74,3 @@
   (is (empty? (:errors resolved-results)))
   (is (empty? (:errors confirms-results))))
 
-(comment
-  (do
-    (def ztx (zen/new-context {:unsafe true}))
-
-    (r/zen-read-ns ztx 'zen.tests.types-test)
-
-    (r/run-test ztx 'zen.tests.types-test/string-test :v2)))

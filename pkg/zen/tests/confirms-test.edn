@@ -60,7 +60,10 @@
  {:zen/tags #{zen/schema}
   :confirms #{f g}
   :require #{:key-a}
-  :keys {:key-a {:type zen/map
+  :keys {:key-y {:type zen/string
+                 :enum [{:value "third"}
+                        {:value "fourth"}]}
+         :key-a {:type zen/map
                  :confirms #{c}
                  :keys {:key-e {:type zen/string}}}}}
 
@@ -81,6 +84,9 @@
   :require #{:key-a :key-b}
   :type zen/map
   :keys {:key-a {:confirms #{c}}
+         :key-y {:type zen/string
+                 :enum [{:value "one"}
+                        {:value "two"}]}
          :key-b {:type zen/string}
          :key-c {:type zen/vector
                  :minItems 1
@@ -102,6 +108,13 @@
                         :key-f {:type zen/string}
                         :key-g {:type zen/number}}
                  :require #{:key-f}}
+
+         :key-y {:type zen/string
+                 :enum [{:value "third"}
+                        {:value "fourth"}
+                        {:value "one"}
+                        {:value "two"}]}
+
          :key-b {:type zen/string
                  :minLength 4}
          :key-n {:type zen/boolean}

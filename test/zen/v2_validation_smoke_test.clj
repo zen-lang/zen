@@ -284,21 +284,20 @@
              :message "unknown key :myapp/unexisting",
              :path [:myapp/unexisting]}]})
 
-  ;; TODO impl props
-  #_(vmatch tctx #{'myapp/User}
-            {:name "niquola"
-             :myapp/mykey "hi"
-             :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
-            {:errors empty?})
+  (vmatch tctx #{'myapp/User}
+          {:name "niquola"
+           :myapp/mykey "hi"
+           :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
+          {:errors empty?})
 
-  #_(match tctx 'myapp/User
-           {:name "niquola"
-            :myapp/mykey 1
-            :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
-           [{:message "Expected type of 'string, got 'long",
-             :type "string.type",
-             :path [:myapp/mykey],
-             :schema ['myapp/User :property :myapp/mykey]}])
+  (match tctx 'myapp/User
+         {:name "niquola"
+          :myapp/mykey 1
+          :identifiers [{:system "s1" :value "v1" :extra "value"} {:system "s1" :value "v2"}]}
+         [{:message "Expected type of 'string, got 'long",
+           :type "string.type",
+           :path [:myapp/mykey],
+           :schema ['myapp/User :property :myapp/mykey]}])
 
   (vmatch tctx #{'myapp/User} {:name "niquola" :identifiers [{:system "s1" :value "v1" :extra "value"}]}
           {:errors [{:message "Expected >= 2, got 1" :path [:identifiers] :schema ['myapp/User :identifiers :minItems]}]})
@@ -486,10 +485,9 @@
                   ;; :regex ".*@.*"
                   })
 
-    ;; TODO fix this validation
-    #_(valid-schema! tctx str-sch)
+    (valid-schema! tctx str-sch)
 
-    #_(invalid-schema tctx
+    (invalid-schema tctx
                     {:zen/tags #{'zen/schema}
                      :type 'zen/string
                      :minLength "a"
@@ -500,14 +498,16 @@
                       :type "integer.type",
                       :path [:minLength],
                       :schema ['zen/schema :schema-key 'zen/string :minLength :type]}
+
                      {:message "Expected type of 'integer, got 'double",
-                      :type "primitive-type",
+                      :type "integer.type",
                       :path [:maxLength],
-                      :schema ['zen/schema :schema-key 'zen/string :maxLength]}
+                      :schema ['zen/schema :schema-key 'zen/string :maxLength :type]}
+
                      {:message "Expected type of 'regex, got 'persistentarraymap",
-                      :type "primitive-type",
+                      :type "regex.type",
                       :path [:regex],
-                      :schema ['zen/schema :schema-key 'zen/string :regex]}])
+                      :schema ['zen/schema :schema-key 'zen/string :regex :type]}])
 
     (zen.core/load-ns! tctx {'ns 'test.str
                              'str str-sch
@@ -533,9 +533,9 @@
 
     ;; TODO fix this
     #_(valid-schema! tctx
-                   {:zen/tags #{'zen/schema}
-                    :type 'zen/map
-                    :key {:type 'zen/string}})
+                     {:zen/tags #{'zen/schema}
+                      :type 'zen/map
+                      :key {:type 'zen/string}})
 
     (zen.core/load-ns!
      tctx {'ns 'test.map
@@ -624,21 +624,21 @@
 
     ;; TODO fix this
     #_(valid-schema! tctx
-                   {:zen/tags #{'zen/schema}
-                    :type 'zen/vector
-                    :nth {0 {:type 'zen/string}
-                          1 {:type 'zen/string}}})
+                     {:zen/tags #{'zen/schema}
+                      :type 'zen/vector
+                      :nth {0 {:type 'zen/string}
+                            1 {:type 'zen/string}}})
 
     #_(invalid-schema tctx
-                    {:zen/tags #{'zen/schema}
-                     :type 'zen/vector
-                     :nth {0 {:type 'zen/string}
-                           :ups {:type 'zen/string}}}
+                      {:zen/tags #{'zen/schema}
+                       :type 'zen/vector
+                       :nth {0 {:type 'zen/string}
+                             :ups {:type 'zen/string}}}
 
-                    [{:message "Expected type of 'integer, got 'keyword",
-                      :type "primitive-type",
-                      :path [:nth :ups],
-                      :schema ['zen/schema :schema-key 'zen/vector :nth :key]}])
+                      [{:message "Expected type of 'integer, got 'keyword",
+                        :type "primitive-type",
+                        :path [:nth :ups],
+                        :schema ['zen/schema :schema-key 'zen/vector :nth :key]}])
 
     (zen.core/load-ns!
      tctx {'ns 'test.vec
@@ -660,15 +660,15 @@
 
     ;; TODO fix this
     #_(valid-schema! tctx
-                   {:zen/tags #{'zen/schema}
-                    :type 'zen/symbol
-                    :tags #{'zen/tag}})
+                     {:zen/tags #{'zen/schema}
+                      :type 'zen/symbol
+                      :tags #{'zen/tag}})
 
     #_(valid-schema!
-     tctx
-     {:zen/tags #{'zen/schema}
-      :type 'zen/string
-      :tags #{'zen/tag}})
+       tctx
+       {:zen/tags #{'zen/schema}
+        :type 'zen/string
+        :tags #{'zen/tag}})
 
     (invalid-schema tctx
                     {:zen/tags #{'zen/schema}
@@ -746,6 +746,9 @@
                      :enum [{:value "b1"}
                             {:value "b2"}]}})
 
+    (v2/resolve-confirms tctx
+                         (zen.utils/get-symbol tctx 'test.enum/inh-val))
+
     (valid tctx 'test.enum/val "a1")
     (valid tctx 'test.enum/inh-val "a1")
     (valid tctx 'test.enum/inh-val "b1")
@@ -808,19 +811,19 @@
 
   ;; TODO fix this
   #_(match tctx
-    'zen/schema
-    {:zen/tags #{'zen/schema}
-     :type 'zen/schema}
-    [{:message
-      "Expected symbol 'zen/schema tagged with '#{zen/type}, but only #{zen/tag zen/schema}",
-      :type "symbol",
-      :path [:type],
-      :schema ['zen/schema :type :tags]}
-     {:message
-      "'zen/schema should be tagged with #{zen/type}, but #{zen/tag zen/schema}",
-      :type "schema",
-      :path [],
-      :schema ['zen/schema]}])
+      'zen/schema
+      {:zen/tags #{'zen/schema}
+       :type 'zen/schema}
+      [{:message
+        "Expected symbol 'zen/schema tagged with '#{zen/type}, but only #{zen/tag zen/schema}",
+        :type "symbol",
+        :path [:type],
+        :schema ['zen/schema :type :tags]}
+       {:message
+        "'zen/schema should be tagged with #{zen/type}, but #{zen/tag zen/schema}",
+        :type "schema",
+        :path [],
+        :schema ['zen/schema]}])
 
   (zen.core/load-ns!
    tctx {'ns 'test.confirms
@@ -859,9 +862,9 @@
 
   ;; TODO fix this
   #_(valid-schema! tctx
-                 {:zen/tags  #{'zen/schema}
-                  :type 'zen/map
-                  :keys {:path {:type 'zen/apply :tags #{'zen/fn}}}})
+                   {:zen/tags  #{'zen/schema}
+                    :type 'zen/map
+                    :keys {:path {:type 'zen/apply :tags #{'zen/fn}}}})
 
   (zen.core/load-ns!
    tctx {'ns 'test.fn
@@ -890,23 +893,44 @@
            :schema ['test.fn/tpl :path]}])
 
   (match tctx 'test.fn/tpl {:path (list 'test.fn/tpl "1")}
-         [{:message
-           "fn definition 'test.fn/tpl should be taged with 'zen/fn, but '#{zen/tag zen/schema}", :type "apply.fn-tag",
-           :path [:path],
-           :schema ['test.fn/tpl :path]}])
+         [{:message "fn definition 'test.fn/tpl should be tagged with 'zen/fn, but '#{zen/tag zen/schema}"
+           :type "apply.fn-tag"
+           :path [:path]
+           :schema ['test.fn/tpl :path :apply]}
+          {:message
+           "Expected symbol 'test.fn/tpl tagged with '#{test.fn/fn}, but only #{zen/tag zen/schema}"
+           :type "apply.fn-tag"
+           :path [:path]
+           :schema ['test.fn/tpl :path :tags]}])
 
+  ;; TODO revisit this errors later
   (match tctx 'test.fn/tpl {:path (list 'test.fn/other-fn "1")}
-         [{:message
-           "fn definition 'test.fn/other-fn should be taged with #{test.fn/fn}, but '#{zen/fn}",
-           :type "apply.tags",
+         [{:message "Expected type of 'vector, got 'persistentlist",
            :path [:path],
-           :schema ['test.fn/tpl :path]}])
+           :type "vector.type",
+           :schema ['test.fn/tpl :path 'test.fn/other-fn :args :type]}
+
+          {:message "Expected type of 'keyword, got 'string"
+           :path [:path 0]
+           :type "keyword.type"
+           :schema ['test.fn/tpl :path 'test.fn/other-fn :args :every 0 :type]}
+
+          {:message
+           "Expected symbol 'test.fn/other-fn tagged with '#{test.fn/fn}, but only #{zen/fn}",
+           :type "apply.fn-tag",
+           :path [:path],
+           :schema ['test.fn/tpl :path :tags]}])
 
   (match tctx 'test.fn/tpl {:path (list 'test.fn/get "1")}
-         [{:message "Expected type of 'keyword, got 'string",
-           :type "primitive-type",
-           :path [:path 0],
-           :schema ['test.fn/tpl :path 'test.fn/get :args :every]}]))
+         [{:message "Expected type of 'vector, got 'persistentlist",
+           :path [:path],
+           :type "vector.type",
+           :schema ['test.fn/tpl :path 'test.fn/get :args :type]}
+
+          {:message "Expected type of 'keyword, got 'string"
+           :type "keyword.type"
+           :path [:path 0]
+           :schema ['test.fn/tpl :path 'test.fn/get :args :every 0 :type]}]))
 
 (deftest set-validation
   (testing "superset-of"

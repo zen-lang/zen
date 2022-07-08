@@ -119,4 +119,45 @@
           {:desc "Confirms contains schema with schema tag"
            :do {:type zen.test/validate-schema
                 :schema schema-with-good-confirms}
-           :match {:errors zen.test/empty?}}]}}
+           :match {:errors zen.test/empty?}}]}
+
+ mykey
+ {:zen/tags #{zen/schema zen/property}
+  :type zen/string}
+
+ props-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :zen/desc "just a desc"
+  :keys {:a {:zen/desc "just a key desc"
+             :type zen/string}}}
+
+ props-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "props are validated both for schema and data validation"
+  :steps [{:desc "zen/desc prop is validated correctly"
+           :do {:type zen.test/validate-schema
+                :schema props-schema}
+           :match
+           {:errors zen.test/empty?}}
+
+          {:desc "provided mykey prop is correct"
+           :do {:type zen.test/validate
+                :schema props-schema
+                :data {:zen.tests.core-validate-test/mykey "just a prop"
+                       :a "yet another string"}}
+           :match
+           {:errors zen.test/empty?}}
+
+          {:desc "provided mykey prop is incorrect"
+           :do {:type zen.test/validate
+                :schema props-schema
+                :data {:zen.tests.core-validate-test/mykey "just a prop"
+                       :a 420}}
+           :match
+           {:errors
+            [{:message "Expected type of 'string, got 'long"
+              :path [:a]
+              :type "string.type"
+              :schema [zen.tests.core-validate-test/props-schema :a :type]}]}}]}}

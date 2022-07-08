@@ -104,7 +104,17 @@
 (defn resolve-confirms [ztx sch]
   (*resolve-confirms ztx #{} sch))
 
-(defn compile-schema [ztx schema]
+(defn validate-props [vtx data props opts]
+  (reduce (fn [vtx* prop]
+            (if-let [prop-value (get data prop)]
+              (-> (node-vtx&log vtx* [:property prop] [prop])
+                  ((get props prop) prop-value opts)
+                  (merge-vtx vtx*))
+              vtx*))
+          vtx
+          (keys props)))
+
+(defn compile-schema [ztx schema props]
   (let [rulesets (->> (dissoc schema :validation-type)
                       (map (fn [[k kfg]]
                              (compile-key k ztx kfg)))
@@ -116,7 +126,7 @@
         {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world?)]
     (fn compiled-sch [vtx data opts]
       (loop [rs rulesets
-             vtx* (assoc vtx :type (:type schema))]
+             vtx* (validate-props (assoc vtx :type (:type schema)) data props opts)]
         (cond
           (and (empty? rs) (valtype-pred data))
           (valtype-rule vtx* data opts)
@@ -130,27 +140,43 @@
                      ((get r :rule) vtx* data opts))
               (recur (rest rs) vtx*))))))))
 
+(declare resolve-props)
+
 (defn get-cached
-  [ztx schema resolve-confirms?]
+  [ztx schema init?]
   (let [hash* (hash schema)
-        v (get-in @ztx [:compiled-schemas hash*])]
+        v (get-in @ztx [::compiled-schemas hash*])]
     (cond
       (fn? v)
       v
 
-      (true? (get-in @ztx [:visited-schemas hash*]))
-      (fn [vtx data opts] vtx)
+      (true? (get-in @ztx [::visited-schemas hash*]))
+      (fn [vtx _ _] vtx)
 
       :else
       (do
-        (swap! ztx assoc-in [:visited-schemas hash*] true)
-        (let [v
-              (->> (if resolve-confirms?
-                     (resolve-confirms ztx schema)
-                     schema)
-                   (compile-schema ztx))]
-          (swap! ztx assoc-in [:compiled-schemas hash*] v)
+        (swap! ztx assoc-in [::visited-schemas hash*] true)
+        (let [[schema* props]
+              (if init?
+                [(resolve-confirms ztx schema) (resolve-props ztx)]
+                [schema (::prop-schemas ztx)])
+
+              v (compile-schema ztx schema* props)]
+
+          (swap! ztx assoc-in [::compiled-schemas hash*] v)
           v)))))
+
+(defn resolve-props [ztx]
+  (->> (utils/get-tag ztx 'zen/property)
+       (map (fn [prop]
+              (zen.utils/get-symbol ztx prop)))
+       (map (fn [sch]
+              [sch (get-cached ztx sch false)]))
+       (reduce (fn [acc [sch v]]
+                 (assoc acc (keyword (:zen/name sch)) v))
+               {})
+       (swap! ztx assoc ::prop-schemas)
+       ::prop-schemas))
 
 (defn *validate-schema
   "internal, use validate function"
