@@ -306,6 +306,18 @@
          (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
          vtx))}))
 
+(defmethod compile-key :match
+  [_ ztx pattern]
+  {:rule (fn match-fn [vtx data opts]
+           (let [errs (zen.match/match data pattern)]
+             (if-not (empty? errs)
+               (->> errs
+                    (reduce (fn [acc err]
+                              (add-err acc :match {:message (or (:message err) (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))
+                                                   :type "match"}))
+                            vtx))
+               vtx)))})
+
 (defmethod compile-key :min
   [_ ztx min]
   {:when number?
