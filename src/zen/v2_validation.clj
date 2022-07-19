@@ -135,7 +135,7 @@
 
           :else
           (let [r (first rs)]
-            (if (or (nil? (get r :when)) ((get r :when) data))
+            (if (or (nil? (get r :when)) ((get r :when) data)) #_"TODO: deduce type fn from types-cfg and check if this schema uses type"
               (recur (rest rs)
                      ((get r :rule) vtx* data opts))
               (recur (rest rs) vtx*))))))))
@@ -397,7 +397,7 @@
              (map (fn [[k sch]]
                     [k (get-cached ztx sch false)]))
              (into {}))]
-    {:when map?
+    {:when map? #_"TODO: should be 'zen/map"
      :rule
      (fn keys-sch [vtx data opts]
        (loop [data (seq data)
