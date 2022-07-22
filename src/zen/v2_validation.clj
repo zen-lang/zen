@@ -66,43 +66,9 @@
 
 (def add-err (partial add-err* types-cfg))
 
-(defmulti compile-key (fn [k ztx kfg] k))
+(defmulti compile-key (fn [k ztx kfg compile-opts] k))
 
-(defmulti compile-type-check (fn [tp ztx] tp))
-
-(defn *resolve-confirms [ztx in-compile sch]
-  (let [hsh (hash sch)]
-    ;; TODO add schema not found errors
-    (if (or (get in-compile hsh) (nil? sch))
-      {}
-      (let [confirms-defined? (and (:confirms sch) (set? (:confirms sch)))
-            sch*
-            (-> (if confirms-defined? (dissoc sch :confirms) sch)
-                (dissoc sch :zen/file :zen/name :zen/tags :zen/desc))
-            node
-            (loop [[[k v :as el] & ks] sch*
-                   acc (transient sch*)]
-              (cond
-                (nil? el) (persistent! acc)
-                (not (map? v)) (recur ks acc)
-                :else
-                (recur ks
-                       (assoc! acc k (*resolve-confirms ztx (conj in-compile hsh) v)))))]
-        (if confirms-defined?
-          (loop [cs (seq (:confirms sch))
-                 node* node]
-            (cond
-              (empty? cs) node*
-              :else
-              (let [resolved
-                    (*resolve-confirms ztx
-                                       (conj in-compile hsh)
-                                       (utils/get-symbol ztx (first cs)))]
-                (recur (rest cs) (deep-merge node* resolved)))))
-          node)))))
-
-(defn resolve-confirms [ztx sch]
-  (*resolve-confirms ztx #{} sch))
+(defmulti compile-type-check (fn [tp ztx compile-opts] tp))
 
 (defn validate-props [vtx data props opts]
   (reduce (fn [vtx* prop]
@@ -114,16 +80,30 @@
           vtx
           (keys props)))
 
-(defn compile-schema [ztx schema props]
+(def blackset #{:confirms :schema-key :keyname-schemas :schema-index})
+
+(defn compile-schema [ztx schema props compile-opts]
   (let [rulesets (->> (dissoc schema :validation-type)
                       (map (fn [[k kfg]]
-                             (compile-key k ztx kfg)))
+                             (let [sch-path
+                                   (if (contains? blackset k)
+                                     (:sch-path compile-opts)
+                                     (conj (:sch-path compile-opts) k))
+                                   ruleset (compile-key k ztx kfg
+                                                        (assoc compile-opts :sch-path sch-path))]
+                               (if-let [sup-rules (:super ruleset)]
+                                 (do
+                                   (swap! ztx update-in [::super sch-path :rules] (fnil into #{}) sup-rules)
+                                   (swap! ztx assoc-in [::super sch-path :to-arg] (:to-arg ruleset))
+                                   (assoc ruleset ::super-apply sch-path))
+                                 ruleset))))
+                      (sort-by ::super-apply)
                       doall)
         open-world? (or (:key schema)
                         (:values schema)
                         (= (:validation-type schema) :open)
                         (= (:type schema) 'zen/any))
-        {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world?)]
+        {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world? compile-opts)]
     (fn compiled-sch [vtx data opts]
       (loop [rs rulesets
              vtx* (validate-props (assoc vtx :type (:type schema)) data props opts)]
@@ -136,42 +116,70 @@
           :else
           (let [r (first rs)]
             (if (or (nil? (get r :when)) ((get r :when) data))
-              (recur (rest rs)
-                     ((get r :rule) vtx* data opts))
+              (if-let [sa-path (::super-apply r)]
+                (if (contains? (get-in vtx* [::super sa-path :executed?]) (hash data))
+                  (recur (rest rs) vtx*)
+                  (recur (rest rs)
+                         ((:rule r)
+                          (update-in vtx* [::super sa-path :executed?] (fnil conj #{}) (hash data))
+                          (get-in @ztx [::super sa-path :arg])
+                          data
+                          opts)))
+                (recur (rest rs)
+                       ((get r :rule) vtx* data opts)))
               (recur (rest rs) vtx*))))))))
+
+;; TODO filter out duplicate fns
+(defn supercompile-rules [ztx compile-opts]
+  (swap! ztx update ::super
+         (fn [s]
+           (reduce (fn [acc [k v]]
+                     (assoc acc k (assoc v :arg ((:to-arg v) (:rules v)))))
+                   {}
+                   s))))
 
 (declare resolve-props)
 
-(defn get-cached
-  [ztx schema init?]
+(defn get-cached [ztx schema {:keys [sch-path] :as compile-opts}]
   (let [hash* (hash schema)
         v (get-in @ztx [::compiled-schemas hash*])]
     (cond
-      (fn? v)
-      v
+      (and (nil? sch-path) (fn? v)) v
 
-      (true? (get-in @ztx [::visited-schemas hash*]))
-      (fn [vtx _ _] vtx)
+      (true? (get-in @ztx [::in-compile hash*]))
+      (do
+        (swap! ztx update ::in-compile dissoc hash*)
+        (fn [vtx _ _] vtx))
 
       :else
       (do
-        (swap! ztx assoc-in [::visited-schemas hash*] true)
-        (let [[schema* props]
-              (if init?
-                [(resolve-confirms ztx schema) (resolve-props ztx)]
-                [schema (::prop-schemas ztx)])
+         ;; ::in-compile is implemented to prevent compile-time loops
+        (swap! ztx assoc-in [::in-compile hash*] true)
+        (let [compile-opts*
+              (cond-> compile-opts
+                (nil? sch-path) (assoc :sch-path (list (hash schema))))
 
-              v (compile-schema ztx schema* props)]
+              props
+              (if (nil? sch-path)
+                (resolve-props ztx compile-opts*)
+                (::prop-schemas ztx))
 
+              v (compile-schema ztx schema props compile-opts*)]
+
+          (swap! ztx update ::in-compile dissoc hash*)
           (swap! ztx assoc-in [::compiled-schemas hash*] v)
+
+          (when (or (nil? sch-path) (:validate-time compile-opts*))
+            (supercompile-rules ztx compile-opts))
+
           v)))))
 
-(defn resolve-props [ztx]
+(defn resolve-props [ztx compile-opts]
   (->> (utils/get-tag ztx 'zen/property)
        (map (fn [prop]
               (zen.utils/get-symbol ztx prop)))
        (map (fn [sch]
-              [sch (get-cached ztx sch false)]))
+              [sch (get-cached ztx sch {:sch-path (list ::zen-property)})]))
        (reduce (fn [acc [sch v]]
                  (assoc acc (keyword (:zen/name sch)) v))
                {})
@@ -179,12 +187,12 @@
        ::prop-schemas))
 
 (defn *validate-schema
-  "internal, use validate function"
   [ztx vtx schema data & [opts]]
-  (-> vtx
-      (assoc :schema [(:zen/name schema)])
-      (assoc :path [])
-      ((get-cached ztx schema true) data opts)))
+  (let [v (get-cached ztx schema {})]
+    (-> vtx
+        (assoc :schema [(:zen/name schema)])
+        (assoc :path [])
+        (v data opts))))
 
 (defn validate-schema [ztx schema data & [opts]]
   (-> ztx
@@ -215,29 +223,29 @@
                              ", got '" (pretty-type data))}]
           (add-err vtx :type error-msg))))))
 
-(defmethod compile-type-check 'zen/string [_ _] (type-fn 'zen/string))
-(defmethod compile-type-check 'zen/number [_ _] (type-fn 'zen/number))
-(defmethod compile-type-check 'zen/set [_ _] (type-fn 'zen/set))
-(defmethod compile-type-check 'zen/map [_ _] (type-fn 'zen/map))
-(defmethod compile-type-check 'zen/vector [_ _] (type-fn 'zen/vector))
-(defmethod compile-type-check 'zen/boolean [_ _] (type-fn 'zen/boolean))
-(defmethod compile-type-check 'zen/list [_ _] (type-fn 'zen/list))
-(defmethod compile-type-check 'zen/keyword [_ _] (type-fn 'zen/keyword))
-(defmethod compile-type-check 'zen/any [_ _] (type-fn 'zen/any))
-(defmethod compile-type-check 'zen/integer [_ _] (type-fn 'zen/integer))
-(defmethod compile-type-check 'zen/symbol [_ _] (type-fn 'zen/symbol))
-(defmethod compile-type-check 'zen/regex [_ _] (type-fn 'zen/regex))
-(defmethod compile-type-check 'zen/case [_ _] (type-fn 'zen/case))
-(defmethod compile-type-check 'zen/date [_ _] (type-fn 'zen/date))
-(defmethod compile-type-check 'zen/datetime [_ _] (type-fn 'zen/datetime))
+(defmethod compile-type-check 'zen/string [_ _ _] (type-fn 'zen/string))
+(defmethod compile-type-check 'zen/number [_ _ _] (type-fn 'zen/number))
+(defmethod compile-type-check 'zen/set [_ _ _] (type-fn 'zen/set))
+(defmethod compile-type-check 'zen/map [_ _ _] (type-fn 'zen/map))
+(defmethod compile-type-check 'zen/vector [_ _ _] (type-fn 'zen/vector))
+(defmethod compile-type-check 'zen/boolean [_ _ _] (type-fn 'zen/boolean))
+(defmethod compile-type-check 'zen/list [_ _ _] (type-fn 'zen/list))
+(defmethod compile-type-check 'zen/keyword [_ _ _] (type-fn 'zen/keyword))
+(defmethod compile-type-check 'zen/any [_ _ _] (type-fn 'zen/any))
+(defmethod compile-type-check 'zen/integer [_ _ _] (type-fn 'zen/integer))
+(defmethod compile-type-check 'zen/symbol [_ _ _] (type-fn 'zen/symbol))
+(defmethod compile-type-check 'zen/regex [_ _ _] (type-fn 'zen/regex))
+(defmethod compile-type-check 'zen/case [_ _ _] (type-fn 'zen/case))
+(defmethod compile-type-check 'zen/date [_ _ _] (type-fn 'zen/date))
+(defmethod compile-type-check 'zen/datetime [_ _ _] (type-fn 'zen/datetime))
 
 (defmethod compile-type-check :default
-  [tp ztx]
+  [tp ztx compile-opts]
   (fn [vtx data opts]
     (add-err vtx :type {:message (format "No validate-type multimethod for '%s" tp)})))
 
 (defmethod compile-type-check 'zen/apply
-  [tp ztx]
+  [tp ztx compile-opts]
   (fn [vtx data opts]
     (cond
       (not (list? data))
@@ -261,22 +269,27 @@
                                :type "apply.fn-tag"})
 
           :else
-          (let [v (get-cached ztx args false)]
+          (let [v (get-cached ztx args compile-opts)]
             (-> (node-vtx vtx [sch-sym :args])
                 (v (rest data) opts)
                 (merge-vtx vtx))))))))
 
 (defmethod compile-key :type
-  [_ ztx tp]
-  {:rule (compile-type-check tp ztx)})
+  [_ ztx tp compile-opts]
+  {:rule (compile-type-check tp ztx compile-opts)})
 
 (defmethod compile-key :case
-  [_ ztx cases]
-  (let [vs (doall
-            (map (fn [{:keys [when then]}]
-                   (cond-> {:when (get-cached ztx when false)}
-                     (not-empty then) (assoc :then (get-cached ztx then false))))
-                 cases))]
+  [_ ztx cases compile-opts]
+  (let [case-fn
+        (fn [idx {:keys [when then]}]
+          (cond-> {:when (get-cached ztx when (update compile-opts :sch-path into [:when idx]))}
+            (not-empty then)
+            (assoc :then (get-cached ztx then (update compile-opts :sch-path into [:then idx])))))
+
+        vs
+        (->> cases
+             (map-indexed case-fn)
+             (doall))]
     {:rule
      (fn [vtx data opts]
        (loop [[{wh :when th :then :as v} & rest] vs
@@ -298,16 +311,17 @@
                :else (recur rest (inc item-idx)))))))}))
 
 (defmethod compile-key :enum
-  [_ ztx values]
-  (let [values* (set (map :value values))]
-    {:rule
-     (fn [vtx data opts]
-       (if-not (contains? values* data)
-         (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
-         vtx))}))
+  [_ ztx values compile-opts]
+  {:super (set (map :value values))
+   :to-arg identity
+   :rule
+   (fn [vtx values* data opts]
+     (if-not (contains? values* data)
+       (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
+       vtx))})
 
 (defmethod compile-key :min
-  [_ ztx min]
+  [_ ztx min opts]
   {:when number?
    :rule
    (fn [vtx data opts]
@@ -316,7 +330,7 @@
        vtx))})
 
 (defmethod compile-key :max
-  [_ ztx max]
+  [_ ztx max opts]
   {:when number?
    :rule
    (fn [vtx data opts]
@@ -325,7 +339,7 @@
        vtx))})
 
 (defmethod compile-key :minLength
-  [_ ztx min-len]
+  [_ ztx min-len opts]
   {:when string?
    :rule
    (fn [vtx data opts]
@@ -336,7 +350,7 @@
        vtx))})
 
 (defmethod compile-key :maxLength
-  [_ ztx max-len]
+  [_ ztx max-len opts]
   {:when string?
    :rule
    (fn [vtx data opts]
@@ -347,7 +361,7 @@
        vtx))})
 
 (defmethod compile-key :minItems
-  [_ ztx items-count]
+  [_ ztx items-count opts]
   {:when #(or (sequential? %) (set? %))
    :rule
    (fn [vtx data opts]
@@ -358,7 +372,7 @@
        vtx))})
 
 (defmethod compile-key :maxItems
-  [_ ztx items-count]
+  [_ ztx items-count opts]
   {:when #(or (sequential? %) (set? %))
    :rule
    (fn [vtx data opts]
@@ -369,7 +383,7 @@
        vtx))})
 
 (defmethod compile-key :const
-  [_ ztx {:keys [value]}]
+  [_ ztx {:keys [value]} opts]
   {:rule
    (fn [vtx data opts]
      (if (not= value data)
@@ -379,32 +393,43 @@
        vtx))})
 
 (defmethod compile-key :keys
-  [_ ztx ks]
-  (let [key-rules
-        (->> ks
-             (map (fn [[k sch]]
-                    [k (get-cached ztx sch false)]))
-             (into {}))]
-    {:when map?
-     :rule
-     (fn keys-sch [vtx data opts]
-       (loop [data (seq data)
-              unknown (transient [])
-              vtx* vtx]
-         (if (empty? data)
-           (update vtx* :unknown-keys into (persistent! unknown))
-           (let [[k v] (first data)]
-             (if (not (contains? key-rules k))
-               (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
-               (recur (rest data)
-                      unknown
-                      (-> (node-vtx&log vtx* [k] [k])
-                          ((get key-rules k) v opts)
-                          (merge-vtx vtx*))))))))}))
+  [_ ztx ks compile-opts]
+  {:when map?
+
+   :super
+   (map (fn [[k sch]]
+          [k (get-cached ztx sch (update compile-opts :sch-path conj k))])
+        ks)
+
+   :to-arg
+   (fn [key-rules]
+     (reduce (fn [acc [k v]]
+               (update acc k (fnil conj []) v))
+             {}
+             key-rules))
+
+   :rule
+   (fn keys-sch [vtx key-rules data opts]
+     (loop [data (seq data)
+            unknown (transient [])
+            vtx* vtx]
+       (if (empty? data)
+         (update vtx* :unknown-keys into (persistent! unknown))
+         (let [[k v] (first data)]
+           (if (not (contains? key-rules k))
+             (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
+             (recur (rest data)
+                    unknown
+                    (reduce (fn [vtx** r]
+                              (-> (node-vtx&log vtx** [k] [k])
+                                  (r v opts)
+                                  (merge-vtx vtx**)))
+                            vtx*
+                            (get key-rules k))))))))})
 
 (defmethod compile-key :values
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
+  [_ ztx sch compile-opts]
+  (let [v (get-cached ztx sch compile-opts)]
     {:when map?
      :rule
      (fn [vtx data opts]
@@ -416,8 +441,8 @@
                data))}))
 
 (defmethod compile-key :every
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
+  [_ ztx sch compile-opts]
+  (let [v (get-cached ztx sch compile-opts)]
     {:when #(or (sequential? %) (set? %))
      :rule
      (fn [vtx data opts]
@@ -428,6 +453,7 @@
                    (merge-vtx vtx)))
 
              data*
+             ;; slicing requires index change
              (if-let [indices (not-empty (:indices opts))]
                (map vector indices data)
                (map-indexed vector data))]
@@ -435,7 +461,7 @@
          (reduce err-fn vtx data*)))}))
 
 (defmethod compile-key :subset-of
-  [_ ztx superset]
+  [_ ztx superset opts]
   {:when set?
    :rule
    (fn [vtx data opts]
@@ -444,7 +470,7 @@
        vtx))})
 
 (defmethod compile-key :superset-of
-  [_ ztx subset]
+  [_ ztx subset opts]
   {:when set?
    :rule
    (fn [vtx data opts]
@@ -453,7 +479,7 @@
        vtx))})
 
 (defmethod compile-key :regex
-  [_ ztx regex]
+  [_ ztx regex opts]
   {:when string?
    :rule
    (fn [vtx data opts]
@@ -463,11 +489,11 @@
        vtx))})
 
 (defmethod compile-key :confirms
-  [_ ztx ks]
+  [_ ztx ks compile-opts]
   (let [compile-confirms
         (fn [sym]
           (if-let [sch (utils/get-symbol ztx sym)]
-            [sym (:zen/name sch) (get-cached ztx sch false)]
+            [sym (:zen/name sch) (get-cached ztx sch compile-opts)]
             [sym]))
 
         comp-fns
@@ -497,7 +523,7 @@
                       (add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)})))))))}))
 
 (defmethod compile-key :require
-  [_ ztx ks]
+  [_ ztx ks opts]
   ;; TODO decide if require should add to :visited keys vector
   (let [one-of-fn
         (fn [vtx data s]
@@ -519,7 +545,7 @@
                ks))}))
 
 (defmethod compile-key :schema-key
-  [_ ztx {sk :key sk-ns :ns sk-tags :tags}]
+  [_ ztx {sk :key sk-ns :ns sk-tags :tags} compile-opts]
   {:when map?
    :rule
    (fn [vtx data opts]
@@ -543,14 +569,14 @@
                      :type "schema"})
 
            :else
-           (let [v (get-cached ztx sch false)]
+           (let [v (get-cached ztx sch (assoc compile-opts :validate-time true))]
              (-> (node-vtx vtx [:schema-key sch-symbol])
                  (v data opts)
                  (merge-vtx vtx)))))
        vtx))})
 
 (defmethod compile-key :schema-index
-  [_ ztx {si :index si-ns :ns}]
+  [_ ztx {si :index si-ns :ns} compile-opts]
   {:when sequential?
    :rule
    (fn [vtx data opts]
@@ -565,16 +591,16 @@
                      :type "schema"})
 
            :else
-           (let [v (get-cached ztx sch false)]
+           (let [v (get-cached ztx sch compile-opts)]
              (-> (node-vtx vtx [:schema-index sch-symbol])
                  (v data opts)
                  (merge-vtx vtx)))))
        vtx))})
 
 (defmethod compile-key :nth
-  [_ ztx cfg]
+  [_ ztx cfg compile-opts]
   (let [schemas (doall
-                 (map (fn [[index v]] [index (get-cached ztx v false)])
+                 (map (fn [[index v]] [index (get-cached ztx v compile-opts)])
                       cfg))]
     {:when sequential?
      :rule
@@ -589,7 +615,7 @@
                schemas))}))
 
 (defmethod compile-key :keyname-schemas
-  [_ ztx {:keys [tags]}]
+  [_ ztx {:keys [tags]} compile-opts]
   {:when map?
    :rule
    (fn [vtx data opts]
@@ -600,13 +626,13 @@
                (if (or (nil? tags)
                        (clojure.set/subset? tags (:zen/tags sch)))
                  (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key])
-                     ((get-cached ztx sch false) data* opts)
+                     ((get-cached ztx sch compile-opts) data* opts)
                      (merge-vtx vtx*))
                  vtx*)
                vtx*))]
        (reduce rule-fn vtx data)))})
 
-(defmethod compile-key :default [schema-key ztx sch-params]
+(defmethod compile-key :default [schema-key ztx sch-params opts]
   (cond
     (qualified-ident? schema-key)
     (let [{:keys [zen/tags] :as sch} (utils/get-symbol ztx (symbol schema-key))]
@@ -632,7 +658,7 @@
        (> 2)))
 
 (defmethod compile-key :exclusive-keys
-  [_ ztx groups]
+  [_ ztx groups opts]
   (let [err-fn
         (fn [group [vtx data]]
           (if (is-exclusive? group data)
@@ -659,8 +685,8 @@
            (nth 0)))}))
 
 (defmethod compile-key :key
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
+  [_ ztx sch compile-opts]
+  (let [v (get-cached ztx sch compile-opts)]
     {:rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [k _]]
@@ -671,7 +697,7 @@
                data))}))
 
 (defmethod compile-key :tags
-  [_ ztx sch-tags]
+  [_ ztx sch-tags opts]
   ;; currently :tags implements three usecases:
   ;; tags check where schema name is string or symbol
   ;; and zen.apply tags check (list notation)
@@ -697,12 +723,14 @@
                    :type type-err})
          vtx)))})
 
-(defn slice-fn [ztx [slice-name slice-schema]]
+(defn slice-fn [ztx compile-opts [slice-name slice-schema]]
   (let [eng (get-in slice-schema [:filter :engine])]
     ;; TODO add error if engine is not found?
     (cond
       (= eng :zen)
-      (let [v (get-cached ztx (get-in slice-schema [:filter :zen]) false)]
+      (let [compile-opts* (update compile-opts :sch-path
+                                  into [:slices slice-name :filter :zen])
+            v (get-cached ztx (get-in slice-schema [:filter :zen]) compile-opts*)]
         (fn [vtx [idx el] opts]
           (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)]
             (when (empty? (:errors vtx*))
@@ -717,7 +745,9 @@
             slice-name)))
 
       (= eng :zen-fx)
-      (let [v (get-cached ztx (get-in slice-schema [:filter :zen]) false)]
+      (let [compile-opts* (update compile-opts :sch-path
+                                  into [:slices slice-name :filter :zen])
+            v (get-cached ztx (get-in slice-schema [:filter :zen]) compile-opts*)]
         (fn [vtx [idx el] opts]
           (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)
                 effect-errs (zen.effect/apply-fx ztx vtx* el)]
@@ -746,18 +776,19 @@
           (merge-vtx vtx)))))
 
 (defmethod compile-key :slicing
-  [_ ztx {slices :slices rest-schema :rest}]
+  [_ ztx {slices :slices rest-schema :rest} compile-opts]
   (let [schemas
         (->> slices
              (map (fn [[slice-name {:keys [schema]}]]
-                    [slice-name (get-cached ztx schema false)]))
+                    [slice-name
+                     (get-cached ztx schema (update compile-opts :sch-path into [:slices slice-name]))]))
              (into {}))
 
         rest-fn
         (when (not-empty rest-schema)
-          (get-cached ztx rest-schema false))
+          (get-cached ztx rest-schema (update compile-opts :sch-path conj :rest)))
 
-        slice-fns (map (partial slice-fn ztx) slices)
+        slice-fns (doall (map (partial slice-fn ztx compile-opts) slices))
 
         slices-templ
         (->> slices
@@ -777,7 +808,7 @@
             (reduce (partial err-fn schemas rest-fn opts) vtx)))}))
 
 (defmethod compile-key :fail
-  [_ ztx err-msg]
+  [_ ztx err-msg opts]
   {:rule
    (fn fail-fn [vtx data opts]
      (add-err vtx :fail {:message err-msg}))})
@@ -788,7 +819,7 @@
        set))
 
 (defmethod compile-key :validation-type
-  [_ ztx open-world?]
+  [_ ztx open-world? compile-opts]
   {:when map?
    :rule
    (fn validation-type-sch [vtx data opts]

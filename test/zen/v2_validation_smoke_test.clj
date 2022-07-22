@@ -172,7 +172,7 @@
 
   (vmatch tctx #{'myapp/User} {:name "niquola" :address {:extra "niquola"}}
           {:errors [{:path [:address :city]
-                     :schema ['myapp/User :address #_:confirms #_'myapp/Address :require]
+                     :schema ['myapp/User :address :confirms 'myapp/Address :require]
                      :type "require"
                      :message ":city is required"}
                     {:path [:address :extra]
@@ -193,7 +193,7 @@
            [{:message ":ex is required",
              :type "require",
              :path [:contact :ex],
-             :schema ['myapp/SuperUser :contact :require]}
+             :schema ['myapp/SuperUser :confirms 'myapp/Contactable :contact :require]}
             nil?]})
 
   (vmatch tctx #{'myapp/User} {:name "vganshin" :old-name "rgv"}
@@ -204,7 +204,7 @@
            [{:message #"Expected type of 'vector",
              :type "vector.type",
              :path [:address :line],
-             :schema ['myapp/User :address #_:confirms #_'myapp/Address :line :type]}
+             :schema ['myapp/User :address :confirms 'myapp/Address :line :type]}
             nil?]})
 
   (match tctx 'myapp/User
@@ -212,7 +212,7 @@
          [{:message "Expected type of 'string, got 'long",
            :type "string.type",
            :path [:address :line 2],
-           :schema ['myapp/User :address #_:confirms #_'myapp/Address :line :every 2 :type]}
+           :schema ['myapp/User :address :confirms 'myapp/Address :line :every 2 :type]}
           nil?])
 
   (zen.core/load-ns!
@@ -258,11 +258,11 @@
            [{:message "Expected type of 'map, got 'long"
              :type "map.type"
              :path [:identifiers 0]
-             :schema ['myapp/User :identifiers :every #_:confirms #_'myapp/Identifier 0 :type]}
-            #_{:message "Expected type of 'map, got 1",
-               :type "type",
-               :path [:identifiers 0],
-               :schema ['myapp/User :identifiers :every]}
+             :schema ['myapp/User :identifiers :every 0 :confirms 'myapp/Identifier :type]}
+            {:message "Expected type of 'map, got 'long",
+             :type "map.type",
+             :path [:identifiers 0],
+             :schema ['myapp/User :identifiers :every 0 :type]}
             {:message ":system is required",
              :type "require",
              :path [:identifiers 1 :system],
@@ -310,7 +310,7 @@
            [{:message "Expected type of 'map, got 'long"
              :type "map.type"
              :path [:keys]
-             :schema ['zen/schema :schema-key 'zen/map :keys :type]}]})
+             :schema ['zen/schema #_:schema-key #_'zen/map :keys :type]}]})
 
   (vmatch tctx #{'myapp/Settings} {:headers {:a "str"}}
           {:errors empty?})
@@ -332,7 +332,7 @@
            [{:message "Expected type of 'map, got 'long"
              :type "map.type"
              :path [:keys :prop]
-             :schema ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :type]}]})
+             :schema ['zen/schema #_:schema-key #_'zen/map :keys :values :confirms 'zen/schema :type]}]})
 
   (vmatch tctx #{'zen/schema} {:type 'zen/map
                                :keys {:ups {:type 'zen/string
@@ -343,14 +343,14 @@
              :path [:keys :ups :minLength]
              :schema
              ['zen/schema
-              :schema-key
-              'zen/map
+              #_:schema-key
+              #_'zen/map
               :keys
               :values
               :confirms
               'zen/schema
-              :schema-key
-              'zen/string
+              #_:schema-key
+              #_'zen/string
               :minLength
               :type]}]})
 
@@ -371,7 +371,7 @@
            [{:message "Expected type of 'integer, got 'string"
              :type "integer.type"
              :path [:keys :maxLength :min]
-             :schema ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :schema-key 'zen/integer :min :type]}
+             :schema ['zen/schema #_:schema-key #_'zen/map :keys :values :confirms 'zen/schema #_:schema-key #_'zen/integer :min :type]}
             {:type "unknown-key",
              :message "unknown key :ups",
              :path [:keys :minLength :ups]}]})
@@ -497,17 +497,17 @@
                     [{:message "Expected type of 'integer, got 'string",
                       :type "integer.type",
                       :path [:minLength],
-                      :schema ['zen/schema :schema-key 'zen/string :minLength :type]}
+                      :schema ['zen/schema #_:schema-key #_'zen/string :minLength :type]}
 
                      {:message "Expected type of 'integer, got 'double",
                       :type "integer.type",
                       :path [:maxLength],
-                      :schema ['zen/schema :schema-key 'zen/string :maxLength :type]}
+                      :schema ['zen/schema #_:schema-key #_'zen/string :maxLength :type]}
 
                      {:message "Expected type of 'regex, got 'persistentarraymap",
                       :type "regex.type",
                       :path [:regex],
-                      :schema ['zen/schema :schema-key 'zen/string :regex :type]}])
+                      :schema ['zen/schema #_:schema-key #_'zen/string :regex :type]}])
 
     (zen.core/load-ns! tctx {'ns 'test.str
                              'str str-sch
@@ -531,11 +531,10 @@
 ;; tessting map
   (testing "zen/map"
 
-    ;; TODO fix this
-    #_(valid-schema! tctx
-                     {:zen/tags #{'zen/schema}
-                      :type 'zen/map
-                      :key {:type 'zen/string}})
+    (valid-schema! tctx
+                   {:zen/tags #{'zen/schema}
+                    :type 'zen/map
+                    :key {:type 'zen/string}})
 
     (zen.core/load-ns!
      tctx {'ns 'test.map
@@ -674,9 +673,10 @@
                     {:zen/tags #{'zen/schema}
                      :type 'zen/vector
                      :tags "ups"}
-                    [{:type "unknown-key",
-                      :message "unknown key :tags",
-                      :path [:tags]}])
+                    [{:message "Expected type of 'set, got 'string",
+                      :path [:tags],
+                      :type "set.type",
+                      :schema ['zen/schema :tags :confirms 'zen/tagset :type]}])
 
     (zen.core/load-ns!
      tctx {'ns 'test.sym
@@ -745,9 +745,6 @@
                      :confirms #{'val}
                      :enum [{:value "b1"}
                             {:value "b2"}]}})
-
-    (v2/resolve-confirms tctx
-                         (zen.utils/get-symbol tctx 'test.enum/inh-val))
 
     (valid tctx 'test.enum/val "a1")
     (valid tctx 'test.enum/inh-val "a1")
@@ -852,7 +849,7 @@
            :type "string.type"
            :path [:a]
            :schema
-           ['test.confirms/c4 #_:confirms #_'test.confirms/c2 #_:confirms #_'test.confirms/c1 :a :type]}
+           ['test.confirms/c4 :confirms 'test.confirms/c2 :confirms 'test.confirms/c1 :a :type]}
           nil?])
 
   (zen.core/get-symbol tctx 'zen/fn)

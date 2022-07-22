@@ -47,30 +47,71 @@
 
     (r/run-tests ztx)))
 
+(comment
+
+  (do
+
+    (def ztx (zen/new-context {:unsafe true}))
+
+    (r/zen-read-ns ztx 'zen.tests.slicing-test)
+
+    (r/run-step ztx 'zen.tests.slicing-test/slicing-path-collision-unknown-key-bug-test 0)
+
+    #_(get @ztx :zen.v2-validation/super)
+    #_@ztx))
+
 (deftest resolve-confirms-test
 
   (def ztx (zen/new-context {:unsafe true}))
 
   (r/zen-read-ns ztx 'zen.tests.confirms-test)
 
-  (is
-   (= (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/confirms-resolved)
-              :zen/file
-              :zen/name)
-      (v/resolve-confirms ztx (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test))))
-
   (def data (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/data-example)
                     :zen/file
                     :zen/name))
 
-  (def resolved-results
-    (v/validate-schema ztx
-                       (v/resolve-confirms ztx (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test))
-                       data))
+  (def result (v/validate ztx #{'zen.tests.confirms-test/to-test} data))
 
-  (def confirms-results
-    (v/validate ztx #{'zen.tests.confirms-test/to-test} data))
+  (is (= [{:message "Could not resolve schema 'zen.tests.confirms-test/not-found-1",
+           :path [:key-c 0 :key-d],
+           :type "primitive-type",
+           :schema
+           ['zen.tests.confirms-test/to-test
+            :confirms
+            'zen.tests.confirms-test/b
+            :key-c
+            :every
+            0
+            :key-d
+            :confirms]}
+          {:message "Could not resolve schema 'zen.tests.confirms-test/not-found",
+           :path [],
+           :type "primitive-type",
+           :schema ['zen.tests.confirms-test/to-test :confirms]}]
+         (:errors result))))
 
-  (is (empty? (:errors resolved-results)))
-  (is (empty? (:errors confirms-results))))
+;; TODOS
+;; 1. make sure that supercompilation result is cached
+;; 3. get rid of extra ops with state
+;; 6. remove all extra data from state to reduce memory usage
+;; 4. pass tests
+;; 5. make sure that sch-path is always correct
+;; 7. how should props validation work with sch-path?
 
+;; WTF is _id extensions in plannet?
+
+;; true supercompilation
+;; 1. pass schema-path to compile-schema
+;; 2. if rule has returned :super field cache it
+;; 3. drop ruleset if cache already contains :super fn for this path
+;; 4. when compilation is done compile all the cached :super rules into fns ??
+;; 5. execute each supercompiled rule once in its closure
+
+;; true supercompilation tests:
+;; 1. rules that are on the same level of the same schema should be merged into :arg
+;; 2. rules that are on the same level of different schemas that are linked w :confirms should also be merged
+
+;; true supercompilation guarantees:
+;; supercompiled function on each schema level is executed exactly once
+;; each unique child schema validates data exactly once
+;; shallow child schemas are deep merged in compile-time

@@ -5,7 +5,7 @@
    [zen.v2-validation]))
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/reference
-  [_ ztx {:keys [refers]}]
+  [_ ztx {:keys [refers]} compile-opts]
   ;; TODO add test somewhere?
   {:rule
    (fn [vtx data opts]
@@ -34,7 +34,7 @@
                     :message (str "expected one of " (str/join "," refer-types))})))))})
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
-  [_ ztx value-set]
+  [_ ztx value-set compile-opts]
   {:rule
    (fn [vtx data opts]
      (if (and (= "enabled" (get-in @ztx

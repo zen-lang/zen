@@ -879,6 +879,19 @@
                   :enum [{:value "Female"}
                          {:value "Male"}]}}}
 
+ second-enum
+ {:zen/tags #{zen/schema}
+  :type zen/string
+  :enum [{:value "b1"}
+         {:value "b2"}]}
+
+ multiple-enums
+ {:zen/tags #{zen/schema}
+  :type zen/string
+  :confirms #{second-enum}
+  :enum [{:value "a1"}
+         {:value "a2"}]}
+
  enums-test
  {:zen/tags #{zen.test/case}
   :title "enums validations in map"
@@ -908,6 +921,21 @@
 
    {:desc "valid data given"
     :do {:type zen.test/validate :schema enums-schema :data {:gender "Female"}}
+    :match
+    {:errors zen.test/nil?}}
+
+   {:desc "multiple enums on one schema level - test second enum"
+    :do {:type zen.test/validate :schema second-enum :data "b1"}
+    :match
+    {:errors zen.test/nil?}}
+
+   {:desc "multiple enums on one schema level - test first enum"
+    :do {:type zen.test/validate :schema multiple-enums :data "b1"}
+    :match
+    {:errors zen.test/nil?}}
+
+   {:desc "multiple enums on one schema level - test first enum"
+    :do {:type zen.test/validate :schema multiple-enums :data "a1"}
     :match
     {:errors zen.test/nil?}}]}
 

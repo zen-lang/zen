@@ -62,7 +62,10 @@
 
     #_(zen.core/validate ztx #{'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema} plannet)
 
-    (v/validate ztx #{'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema} plannet))
+    (v/validate ztx #{'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema} plannet)
+
+    (get @ztx :zen.v2-validation/super)
+    )
 
   (do
 
@@ -84,7 +87,7 @@
                          'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
                    data)))
 
-    #_(prof/profile {:event :alloc}
+    #_(prof/profile #_{:event :alloc}
        (doseq [_ (range 5000)]
          (zen.core/validate ztx #{'hl7-fhir-r4-core.Organization/schema
                                   'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}

@@ -49,7 +49,7 @@
      [{:path [:txt]
        :type "string.type"
        :message "Expected type of 'string, got 'long"
-       :schema [add-txt-key :schema-key str #_:keys :txt]}]}}
+       :schema [add-txt-key :schema-key str :txt]}]}}
 
    {:desc "minLength constraint is not satisfied"
     :do {:type zen.test/validate :schema add-txt-key :data {:name "str" :txt "ab"}}
@@ -57,7 +57,7 @@
     {:errors [{:path [:txt]
                :type "string.minLength"
                :message "Expected length >= 5, got 2"
-               :schema [add-txt-key :schema-key str #_:keys :txt :minLength]}]}}
+               :schema [add-txt-key :schema-key str :txt :minLength]}]}}
 
    {:desc "Checks if there are additional keys"
     :do {:type zen.test/validate
@@ -127,7 +127,7 @@
     {:errors [{:path [:bar]
                :type "integer.min"
                :message "Expected >= 1, got 0"
-               :schema [add-required-keys :schema-key person #_:keys :bar :min]}]}}
+               :schema [add-required-keys :schema-key person :keys :bar :min]}]}}
 
    {:desc "Checks if there are additional keys"
     :do {:type zen.test/validate
