@@ -1,0 +1,42 @@
+{ns zen.tests.match-test
+
+ import #{zen.test}
+
+ match-schema
+ {:zen/tags #{zen/schema}
+  :match {:match-key
+          (:zen.match/one-of
+           #{{:key :match-val}
+             {:key1 :match-val}})}}
+
+ match-test
+ {:zen/tags #{zen.test/case}
+  :title ":match instruction tests"
+  :only-for #{:v2}
+  :steps
+  [{:desc "valid data"
+    :do {:type zen.test/validate
+         :schema match-schema
+         :data {:match-key {:key1 :match-val}}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "incorrect key provided"
+    :do {:type zen.test/validate
+         :schema match-schema
+         :data {:match-key {:another-key :match-val}}}
+    :match {:errors
+            [{:message
+              "Expected (:zen.match/one-of #{{:key :match-val} {:key1 :match-val}}) but {:another-key :match-val}",
+              :type "match",
+              :path [],
+              :schema [zen.tests.match-test/match-schema :match]}]}}
+
+   {:desc "valid data, extra keys provided"
+    ;; TODO discuss this case
+    ;; the assumption is that because no :type zen/map
+    ;; is specified in schema, keys validation does not happen
+    :do {:type zen.test/validate
+         :schema match-schema
+         :data {:match-key {:key1 :match-val}
+                :just-another-key "boom"}}
+    :match {:errors zen.test/empty?}}]}}

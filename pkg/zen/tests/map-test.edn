@@ -50,7 +50,7 @@
      [{:type "integer.max"
        :message "Expected <= 255, got 300"
        :path [{:x 0 :y "non-number"} :b]
-       :schema [zen.tests.map-test/picture-map :values :values #_:confirms #_zen.tests.map-test/color-channel :max]}
+       :schema [zen.tests.map-test/picture-map :values :values :confirms zen.tests.map-test/color-channel :max]}
 
       {:type "integer.type"
        :message "Expected type of 'integer, got 'string"

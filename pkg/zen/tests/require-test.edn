@@ -127,7 +127,7 @@
     :match {:errors
             [{:type "map.require"
               :message "one of keys #{:bar :foo} is required"
-              :schema [or-a-require #_:confirms #_or-require :require]
+              :schema [or-a-require :confirms or-require :require]
               :path zen.test/empty?}]}}
 
    {:desc "require either foo or bar and a - all keys present"
@@ -173,11 +173,11 @@
             [{:type "require"
               :message ":a is required"
               :path [:a]
-              :schema [zen.tests.require-test/ab-require #_:confirms #_a-require :require]}
+              :schema [zen.tests.require-test/ab-require :confirms a-require :require]}
              {:type "require"
               :message ":b is required"
               :path [:b]
-              :schema [zen.tests.require-test/ab-require #_:confirms #_b-require :require]}]}}
+              :schema [zen.tests.require-test/ab-require :confirms b-require :require]}]}}
 
    {:desc "two schemas w confirms fail when b is not present"
     :do {:type zen.test/validate
@@ -187,7 +187,7 @@
             [{:type "require"
               :message ":b is required"
               :path [:b]
-              :schema [zen.tests.require-test/ab-require #_:confirms #_b-require :require]}]}}
+              :schema [zen.tests.require-test/ab-require :confirms b-require :require]}]}}
 
    {:desc "two schemas w confirms when a, b are present"
     :do {:type zen.test/validate
@@ -257,8 +257,8 @@
        :type "string.type"
        :schema
        [zen.tests.require-test/schema-a
-        #_:confirms
-        #_zen.tests.require-test/schema-c
+        :confirms
+        zen.tests.require-test/schema-c
         :c
         :type]}
 

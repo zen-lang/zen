@@ -45,32 +45,8 @@
 
     (r/zen-read-ns ztx 'zen.tests.confirms-test)
 
+    (r/zen-read-ns ztx 'zen.tests.match-test)
+
     (r/run-tests ztx)))
 
-(deftest resolve-confirms-test
-
-  (def ztx (zen/new-context {:unsafe true}))
-
-  (r/zen-read-ns ztx 'zen.tests.confirms-test)
-
-  (is
-   (= (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/confirms-resolved)
-              :zen/file
-              :zen/name)
-      (v/resolve-confirms ztx (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test))))
-
-  (def data (dissoc (zen.utils/get-symbol ztx 'zen.tests.confirms-test/data-example)
-                    :zen/file
-                    :zen/name))
-
-  (def resolved-results
-    (v/validate-schema ztx
-                       (v/resolve-confirms ztx (zen.utils/get-symbol ztx 'zen.tests.confirms-test/to-test))
-                       data))
-
-  (def confirms-results
-    (v/validate ztx #{'zen.tests.confirms-test/to-test} data))
-
-  (is (empty? (:errors resolved-results)))
-  (is (empty? (:errors confirms-results))))
 

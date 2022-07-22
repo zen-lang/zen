@@ -7,26 +7,6 @@
     (str/lower-case (last (str/split (str tp) #"\.")))
     "nil"))
 
-(defn setmap? [a]
-  (or (set? a) (map? a)))
-
-(defn deep-merge
-  [a b]
-  (loop [[[k v :as i] & ks] b,
-         acc (transient a)]
-    (if (nil? i)
-      (persistent! acc)
-      (let [av (get a k)]
-        (if (= v av)
-          (recur ks acc)
-          (recur ks (cond
-                      (and (map? v) (map? av)) (assoc! acc k (deep-merge av v))
-                      (and (setmap? v) (nil? av)) (assoc! acc k v)
-                      (and (vector? v) (vector? av)) (assoc! acc k (into v av))
-                      (and (setmap? v) (setmap? av)) (assoc! acc k (into av v))
-                      :else
-                      (assoc! acc k v))))))))
-
 (defn unknown-errs [vtx]
   (update vtx :errors
           (fn [errs]

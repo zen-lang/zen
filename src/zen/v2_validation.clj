@@ -70,40 +70,6 @@
 
 (defmulti compile-type-check (fn [tp ztx] tp))
 
-(defn *resolve-confirms [ztx in-compile sch]
-  (let [hsh (hash sch)]
-    ;; TODO add schema not found errors
-    (if (or (get in-compile hsh) (nil? sch))
-      {}
-      (let [confirms-defined? (and (:confirms sch) (set? (:confirms sch)))
-            sch*
-            (-> (if confirms-defined? (dissoc sch :confirms) sch)
-                (dissoc sch :zen/file :zen/name :zen/tags :zen/desc))
-            node
-            (loop [[[k v :as el] & ks] sch*
-                   acc (transient sch*)]
-              (cond
-                (nil? el) (persistent! acc)
-                (not (map? v)) (recur ks acc)
-                :else
-                (recur ks
-                       (assoc! acc k (*resolve-confirms ztx (conj in-compile hsh) v)))))]
-        (if confirms-defined?
-          (loop [cs (seq (:confirms sch))
-                 node* node]
-            (cond
-              (empty? cs) node*
-              :else
-              (let [resolved
-                    (*resolve-confirms ztx
-                                       (conj in-compile hsh)
-                                       (utils/get-symbol ztx (first cs)))]
-                (recur (rest cs) (deep-merge node* resolved)))))
-          node)))))
-
-(defn resolve-confirms [ztx sch]
-  (*resolve-confirms ztx #{} sch))
-
 (defn validate-props [vtx data props opts]
   (reduce (fn [vtx* prop]
             (if-let [prop-value (get data prop)]
@@ -114,6 +80,38 @@
           vtx
           (keys props)))
 
+(defn cur-keyset [vtx data]
+  (->> (keys data)
+       (map #(conj (:path vtx) %))
+       set))
+
+(defn valtype-rule [vtx data open-world?]
+  (let [filter-allowed
+        (fn [unknown]
+          (->> unknown
+               (remove #(= (vec (butlast %)) (:path vtx)))
+               set))
+
+        set-unknown
+        (fn [unknown]
+          (let [empty-unknown? (empty? unknown)
+                empty-visited? (empty? (:visited vtx))]
+            (cond (and empty-unknown? (not empty-visited?))
+                  (cljset/difference (cur-keyset vtx data)
+                                     (:visited vtx))
+
+                  (and empty-unknown? empty-visited?)
+                  (set (cur-keyset vtx data))
+
+                  (not empty-unknown?)
+                  (cljset/difference unknown (:visited vtx)))))]
+
+    (if open-world?
+      (-> vtx
+          (update :unknown-keys filter-allowed)
+          (update :visited into (cur-keyset vtx data)))
+      (update vtx :unknown-keys set-unknown))))
+
 (defn compile-schema [ztx schema props]
   (let [rulesets (->> (dissoc schema :validation-type)
                       (map (fn [[k kfg]]
@@ -122,23 +120,22 @@
         open-world? (or (:key schema)
                         (:values schema)
                         (= (:validation-type schema) :open)
-                        (= (:type schema) 'zen/any))
-        {valtype-pred :when valtype-rule :rule} (compile-key :validation-type ztx open-world?)]
+                        (= (:type schema) 'zen/any))]
     (fn compiled-sch [vtx data opts]
       (loop [rs rulesets
              vtx* (validate-props (assoc vtx :type (:type schema)) data props opts)]
         (cond
-          (and (empty? rs) (valtype-pred data))
-          (valtype-rule vtx* data opts)
+          (and (empty? rs) (map? data) (:type schema))
+          (valtype-rule vtx* data open-world?)
 
           (empty? rs) vtx*
 
           :else
           (let [r (first rs)]
             (if (or (nil? (get r :when)) ((get r :when) data)) #_"TODO: deduce type fn from types-cfg and check if this schema uses type"
-              (recur (rest rs)
-                     ((get r :rule) vtx* data opts))
-              (recur (rest rs) vtx*))))))))
+                (recur (rest rs)
+                       ((get r :rule) vtx* data opts))
+                (recur (rest rs) vtx*))))))))
 
 (declare resolve-props)
 
@@ -156,12 +153,12 @@
       :else
       (do
         (swap! ztx assoc-in [::visited-schemas hash*] true)
-        (let [[schema* props]
+        (let [props
               (if init?
-                [(resolve-confirms ztx schema) (resolve-props ztx)]
-                [schema (::prop-schemas ztx)])
+                (resolve-props ztx)
+                (::prop-schemas ztx))
 
-              v (compile-schema ztx schema* props)]
+              v (compile-schema ztx schema props)]
 
           (swap! ztx assoc-in [::compiled-schemas hash*] v)
           v)))))
@@ -308,15 +305,16 @@
 
 (defmethod compile-key :match
   [_ ztx pattern]
-  {:rule (fn match-fn [vtx data opts]
-           (let [errs (zen.match/match data pattern)]
-             (if-not (empty? errs)
-               (->> errs
-                    (reduce (fn [acc err]
-                              (add-err acc :match {:message (or (:message err) (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))
-                                                   :type "match"}))
-                            vtx))
-               vtx)))})
+  {:rule
+   (fn match-fn [vtx data opts]
+     (let [errs (zen.match/match data pattern)]
+       (if-not (empty? errs)
+         (->> errs
+              (reduce (fn [acc err]
+                        (add-err acc :match {:message (or (:message err) (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))
+                                             :type "match"}))
+                      vtx))
+         vtx)))})
 
 (defmethod compile-key :min
   [_ ztx min]
@@ -793,39 +791,3 @@
   {:rule
    (fn fail-fn [vtx data opts]
      (add-err vtx :fail {:message err-msg}))})
-
-(defn cur-keyset [vtx data opts]
-  (->> (keys data)
-       (map #(conj (:path vtx) %))
-       set))
-
-(defmethod compile-key :validation-type
-  [_ ztx open-world?]
-  {:when map?
-   :rule
-   (fn validation-type-sch [vtx data opts]
-     (let [filter-allowed
-           (fn [unknown]
-             (->> unknown
-                  (remove #(= (vec (butlast %)) (:path vtx)))
-                  set))
-
-           set-unknown
-           (fn [unknown]
-             (let [empty-unknown? (empty? unknown)
-                   empty-visited? (empty? (:visited vtx))]
-               (cond (and empty-unknown? (not empty-visited?))
-                     (cljset/difference (cur-keyset vtx data opts)
-                                        (:visited vtx))
-
-                     (and empty-unknown? empty-visited?)
-                     (set (cur-keyset vtx data opts))
-
-                     (not empty-unknown?)
-                     (cljset/difference unknown (:visited vtx)))))]
-
-       (if open-world?
-         (-> vtx
-             (update :unknown-keys filter-allowed)
-             (update :visited into (cur-keyset vtx data opts)))
-         (update vtx :unknown-keys set-unknown))))})
