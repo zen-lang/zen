@@ -88,15 +88,23 @@
                              (let [sch-path
                                    (if (contains? blackset k)
                                      (:sch-path compile-opts)
-                                     (conj (:sch-path compile-opts) k))
-                                   ruleset (compile-key k ztx kfg
-                                                        (assoc compile-opts :sch-path sch-path))]
-                               (if-let [sup-rules (:super ruleset)]
-                                 (do
-                                   (swap! ztx update-in [::super sch-path :rules] (fnil into #{}) sup-rules)
-                                   (swap! ztx assoc-in [::super sch-path :to-arg] (:to-arg ruleset))
-                                   (assoc ruleset ::super-apply sch-path))
-                                 ruleset))))
+                                     (conj (:sch-path compile-opts) k))]
+                               (if (and (contains? (:supercompile compile-opts) k)
+                                        (not (:validate-time compile-opts))
+                                        #_(not (:supercompile-time compile-opts))
+                                        (not (contains? (set sch-path) :slicing)))
+                                 (if-not (contains? @ztx [::super sch-path :schema])
+                                   (let [compile-opts* (assoc compile-opts :sch-path sch-path)]
+                                     (swap! ztx assoc-in [::super sch-path]
+                                            {:schema kfg
+                                             :key k
+                                             :compile-opts compile-opts*})
+                                     {::super-apply sch-path})
+                                   (do
+                                     (swap! ztx update-in [::super sch-path :schema] deep-merge kfg)
+                                     'none))
+                                 (compile-key k ztx kfg (assoc compile-opts :sch-path sch-path))))))
+                      (remove #(= % 'none))
                       (sort-by ::super-apply)
                       doall)
         open-world? (or (:key schema)
@@ -115,28 +123,20 @@
 
           :else
           (let [r (first rs)]
-            (if (or (nil? (get r :when)) ((get r :when) data))
-              (if-let [sa-path (::super-apply r)]
-                (if (contains? (get-in vtx* [::super sa-path :executed?]) (hash data))
-                  (recur (rest rs) vtx*)
-                  (recur (rest rs)
-                         ((:rule r)
-                          (update-in vtx* [::super sa-path :executed?] (fnil conj #{}) (hash data))
-                          (get-in @ztx [::super sa-path :arg])
-                          data
-                          opts)))
-                (recur (rest rs)
-                       ((get r :rule) vtx* data opts)))
-              (recur (rest rs) vtx*))))))))
+            (cond
+              (::super-apply r)
+              (let [{when-fn :when rule-fn :rule}
+                    (get-in @ztx [::super (::super-apply r) :rule-fn])]
+                (if (or (nil? when-fn) (when-fn data))
+                  (recur (rest rs) (rule-fn vtx* data opts))
+                  (recur (rest rs) vtx*)))
 
-;; TODO filter out duplicate fns
-(defn supercompile-rules [ztx compile-opts]
-  (swap! ztx update ::super
-         (fn [s]
-           (reduce (fn [acc [k v]]
-                     (assoc acc k (assoc v :arg ((:to-arg v) (:rules v)))))
-                   {}
-                   s))))
+              (or (nil? (get r :when))
+                  ((get r :when) data))
+              (recur (rest rs)
+                     ((get r :rule) vtx* data opts))
+
+              :else (recur (rest rs) vtx*))))))))
 
 (declare resolve-props)
 
@@ -144,7 +144,7 @@
   (let [hash* (hash schema)
         v (get-in @ztx [::compiled-schemas hash*])]
     (cond
-      (and (nil? sch-path) (fn? v)) v
+      (fn? v) v
 
       (true? (get-in @ztx [::in-compile hash*]))
       (do
@@ -166,12 +166,19 @@
 
               v (compile-schema ztx schema props compile-opts*)]
 
+          (when (nil? sch-path)
+            (swap! ztx update ::super
+                   (fn [super]
+                     (reduce (fn [acc [sch-path {:keys [schema key compile-opts] :as v}]]
+                               (assoc acc
+                                      sch-path
+                                      (assoc v :rule-fn (compile-key key ztx schema
+                                                                     (assoc compile-opts :supercompile-time true)))))
+                             {}
+                             super))))
+
           (swap! ztx update ::in-compile dissoc hash*)
           (swap! ztx assoc-in [::compiled-schemas hash*] v)
-
-          (when (or (nil? sch-path) (:validate-time compile-opts*))
-            (supercompile-rules ztx compile-opts))
-
           v)))))
 
 (defn resolve-props [ztx compile-opts]
@@ -188,7 +195,7 @@
 
 (defn *validate-schema
   [ztx vtx schema data & [opts]]
-  (let [v (get-cached ztx schema {})]
+  (let [v (get-cached ztx schema {:supercompile #{:keys :enum}})]
     (-> vtx
         (assoc :schema [(:zen/name schema)])
         (assoc :path [])
@@ -312,13 +319,12 @@
 
 (defmethod compile-key :enum
   [_ ztx values compile-opts]
-  {:super (set (map :value values))
-   :to-arg identity
-   :rule
-   (fn [vtx values* data opts]
-     (if-not (contains? values* data)
-       (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
-       vtx))})
+  (let [values* (set (map :value values))]
+    {:rule
+     (fn [vtx data opts]
+       (if-not (contains? values* data)
+         (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
+         vtx))}))
 
 (defmethod compile-key :min
   [_ ztx min opts]
@@ -394,38 +400,27 @@
 
 (defmethod compile-key :keys
   [_ ztx ks compile-opts]
-  {:when map?
-
-   :super
-   (map (fn [[k sch]]
-          [k (get-cached ztx sch (update compile-opts :sch-path conj k))])
-        ks)
-
-   :to-arg
-   (fn [key-rules]
-     (reduce (fn [acc [k v]]
-               (update acc k (fnil conj []) v))
-             {}
-             key-rules))
-
-   :rule
-   (fn keys-sch [vtx key-rules data opts]
-     (loop [data (seq data)
-            unknown (transient [])
-            vtx* vtx]
-       (if (empty? data)
-         (update vtx* :unknown-keys into (persistent! unknown))
-         (let [[k v] (first data)]
-           (if (not (contains? key-rules k))
-             (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
-             (recur (rest data)
-                    unknown
-                    (reduce (fn [vtx** r]
-                              (-> (node-vtx&log vtx** [k] [k])
-                                  (r v opts)
-                                  (merge-vtx vtx**)))
-                            vtx*
-                            (get key-rules k))))))))})
+  (let [key-rules
+        (->> ks
+             (map (fn [[k sch]]
+                    [k (get-cached ztx sch (update compile-opts :sch-path conj k))]))
+             (into {}))]
+    {:when map? #_"TODO: should be 'zen/map"
+     :rule
+     (fn keys-sch [vtx data opts]
+       (loop [data (seq data)
+              unknown (transient [])
+              vtx* vtx]
+         (if (empty? data)
+           (update vtx* :unknown-keys into (persistent! unknown))
+           (let [[k v] (first data)]
+             (if (not (contains? key-rules k))
+               (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
+               (recur (rest data)
+                      unknown
+                      (-> (node-vtx&log vtx* [k] [k])
+                          ((get key-rules k) v opts)
+                          (merge-vtx vtx*))))))))}))
 
 (defmethod compile-key :values
   [_ ztx sch compile-opts]

@@ -70,6 +70,8 @@
                     :zen/file
                     :zen/name))
 
+  (get @ztx :zen.v2-validation/super)
+
   (def result (v/validate ztx #{'zen.tests.confirms-test/to-test} data))
 
   (is (= [{:message "Could not resolve schema 'zen.tests.confirms-test/not-found-1",
