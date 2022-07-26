@@ -30,7 +30,8 @@
    'zen/number {:fn number?
                 :to-str "number"}
 
-   'zen/set {:fn set?
+   ;; TODO discuss sequential? predicate
+   'zen/set {:fn #(or (set? %) (sequential? %))
              :to-str "set"}
 
    'zen/map {:fn map?
@@ -132,7 +133,7 @@
 
           :else
           (let [r (first rs)]
-            (if (or (nil? (get r :when)) ((get r :when) data)) #_"TODO: deduce type fn from types-cfg and check if this schema uses type"
+            (if (or (nil? (get r :when)) ((get r :when) data))
                 (recur (rest rs)
                        ((get r :rule) vtx* data opts))
                 (recur (rest rs) vtx*))))))))
@@ -147,12 +148,14 @@
       (fn? v)
       v
 
-      (true? (get-in @ztx [::visited-schemas hash*]))
-      (fn [vtx _ _] vtx)
+      (true? (get-in @ztx [::in-compile hash*]))
+      (do
+        (swap! ztx update ::in-compile dissoc hash*)
+        (fn [vtx _ _] vtx))
 
       :else
       (do
-        (swap! ztx assoc-in [::visited-schemas hash*] true)
+        (swap! ztx assoc-in [::in-compile hash*] true)
         (let [props
               (if init?
                 (resolve-props ztx)
@@ -160,6 +163,7 @@
 
               v (compile-schema ztx schema props)]
 
+          (swap! ztx update ::in-compile dissoc hash*)
           (swap! ztx assoc-in [::compiled-schemas hash*] v)
           v)))))
 
@@ -395,7 +399,7 @@
              (map (fn [[k sch]]
                     [k (get-cached ztx sch false)]))
              (into {}))]
-    {:when map? #_"TODO: should be 'zen/map"
+    {:when map?
      :rule
      (fn keys-sch [vtx data opts]
        (loop [data (seq data)
