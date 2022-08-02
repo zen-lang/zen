@@ -54,6 +54,7 @@
   (when-let [w (get-in @ztx [:zen/services :zen/watch])]
     (hawk/stop! w)
     (swap! ztx update :zen/services dissoc :zen/watch)
+    (println :zen.watch/stopped)
     :zen.watch/stopped))
 
 
