@@ -320,6 +320,26 @@
                       vtx))
          vtx)))})
 
+(defmethod compile-key :scale
+  [_ ztx scale]
+  {:when number?
+   :rule
+   (fn [vtx num opts]
+     (let [num-scale (.scale (BigDecimal/valueOf num))]
+       (if (not= num-scale scale)
+         (add-err vtx :scale {:message (str "Expected scale = " scale ", got " num-scale)})
+         vtx)))})
+
+(defmethod compile-key :precision
+  [_ ztx precision]
+  {:when number?
+   :rule
+   (fn [vtx num opts]
+     (let [num-precision (.precision (BigDecimal/valueOf num))]
+       (if (not= num-precision precision)
+         (add-err vtx :precision {:message (str "Expected precision = " precision ", got " num-precision)})
+         vtx)))})
+
 (defmethod compile-key :min
   [_ ztx min]
   {:when number?

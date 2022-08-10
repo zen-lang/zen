@@ -1,5 +1,10 @@
 {ns zen
 
+ ;; TODO add date, datetime
+ ;; TODO tagset, slicing
+
+ ;; why no coll?
+
  namespace
  {:zen/tags #{schema}
   :zen/desc "Schema for namespace"
@@ -15,6 +20,18 @@
  property
  {:zen/tags #{tag}
   :zen/desc "Global properties"}
+
+ desc
+ {:zen/tags #{property schema}
+  :type string}
+
+ file
+ {:zen/tags #{property schema}
+  :zen/desc "namespace filename"
+  :type string}
+
+ name {:zen/tags #{property schema}
+       :type symbol}
 
  tags {:zen/tags #{property schema}
        :zen/desc "list of zen tags"
@@ -39,7 +56,6 @@
  any
  {:zen/tags #{is-type}
   :zen/desc "Any type"}
-
 
  schema
  {:zen/tags #{schema tag}
@@ -89,7 +105,6 @@
 
  match
  {:zen/tags #{is-key schema}}
-
 
  effect {:zen/tags #{tag}}
 
@@ -166,29 +181,35 @@
   :zen/desc "validate string"
   :type map
   :keys {:regex  {:confirms #{regex}}
+         ;; TODO add minLength, maxLength
          :length {:confirms #{length}}}}
+
+ boolean
+ {:zen/tags #{schema is-type}
+  :zen/desc "validate boolean"}
 
  bounds
  {:zen/tags #{schema is-key}
   :for #{integer number}
   :zen/desc "bounds of numbers"}
 
-
- boolean
- {:zen/tags #{schema is-type}
-  :zen/desc "validate boolean"}
-
  integer
  {:zen/tags #{schema is-type}
   :zen/desc "validate integer"
   :type map
+  ;; TODO add min, max
   :keys {:bounds {:confirms #{bounds}}}}
 
  number
  {:zen/tags #{schema is-type}
   :zen/desc "validate integer"
   :type map
-  :keys {:bounds {:confirms #{bounds}}}}
+  ;; TODO add schema-key type schema dispatch
+  :keys {:bounds {:confirms #{bounds}}
+         :min {:type number}
+         :max {:type number}
+         :precision {:type integer}
+         :scale {:type integer}}}
 
  every
  {:zen/tags #{schema is-key}
@@ -206,7 +227,7 @@
   :for #{vector set}
   :type map
   :key   {:type integer}
-  :vlaue {:confirms #{schema}}}
+  :value {:confirms #{schema}}}
 
  vector-bounds
  {:zen/tags #{schema is-key}
@@ -221,6 +242,4 @@
  vector
  {:zen/tags #{schema is-type}
   :zen/desc "validate vector"
-  :type map}
-
- }
+  :type map}}

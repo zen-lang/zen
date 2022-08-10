@@ -54,7 +54,9 @@
             :zen/desc "number primitive type"
             :type map
             :keys {:min {:type number}
-                   :max {:type number}}}
+                   :max {:type number}
+                   :precision {:type integer}
+                   :scale {:type integer}}}
 
  date      {:zen/tags #{type primitive schema}
             :type map

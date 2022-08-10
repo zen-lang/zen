@@ -435,6 +435,17 @@
              :min 1.1
              :max 3.3}}}
 
+ constraints-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/number
+             :scale 2}
+         :b {:type zen/number
+             :precision 3}
+         :c {:type zen/number
+             :precision 3
+             :scale 2}}}
+
 ;; TODO fails on v1 because it returns string not integer
  number-test
  {:zen/tags #{zen.test/case}
@@ -471,7 +482,52 @@
    {:desc "Valid number was given"
     :do {:type zen.test/validate :schema number-schema :data {:a 2.2}}
     :match
-    {:errors zen.test/nil?}}]}
+    {:errors zen.test/nil?}}
+
+   {:desc "scale constraint invalid"
+    :do {:type zen.test/validate :schema constraints-schema :data {:a 2}}
+    :match
+    {:errors
+     [{:message "Expected scale = 2, got 0"
+       :path [:a]
+       :type "number.scale"
+       :schema [zen.tests.types-test/constraints-schema :a :scale]}]}}
+
+   {:desc "scale constraint valid"
+    :do {:type zen.test/validate :schema constraints-schema :data {:a 2.28}}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "precision constraint invalid"
+    :do {:type zen.test/validate :schema constraints-schema :data {:b 224.2}}
+    :match
+    {:errors [{:message "Expected precision = 3, got 4"
+               :path [:b]
+               :type "number.precision"
+               :schema [zen.tests.types-test/constraints-schema :b :precision]}]}}
+
+   {:desc "precision constraint valid"
+    :do {:type zen.test/validate :schema constraints-schema :data {:b 2.28}}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "precision constraint valid"
+    :do {:type zen.test/validate :schema constraints-schema :data {:b 22.4}}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "precision & scale constraint invalid"
+    :do {:type zen.test/validate :schema constraints-schema :data {:c 22.22}}
+    :match
+    {:errors [{:message "Expected precision = 3, got 4"
+               :path [:c]
+               :type "number.precision"
+               :schema [zen.tests.types-test/constraints-schema :c :precision]}]}}
+
+   {:desc "precision & scale constraint valid"
+    :do {:type zen.test/validate :schema constraints-schema :data {:c 2.22}}
+    :match
+    {:errors zen.test/empty?}}]}
 
  regex-schema
  {:zen/tags #{zen/schema}
