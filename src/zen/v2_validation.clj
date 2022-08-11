@@ -815,3 +815,20 @@
   {:rule
    (fn fail-fn [vtx data opts]
      (add-err vtx :fail {:message err-msg}))})
+
+(defmethod compile-key :key-schema
+  [_ ztx {:keys [tags]}]
+  (let [keys-schema
+        (->> tags
+             (mapcat #(utils/get-tag ztx %))
+             (reduce (fn [acc sch-name]
+                       ;; TODO get rid of type coercion
+                       (update acc (keyword (name sch-name)) merge (utils/get-symbol ztx sch-name)))
+                     {}))
+        {pred-fn :when rule-fn :rule} (compile-key :keys ztx keys-schema)]
+    {:when map?
+     :rule
+     (fn key-schema-fn [vtx data opts]
+       (if (pred-fn data)
+         (rule-fn vtx data opts)
+         vtx))}))

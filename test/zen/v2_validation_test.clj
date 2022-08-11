@@ -47,6 +47,9 @@
 
     (r/zen-read-ns ztx 'zen.tests.match-test)
 
+    (r/zen-read-ns ztx 'zen.tests.key-schema-test)
+
     (r/run-tests ztx)))
+
 
 
