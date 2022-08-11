@@ -147,21 +147,7 @@
                                                                                         {:enum
                                                                                          [{:value :zen} {:value :zen-fx}]}}
                                                                                        {:when {:type zen/any}
-                                                                                        :then {:fail "Unsupported engine"}}]}}
-
-                                                                      #_:keys
-                                                                      #_{:engine
-                                                                       {:type case
-                                                                        :case [{:when
-                                                                                {:type map
-                                                                                 :keys
-                                                                                 {:engine {:type keyword
-                                                                                           :enum  [{:value :zen} {:value :zen-fx}]}}}
-                                                                                :then {:require #{:zen}
-                                                                                       :type map
-                                                                                       :keys {:zen {:confirms #{schema}}}}}
-                                                                               {:when {:type zen/any}
-                                                                                :then {:fail "Unsupported engine"}}]}}}
+                                                                                        :then {:fail "Unsupported engine"}}]}}}
                                                              :schema  {:confirms #{schema}}}}}}}}}
 
  list    {:zen/tags #{type coll schema}
