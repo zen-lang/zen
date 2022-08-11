@@ -1,0 +1,64 @@
+{ns zen.tests.key-schema-test
+ import #{zen.test}
+
+ my-key
+ {:zen/tags #{zen/tag}}
+
+ a-key
+ {:zen/tags #{zen/schema my-key}
+  :type zen/vector
+  :every {:type zen/number}}
+
+ b-key
+ {:zen/tags #{zen/schema my-key}
+  :type zen/map
+  :keys {:c-key {:type zen/string}}}
+
+ my-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :key-schema {:tags #{my-key}}}
+
+ key-schema-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "key-schema dispatch tests"
+  :steps
+  [{:desc "valid data given"
+    :do {:type zen.test/validate
+         :schema my-schema
+         :data {:a-key [1 2 3 16]
+                :b-key {:c-key "just a string"}}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "a-key is invalid"
+    :do {:type zen.test/validate
+         :schema my-schema
+         :data {:a-key 'wrong-value
+                :b-key {:c-key "just a string"}}}
+    :match
+    {:errors
+     [{:message "Expected type of 'vector, got 'symbol",
+       :path [:a-key],
+       :type "vector.type",
+       :schema [zen.tests.key-schema-test/my-schema :a-key :type]}]}}
+
+   {:desc "c-key is invalid"
+    :do {:type zen.test/validate
+         :schema my-schema
+         :data {:a-key [2 3]
+                :b-key {:c-key 'wrong-value}}}
+    :match
+    {:errors
+     [{:message "Expected type of 'string, got 'symbol",
+       :path [:b-key :c-key],
+       :type "string.type",
+       :schema [zen.tests.key-schema-test/my-schema :b-key :c-key :type]}]}}
+
+   {:desc "extra key is provided"
+    :do {:type zen.test/validate
+         :schema my-schema
+         :data {:extra-key "extra-value"}}
+    :match {:errors [{:path [:extra-key],
+                      :type "unknown-key",
+                      :message "unknown key :extra-key"}]}}]}}
