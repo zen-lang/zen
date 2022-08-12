@@ -165,7 +165,8 @@
                                      :enum [{:value :open}
                                             {:value :closed}]}
                    :key-schema {:type map
-                                :keys {:tags {:confirms #{tagset}}}}
+                                :keys {:tags {:confirms #{tagset}}
+                                       :key {:type keyword}}}
 
                    :schema-key {:zen/desc "Deduce schema from value of specific key."
                                 :type map

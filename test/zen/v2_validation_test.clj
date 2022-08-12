@@ -8,6 +8,15 @@
    [zen.core :as zen]
    [zen.v2-validation :as v2]))
 
+(defn v1! []
+  (def ztx (zen/new-context {:unsafe true}))
+  (zen.core/read-ns ztx 'zen))
+
+(defn v2! []
+  (def ztx (zen/new-context {:unsafe true}))
+  (def zen-ns (read-string (slurp (clojure.java.io/resource "v2/zen.edn"))))
+  (zen.core/load-ns ztx zen-ns))
+
 ;; see slicing-test/zen-fx-engine-slicing-test
 (defmethod fx/fx-evaluator 'zen.tests.slicing-test/slice-key-check
   [ztx {:keys [params path]} data]
@@ -20,6 +29,8 @@
 
   (do
     (def ztx (zen/new-context {:unsafe true}))
+
+    (v1!)
 
     (r/zen-read-ns ztx 'zen.tests.require-test)
 
@@ -50,6 +61,4 @@
     (r/zen-read-ns ztx 'zen.tests.key-schema-test)
 
     (r/run-tests ztx)))
-
-
 

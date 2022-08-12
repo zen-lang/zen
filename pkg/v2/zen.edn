@@ -52,28 +52,28 @@
   :schema-key      {:key :type :tags #{is-type}}
   :keyname-schemas {:tags #{schema-fx}}
   ;; schema keys validation
-  :key-schema {:tags #{is-key}}}
+  :key-schema {:tags #{is-key} :key :type}}
 
- :for
+ for
  {:zen/tags #{is-key schema}
-  :zen/desc "binds rule to a set of types"
+  :zen/desc "binds rule to a set of symbols"
   :type set
   :every {:type symbol
           :tags #{is-type}}}
 
- :type
+ type
  {:zen/tags #{is-key schema}
   :zen/desc "type key in schema"
   :type symbol
   :tags #{is-type}}
 
- :confirms
+ confirms
  {:zen/tags #{is-key schema}
   :zen/desc "set of schemas to confirm"
   :type set
   :every {:type symbol :tags #{schema}}}
 
- :case
+ case
  {:zen/tags #{is-key schema}
   :type map
   :keys {:case {:type vector
@@ -82,27 +82,27 @@
                         :keys {:when {:confirms #{schema}}
                                :then {:confirms #{schema}}}}}}}
 
- :const
+ const
  {:zen/tags #{is-key schema}
   :zen/desc "is value equal to constant?"
   :type map
   :keys {:value {:type any}}}
 
- :match
+ match
  {:zen/tags #{is-key schema}
   :type any}
 
- :fail
+ fail
  {:zen/tags #{is-key schema}
   :type string}
 
- :every
+ every
  {:zen/tags #{schema is-key}
   :zen/desc "bounds of numbers"
   :for #{vector set}
   :confirms #{schema}}
 
- :enum
+ enum
  {:zen/tags #{is-key schema}
   :zen/desc "is value in enum?"
   :type vector
@@ -111,12 +111,12 @@
 
  effect {:zen/tags #{tag}}
 
- :effects
+ #_effects
  ;; TODO impl me
- {:zen/tags #{is-key schema}
+ #_{:zen/tags #{is-key schema}
   :zen/desc "reference key evaluation method"
   :type map
-  :key-schema {:tags effect}}
+  :key-schema {:tags #{effect}}}
 
  regex
  {:zen/tags #{schema is-type}
@@ -153,24 +153,24 @@
   :type map
   :keys {:tags {:confirms #{tags}}}}
 
- :regex
- {:zen/tags #{schema is-key}
-  :zen/desc "validate regex"
-  :for #{string}
-  :type regex}
+ #_regex
+ #_{:zen/tags #{schema is-key}
+    :zen/desc "validate regex"
+    :for #{string}
+    :type regex}
 
- :length
+ length
  {:zen/tags #{schema is-key}
   :for #{string}
   :zen/desc "lenght of string"}
 
- :minLentgh
+ minLentgh
  {:zen/tags #{schema is-key}
   :for #{string}
   :type integer
   :min 0}
 
- :maxLength
+ maxLength
  {:zen/tags #{schema is-key}
   :for #{string}
   :type integer
@@ -190,7 +190,7 @@
   :zen/desc "validate integer"
   :type map}
 
- :bounds
+ bounds
  ;; TODO impl me
  {:zen/tags #{schema is-key}
   :zen/desc "bounds of numbers"
@@ -198,22 +198,22 @@
   :type vector
   :every {:type zen/integer}}
 
- :min
+ min
  {:zen/tags #{schema is-key}
   :for #{integer number}
   :type integer}
 
- :max
+ max
  {:zen/tags #{schema is-key}
   :for #{integer number}
   :type integer}
 
- :precision
+ precision
  {:zen/tags #{schema is-key}
   :for #{number}
   :type integer}
 
- :scale
+ scale
  {:zen/tags #{schema is-key}
   :for #{number}
   :type integer}
@@ -226,12 +226,12 @@
  {:zen/tags #{schema is-type}
   :type map}
 
- :superset-of
+ superset-of
  {:zen/tags #{is-key schema}
   :for #{set}
   :type set}
 
- :subset-of
+ subset-of
  {:zen/tags #{is-key schema}
   :for #{set}
   :type set}
@@ -241,15 +241,15 @@
   :zen/desc "validate vector"
   :type map}
 
- :schema-index
+ schema-index
  {:zen/tags #{schema is-key}
+  :for #{vector}
   :zen/desc "resolve schema name by vector index and ns"
   :type map
-  :for #{vector}
   :keys {:index {:type integer}
          :ns {:type string}}}
 
- :nth
+ nth
  {:zen/tags #{schema is-key}
   :zen/desc "apply schema to an element of vector"
   :for #{vector list}
@@ -257,7 +257,7 @@
   :key   {:type integer}
   :value {:confirms #{schema}}}
 
- :slicing
+ slicing
  {:zen/tags #{schema is-key}
   :zen/desc "define a slicing of a vector"
   :type map
@@ -283,31 +283,31 @@
 
                           :schema {:confirms #{schema}}}}}}}
 
- :filter
+ filter
  ;; TODO impl me
  {:zen/tags #{schema is-key}
   :zen/desc "bounds of numbers"
   :for #{vector set}}
 
- :minItems
+ minItems
  {:zen/tags #{schema is-key}
   :for #{vector}
   :type integer
   :min 0}
 
- :maxItems
+ maxItems
  {:zen/tags #{schema is-key}
   :for #{vector}
   :type integer
   :min 0}
 
- :vector-bounds
+ vector-bounds
  ;; TODO impl me
  {:zen/tags #{schema is-key}
   :for #{vector set}
   :zen/desc "bounds of numbers"}
 
- :vector-regex
+ vector-regex
  ;; TODO impl me
  {:zen/tags #{schema is-key}
   :for #{vector set}
@@ -315,30 +315,30 @@
 
  map
  {:zen/tags #{schema is-type}
-  :zen/desc "validate map"
   :type map}
 
- :values
+ values
  {:zen/tags #{schema is-key}
   :zen/desc "validate values in map"
   :for #{map}
   :confirms #{schema}}
 
- :validation-type
+ validation-type
  {:zen/tags #{schema is-key}
   :zen/desc "closed-world or open-world validation mode"
   :type keyword
   :enum [{:value :open}
          {:value :closed}]}
 
- :key-schema
+ key-schema
  {:zen/tags #{is-key schema}
   :zen/desc "determine schema by key name"
   :for #{map}
   :type map
-  :keys {:tags {:confirms #{tags}}}}
+  :keys {:tags {:confirms #{tags}}
+         :key {:type keyword}}}
 
- :schema-key
+ schema-key
  {:zen/tags #{is-key schema}
   :zen/desc "pick schema in runtime by provided key"
   :for #{map}
@@ -350,27 +350,27 @@
          :resolve {:type map :values {:type symbol}}
          :tags {:confirms #{tags}}}}
 
- :keys
+ keys
  {:zen/tags #{schema is-key}
   :zen/desc "validate keys in map"
   :type map
   :for #{map}
   :values {:confirms #{schema}}}
 
- :key
+ key
  {:zen/tags #{schema is-key}
   :zen/desc "validate key"
   :for #{map}
   :confirms #{schema}}
 
- :keyname-schemas
+ keyname-schemas
  {:zen/tags #{schema is-key}
   :for #{map}
   :zen/desc "pick schema from keys of provided data"
   :type map
-  :keys #{:tags {:confirms #{tags}}}}
+  :keys {:tags {:confirms #{tags}}}}
 
- :require
+ require
  {:zen/tags #{schema is-key}
   :for #{map}
   :zen/desc "set of required keys"
@@ -381,7 +381,7 @@
                          :zen/desc "matches one of a set'"
                          :every {:type keyword}}}]}}
 
- :exclusive-keys
+ exclusive-keys
  {:zen/tags #{schema is-key}
   :for #{map}
   :type set
@@ -423,4 +423,5 @@
  {:zen/tags #{schema}
   :type map
   :keys {:errors {:confirms #{schema-errors}}}}}
+
 

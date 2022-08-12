@@ -817,18 +817,33 @@
      (add-err vtx :fail {:message err-msg}))})
 
 (defmethod compile-key :key-schema
-  [_ ztx {:keys [tags]}]
-  (let [keys-schema
+  [_ ztx {:keys [tags key]}]
+  (let [keys-schemas
         (->> tags
              (mapcat #(utils/get-tag ztx %))
-             (reduce (fn [acc sch-name]
-                       ;; TODO get rid of type coercion
-                       (update acc (keyword (name sch-name)) merge (utils/get-symbol ztx sch-name)))
-                     {}))
-        {pred-fn :when rule-fn :rule} (compile-key :keys ztx keys-schema)]
+             (map (fn [sch-name]
+                    (let [sch (utils/get-symbol ztx sch-name)]
+                      ;; TODO get rid of type coercion
+                      [(keyword (name sch-name)) (:for sch) (get-cached ztx sch false)])))
+             doall)]
     {:when map?
      :rule
      (fn key-schema-fn [vtx data opts]
-       (if (pred-fn data)
-         (rule-fn vtx data opts)
-         vtx))}))
+       (let [key-rules
+             (->> keys-schemas
+                  (filter (fn [[sch-key for? v]]
+                            (or (nil? for?) (contains? for? (get data key)))))
+                  (reduce (fn [acc [sch-key _ v]] (assoc acc sch-key v)) {}))]
+         (loop [data (seq data)
+                unknown (transient [])
+                vtx* vtx]
+           (if (empty? data)
+             (update vtx* :unknown-keys into (persistent! unknown))
+             (let [[k v] (first data)]
+               (if (not (contains? key-rules k))
+                 (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
+                 (recur (rest data)
+                        unknown
+                        (-> (node-vtx&log vtx* [k] [k])
+                            ((get key-rules k) v opts)
+                            (merge-vtx vtx*)))))))))}))
