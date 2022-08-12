@@ -6,18 +6,36 @@
 
  a-key
  {:zen/tags #{zen/schema my-key}
+  :for #{:route-b :route-a}
   :type zen/vector
   :every {:type zen/number}}
 
  b-key
  {:zen/tags #{zen/schema my-key}
   :type zen/map
+  :for #{:route-b}
   :keys {:c-key {:type zen/string}}}
+
+ extra-key
+ {:zen/tags #{zen/schema my-key}
+  :for #{:never-dispatched}
+  :fail "this key should not be selected"}
+
+ global-key
+ {:zen/tags #{zen/schema my-key}
+  :type zen/vector
+  :every {:type zen/string}}
 
  my-schema
  {:zen/tags #{zen/schema}
   :type zen/map
-  :key-schema {:tags #{my-key}}}
+  :keys {:dispatch {:type zen/keyword}}
+  :key-schema {:tags #{my-key} :key :dispatch}}
+
+ another-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :key-schema {:tags #{not-found}}}
 
  key-schema-test
  {:zen/tags #{zen.test/case}
@@ -27,15 +45,24 @@
   [{:desc "valid data given"
     :do {:type zen.test/validate
          :schema my-schema
-         :data {:a-key [1 2 3 16]
+         :data {:dispatch :route-b
+                :a-key [1 2 3 16]
                 :b-key {:c-key "just a string"}}}
+    :match {:errors zen.test/empty?}}
+
+   {:desc "global key is validated"
+    :do {:type zen.test/validate
+         :schema my-schema
+         :data {:dispatch :route-a
+                :a-key [1 2 3]
+                :global-key ["string-a" "string-b"]}}
     :match {:errors zen.test/empty?}}
 
    {:desc "a-key is invalid"
     :do {:type zen.test/validate
          :schema my-schema
-         :data {:a-key 'wrong-value
-                :b-key {:c-key "just a string"}}}
+         :data {:dispatch :route-a
+                :a-key 'wrong-value}}
     :match
     {:errors
      [{:message "Expected type of 'vector, got 'symbol",
@@ -46,7 +73,7 @@
    {:desc "c-key is invalid"
     :do {:type zen.test/validate
          :schema my-schema
-         :data {:a-key [2 3]
+         :data {:dispatch :route-b
                 :b-key {:c-key 'wrong-value}}}
     :match
     {:errors
@@ -58,6 +85,15 @@
    {:desc "extra key is provided"
     :do {:type zen.test/validate
          :schema my-schema
+         :data {:dispatch :route-a
+                :extra-key "extra-value"}}
+    :match {:errors [{:path [:extra-key],
+                      :type "unknown-key",
+                      :message "unknown key :extra-key"}]}}
+
+   {:desc "tag not found"
+    :do {:type zen.test/validate
+         :schema another-schema
          :data {:extra-key "extra-value"}}
     :match {:errors [{:path [:extra-key],
                       :type "unknown-key",

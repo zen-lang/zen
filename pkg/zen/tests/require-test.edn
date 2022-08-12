@@ -210,6 +210,7 @@
 
  recursive-confirms-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "recursive confirms resolve correctly"
   :steps
   [{:desc "invalid data given"

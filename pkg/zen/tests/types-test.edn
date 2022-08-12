@@ -9,6 +9,7 @@
 
  any-type-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "any values pass the test"
   :steps
   [{:desc "string passes the test"
@@ -634,6 +635,7 @@
 
  vector-schema-key&nth-validation
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "resolve schema by index"
   :steps
   [{:desc "invalid string provided"

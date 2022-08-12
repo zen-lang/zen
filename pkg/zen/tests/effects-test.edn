@@ -60,6 +60,7 @@
 
  fx-tests
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "effect is emitted"
   :steps
   [{:desc "FX emit"

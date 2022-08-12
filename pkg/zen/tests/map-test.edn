@@ -123,6 +123,7 @@
 
  validation-types-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Open/Close validation types test"
   :steps
   [{:desc "Close validation"
@@ -193,6 +194,7 @@
 
  exclusive-keys-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Exclusive keys test"
   :steps
   [{:desc "Invalid key-set"
@@ -240,6 +242,7 @@
 
  simple-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "Type validation in map"
   :steps
   [{:desc "test type validation in map"
@@ -264,6 +267,7 @@
 
  nested-any-test
  {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
   :title "zen/any for nested zen/map value"
   :steps
   [{:desc "valid data"
