@@ -30,7 +30,7 @@
   (do
     (def ztx (zen/new-context {:unsafe true}))
 
-    (v1!)
+    (v2!)
 
     (r/zen-read-ns ztx 'zen.tests.require-test)
 

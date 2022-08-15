@@ -148,10 +148,19 @@
       (fn? v)
       v
 
+      (true? (get-in @ztx [::in-runtime hash*]))
+      (do
+        (swap! ztx update ::in-runtime dissoc hash*)
+        (fn [vtx data opts] vtx))
+
       (true? (get-in @ztx [::in-compile hash*]))
       (do
         (swap! ztx update ::in-compile dissoc hash*)
-        (fn [vtx _ _] vtx))
+        (fn [vtx data opts]
+          ;; TODO add to vtx :warning
+          (swap! ztx assoc-in [::in-runtime hash*] true)
+          (let [v (compile-schema ztx schema (::prop-schemas @ztx))]
+            (v vtx data opts))))
 
       :else
       (do
@@ -159,7 +168,7 @@
         (let [props
               (if init?
                 (resolve-props ztx)
-                (::prop-schemas ztx))
+                (::prop-schemas @ztx))
 
               v (compile-schema ztx schema props)]
 
@@ -421,7 +430,9 @@
              (into {}))]
     {:when map?
      :rule
+
      (fn keys-sch [vtx data opts]
+
        (loop [data (seq data)
               unknown (transient [])
               vtx* vtx]
@@ -510,7 +521,7 @@
              doall)]
     {:rule
      (fn confirms-sch [vtx data opts]
-       (loop [comp-fns comp-fns
+      (loop [comp-fns comp-fns
               vtx* vtx]
          (if (empty? comp-fns)
            vtx*

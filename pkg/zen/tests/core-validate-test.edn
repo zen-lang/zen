@@ -63,8 +63,8 @@
             [{:message "Expected type of 'map, got 'long"
               :path [:keys :a-key]
               :type "map.type"
-              :schema
-              [zen/schema
+              :schema []
+              #_[zen/schema
                :schema-key
                zen/map
                :keys

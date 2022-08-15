@@ -970,7 +970,8 @@
     {:errors zen.test/nil?}}]}
 
  custom-type-def
- {:zen/tags #{zen/type zen/primitive zen/schema}
+ ;; tagged with zen/type to be compatible with v1 meta
+ {:zen/tags #{zen/is-type zen/type #_zen/primitive zen/schema}
   :type zen/map}
 
  custom-type-schema

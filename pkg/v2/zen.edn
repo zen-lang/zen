@@ -31,7 +31,7 @@
  tag {:zen/tags #{tag}
       :zen/desc "tag for tag"}
 
- tags {:zen/tags #{property schema}
+ tags {:zen/tags #{property schema is-key}
        :zen/desc "list of zen tags"
        :type set
        :every {:type symbol :tags #{tag}}}
@@ -48,8 +48,6 @@
  {:zen/tags #{schema tag}
   :zen/desc "zen schema"
   :type map
-  ;; type schema validation
-  :schema-key      {:key :type :tags #{is-type}}
   :keyname-schemas {:tags #{schema-fx}}
   ;; schema keys validation
   :key-schema {:tags #{is-key} :key :type}}
@@ -74,13 +72,12 @@
   :every {:type symbol :tags #{schema}}}
 
  case
- {:zen/tags #{is-key schema}
-  :type map
-  :keys {:case {:type vector
-                :every {:type map
-                        :require #{:when}
-                        :keys {:when {:confirms #{schema}}
-                               :then {:confirms #{schema}}}}}}}
+ {:zen/tags #{is-type is-key schema}
+  :type vector
+  :every {:type map
+          :require #{:when}
+          :keys {:when {:confirms #{schema}}
+                 :then {:confirms #{schema}}}}}
 
  const
  {:zen/tags #{is-key schema}
@@ -99,7 +96,7 @@
  every
  {:zen/tags #{schema is-key}
   :zen/desc "bounds of numbers"
-  :for #{vector set}
+  :for #{vector set list}
   :confirms #{schema}}
 
  enum
@@ -114,27 +111,24 @@
  #_effects
  ;; TODO impl me
  #_{:zen/tags #{is-key schema}
-  :zen/desc "reference key evaluation method"
-  :type map
-  :key-schema {:tags #{effect}}}
+    :zen/desc "reference key evaluation method"
+    :type map
+    :key-schema {:tags #{effect}}}
 
  regex
- {:zen/tags #{schema is-type}
+ {:zen/tags #{schema is-type is-key}
   :zen/desc "regexp type"
-  :type map}
+  :for #{string}}
 
  date
- {:zen/tags #{schema is-type}
-  :type map}
+ {:zen/tags #{schema is-type}}
 
  datetime
- {:zen/tags #{schema is-type}
-  :type map}
+ {:zen/tags #{schema is-type}}
 
  symbol
  {:zen/tags #{schema is-type}
-  :zen/desc "validate symbol"
-  :type map}
+  :zen/desc "validate symbol"}
 
  qsymbol
  ;; TODO impl me:
@@ -143,28 +137,19 @@
 
  keyword
  {:zen/tags #{schema is-type}
-  :type map
-  ;; TODO ??? fix ns ???
+  ;; TODO ??? move ns to is-key? ???
   :keys {:ns {:type set
               :every {:type qsymbol}}}}
 
  string
- {:zen/tags #{schema is-type}
-  :type map
-  :keys {:tags {:confirms #{tags}}}}
-
- #_regex
- #_{:zen/tags #{schema is-key}
-    :zen/desc "validate regex"
-    :for #{string}
-    :type regex}
+ {:zen/tags #{schema is-type}}
 
  length
  {:zen/tags #{schema is-key}
   :for #{string}
   :zen/desc "lenght of string"}
 
- minLentgh
+ minLength
  {:zen/tags #{schema is-key}
   :for #{string}
   :type integer
@@ -177,18 +162,15 @@
   :min 0}
 
  boolean
- {:zen/tags #{schema is-type}
-  :type map}
+ {:zen/tags #{schema is-type}}
 
  integer
  {:zen/tags #{schema is-type}
-  :zen/desc "validate integer"
-  :type map}
+  :zen/desc "validate integer"}
 
  number
  {:zen/tags #{schema is-type}
-  :zen/desc "validate integer"
-  :type map}
+  :zen/desc "validate integer"}
 
  bounds
  ;; TODO impl me
@@ -201,12 +183,12 @@
  min
  {:zen/tags #{schema is-key}
   :for #{integer number}
-  :type integer}
+  :type number}
 
  max
  {:zen/tags #{schema is-key}
   :for #{integer number}
-  :type integer}
+  :type number}
 
  precision
  {:zen/tags #{schema is-key}
@@ -219,12 +201,10 @@
   :type integer}
 
  list
- {:zen/tags #{schema is-type}
-  :type map}
+ {:zen/tags #{schema is-type}}
 
  set
- {:zen/tags #{schema is-type}
-  :type map}
+ {:zen/tags #{schema is-type}}
 
  superset-of
  {:zen/tags #{is-key schema}
@@ -238,8 +218,7 @@
 
  vector
  {:zen/tags #{schema is-type}
-  :zen/desc "validate vector"
-  :type map}
+  :zen/desc "validate vector"}
 
  schema-index
  {:zen/tags #{schema is-key}
@@ -291,13 +270,13 @@
 
  minItems
  {:zen/tags #{schema is-key}
-  :for #{vector}
+  :for #{vector list set}
   :type integer
   :min 0}
 
  maxItems
  {:zen/tags #{schema is-key}
-  :for #{vector}
+  :for #{vector list set}
   :type integer
   :min 0}
 
@@ -394,7 +373,6 @@
 
  any
  {:zen/tags #{is-type schema}
-  :type zen/map
   :zen/desc "Any type"}
 
  schema-fx {:zen/tags #{tag}
