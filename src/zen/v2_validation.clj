@@ -148,18 +148,12 @@
       (fn? v)
       v
 
-      (true? (get-in @ztx [::in-runtime hash*]))
-      (do
-        (swap! ztx update ::in-runtime dissoc hash*)
-        (fn [vtx data opts] vtx))
-
       (true? (get-in @ztx [::in-compile hash*]))
       (do
         (swap! ztx update ::in-compile dissoc hash*)
         (fn [vtx data opts]
           ;; TODO add to vtx :warning
-          (swap! ztx assoc-in [::in-runtime hash*] true)
-          (let [v (compile-schema ztx schema (::prop-schemas @ztx))]
+          (let [v (get-in @ztx [::compiled-schemas hash*])]
             (v vtx data opts))))
 
       :else
