@@ -764,24 +764,13 @@
               slice-name)))))))
 
 (defn err-fn [schemas rest-fn opts vtx [slice-name slice]]
-  (cond
-    (and (= slice-name :slicing/rest) (nil? rest-fn)) vtx
-
-    :else
+  (if (and (= slice-name :slicing/rest) (nil? rest-fn))
+    vtx
     (let [v (if (= slice-name :slicing/rest)
               rest-fn
-              (get schemas slice-name))
-
-          append-slice-path
-          (fn [p]
-            (let [prev-path (:path vtx)]
-              (-> (conj prev-path (str "[" slice-name "]"))
-                  (concat (drop (count prev-path) p))
-                  vec)))]
+              (get schemas slice-name))]
       (-> (node-vtx vtx [:slicing slice-name])
-          (v (mapv #(nth % 1) slice)
-             (assoc opts :indices (map #(nth % 0) slice)))
-          (update :errors (fn [errs] (map #(update % :path append-slice-path) errs)))
+          (v (mapv #(nth % 1) slice) (assoc opts :indices (map #(nth % 0) slice)))
           (merge-vtx vtx)))))
 
 (defmethod compile-key :slicing

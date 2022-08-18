@@ -66,7 +66,7 @@
     {:errors
      [{:message "Expected >= 1, got 0"
        :type "vector.minItems"
-       :path [:telecom "[mobile-phone]" "[ios]"]
+       :path [:telecom]
        :schema
        [zen.tests.slicing-test/Person
         :telecom
@@ -202,7 +202,7 @@
     {:errors
      [{:message "Expected type of 'keyword, got 'long"
        :type "keyword.type"
-       :path ["[kw]" 0 :value]
+       :path [0 :value]
        :schema
        [zen.tests.slicing-test/slice-definition :slicing "kw" :every 0 :value :type]}]}}
 
@@ -214,7 +214,7 @@
     {:errors
      [{:message "Expected type of 'number, got 'string"
        :type "number.type"
-       :path ["[number]" 0 :value]
+       :path [0 :value]
        :schema
        [zen.tests.slicing-test/slice-definition
         :slicing
@@ -232,7 +232,7 @@
     {:errors
      [{:message "Expected type of 'string, got 'long"
        :type "string.type"
-       :path ["[:slicing/rest]" 0 :value]
+       :path [0 :value]
        :schema
        [zen.tests.slicing-test/slice-definition
         :slicing
@@ -249,7 +249,7 @@
     :match
     {:errors [{:message "Expected type of 'keyword, got 'string"
                :type "keyword.type"
-               :path ["[map]" 0 :value :nested "[nest-kw]" 0 :value]
+               :path [0 :value :nested 0 :value]
                :schema
                [zen.tests.slicing-test/slice-definition
                 :slicing
@@ -272,7 +272,7 @@
     :match
     {:errors [{:message "Expected type of 'keyword, got 'string"
                :type "keyword.type"
-               :path ["[nested]" 0 :value "[nest-kw]" 0 :value]
+               :path [0 :value 0 :value]
                :schema
                [zen.tests.slicing-test/slice-definition
                 :slicing
@@ -294,7 +294,7 @@
     :match
     {:errors [{:message "Expected >= 1, got 0"
                :type "vector.minItems"
-               :path ["[one]"]
+               :path []
                :schema
                [zen.tests.slicing-test/required-slice :slicing "one" :minItems]}]}}]}
 
@@ -332,9 +332,13 @@
                            {:kind "slice" :rest-key "kw-key"}
                            {:kind "slice" :slice-key :kw-key}]}
            :match
-           {:errors [{:message "Expected type of 'string, got 'keyword"
+           {:errors [{:type "unknown-key"
+                      :message "unknown key :rest-key"
+                      :path [1 :rest-key]}
+
+                     {:message "Expected type of 'string, got 'keyword"
                       :type "string.type"
-                      :path ["[slice]" 2 :slice-key]
+                      :path [2 :slice-key]
                       :schema
                       [zen.tests.slicing-test/slicing-path-collision-unknown-key-bug-schema
                        :slicing
@@ -342,11 +346,7 @@
                        :every
                        2
                        :slice-key
-                       :type]}
-
-                     {:type "unknown-key"
-                      :message "unknown key :rest-key"
-                      :path [1 :rest-key]}]}}]}
+                       :type]}]}}]}
 
  match-engine-slicing
  {:zen/tags #{zen/schema}
@@ -383,7 +383,7 @@
     :match
     {:errors
      [{:message "Expected type of 'string, got 'keyword",
-       :path ["[slice]" 0 :slice-key],
+       :path [0 :slice-key],
        :type "string.type",
        :schema
        [zen.tests.slicing-test/slicing-path-collision-unknown-key-bug-schema
@@ -431,11 +431,12 @@
            :data   [{:kind "slice" :slice-key "wrong value"}]}
     :match
     {:errors
-     [{:message "Expected >= 1, got 0",
-       :path ["[slice]"],
-       :type "vector.minItems",
+     [{:path [0 :slice-key]
+       :type "unknown-key"
+       :message "unknown key :slice-key"}
+
+      {:message "Expected >= 1, got 0"
+       :path []
+       :type "vector.minItems"
        :schema
-       [zen.tests.slicing-test/zen-fx-slicing :slicing "slice" :minItems]}
-      {:path [0 :slice-key],
-       :type "unknown-key",
-       :message "unknown key :slice-key"}]}}]}}
+       [zen.tests.slicing-test/zen-fx-slicing :slicing "slice" :minItems]}]}}]}}
