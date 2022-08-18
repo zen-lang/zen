@@ -445,7 +445,10 @@
              :precision 3}
          :c {:type zen/number
              :precision 3
-             :scale 2}}}
+             :scale 2}
+         :d {:type zen/number
+             :precision 3
+             :scale 0}}}
 
 ;; TODO fails on v1 because it returns string not integer
  number-test
@@ -507,17 +510,17 @@
                :type "number.precision"
                :schema [zen.tests.types-test/constraints-schema :b :precision]}]}}
 
-   {:desc "precision constraint valid"
+   {:desc "precision valid"
     :do {:type zen.test/validate :schema constraints-schema :data {:b 2.28}}
     :match
     {:errors zen.test/empty?}}
 
-   {:desc "precision constraint valid"
+   {:desc "precision valid"
     :do {:type zen.test/validate :schema constraints-schema :data {:b 22.4}}
     :match
     {:errors zen.test/empty?}}
 
-   {:desc "precision & scale constraint invalid"
+   {:desc "precision is 4, expected 3"
     :do {:type zen.test/validate :schema constraints-schema :data {:c 22.22}}
     :match
     {:errors [{:message "Expected precision = 3, got 4"
@@ -525,10 +528,42 @@
                :type "number.precision"
                :schema [zen.tests.types-test/constraints-schema :c :precision]}]}}
 
-   {:desc "precision & scale constraint valid"
+   {:desc "valid precision 3 and scale 2"
     :do {:type zen.test/validate :schema constraints-schema :data {:c 2.22}}
     :match
-    {:errors zen.test/empty?}}]}
+    {:errors zen.test/empty?}}
+
+   {:desc "trailing zeroes are allowed when scale = 2 (4 zeroes)"
+    :do {:type zen.test/validate :schema constraints-schema :data {:c 22.0000}}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "trailing zeroes are allowed when scale = 2 (2 zeroes)"
+    :do {:type zen.test/validate :schema constraints-schema :data {:c 2.00}}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "precision is 5 instead of 3"
+    :do {:type zen.test/validate :schema constraints-schema :data {:c 2222.0}}
+    :match
+    {:errors
+     [{:message "Expected precision = 3, got 5"
+       :path [:c]
+       :type "number.precision"
+       :schema [zen.tests.types-test/constraints-schema :c :precision]}]}}
+
+   {:desc "scale equals 0, valid data"
+    :do {:type zen.test/validate :schema constraints-schema :data {:d 222}}
+    :match
+    {:errors zen.test/empty?}}
+
+   {:desc "scale equals 0, invalid data"
+    :do {:type zen.test/validate :schema constraints-schema :data {:d 2222}}
+    :match
+    {:errors [{:message "Expected precision = 3, got 4",
+               :path [:d],
+               :type "number.precision",
+               :schema [zen.tests.types-test/constraints-schema :d :precision]}]}}]}
 
  regex-schema
  {:zen/tags #{zen/schema}
