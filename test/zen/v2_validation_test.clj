@@ -1,21 +1,37 @@
 (ns zen.v2-validation-test
   (:require
+   [clojure.java.io]
    [zen.utils]
+   [zen.store]
    [zen.effect :as fx]
    [zen.test-runner :as r]
    [clojure.test :refer [deftest is]]
    [zen.v2-validation :as v]
-   [zen.core :as zen]
-   [zen.v2-validation :as v2]))
+   [zen.core :as zen]))
 
-(defn v1! []
-  (def ztx (zen/new-context {:unsafe true}))
-  (zen.core/read-ns ztx 'zen))
+(defn mv [from to]
+  (let [source-filename (str (System/getProperty "user.dir") from)
+        target-filename (str (System/getProperty "user.dir") to)
+        source-file (java.nio.file.Paths/get (java.net.URI/create (str "file://" source-filename)))
+        target-file (java.nio.file.Paths/get (java.net.URI/create (str "file://"  target-filename)))]
+    (java.nio.file.Files/move source-file target-file
+                              (into-array java.nio.file.CopyOption
+                                          [(java.nio.file.StandardCopyOption/ATOMIC_MOVE)
+                                           (java.nio.file.StandardCopyOption/REPLACE_EXISTING)]))))
 
-(defn v2! []
-  (def ztx (zen/new-context {:unsafe true}))
-  (def zen-ns (read-string (slurp (clojure.java.io/resource "v2/zen.edn"))))
-  (zen.core/load-ns ztx zen-ns))
+(defonce flipstate (atom false))
+
+(defn flip! []
+  "sorry :)"
+  (if @flipstate
+    (do
+      (reset! flipstate false)
+      (mv "/pkg/zen.edn" "/pkg/v2/zen.edn")
+      (mv "/pkg/v1/zen.edn" "/pkg/zen.edn"))
+    (do
+      (reset! flipstate true)
+      (mv "/pkg/zen.edn" "/pkg/v1/zen.edn")
+      (mv "/pkg/v2/zen.edn" "/pkg/zen.edn"))))
 
 ;; see slicing-test/zen-fx-engine-slicing-test
 (defmethod fx/fx-evaluator 'zen.tests.slicing-test/slice-key-check
@@ -28,9 +44,9 @@
 (deftest implemented-validations
 
   (do
-    (def ztx (zen/new-context {:unsafe true}))
+    (flip!)
 
-    (v2!)
+    (def ztx (zen/new-context {:unsafe true}))
 
     (r/zen-read-ns ztx 'zen.tests.require-test)
 
@@ -60,5 +76,27 @@
 
     (r/zen-read-ns ztx 'zen.tests.key-schema-test)
 
-    (r/run-tests ztx)))
+    (r/run-tests ztx)
 
+    (flip!)))
+
+(defn resolve-zen-ns [ztx]
+  (->> (read-string (slurp (clojure.java.io/resource "zen.edn")))
+       (map (fn [[k v]]
+              [k (or (zen.utils/get-symbol ztx (zen.utils/mk-symbol 'zen k))
+                     v)]))
+       (into {})))
+
+(deftest metadata-roundtrip
+  (do
+    (flip!)
+
+    (def ztx (zen/new-context {:unsafe true}))
+
+    (zen.utils/get-symbol ztx 'zen/namespace)
+
+    (def result (v/validate ztx #{'zen/namespace} (resolve-zen-ns ztx)))
+
+    (is (empty? (:errors result)))
+
+    (flip!)))

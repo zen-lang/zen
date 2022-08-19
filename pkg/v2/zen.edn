@@ -16,7 +16,8 @@
          'imports {:type set :every {:type symbol}}
          'require {:type map
                    :key {:type symbol}
-                   :values {:type symbol :namespaced true}}}}
+                   ;; TODO impl namespaced check
+                   :values {:type symbol #_:namespaced #_true}}}}
 
  schema
  {:zen/tags #{schema tag}
@@ -52,7 +53,7 @@
  is-key
  {:zen/tags #{tag schema}
   :confirms #{schema}
-  :desc "tag for schema keys"}
+  :zen/desc "tag for schema keys"}
 
  is-type
  {:zen/tags #{tag}
@@ -144,6 +145,7 @@
 
  keyword
  {:zen/tags #{schema is-type}
+  :type map
   ;; TODO implement me
   :keys {:ns {:type set
               :every {:type qsymbol}}}}
@@ -241,7 +243,7 @@
   :for #{vector list}
   :type map
   :key   {:type integer}
-  :value {:confirms #{schema}}}
+  :values {:confirms #{schema}}}
 
  slicing
  {:zen/tags #{schema is-key}

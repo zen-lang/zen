@@ -188,7 +188,8 @@
   (-> vtx
       (assoc :schema [(:zen/name schema)])
       (assoc :path [])
-      ((get-cached ztx schema true) data opts)))
+      ((get-cached ztx schema true) data opts)
+      (dissoc :visited ::confirmed :type)))
 
 (defn validate-schema [ztx schema data & [opts]]
   (-> ztx
