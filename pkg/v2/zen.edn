@@ -5,12 +5,25 @@
   :zen/desc "Schema for namespace"
   :type map
   :key {:type symbol}
-  :values {:type map}
+  :values {:type case
+           :case [{:when {:tags #{schema}}
+                   :then {:confirms #{schema}}}
+                  {:when {:tags #{is-key}}
+                   :then {:confirms #{is-key}}}
+                  {:when {:type symbol}}]}
+
   :keys {'ns      {:type symbol}
          'imports {:type set :every {:type symbol}}
          'require {:type map
                    :key {:type symbol}
-                   :values {:type symbol :namepsaced true}}}}
+                   :values {:type symbol :namespaced true}}}}
+
+ schema
+ {:zen/tags #{schema tag}
+  :zen/desc "zen schema"
+  :type map
+  :keyname-schemas {:tags #{schema-fx}}
+  :key-schema {:tags #{is-key} :key :type}}
 
  property
  {:zen/tags #{tag}
@@ -38,18 +51,12 @@
 
  is-key
  {:zen/tags #{tag schema}
+  :confirms #{schema}
   :desc "tag for schema keys"}
 
  is-type
  {:zen/tags #{tag}
   :zen/desc "tag for types"}
-
- schema
- {:zen/tags #{schema tag}
-  :zen/desc "zen schema"
-  :type map
-  :keyname-schemas {:tags #{schema-fx}}
-  :key-schema {:tags #{is-key} :key :type}}
 
  for
  {:zen/tags #{is-key schema}
@@ -95,6 +102,7 @@
  every
  {:zen/tags #{schema is-key}
   :zen/desc "bounds of numbers"
+  :type map
   :for #{vector set list}
   :confirms #{schema}}
 
@@ -177,7 +185,7 @@
   :zen/desc "bounds of numbers"
   :for #{integer number}
   :type vector
-  :every {:type zen/integer}}
+  :every {:type integer}}
 
  min
  {:zen/tags #{schema is-key}
@@ -256,7 +264,7 @@
                                           :engine {:type case
                                                    :case
                                                    [{:when {:enum [{:value :zen} {:value :zen-fx}]}}
-                                                    {:when {:type zen/any}
+                                                    {:when {:type any}
                                                      :then {:fail "Unsupported engine"}}]}}}
 
                           :schema {:confirms #{schema}}}}}}}
