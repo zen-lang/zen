@@ -118,9 +118,6 @@
       (println ::stop)
       (dev/stop ztx))))
 
-
-
-
 (t/deftest not-created-but-imported
   (def project (str "/tmp/zentest/" (str (gensym "zen"))))
   (init-project project)

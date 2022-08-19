@@ -22,7 +22,7 @@
 (defonce flipstate (atom false))
 
 (defn flip! []
-  "sorry :)"
+  "sorry :) use only in dev mode!"
   (if @flipstate
     (do
       (reset! flipstate false)
@@ -44,7 +44,7 @@
 (deftest implemented-validations
 
   (do
-    (flip!)
+    #_(flip!)
 
     (def ztx (zen/new-context {:unsafe true}))
 
@@ -78,7 +78,7 @@
 
     (r/run-tests ztx)
 
-    (flip!)))
+    #_(flip!)))
 
 (defn resolve-zen-ns [ztx]
   (->> (read-string (slurp (clojure.java.io/resource "zen.edn")))
@@ -87,7 +87,7 @@
                      v)]))
        (into {})))
 
-(deftest metadata-roundtrip
+(deftest ^:kaocha/pending metadata-roundtrip
   (do
     (flip!)
 
@@ -97,6 +97,6 @@
 
     (def result (v/validate ztx #{'zen/namespace} (resolve-zen-ns ztx)))
 
-    (is (empty? (:errors result)))
+    (flip!)
 
-    (flip!)))
+    (is (empty? (:errors result)))))
