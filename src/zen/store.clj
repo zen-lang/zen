@@ -3,7 +3,7 @@
             [zen.utils]
             [clojure.edn]
             [clojure.java.io :as io]
-            [clojure.walk]
+            [clojure.walk :as walk]
             [edamame.core]
             [clojure.string :as str]))
 
@@ -26,11 +26,16 @@
        (mapv (fn [x] (if (keyword? x) (subs (str x) 1) (str x))))
        (str/join "->" )))
 
+(defn walk-resource [walk-fn resource]
+  ;; NOTE disables symbol expansions in lists (expr types)
+  (if (list? resource)
+    resource
+    (walk/walk (partial walk-resource walk-fn) walk-fn resource)))
 
 (defn eval-resource [ctx ns-str ns-name nmsps k resource]
-  (-> (clojure.walk/postwalk
+  (let [walk-fn
         (fn [x]
-          (if (symbol? x) ;; TODO: allow symbols namespaced with current namespace
+          (if (symbol? x)
             (if (namespace x)
               (do (when-not (get-symbol ctx x)
                     (swap! ctx update :errors
@@ -44,11 +49,10 @@
                            {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
                             :ns ns-name}))
                   (zen.utils/mk-symbol ns-str x)))
-            x))
-        resource)
-      (assoc ;;TODO :zen/ns ns-name
-        :zen/name (zen.utils/mk-symbol ns-name k))))
+            x))]
 
+    (-> (walk-resource walk-fn resource)
+        (assoc :zen/name (zen.utils/mk-symbol ns-name k)))))
 
 (defn validate-resource [ctx res]
   (let [tags (get res :zen/tags)
@@ -81,7 +85,7 @@
 
 
 (defn symbol-definition? [[k v]]
-  (and (symbol? k) (map? v))) ;; TODO: maybe not only maps?
+  (and (symbol? k) (map? v))) ;; TODO: 
 
 
 (defn symbol-alias? [[k v]]
@@ -105,7 +109,7 @@
 
 (defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (get nmsps 'ns)]
-    (when (or true (not (get-in @ctx [:ns ns-name])))
+    (when (not (get-in @ctx [:ns ns-name]))
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
 
       (pre-load-ns! ctx nmsps)

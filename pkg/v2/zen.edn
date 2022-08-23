@@ -26,6 +26,7 @@
   :keyname-schemas {:tags #{schema-fx}}
   :key-schema {:tags #{is-key} :key :type}}
 
+ ;; TODO add :zen/ns prop
  property
  {:zen/tags #{tag}
   :zen/desc "Global properties"}

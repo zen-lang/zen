@@ -836,7 +836,7 @@
                :keys {:path {:type 'zen/apply :tags #{'fn}}}}
 
          'example {:zen/tags #{'tpl}
-                   :path (list 'get :a :b :c)}})
+                   :path (list 'test.fn/get :a :b :c)}})
 
   (match tctx 'test.fn/tpl {:path "1"}
          [{:message "Expected fn call '(fn-name args-1 arg-2), got 'string",

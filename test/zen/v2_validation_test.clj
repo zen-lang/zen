@@ -5,7 +5,7 @@
    [zen.store]
    [zen.effect :as fx]
    [zen.test-runner :as r]
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [zen.v2-validation :as v]
    [zen.core :as zen]))
 
@@ -58,6 +58,13 @@
 
     (r/zen-read-ns ztx 'zen.tests.types-test)
 
+    (def list-expr (zen.utils/get-symbol ztx 'zen.tests.types-test/expr))
+
+    (is list-expr)
+
+    (testing "lists are not expanded by default"
+      (is (= '(print hello user zen.tests.expr-alias/argument) (get-in list-expr [:my/lisp :expr]))))
+
     (r/zen-read-ns ztx 'zen.tests.keyname-schemas-test)
 
     (r/zen-read-ns ztx 'zen.tests.map-test)
@@ -82,6 +89,7 @@
 
 (defn resolve-zen-ns [ztx]
   (->> (read-string (slurp (clojure.java.io/resource "zen.edn")))
+
        (map (fn [[k v]]
               [k (or (zen.utils/get-symbol ztx (zen.utils/mk-symbol 'zen k))
                      v)]))

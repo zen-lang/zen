@@ -1,6 +1,6 @@
 {ns zen.tests.types-test
 
- import #{zen.test}
+ import #{zen.test zen.tests.expr-alias}
 
  any-schema
  {:zen/tags #{zen/schema}
@@ -703,6 +703,20 @@
              :minItems 4
              :maxItems 6}}}
 
+ expr-schema
+ {:zen/tags #{zen/schema}
+  :keys
+  {:my/lisp
+   {:keys
+    {:expr
+     {:type zen/list}}}}}
+
+ expr
+ {:zen/tags #{zen/schema}
+  :confirms expr-schema
+  :keys {:user {:type zen/string}}
+  :my/lisp {:expr (print hello user zen.tests.expr-alias/argument)}}
+
  list-every
  {:zen/tags #{zen/schema}
   :type zen/map
@@ -763,6 +777,13 @@
     :do {:type zen.test/validate
          :schema list-schema
          :data {:a (1 2 3 4 5)}}
+    :match
+    {:errors zen.test/nil?}}
+
+   {:desc "Valid vector was given"
+    :do {:type zen.test/validate
+         :schema list-schema
+         :data {:a (2 3 4 5)}}
     :match
     {:errors zen.test/nil?}}]}
 

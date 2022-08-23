@@ -35,7 +35,7 @@
    {:desc "tpl schema does not contain required tags"
     :do {:type zen.test/validate
          :schema tpl
-         :data {:path (tpl "1")}}
+         :data {:path (zen.tests.fn-test/tpl "1")}}
     :match
     {:errors [{:message
                "fn definition 'zen.tests.fn-test/tpl should be tagged with 'zen/fn, but '#{zen/tag zen/schema}"
@@ -52,7 +52,7 @@
    {:desc "other-fn is not tagged with fn tag"
     :do {:type zen.test/validate
          :schema tpl
-         :data {:path (other-fn "1")}}
+         :data {:path (zen.tests.fn-test/other-fn "1")}}
     :match
     {:errors [{:message "Expected type of 'keyword, got 'string"
                :type "keyword.type"
@@ -68,7 +68,7 @@
    {:desc "fn args are invalid"
     :do {:type zen.test/validate
          :schema tpl
-         :data {:path (get "1")}}
+         :data {:path (zen.tests.fn-test/get "1")}}
     :match
     {:errors [{:type "keyword.type"
                :message "Expected type of 'keyword, got 'string"
@@ -78,6 +78,6 @@
    {:desc "valid data given"
     :do {:type zen.test/validate
          :schema tpl
-         :data {:path (get :test :passed)}}
+         :data {:path (zen.tests.fn-test/get :test :passed)}}
     :match
     {:errors zen.test/empty?}}]}}
