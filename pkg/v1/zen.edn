@@ -1,0 +1,285 @@
+{ns zen
+
+ tag {:zen/tags #{tag}
+      :zen/desc "register resource as a tag"}
+
+ property {:zen/tags #{zen/tag}
+           :zen/desc "register tag as a property - i.e. global key with schema"}
+
+ desc {:zen/tags #{property schema}
+       :type string}
+
+ file {:zen/tags #{property schema}
+       :zen/desc "file, namespace was loaded from"
+       :type string}
+
+ errors {:zen/tags #{property schema}
+         :zen/desc "resource validation errors while load"
+         :confirms #{schema-errors}}
+
+ name {:zen/tags #{property schema}
+       :type symbol}
+
+ primitive {:zen/tags #{tag}
+            :zen/desc "Primitive types"}
+
+ type     {:zen/tags #{zen/tag}
+           :zen/desc "register resource as a schema type"}
+
+ tags {:zen/tags #{property schema}
+       :type set
+       :every {:type symbol :tags #{tag}}}
+
+ string    {:zen/tags #{type schema primitive}
+            :zen/desc "sring primitive type"
+            :type map
+            :keys {:tags {:confirms #{tagset}}
+                   :minLength {:type integer
+                               :min 0
+                               :zen/desc "inclusive minimal length of string"}
+                   :maxLength {:type integer :min 0}
+                   :regex     {:type regex}}}
+
+ regex    {:zen/tags #{type schema primitive}
+           :zen/desc "regexp primitive type"
+           :type map}
+
+ integer   {:zen/tags #{type primitive schema}
+            :zen/desc "integer primitive type"
+            :type map
+            :keys {:min {:type integer}
+                   :max {:type integer}}}
+
+ number    {:zen/tags #{type primitive schema}
+            :zen/desc "number primitive type"
+            :type map
+            :keys {:min {:type number}
+                   :max {:type number}
+                   :precision {:type integer}
+                   :scale {:type integer}}}
+
+ date      {:zen/tags #{type primitive schema}
+            :type map
+            :keys {:in-past   {:type boolean}
+                   :in-future {:type boolean}}}
+
+ datetime  {:zen/tags #{type primitive schema}
+            :type map
+            :keys {:in-past {:type boolean}
+                   :in-future {:type boolean}}}
+
+ boolean   {:zen/tags #{type primitive schema}
+            :type map}
+
+ tagset   {:zen/tags #{schema}
+           :zen/desc "Check that symbol registered with specific tags"
+           :type set
+           :every {:type symbol :tags #{tag}}}
+
+ symbol    {:zen/tags #{type primitive schema}
+            :type map
+            :keys {:tags {:confirms #{tagset}}}}
+
+ keyword   {:zen/tags #{type primitive schema}
+            :type map
+            :keys {:tags {:confirms #{tagset}}}}
+
+ coll      {:zen/tags #{schema tag}
+            :type map
+            :keys {:every {:confirms #{schema}}
+                   :schema-index {:type map
+                                  :zen/desc "resolve schema by data"
+                                  :keys {:index {:type integer}
+                                         :ns {:type string}}}
+                   :minItems {:type integer :min 0}
+                   :maxItems {:type integer :min 0}}}
+
+ set       {:zen/tags #{type coll schema}
+            :confirms #{coll}
+            :type map
+            :keys {:superset-of {:type set
+                                 :zen/desc "Check if the data is a superset of specified set"}
+                   :subset-of   {:type set
+                                 :zen/desc "Check if the data is a subset of specified set"}}}
+
+ vector    {:zen/tags #{type coll schema}
+            :confirms #{coll}
+            :type map
+            :keys {:nth {:zen/desc
+                         "Apply schema to specific element in collection"
+                         :type map
+                         :key {:type integer}
+                         :values {:confirms #{schema}}}
+                   :pairs {:zen/desc "Expect vector is a seq of pairs, where first element is pair
+                                      described with :key schema and second with :value schema.
+                                      If :unique-key true, validate that all keys are unique"
+                           :type map
+                           :keys {:unique-keys {:type boolean
+                                                :zen/desc "Every key in pair is unique"}
+                                  :key {:confirms #{schema}
+                                        :zen/desc "Schema for first element in pair"}
+                                  :value {:confirms #{schema}
+                                          :zen/desc "Schema for second element in pair"}}}
+                   :cat {:zen/desc "Returns a regex op that matches (all) values in sequence, returning a map
+                                    containing the keys of each pred and the corresponding value."
+                         :type vector
+                         :pairs {:unique-keys true
+                                 :key {:type keyword}
+                                 :value {:confirms #{schema}}}}
+                   :slicing {:zen/desc "Define a slicing on the vector"
+                             :type map
+                             :require #{:slices}
+                             :keys {:rest {:zen/desc "Elements that don't match any of slices will be validated over this schema if provided"
+                                           :confirms #{schema}}
+                                    :slices {:zen/desc "Each slice is named and should contain :filter and :schema
+                                                        Use :filter to select vector subset. Use :schema for subset validation."
+                                             :type map
+                                             :key {:type string}
+                                             :values {:type map
+                                                      :require #{:filter :schema}
+                                                      :keys {:filter {:type map
+                                                                      :validation-type :open
+                                                                      :require #{:engine}
+                                                                      :keys {:zen {:confirms #{schema}}
+                                                                             :engine {:type case
+                                                                                      :case
+                                                                                      [{:when
+                                                                                        {:enum
+                                                                                         [{:value :zen} {:value :zen-fx}]}}
+                                                                                       {:when {:type zen/any}
+                                                                                        :then {:fail "Unsupported engine"}}]}}}
+                                                             :schema  {:confirms #{schema}}}}}}}}}
+
+ list    {:zen/tags #{type coll schema}
+          :confirms #{coll}
+          :type map
+          :keys {:nth {:type map
+                       :key {:type integer}
+                       :values {:confirms #{schema}}}}}
+
+ map       {:zen/tags #{type coll schema}
+            :type map
+            :keys {:values {:confirms #{schema}}
+                   :validation-type {:zen/desc "Type of validation. If open then ignores unknown keys else returns errors. :closed by default"
+                                     :type keyword
+                                     :enum [{:value :open}
+                                            {:value :closed}]}
+                   :key-schema {:type map
+                                :keys {:tags {:confirms #{tagset}}
+                                       :key {:type keyword}}}
+
+                   :schema-key {:zen/desc "Deduce schema from value of specific key."
+                                :type map
+                                :keys {:key {:type keyword :zen/desc ""}
+                                       :ns  {:type string :zen/desc "namespace prefix to add to key"}
+                                       :tags {:confirms #{tagset}}
+                                       :resolve {:type map :values {:type symbol}}}
+                                :require #{:key}}
+                   :keyname-schemas {:zen/desc "Deduce schema from key names"
+                                     :type map
+                                     :keys {:tags {:confirms #{tagset}}}}
+                   :key {:zen/desc "Validate keys against schema. Turn off unknown-keys validation"
+                         :confirms #{schema}}
+                   :keys {:type map
+                          :values {:confirms #{schema}}}
+                   :require {:type set
+                             :zen/desc "Set of required keys; set means 'one of key' is required."
+                             :every {:type case
+                                     :case [{:when {:type keyword}}
+                                            {:when {:type set
+                                                    :zen/desc "mean 'one of this keys'"
+                                                    :every {:type keyword}}}]}}
+                   :exclusive-keys {:type set
+                                    :zen/desc "Set of exclusive groups; each group"
+                                    :every {:type set
+                                            :minItems 2
+                                            :every {:type case
+                                                    :case [{:when {:type keyword}}
+                                                           {:when {:type set}
+                                                            :then {:type set :every {:type keyword}}}]}}}}}
+
+ case  {:zen/tags #{type schema}
+        :type map
+        :zen/desc "case definition is a collection of pairs :when and :then.
+                    Starting from first pair, go until first :when schema is valid, then it validates with :then schema"
+        :keys {:case {:type vector
+                      :every {:type map
+                              :require #{:when}
+                              :keys {:when {:confirms #{schema}}
+                                     :then {:confirms #{schema}}}}}}}
+
+ any {:zen/tags #{type schema primitive}
+      :zen/desc "Any type"
+      :type zen/map}
+
+ validation-fn {:zen/desc "Tag for validation functions"
+                :zen/tags #{schema tag}
+                :type     map
+                :keys     {:handler {:type keyword}}}
+
+ schema {:zen/tags        #{schema tag}
+         :zen/desc        "zen schema"
+         :type            map
+         :schema-key      {:key :type :tags #{type}}
+         :keyname-schemas {:tags #{schema-fx}}
+         :keys            {:type     {:type symbol :tags #{type}}
+                           :confirms {:type     set
+                                      :zen/desc "set of schemas to confirm"
+                                      :every    {:type symbol :tags #{schema}}}
+                           :const    {:type     map
+                                      :zen/desc "Check constant"
+                                      :keys     {:value {:type any}}}
+                           ;; TODO: apply top level schema to value
+                           :enum     {:type     vector #_set
+                                      :zen/desc "Check value is in enum"
+                                      :every    {:type map :keys {:value {:type any}}}}
+                           :match    {:type any
+                                      :zen/desc "Pattern match. {} checks only mentioned keys, [] -- ordered collection match, #{} unordered"}
+                           :fail     {:type string}
+
+                           :validation {:type     set
+                                        :zen/desc "Custom validation set of functions"
+                                        :every    {:type symbol :tags #{validation-fn}}}}}
+
+ schema-fx {:zen/tags #{tag}
+            :zen/desc "Register schema effect"}
+
+ fn         {:zen/tags #{schema tag}
+             :zen/desc
+             "Tag for function definition.
+              Provide :args & :ret schemas to validate params.
+              Used with zen/apply to validate reference to function"
+             :type map
+             :require #{:args :ret}
+             :keys {:args {:confirms #{schema}}
+                    :ret  {:confirms #{schema}}}}
+
+ apply      {:zen/tags #{type schema}
+             :zen/desc
+             "Function application zen/schema type.
+              Using :tags you can constraint set of functions"
+             :type map
+             :keys {:tags {:type set
+                           :every {:type symbol}
+                           :zen/desc "Only zen/fn tagged with this tags can appear in this position"}}}
+
+ ctx {:zen/tags #{schema}
+      :zen/desc "schema for context"
+      :type map
+      :keys {:tags {:type set :every {:type symbol}}
+             :symbols {:type map}}}
+
+ schema-errors
+ {:zen/tags #{schema}
+  :type vector
+  :every {:type map
+          :keys {:path {:type any}
+                 :schema {:type any}
+                 :message {:type string}
+                 :resource {:type string}
+                 :type {:type string}}}}
+
+ schema-result
+ {:zen/tags #{schema}
+  :type     map
+  :keys     {:errors {:confirms #{schema-errors}}}}}
