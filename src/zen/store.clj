@@ -1,5 +1,5 @@
 (ns zen.store
-  (:require [zen.validation]
+  (:require [zen.v2-validation :as v2]
             [zen.utils]
             [clojure.edn]
             [clojure.java.io :as io]
@@ -64,7 +64,7 @@
                      (filter identity)
                      (into #{}))]
     (when-not (empty? schemas)
-      (let [{errs :errors} (zen.validation/validate ctx schemas res)]
+      (let [{errs :errors} (v2/validate ctx schemas res)]
         (when-not (empty? errs)
           (swap! ctx update :errors (fn [x] (into (or x []) (mapv #(assoc % :resource (:zen/name res)) errs)))))))))
 

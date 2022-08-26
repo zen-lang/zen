@@ -310,7 +310,7 @@
            [{:message "Expected type of 'map, got 'long"
              :type "map.type"
              :path [:keys]
-             :schema ['zen/schema :schema-key 'zen/map :keys :type]}]})
+             :schema ['zen/schema :keys :type]}]})
 
   (vmatch tctx #{'myapp/Settings} {:headers {:a "str"}}
           {:errors empty?})
@@ -332,7 +332,7 @@
            [{:message "Expected type of 'map, got 'long"
              :type "map.type"
              :path [:keys :prop]
-             :schema ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :type]}]})
+             :schema ['zen/schema :keys :values :confirms 'zen/schema :type]}]})
 
   (vmatch tctx #{'zen/schema} {:type 'zen/map
                                :keys {:ups {:type 'zen/string
@@ -342,17 +342,7 @@
              :type "integer.type"
              :path [:keys :ups :minLength]
              :schema
-             ['zen/schema
-              :schema-key
-              'zen/map
-              :keys
-              :values
-              :confirms
-              'zen/schema
-              :schema-key
-              'zen/string
-              :minLength
-              :type]}]})
+             ['zen/schema :keys :values :confirms 'zen/schema :minLength :type]}]})
 
   (vmatch tctx #{'zen/schema}
           {:type 'zen/map
@@ -368,10 +358,10 @@
                   :regex {:type 'zen/regex}}}
 
           {:errors
-           [{:message "Expected type of 'integer, got 'string"
-             :type "integer.type"
+           [{:message "Expected type of 'number, got 'string"
+             :type "number.type"
              :path [:keys :maxLength :min]
-             :schema ['zen/schema :schema-key 'zen/map :keys :values :confirms 'zen/schema :schema-key 'zen/integer :min :type]}
+             :schema ['zen/schema :keys :values :confirms 'zen/schema :min :type]}
             {:type "unknown-key",
              :message "unknown key :ups",
              :path [:keys :minLength :ups]}]})
@@ -497,12 +487,12 @@
                     [{:message "Expected type of 'integer, got 'string",
                       :type "integer.type",
                       :path [:minLength],
-                      :schema ['zen/schema :schema-key 'zen/string :minLength :type]}
+                      :schema ['zen/schema :minLength :type]}
 
                      {:message "Expected type of 'integer, got 'double",
                       :type "integer.type",
                       :path [:maxLength],
-                      :schema ['zen/schema :schema-key 'zen/string :maxLength :type]}
+                      :schema ['zen/schema :maxLength :type]}
 
                      {:message "Expected type of 'regex, got 'persistentarraymap",
                       :type "regex.type",
@@ -721,7 +711,7 @@
      tctx
      '{ns custom-primitive-type
        animal
-       {:zen/tags #{zen/type zen/primitive zen/schema}
+       {:zen/tags #{zen/type zen/is-type zen/primitive zen/schema}
         :type zen/map}
 
        cow
@@ -873,7 +863,7 @@
                     :ret  {:type 'zen/string}}
 
          'get {:zen/tags #{'zen/fn 'fn}
-               :args {:type 'zen/vector :every {:type 'zen/keyword}}
+               :args {:type 'zen/list :every {:type 'zen/keyword}}
                :ret  {:type 'zen/string}}
 
          'tpl {:zen/tags  #{'zen/schema 'zen/tag}
@@ -919,12 +909,7 @@
            :schema ['test.fn/tpl :path :tags]}])
 
   (match tctx 'test.fn/tpl {:path (list 'test.fn/get "1")}
-         [{:message "Expected type of 'vector, got 'persistentlist",
-           :path [:path],
-           :type "vector.type",
-           :schema ['test.fn/tpl :path 'test.fn/get :args :type]}
-
-          {:message "Expected type of 'keyword, got 'string"
+         [{:message "Expected type of 'keyword, got 'string"
            :type "keyword.type"
            :path [:path 0]
            :schema ['test.fn/tpl :path 'test.fn/get :args :every 0 :type]}]))
@@ -983,7 +968,7 @@
   (vmatch tctx #{'myapp/some-number} 1/3
           {:errors [nil?]}))
 
-(deftest recursive-schema-validation-test
+(deftest ^:kaocha/pending recursive-schema-validation-test
 
   (def ztx (zen.core/new-context {:unsafe true}))
 
@@ -1000,6 +985,7 @@
                                   :apis {:type zen/set :every {:type zen/symbol :tags #{api}}}}
                            :key {:type zen/case
                                  :case [{:when {:type zen/string} :then {:type zen/string}}
+                                        {:when {:type zen/keyword} :then {:type zen/keyword}}
                                         {:when {:type zen/vector} :then {:type zen/vector
                                                                          :every {:type zen/keyword}
                                                                          :minItems 1

@@ -188,19 +188,27 @@
   (-> vtx
       (assoc :schema [(:zen/name schema)])
       (assoc :path [])
-      ((get-cached ztx schema true) data opts)
-      (dissoc :visited ::confirmed :type)))
+      ((get-cached ztx schema true) data opts)))
 
 (defn validate-schema [ztx schema data & [opts]]
-  (-> ztx
-      (*validate-schema (empty-vtx) schema data opts)
-      (unknown-errs)))
+  (let [empty-vtx {:errors []
+                   :warnings []
+                   :visited #{}
+                   :unknown-keys #{}
+                   :effects []}]
+    (-> ztx
+        (*validate-schema empty-vtx schema data opts)
+        (unknown-errs))))
 
 (defn validate [ztx schemas data & [opts]]
   (loop [schemas (seq schemas)
-         vtx (empty-vtx)]
+         vtx {:errors []
+              :warnings []
+              :visited #{}
+              :unknown-keys #{}
+              :effects []}]
     (if (empty? schemas)
-      (unknown-errs vtx)
+      (dissoc (unknown-errs vtx) :visited :unknown-keys ::confirmed)
       (if-let [schema (utils/get-symbol ztx (first schemas))]
         (recur (rest schemas)
                (*validate-schema ztx vtx schema data opts))
@@ -713,7 +721,8 @@
 (defmethod compile-key :key
   [_ ztx sch]
   (let [v (get-cached ztx sch false)]
-    {:rule
+    {:when map?
+     :rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [k _]]
                  (-> (node-vtx&log vtx* [:key] [k])

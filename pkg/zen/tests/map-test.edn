@@ -21,6 +21,13 @@
         :values {:type zen/integer}
         :keys {:x {}, :y {}}}}
 
+ key-test
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/map
+             :key {:type zen/symbol}
+             :values {:type zen/string}}}}
+
  values&key-test
  {:zen/tags #{zen.test/case}
   :only-for #{:v2}
@@ -66,7 +73,18 @@
      [{:type "map.type"
        :message "Expected type of 'map, got 'persistentvector"
        :path [[0 0]]
-       :schema [zen.tests.map-test/picture-map :key :type]}]}}]}
+       :schema [zen.tests.map-test/picture-map :key :type]}]}}
+
+   {:desc "datatype passed to key is not associative"
+    :do {:type zen.test/validate
+         :schema key-test
+         :data {:a #{:wrong-type}}}
+    :match
+    {:errors
+     [{:message "Expected type of 'map, got 'persistenthashset"
+       :path [:a]
+       :type "map.type"
+       :schema [zen.tests.map-test/key-test :a :type]}]}}]}
 
  map-with-unknown-keys-open-validation
  {:zen/tags #{zen/schema}

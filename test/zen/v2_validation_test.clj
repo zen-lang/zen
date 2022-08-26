@@ -9,30 +9,6 @@
    [zen.v2-validation :as v]
    [zen.core :as zen]))
 
-(defn mv [from to]
-  (let [source-filename (str (System/getProperty "user.dir") from)
-        target-filename (str (System/getProperty "user.dir") to)
-        source-file (java.nio.file.Paths/get (java.net.URI/create (str "file://" source-filename)))
-        target-file (java.nio.file.Paths/get (java.net.URI/create (str "file://"  target-filename)))]
-    (java.nio.file.Files/move source-file target-file
-                              (into-array java.nio.file.CopyOption
-                                          [(java.nio.file.StandardCopyOption/ATOMIC_MOVE)
-                                           (java.nio.file.StandardCopyOption/REPLACE_EXISTING)]))))
-
-(defonce flipstate (atom false))
-
-(defn flip! []
-  "sorry :) use only in dev mode!"
-  (if @flipstate
-    (do
-      (reset! flipstate false)
-      (mv "/pkg/zen.edn" "/pkg/v2/zen.edn")
-      (mv "/pkg/v1/zen.edn" "/pkg/zen.edn"))
-    (do
-      (reset! flipstate true)
-      (mv "/pkg/zen.edn" "/pkg/v1/zen.edn")
-      (mv "/pkg/v2/zen.edn" "/pkg/zen.edn"))))
-
 ;; see slicing-test/zen-fx-engine-slicing-test
 (defmethod fx/fx-evaluator 'zen.tests.slicing-test/slice-key-check
   [ztx {:keys [params path]} data]
@@ -44,8 +20,6 @@
 (deftest implemented-validations
 
   (do
-    #_(flip!)
-
     (def ztx (zen/new-context {:unsafe true}))
 
     (r/zen-read-ns ztx 'zen.tests.require-test)
@@ -83,9 +57,7 @@
 
     (r/zen-read-ns ztx 'zen.tests.key-schema-test)
 
-    (r/run-tests ztx)
-
-    #_(flip!)))
+    (r/run-tests ztx)))
 
 (defn resolve-zen-ns [ztx]
   (->> (read-string (slurp (clojure.java.io/resource "zen.edn")))
@@ -95,16 +67,25 @@
                      v)]))
        (into {})))
 
-(deftest ^:kaocha/pending metadata-roundtrip
-  (do
-    (flip!)
+(deftest metadata-roundtrip
 
-    (def ztx (zen/new-context {:unsafe true}))
+  (testing "zen ns is read and validated"
+    (do
+      (def ztx (zen/new-context {:unsafe true}))
 
-    (zen.utils/get-symbol ztx 'zen/namespace)
+      (zen/read-ns ztx 'zen)
 
-    (def result (v/validate ztx #{'zen/namespace} (resolve-zen-ns ztx)))
+      (:errors @ztx)
 
-    (flip!)
+      (is (empty? (:errors @ztx)))))
 
-    (is (empty? (:errors result)))))
+  (testing "zen meta validates itself"
+
+    (do
+      (def ztx (zen/new-context {:unsafe true}))
+
+      (zen.utils/get-symbol ztx 'zen/namespace)
+
+      (def result (v/validate ztx #{'zen/namespace} (resolve-zen-ns ztx)))
+
+      (is (empty? (:errors result))))))
