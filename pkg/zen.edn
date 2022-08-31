@@ -418,4 +418,28 @@
  schema-result
  {:zen/tags #{schema}
   :type map
-  :keys {:errors {:confirms #{schema-errors}}}}}
+  :keys {:errors {:confirms #{schema-errors}}}}
+
+ ;; zen.system definition
+ start
+ {:zen/tags #{zen/tag zen/schema}
+  :type map
+  :keys {:zen/state-key
+         {:type keyword
+          :zen/desc "Key to assoc state into context (:zen/ctx @ztx)"}}}
+
+ event
+ {:zen/tags #{zen/tag}
+  :zen/desc "zen event"}
+
+ op
+ {:zen/tags #{zen/tag}
+  :zen/desc "zen system operation -> (op name config request & [session])"}
+
+ system
+ {:zen/tags #{zen/schema zen/tag}
+  :zen/desc "zen system"
+  :type map
+  :keys {:start {:type vector
+                 :zen/desc "Vector of start operations"
+                 :every {:type symbol :tags #{start}}}}}}
