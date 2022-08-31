@@ -968,7 +968,7 @@
   (vmatch tctx #{'myapp/some-number} 1/3
           {:errors [nil?]}))
 
-(deftest ^:kaocha/pending recursive-schema-validation-test
+#_(deftest ^:kaocha/pending recursive-schema-validation-test
 
   (def ztx (zen.core/new-context {:unsafe true}))
 

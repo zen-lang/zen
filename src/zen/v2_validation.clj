@@ -134,9 +134,9 @@
           :else
           (let [r (first rs)]
             (if (or (nil? (get r :when)) ((get r :when) data))
-                (recur (rest rs)
-                       ((get r :rule) vtx* data opts))
-                (recur (rest rs) vtx*))))))))
+              (recur (rest rs)
+                     ((get r :rule) vtx* data opts))
+              (recur (rest rs) vtx*))))))))
 
 (declare resolve-props)
 
@@ -188,6 +188,7 @@
   (-> vtx
       (assoc :schema [(:zen/name schema)])
       (assoc :path [])
+      (assoc-in [::confirmed [] (:zen/name schema)] true)
       ((get-cached ztx schema true) data opts)))
 
 (defn validate-schema [ztx schema data & [opts]]
@@ -210,8 +211,10 @@
     (if (empty? schemas)
       (dissoc (unknown-errs vtx) :visited :unknown-keys ::confirmed)
       (if-let [schema (utils/get-symbol ztx (first schemas))]
-        (recur (rest schemas)
-               (*validate-schema ztx vtx schema data opts))
+        (if (true? (get-in vtx [::confirmed [] (:zen/name schema)]))
+          (recur (rest schemas) vtx)
+          (recur (rest schemas)
+                 (*validate-schema ztx vtx schema data opts)))
         (recur (rest schemas)
                (update vtx :errors conj
                        {:message (str "Could not resolve schema '" (first schemas))
@@ -327,8 +330,11 @@
        (if-not (empty? errs)
          (->> errs
               (reduce (fn [acc err]
-                        (add-err acc :match {:message (or (:message err) (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))
-                                             :type "match"}))
+                        (let [err-msg
+                              (or (:message err)
+                                  (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))]
+                          (apply add-err (into [acc :match {:message err-msg :type "match"}]
+                                               (:path err)))))
                       vtx))
          vtx)))})
 
@@ -536,7 +542,7 @@
              doall)]
     {:rule
      (fn confirms-sch [vtx data opts]
-      (loop [comp-fns comp-fns
+       (loop [comp-fns comp-fns
               vtx* vtx]
          (if (empty? comp-fns)
            vtx*

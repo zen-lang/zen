@@ -26,9 +26,9 @@
          :data {:match-key {:another-key :match-val}}}
     :match {:errors
             [{:message
-              "Expected (:zen.match/one-of #{{:key :match-val} {:key1 :match-val}}) but {:another-key :match-val}",
-              :type "match",
-              :path [],
+              "Expected (:zen.match/one-of #{{:key :match-val} {:key1 :match-val}}) but {:another-key :match-val}"
+              :type "match"
+              :path [:match-key]
               :schema [zen.tests.match-test/match-schema :match]}]}}
 
    {:desc "valid data, extra keys provided"

@@ -19,10 +19,10 @@
                {:kind "number" :value 1}])
 
     (matcho/match (zen.validation/slice tctx slicing data)
-                  {"string"      {0 {:kind "string", :value "Hello"}
-                                  2 {:kind "string", :value "World"}}
-                   "number"      {3 {:kind "number", :value 1}}
-                   :slicing/rest {1 {:kind "foo", :value :bar}}}))
+      {"string"      {0 {:kind "string", :value "Hello"}
+                      2 {:kind "string", :value "World"}}
+       "number"      {3 {:kind "number", :value 1}}
+       :slicing/rest {1 {:kind "foo", :value :bar}}}))
 
   (testing "Validate slicing definition"
     (def tctx (zen.core/new-context {:unsafe true}))
@@ -106,62 +106,68 @@
     (matcho/match @tctx {:errors nil?})
 
     (valid tctx 'myapp/slice-definition
-     [{:kind "keyword" :value :hello}
-      {:kind "keyword" :value :world}
-      {:kind "number" :value 1}
-      {:kind "foo"    :value "string"}
-      {:kind "map"
-       :value {:nested [{:kind "keyword" :value :world}
-                        {:kind "number" :value 1}]}}
-      {:kind "nested"
-       :value [{:kind "keyword" :value :world}
-               {:kind "number" :value 1}]}])
+           [{:kind "keyword" :value :hello}
+            {:kind "keyword" :value :world}
+            {:kind "number" :value 1}
+            {:kind "foo"    :value "string"}
+            {:kind "map"
+             :value {:nested [{:kind "keyword" :value :world}
+                              {:kind "number" :value 1}]}}
+            {:kind "nested"
+             :value [{:kind "keyword" :value :world}
+                     {:kind "number" :value 1}]}])
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "keyword" :value 1}]
-            {:errors [{:path ["[kw]" 0 :value nil?]} nil?]})
+            {:errors [{:path [0 :value nil?]} nil?]})
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "number" :value "1"}]
-            {:errors [{:path ["[number]" 0 :value nil?]} nil?]})
+            {:errors [{:message "Expected type of 'number, got 'string"
+                       :path [0 :value nil?]} nil?]})
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "foo" :value 1}]
-            {:errors [{:path ["[:slicing/rest]" 0 :value nil?]} nil?]})
+            {:errors [{:message "Expected type of 'string, got 'long"
+                       :path [0 :value nil?]} nil?]})
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "map", :value {:nested [{:kind "keyword" :value "not keyword"}]}}]
-            {:errors [{:path ["[map]" 0 :value :nested "[nest-kw]" 0 :value nil?]} nil?]})
+            {:errors [{:message "Expected type of 'keyword, got 'string"
+                       :path [0 :value :nested 0 :value nil?]} nil?]})
 
     (vmatch tctx #{'myapp/slice-definition}
             [{:kind "nested" :value [{:kind "keyword" :value "not keyword"}]}]
-            {:errors [{:path ["[nested]" 0 :value "[nest-kw]" 0 :value nil?]} nil?]})
+            {:errors [{:message "Expected type of 'keyword, got 'string"
+                       :path [0 :value 0 :value nil?]}
+                      nil?]})
 
     (match tctx 'myapp/required-slice
            [{:kind "two"}]
-           [{:type "vector"
-             :path ["[one]"]}]))
+           [{:type "vector.minItems"
+             :schema ['myapp/required-slice :slicing "one" :minItems]
+             :path []}]))
 
   (testing "slicing path collision unknown key bug"
     (def tctx (zen.core/new-context {:unsafe true}))
 
     (zen.core/load-ns!
-      tctx '{ns myapp
+     tctx '{ns myapp
 
-             subj
-             {:zen/tags #{zen/schema}
-              :type zen/vector
-              :every {:type zen/map, :keys {:kind {:type zen/string}}}
-              :slicing {:rest {:type  zen/vector
-                               :every {:type zen/map,
-                                       :keys {:rest-key {:type zen/any}}}}
-                        :slices {"slice"
-                                 {:filter {:engine :zen
-                                           :zen    {:type zen/map
-                                                    :keys {:kind {:const {:value "slice"}}}}}
-                                  :schema {:type  zen/vector
-                                           :every {:type zen/map
-                                                   :keys {:slice-key {:type zen/string}}}}}}}}})
+            subj
+            {:zen/tags #{zen/schema}
+             :type zen/vector
+             :every {:type zen/map, :keys {:kind {:type zen/string}}}
+             :slicing {:rest {:type  zen/vector
+                              :every {:type zen/map,
+                                      :keys {:rest-key {:type zen/any}}}}
+                       :slices {"slice"
+                                {:filter {:engine :zen
+                                          :zen    {:type zen/map
+                                                   :keys {:kind {:const {:value "slice"}}}}}
+                                 :schema {:type  zen/vector
+                                          :every {:type zen/map
+                                                  :keys {:slice-key {:type zen/string}}}}}}}}})
 
     (matcho/match @tctx {:errors nil?})
 
@@ -170,10 +176,10 @@
             {:kind "rest", :rest-key "rest-key"}])
 
     (vmatch tctx #{'myapp/subj}
-             [{:kind "rest", :rest-key "rest-key"}
-              {:kind "slice", :rest-key "kw-key"}
-              {:kind "slice", :slice-key :kw-key}]
-             {:errors [{:path ["[slice]" 2 :slice-key nil?]}
-                       {:path [1 :rest-key nil?]}
+            [{:kind "rest", :rest-key "rest-key"}
+             {:kind "slice", :rest-key "kw-key"}
+             {:kind "slice", :slice-key :kw-key}]
+            {:errors [{:path [2 :slice-key nil?] :type "string.type"}
+                      {:path [1 :rest-key nil?]}
                        ;; zen can't know where unknown key came from, thus can't write slice in this path
-                       nil?]})))
+                      nil?]})))

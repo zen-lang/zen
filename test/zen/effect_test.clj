@@ -26,14 +26,14 @@
   (valid tctx 'test.kns/kns {:test.kns/sch-1 1 :test.kns/sch-2 "ok"})
 
   (match tctx 'test.kns/kns {:test.kns/sch-1 "a" :test.kns/sch-2 1}
-         [{:message "Expected type of 'integer, got 'string",
-           :type    "primitive-type",
+         [{:message "Expected type of 'integer, got 'string"
+           :type "integer.type"
            :path    [:test.kns/sch-1],
-           :schema  ['test.kns/kns :keyname-schemas :test.kns/sch-1]}
+           :schema  ['test.kns/kns :keyname-schemas :test.kns/sch-1 :type]}
           {:message "Expected type of 'string, got 'long",
            :type    "string.type",
            :path    [:test.kns/sch-2],
-           :schema  ['test.kns/kns :keyname-schemas :test.kns/sch-2]}])
+           :schema  ['test.kns/kns :keyname-schemas :test.kns/sch-2 :type]}])
 
   (match tctx 'test.kns/kns {:test.kns/sch-1 1 :test.kns/sch-2 "ok" :extra "ups"}
          [{:type "unknown-key", :message "unknown key :extra", :path [:extra]}]))
@@ -66,10 +66,10 @@
                   {:zen/tags    #{'zen/schema}
                    :type        'zen/map
                    'test.fx/only-one 1}
-                  [{:message "Expected type of 'vector, got long",
-                    :type    "type",
-                    :path    ['test.fx/only-one],
-                    :schema  ['zen/schema :keyname-schemas 'test.fx/only-one]}]))
+                  [{:message "Expected type of 'vector, got 'long"
+                    :path ['test.fx/only-one]
+                    :type "vector.type"
+                    :schema ['zen/schema :keyname-schemas 'test.fx/only-one :type]}]))
 
 (deftest emit&apply-effect
   (def tctx (zen.core/new-context {:unsafe true}))
