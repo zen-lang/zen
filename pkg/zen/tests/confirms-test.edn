@@ -155,4 +155,84 @@
          :schema root-schema
          :data {:type "zen.tests.confirms-test/node-schema"
                 :a-key "just a value"}}
-    :match {:errors zen.test/empty?}}]}}
+    :match {:errors zen.test/empty?}}]}
+
+ schema-a-recursive
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/string}}
+  :confirms #{schema-b-recursive}}
+
+ schema-b-recursive
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:b {:type zen/string}}
+  :confirms #{schema-a-recursive}}
+
+ recursive-confirms-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "recursive confirms resolve correctly"
+  :steps
+  [{:desc "invalid data given"
+    :do {:type zen.test/validate
+         :schema schema-b-recursive
+         :data {:c "value"}}
+    :match
+    {:errors
+     [{:path [:c], :type "unknown-key", :message "unknown key :c"}]}}
+
+   {:desc "valid data given"
+    :do {:type zen.test/validate
+         :schema schema-b-recursive
+         :data {:a "value"
+                :b "value"}}
+    :match
+    {:errors zen.test/empty?}}]}
+
+ schema-c
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:c {:type zen/string}}}
+
+ schema-a
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:a {:type zen/string}}
+  :confirms #{schema-b schema-c}}
+
+ schema-not-found-confirms-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "if schema is not found confirms returns an error"
+  :steps
+  [{:desc "invalid data given"
+    :do {:type zen.test/validate
+         :schema schema-a
+         :data {:a "value"
+                :c :wrong-value}}
+    :match
+    {:errors
+     ;;schema-c is validated even if schema-b is not found
+     [{:message "Expected type of 'string, got 'keyword"
+       :path [:c]
+       :type "string.type"
+       :schema
+       [zen.tests.confirms-test/schema-a
+        :confirms
+        zen.tests.confirms-test/schema-c
+        :c
+        :type]}
+
+     ;; error from schema validation
+      {:message "No symbol 'zen.tests.confirms-test/schema-b found",
+       :type "symbol",
+       :path [:confirms 1],
+       :schema [zen/schema :confirms :every 1 :tags]}
+
+      ;; error from data validation
+      {:message "Could not resolve schema 'zen.tests.confirms-test/schema-b"
+         ;; TODO why string.confirms?
+       :type "string.confirms" #_"map.confirms"
+       :path []
+       :schema [zen.tests.confirms-test/schema-a :confirms]}]}}]}}
