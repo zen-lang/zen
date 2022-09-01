@@ -41,17 +41,17 @@
 
   (t/testing "Zen can build uberzen"
     (sut/zen-build! root)
-    (t/is (= ["main.edn"
-              "a/"
-              "a/main.edn"
-              "a/c/"
-              "a/c/main.edn"
-              "b/"
-              "b/dir/"
-              "b/dir/main.edn"
-              "b/dir/c/"
-              "b/dir/c/main.edn"]
-             (build-zip-flat-tree "/tmp/zen/build/uberzen.zip")))))
+    (t/is (= #{"main.edn"
+               "a/"
+               "a/main.edn"
+               "a/c/"
+               "a/c/main.edn"
+               "b/"
+               "b/dir/"
+               "b/dir/main.edn"
+               "b/dir/c/"
+               "b/dir/c/main.edn"}
+             (set (build-zip-flat-tree "/tmp/zen/build/uberzen.zip"))))))
 
 (comment
   (sut/zen-build! root)
