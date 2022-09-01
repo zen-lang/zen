@@ -42,8 +42,8 @@
                    (zen-clone! dest (str dest "/package.edn"))))))))
 
 (defn zen-init! [root]
-  (let [pkg-file (str zrc "/../package.edn")
-        zrc (str root "/zrc")]
+  (let [zrc (str root "/zrc")
+        pkg-file (str zrc "/../package.edn")]
     (sh "rm" "-rf" root)
     (.mkdir (java.io.File. root))
     (.mkdir (java.io.File. zrc))
