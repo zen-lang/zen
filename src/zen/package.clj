@@ -12,17 +12,6 @@
              (println (:out result))
              result)))
 
-(defn get-git-hash [path]
-  (def path "/tmp/a")
-  (as-> (slurp (str path "/.git/HEAD")) v
-    (string/trim-newline v)
-    (subs v 5)
-    (str path "/.git/" v)
-    (slurp v)
-    (string/trim-newline v)))
-
-(def root "/tmp/zen")
-
 (defn git-init [path] (sh "git" "init" :dir path))
 
 (defn init-stub-dependencies! []
@@ -52,10 +41,9 @@
                    (sh "git" "clone" url dest)
                    (zen-clone! dest (str dest "/package.edn"))))))))
 
-(def zrc (str root "/zrc"))
-
 (defn zen-init! [root]
-  (let [pkg-file (str zrc "/../package.edn")]
+  (let [pkg-file (str zrc "/../package.edn")
+        zrc (str root "/zrc")]
     (sh "rm" "-rf" root)
     (.mkdir (java.io.File. root))
     (.mkdir (java.io.File. zrc))
@@ -70,22 +58,8 @@
     (sh "chmod" "+x" precommit-hook-file)
 
     (spit pkg-file (str '[[a "/tmp/a"]
-                              [b.dir "/tmp/b"]]))
+                          [b.dir "/tmp/b"]]))
     (zen-clone! root pkg-file)))
-
-(t/deftest zen-pm
-  (t/testing "Zen can recursively load dependencies"
-    (init-stub-dependencies!)
-    (zen-init! root)
-    (t/is (= (get-git-hash "/tmp/a")
-             (get-git-hash "/tmp/zen/zen_modules/a")))
-    (t/is (= (get-git-hash "/tmp/c")
-             (get-git-hash "/tmp/zen/zen_modules/a/zen_modules/c")))
-
-    (t/is (= (get-git-hash "/tmp/b")
-             (get-git-hash "/tmp/zen/zen_modules/b/dir")))
-    (t/is (= (get-git-hash "/tmp/c")
-             (get-git-hash "/tmp/zen/zen_modules/b/dir/zen_modules/c")))))
 
 (defn copy! [& from-to] (apply sh "cp" "-r" from-to))
 (defn flat-dir! [dir to] (copy! dir to))
@@ -100,8 +74,9 @@
     (recur-flat! mdir))
   (clear-files! dir "package.edn" "zen_modules" ".git"))
 
-(defn build! []
-  (let [build-dir (str root "/build")]
+(defn zen-build! [root]
+  (let [build-dir (str root "/build")
+        zrc (str root "/zrc")]
     (sh "rm" "-rf" build-dir)
     (sh "mkdir" build-dir)
     (copy! zrc (str root "/zen_modules") build-dir)
