@@ -88,32 +88,23 @@
              (get-git-hash "/tmp/zen/zen_modules/b/dir/zen_modules/c")))))
 
 (defn copy! [& from-to] (apply sh "cp" "-r" from-to))
-(defn recur-flat [dir]
-    (copy! (str dir "/zrc/") dir)
-    #_(doseq [mdir (-> (str dir "/zen_modules")
-                     clojure.java.io/file
-                     .list)
-            :when mdir]
-      (recur-flat mdir)
-      (copy! (str "zen_modules/*") mdir)
-      (sh "rm" "-rf" "package.edn" "zen_modules")))
-(comment
+(defn flat-dir! [dir to] (copy! dir to))
+(defn dir-list [dir] (-> dir clojure.java.io/file .list))
+(defn clear-files! [dir & files] (apply sh "rm" "-rf" (map #(str dir "/" %) files)))
+(defn recur-flat! [dir]
+  (flat-dir! (str dir "/zrc/.") dir)
+  (flat-dir! (str dir "/zen_modules/.") dir)
+  (doseq [mdir  (dir-list dir)
+          :let  [mdir (str dir "/" mdir)]
+          :when (not-empty (dir-list mdir))]
+    (recur-flat! mdir))
+  (clear-files! dir "package.edn" "zen_modules" ".git"))
 
-
-
-
+(defn build! []
   (let [build-dir (str root "/build")]
     (sh "rm" "-rf" build-dir)
     (sh "mkdir" build-dir)
-    (Thread/sleep 1000)
-
     (copy! zrc (str root "/zen_modules") build-dir)
-    (recur-flat build-dir)
-
-    ;; (zip-it)
-
-    )
-(apply sh (string/split "cp -r /tmp/zen/build/zrc/.* /tmp/zen/build" #" ") )
-
-
-  )
+    (recur-flat! build-dir)
+    (sh "rm" "-rf" (str build-dir "/zen_modules") (str build-dir "/zrc"))
+    (sh "zip" "-r" "uberzen.zip" "." :dir build-dir)))
