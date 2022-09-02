@@ -1,6 +1,6 @@
-{ns zen.tests.confirms-test
+{:ns zen.tests.confirms-test
 
- import #{zen.test}
+ :import #{zen.test}
 
  k
  {:zen/tags #{:zen/schema}

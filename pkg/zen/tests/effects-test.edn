@@ -1,5 +1,5 @@
-{ns zen.tests.effects-test
- import #{zen.test}
+{:ns zen.tests.effects-test
+ :import #{zen.test}
 
  not-fx
  {}

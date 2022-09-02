@@ -1,6 +1,6 @@
-{ns zen.tests.fn-test
+{:ns zen.tests.fn-test
 
- import #{zen.test}
+ :import #{zen.test}
 
  fn {:zen/tags #{zen/tag}}
 

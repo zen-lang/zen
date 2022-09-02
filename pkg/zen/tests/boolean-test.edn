@@ -1,6 +1,6 @@
-{ns zen.tests.boolean-test
+{:ns zen.tests.boolean-test
 
- import #{zen.test}
+ :import #{zen.test}
 
  boolean-keys
  {:zen/tags #{zen/schema}

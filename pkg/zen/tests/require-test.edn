@@ -1,4 +1,6 @@
-{ns zen.tests.require-test
+{:ns zen.tests.require-test
+
+ :import #{zen.test}
 
  ;; TODO add deeply nested test with both or and all require
 

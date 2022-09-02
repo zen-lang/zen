@@ -1,6 +1,6 @@
-{ns zen.tests.case-test
+{:ns zen.tests.case-test
 
- import #{zen.test}
+ :import #{zen.test}
 
  cases
  {:zen/tags #{zen/schema}

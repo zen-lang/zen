@@ -1,6 +1,6 @@
-{ns zen.tests.map-test
+{:ns zen.tests.map-test
 
- import #{zen.test}
+ :import #{zen.test}
 
  color-channel
  {:zen/tags #{zen/schema}

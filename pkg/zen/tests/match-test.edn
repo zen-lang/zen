@@ -1,6 +1,6 @@
-{ns zen.tests.match-test
+{:ns zen.tests.match-test
 
- import #{zen.test}
+ :import #{zen.test}
 
  match-schema
  {:zen/tags #{zen/schema}

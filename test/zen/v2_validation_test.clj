@@ -37,17 +37,11 @@
     (is list-expr)
 
     (testing "lists are not expanded by default"
-      (is (= '(print hello user zen.tests.expr-alias/argument) (get-in list-expr [:my/lisp :expr]))))
+      (is (= '(print hello user zen.test/empty?) (get-in list-expr [:keys :list-value :const :value]))))
 
     (r/zen-read-ns ztx 'zen.tests.keyname-schemas-test)
 
     (r/zen-read-ns ztx 'zen.tests.map-test)
-
-    (r/zen-read-ns ztx 'zen.tests.core-validate-test)
-
-    (r/zen-read-ns ztx 'zen.tests.effects-test)
-
-    (r/zen-read-ns ztx 'zen.tests.fn-test)
 
     (r/zen-read-ns ztx 'zen.tests.slicing-test)
 
@@ -56,6 +50,14 @@
     (r/zen-read-ns ztx 'zen.tests.match-test)
 
     (r/zen-read-ns ztx 'zen.tests.key-schema-test)
+
+    #_(is (empty? (:errors @ztx)))
+
+    (r/zen-read-ns ztx 'zen.tests.core-validate-test)
+
+    (r/zen-read-ns ztx 'zen.tests.effects-test)
+
+    (r/zen-read-ns ztx 'zen.tests.fn-test)
 
     (r/run-tests ztx)))
 
