@@ -1,0 +1,27 @@
+{ns zen.test
+
+ validate
+ {:zen/desc "validates data against provided schema"}
+
+ validate-schema
+ {:zen/desc "validates schema against zen.schema"}
+
+ nil?
+ {}
+
+ empty?
+ {}
+
+ case
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :keys {:title {:type zen/string}
+         :only-for {:type zen/set}
+         :steps {:type zen/vector
+                 :every {:type zen/map
+                         :keys {:desc {:type zen/string}
+                                :do {:type zen/map
+                                     :validation-type :open
+                                     :keys {:schema {:type zen/symbol}
+                                            :data {:type zen/any}}}
+                                :match {:type zen/any}}}}}}}
