@@ -8,12 +8,12 @@
   :values {:type zen/any}
 
   ;; TODO impl toplevel checks
-  #_:keys #_{ns      {:type symbol}
-             imports {:type set :every {:type symbol}}
-             require {:type map
-                      :key {:type symbol}
-                   ;; TODO impl namespaced check
-                      :values {:type symbol #_:namespaced #_true}}}}
+  :keys {:ns      {:type symbol}
+         :imports {:type set :every {:type symbol}}
+         :require {:type map
+                  :key {:type symbol}
+                  ;; TODO impl namespaced check
+                  :values {:type symbol #_:namespaced #_true}}}}
 
  schema
  {:zen/tags #{schema tag}
