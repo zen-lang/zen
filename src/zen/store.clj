@@ -81,7 +81,7 @@
   (swap! ctx update :aliases zen.utils/disj-set-union-push alias-dest alias))
 
 (defn symbol-definition? [[k v]]
-  (and (symbol? k) (map? v))) ;; TODO: 
+  (and (symbol? k) (map? v)))
 
 (defn symbol-alias? [[k v]]
   (and (symbol? k) (qualified-symbol? v)))
@@ -101,7 +101,8 @@
     (swap! ctx update :symbols (partial merge this-ns-symbols))))
 
 (defn load-ns [ctx nmsps & [opts]]
-  (let [ns-name (or (get nmsps 'ns) (get nmsps :ns))]
+  (let [ns-name (or (get nmsps 'ns) (get nmsps :ns))
+        aliased-ns (or (get nmsps 'alias) (get nmsps :alias))]
     (when (not (get-in @ctx [:ns ns-name]))
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
 
@@ -109,7 +110,7 @@
 
       (doseq [imp (cond->> (or (get nmsps 'import)
                                (get nmsps :import))
-                    (contains? nmsps 'alias) (cons (get nmsps 'alias)))]
+                    (symbol? aliased-ns) (cons aliased-ns))]
         (cond
           (get-in @ctx [:ns imp])
           :already-imported
@@ -120,8 +121,8 @@
           :else
           (read-ns ctx imp {:ns ns-name})))
 
-      (when-let [aliased-ns (get nmsps 'alias)]
-        (doseq [[aliased-sym alias-v :as kv] (get-in @ctx [:ns aliased-ns])]
+      (when (symbol? aliased-ns)
+        (doseq [[aliased-sym _ :as kv] (get-in @ctx [:ns aliased-ns])]
           (when (symbol-definition? kv)
             (let [shadowed-here? (contains? nmsps aliased-sym)]
               (when (not shadowed-here?)
@@ -129,7 +130,7 @@
                             (zen.utils/mk-symbol aliased-ns aliased-sym)
                             (zen.utils/mk-symbol ns-name aliased-sym)))))))
 
-      (->> (dissoc nmsps ['ns 'import 'alias :ns :import])
+      (->> (dissoc nmsps ['ns 'import 'alias :ns :import :alias])
            (mapv (fn [[k v :as kv]]
                    (cond (symbol-definition? kv) (load-symbol ctx nmsps k (merge v opts))
                          (symbol-alias? kv)      (load-alias ctx v (zen.utils/mk-symbol ns-name k))

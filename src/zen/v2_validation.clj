@@ -184,9 +184,9 @@
 
 (defn *validate-schema
   "internal, use validate function"
-  [ztx vtx schema data & [opts]]
+  [ztx vtx schema data {:keys [sch-symbol] :as opts}]
   (-> vtx
-      (assoc :schema [(:zen/name schema)])
+      (assoc :schema [(or sch-symbol (:zen/name schema))])
       (assoc :path [])
       (assoc-in [::confirmed [] (:zen/name schema)] true)
       ((get-cached ztx schema true) data opts)))
@@ -211,10 +211,10 @@
     (if (empty? schemas)
       (dissoc (unknown-errs vtx) :visited :unknown-keys ::confirmed)
       (if-let [schema (utils/get-symbol ztx (first schemas))]
-        (if (true? (get-in vtx [::confirmed [] (:zen/name schema)]))
+        (if (true? (get-in vtx [::confirmed [] (first schemas)]))
           (recur (rest schemas) vtx)
           (recur (rest schemas)
-                 (*validate-schema ztx vtx schema data opts)))
+                 (*validate-schema ztx vtx schema data (assoc opts :sch-symbol (first schemas)))))
         (recur (rest schemas)
                (update vtx :errors conj
                        {:message (str "Could not resolve schema '" (first schemas))

@@ -4,15 +4,14 @@
  {:zen/tags #{schema}
   :zen/desc "Schema for namespace"
   :type map
-;;  :key {:type symbol}
+  :key {:type case
+        :case [{:when {:type symbol}}
+               {:when {:type keyword}}]}
+  ;; TODO add values validation
   :values {:type zen/any}
   :keys {:ns      {:type symbol}
          :imports {:type set :every {:type symbol}}
-         ;; TODO add alias
-         :require {:type map
-                  :key {:type symbol}
-                  ;; TODO impl namespaced check
-                  :values {:type symbol #_:namespaced #_true}}}}
+         :alias {:type symbol}}}
 
  schema
  {:zen/tags #{schema tag}
