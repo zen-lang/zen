@@ -24,61 +24,87 @@
          (finally (.close zf)))))
 
 
-(defn init-stub-dependencies! []
-  (doseq [repo [{:name "/a"
-                 :deps [['c "/tmp/c"]]}
-                {:name "/b"
-                 :deps [['c "/tmp/c"]]}
-                {:name "/c"
-                 :deps []}]]
-    (let [dir (str "/tmp" (:name repo))
-          ]
+;; (defn init-stub-dependencies! []
+;;   (doseq [repo [{:name "/a"
+;;                  :deps [['c "/tmp/c"]]}
+;;                 {:name "/b"
+;;                  :deps [['c "/tmp/c"]]}
+;;                 {:name "/c"
+;;                  :deps []}]]
+;;     (let [dir (str "/tmp" (:name repo))
+;;           ]
 
-      (def dir "/tmp/a")
-      (def deps [['c "/tmp/c"]])
+;;       (def dir "/tmp/a")
+;;       (def deps [['c "/tmp/c"]])
 
-      (sut/sh "rm" "-rf" dir)
-      (sut/sh "mkdir" "-p" dir)
-      (sut/git-init! dir)
-      (spit (str dir "/main.edn") (str {'ns 'main (symbol (str (random-uuid))) {}}))
-      (spit (str dir "/package.edn") (str deps))
-      (sut/sh "git" "add" "." :dir dir)
-      (sut/sh "git" "commit" "-m" "\"Initial commit\"" :dir dir))))
+;;       (sut/sh! "rm" "-rf" dir)
+;;       (sut/sh! "mkdir" "-p" dir)
+;;       (sut/git-init! dir)
+;;       (spit (str dir "/main.edn") (str {'ns 'main (symbol (str (random-uuid))) {}}))
+;;       (spit (str dir "/package.edn") (str deps))
+;;       (sut/sh! "git" "add" "." :dir dir)
+;;       (sut/sh! "git" "commit" "-m" "\"Initial commit\"" :dir dir))))
 
+(defn mkdir [name] (sut/sh! "mkdir" "-p" name))
+(defn rm [& names] (apply sut/sh! "rm" "-rf" names))
+(defn git-init [dir]
+      (sut/sh! "git" "init" :dir dir)
+      (sut/sh! "git" "add" "." :dir dir)
+      (sut/sh! "git" "commit" "-m" "\"Initial commit\"" :dir dir))
+
+(def root "/tmp/zen/veschin")
+(def deps ["a" "b" "c"
+           "additional-dep1"
+           "additional-dep2"
+           "additional-dep3"])
+
+(defn fixture []
+  (rm root "/tmp/zen")
+  (mkdir root)
+  (mkdir (str root "/zrc"))
+  (mkdir (str root "/zen-modules"))
+  (doseq [dir- deps]
+    (let [dir (str "/tmp/" dir-)
+          main dir-]
+      (rm dir)
+      (mkdir dir)
+      (mkdir (str dir "/zrc"))
+      (spit (str dir "/zen-package.edn")
+            (cond-> {:artifact (keyword (string/replace dir- #"/" ".") main)}
+              (#{"a" "b" "c"} dir-)
+              (assoc :deps (rand-nth [{:author1 "/tmp/additional-dep1/"}
+                                      {:author2 "/tmp/additional-dep2/"}
+                                      {:author3 "/tmp/additional-dep3/"}]))))
+      (spit (str dir "/" main ".edn") {'ns (symbol (str dir- "." main))})
+      (git-init dir))))
 
 (t/deftest init
-  (sut/mkdir! "/tmp" "zen.package-test/my-init-zen-module")
+  (fixture)
+  (git-init root)
 
-  (def path "/tmp/zen.package-test/my-init-zen-module")
+  (spit (str root "/zrc/veschin.edn")
+        {'ns 'veschin
+         'import #{'a}})
 
-  (sut/zen-init! path)
+  (spit (str root "/zen-package.edn")
+        {:artifact :veschin
+         :deps {:a "/tmp/a"
+                :b "/tmp/b"
+                :c "/tmp/c"}})
 
-  (spit (str path "/package.edn")
-        {:deps {:a "/tmp/a"
-                :b "/tmp/b"}})
+  (sut/zen-init-deps! root)
 
-  ;;spit zrc/my-module.edn
+  (def ztx (zen.core/new-context {:paths [(str root "/zrc")]}))
 
-  ;; init a & b
-
-
-  (sut/zen-init-deps! path)
-  ;; zen-module/
-  ;;  a/
-  ;;   zrc/
-  ;;  b/
-  ;;   zrc/
-
-  (def ztx (zen.core/new-context {:paths [path]}))
-
-  (zen.core/read-ns ztx 'my-module)
+  (zen.core/read-ns ztx 'veschin)
 
   (t/is (empty? (zen.core/errors ztx)))
 
-  (t/is (empty? (:errors (zen.core/validate ztx #{'my-module/my-sch-from-a-which-depends-on-b})))))
+  ;; (t/is (empty? (:errors (zen.core/validate ztx #{'my-module/my-sch-from-a-which-depends-on-b}))))
+  )
 
 
-(t/deftest zen-pm
+#_(t/deftest zen-pm
   (init-stub-dependencies!)
 
   (def root "/tmp/zen")

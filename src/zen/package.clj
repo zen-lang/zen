@@ -61,8 +61,10 @@
 
 
 (defn zen-init-deps-recur! [root deps] #_"NOTE: add recursive pull protection"
-  (doseq [[dep-name dep-url] deps]
-    (sh! "git" "submodule" "add" (str dep-url) (name dep-name)
+  (doseq [[dep-name dep-url] deps
+          :let [dep-name (name dep-name)]]
+    (println "name->" dep-name " url-> " dep-url)
+    (sh! "git" "submodule" "add" (str dep-url) dep-name
          :dir root)
     (zen-init-deps-recur! root (read-deps (str root "/" dep-name)))))
 
@@ -71,20 +73,21 @@
   (zen-init-deps-recur! (str root "/zen-modules") (read-deps root)))
 
 
-(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))
+
+#_(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))
 
 
-(defn flat-dir! [dir to] (copy! dir to))
+#_(defn flat-dir! [dir to] (copy! dir to))
 
 
-(defn dir-list [dir] (-> dir clojure.java.io/file .list))
+#_(defn dir-list [dir] (-> dir clojure.java.io/file .list))
 
 
-(defn clear-files! [dir & files]
+#_(defn clear-files! [dir & files]
   (apply sh! "rm" "-rf" (map #(str dir "/" %) files)))
 
 
-(defn recur-flat! [dir]
+#_(defn recur-flat! [dir]
   (flat-dir! (str dir "/zrc/.") dir)
   (flat-dir! (str dir "/zen_modules/.") dir)
   (doseq [mdir  (dir-list dir)
@@ -94,7 +97,7 @@
   (clear-files! dir "package.edn" "zen_modules" ".git"))
 
 
-(defn zen-build! [root]
+#_(defn zen-build! [root]
   (let [build-dir (str root "/build")
         zrc (str root "/zrc")]
     (sh! "rm" "-rf" build-dir)
