@@ -1,70 +1,89 @@
 (ns zen.package
-  (:require
-   clojure.edn
-   [clojure.java.shell :as shell]
-   ;; [clojure.java.io :as io]
-   [clojure.string :as string]
-   [clojure.test :as t]))
+  (:require [clojure.string :as string]
+            [clojure.java.shell :as shell]
+            [clojure.edn :as edn]))
 
-(defn sh [& args]
-  (println "$" (clojure.string/join " " args)
-           (let [result (apply shell/sh args)]
-             (println (:out result))
-             result)))
 
-(defn git-init [path] (sh "git" "init" :dir path))
+(defn sh! [& args]
+  (println "$" (clojure.string/join " " args))
+  (let [result (apply shell/sh args)]
+    (when-let [out (:out result)]
+      (println out))
+    result))
 
-(defn init-stub-dependencies! []
-  (doseq [repo [{:name "/a"
-                 :deps [['c "/tmp/c"]]}
-                {:name "/b"
-                 :deps [['c "/tmp/c"]]}
-                {:name "/c"
-                 :deps []}]
-          :let [dir (str "/tmp" (:name repo))
-                deps (:deps repo)]]
-    (sh "rm" "-rf" dir)
-    (sh "mkdir" "-p" dir)
-    (git-init dir)
-    (spit (str dir "/main.edn") (str {'ns 'main (symbol (str (random-uuid))) {}}))
-    (spit (str dir "/package.edn") (str deps))
-    (sh "git" "add" "." :dir dir)
-    (sh "git" "commit" "-m" "\"Initial commit\"" :dir dir)))
 
-(defn zen-clone! [root package-file]
-  (->> package-file
-       slurp
-       clojure.edn/read-string
-       (run! (fn [[alias url]]
-               (let [dest (str root "/zen_modules/" (string/replace (str alias) #"\." "/"))]
-                 (do
-                   (sh "git" "clone" url dest)
-                   (zen-clone! dest (str dest "/package.edn"))))))))
+(defn sh&&! [call & calls]
+  (let [{:as result, :keys [exit]} (apply sh! call)]
+    (if (and (= 0 exit) (seq calls))
+      (apply sh&&! calls)
+      result)))
+
+
+(defn mkdir! [path name]
+  (sh! "mkdir" "-p" name :dir path))
+
+
+(defn git-init! [path]
+  (sh! "git" "init" :dir path))
+
+
+(defn read-deps [root]
+  (let [package-file (->> (str root "/zen-package.edn")
+                          slurp
+                          edn/read-string)]
+    (:deps package-file)))
+
+
+(defn init-pre-commit-hook! [root]
+  (let [precommit-hook-file (str root "/.git/hooks/pre-commit")]
+    (spit precommit-hook-file "#!/bin/bash \n\necho \"hello world!\"")
+    (sh! "chmod" "+x" precommit-hook-file)))
 
 (defn zen-init! [root]
-  (let [zrc (str root "/zrc")
-        pkg-file (str zrc "/../package.edn")]
-    (sh "rm" "-rf" root)
-    (.mkdir (java.io.File. root))
-    (.mkdir (java.io.File. zrc))
+  #_(sh! "rm" "-rf" root)
+  #_(.mkdir (java.io.File. root))
+  #_(.mkdir (java.io.File. zrc))
+  #_(spit (str zrc "/main.edn") (str '{ns main}))
 
-    (spit (str zrc "/main.edn") (str '{ns main}))
+  (mkdir! root "zrc")
+  (mkdir! root "zen-modules")
+  (git-init! root)
 
-    (git-init root)
-    (spit (str root "/.gitignore") "/zen_modules")
+  #_(spit (str root "/.gitignore") "/zen_modules")
 
-    (def precommit-hook-file (str root "/.git/hooks/pre-commit"))
-    (spit precommit-hook-file "#!/bin/bash \n\necho \"hello world!\"")
-    (sh "chmod" "+x" precommit-hook-file)
 
-    (spit pkg-file (str '[[a "/tmp/a"]
-                          [b.dir "/tmp/b"]]))
-    (zen-clone! root pkg-file)))
+  #_(sh&&! ["git" "add" "." :dir dir]
+           ["git" "commit" "-m" "\"Initial commit\"" :dir dir])
 
-(defn copy! [& from-to] (apply sh "cp" "-r" from-to))
+  #_#_(spit pkg-file (str '[[a "/tmp/a"]
+                            [b.dir "/tmp/b"]]))
+  (zen-clone! root pkg-file))
+
+
+(defn zen-init-deps-recur! [root deps] #_"NOTE: add recursive pull protection"
+  (doseq [[dep-name dep-url] deps]
+    (sh! "git" "submodule" "add" (str dep-url) (name dep-name)
+         :dir root)
+    (zen-init-deps-recur! root (read-deps (str root "/" dep-name)))))
+
+
+(defn zen-init-deps! [root]
+  (zen-init-deps-recur! (str root "/zen-modules") (read-deps root)))
+
+
+(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))
+
+
 (defn flat-dir! [dir to] (copy! dir to))
+
+
 (defn dir-list [dir] (-> dir clojure.java.io/file .list))
-(defn clear-files! [dir & files] (apply sh "rm" "-rf" (map #(str dir "/" %) files)))
+
+
+(defn clear-files! [dir & files]
+  (apply sh! "rm" "-rf" (map #(str dir "/" %) files)))
+
+
 (defn recur-flat! [dir]
   (flat-dir! (str dir "/zrc/.") dir)
   (flat-dir! (str dir "/zen_modules/.") dir)
@@ -74,12 +93,13 @@
     (recur-flat! mdir))
   (clear-files! dir "package.edn" "zen_modules" ".git"))
 
+
 (defn zen-build! [root]
   (let [build-dir (str root "/build")
         zrc (str root "/zrc")]
-    (sh "rm" "-rf" build-dir)
-    (sh "mkdir" build-dir)
+    (sh! "rm" "-rf" build-dir)
+    (sh! "mkdir" build-dir)
     (copy! zrc (str root "/zen_modules") build-dir)
     (recur-flat! build-dir)
-    (sh "rm" "-rf" (str build-dir "/zen_modules") (str build-dir "/zrc"))
-    (sh "zip" "-r" "uberzen.zip" "." :dir build-dir)))
+    (sh! "rm" "-rf" (str build-dir "/zen_modules") (str build-dir "/zrc"))
+    (sh! "zip" "-r" "uberzen.zip" "." :dir build-dir)))
