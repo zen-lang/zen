@@ -163,9 +163,9 @@
           (recur (concat (expand-node-modules p) ps)))))))
 
 ;; TODO: cache find file
-(defn find-file [ctx paths pth]
+(defn find-file [ctx pth]
   (or (io/resource pth)
-      (find-in-paths paths pth)))
+      (find-in-paths (:paths @ctx) pth)))
 
 (defn get-env [env env-name]
   (or (get env (keyword env-name))
@@ -193,7 +193,7 @@
 
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
-    (if-let [file (find-file ctx (:paths @ctx) pth)]
+    (if-let [file (find-file ctx pth)]
       (try
         (let [content (slurp file)
               env (:env @ctx)
