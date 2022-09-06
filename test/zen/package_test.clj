@@ -84,6 +84,10 @@
 (defn mk-module-fixture [root-dir-path module-name module-params]
   (let [module-dir-path (mk-module-dir-path root-dir-path module-name)]
 
+    (mkdir module-dir-path)
+
+    (sut/zen-init! module-dir-path)
+
     (spit-zrc module-dir-path (:zrc module-params))
 
     (spit-deps root-dir-path module-dir-path (:deps module-params))
