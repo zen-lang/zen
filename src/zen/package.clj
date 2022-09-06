@@ -70,7 +70,11 @@
 
 
 (defn zen-init-deps! [root]
-  (zen-init-deps-recur! (str root "/zen-modules") (read-deps root)))
+  (mkdir! root "zen-modules")
+
+  (zen-init-deps-recur!
+    (str root "/zen-modules")
+    (read-deps root)))
 
 
 

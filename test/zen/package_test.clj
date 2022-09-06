@@ -47,65 +47,105 @@
 
 (defn mkdir [name] (sut/sh! "mkdir" "-p" name))
 (defn rm [& names] (apply sut/sh! "rm" "-rf" names))
-(defn git-init [dir]
-      (sut/sh! "git" "init" :dir dir)
-      (sut/sh! "git" "add" "." :dir dir)
-      (sut/sh! "git" "commit" "-m" "\"Initial commit\"" :dir dir))
 
-(def root "/tmp/zen/veschin")
-(def deps ["a" "b" "c"
-           "additional-dep1"
-           "additional-dep2"
-           "additional-dep3"])
+(defn git-init-commit [dir]
+  (sut/sh! "git" "init" :dir dir)
+  (sut/sh! "git" "add" "." :dir dir)
+  (sut/sh! "git" "commit" "-m" "\"Initial commit\"" :dir dir))
 
-(defn fixture []
-  (rm root "/tmp/zen")
-  (mkdir root)
-  (mkdir (str root "/zrc"))
-  (mkdir (str root "/zen-modules"))
-  (doseq [dir- deps]
-    (let [dir (str "/tmp/" dir-)
-          main dir-]
-      (rm dir)
-      (mkdir dir)
-      (mkdir (str dir "/zrc"))
-      (spit (str dir "/zen-package.edn")
-            (cond-> {:artifact (keyword (string/replace dir- #"/" ".") main)}
-              (#{"a" "b" "c"} dir-)
-              (assoc :deps (rand-nth [{:author1 "/tmp/additional-dep1/"}
-                                      {:author2 "/tmp/additional-dep2/"}
-                                      {:author3 "/tmp/additional-dep3/"}]))))
-      (spit (str dir "/" main ".edn") {'ns (symbol (str dir- "." main))})
-      (git-init dir))))
 
-(t/deftest init
-  (fixture)
-  (git-init root)
+(defn mk-module-dir [root-dir module-name]
+  (str root-dir "/" module-name))
 
-  (spit (str root "/zrc/veschin.edn")
-        {'ns 'veschin
-         ;; 'import #{'a}
-         })
 
-  (spit (str root "/zen-package.edn")
-        {:artifact :veschin
-         :deps {:a "/tmp/a"
-                :b "/tmp/b"
-                :c "/tmp/c"}})
+(defn zen-ns->file-name [zen-ns]
+  (-> (name zen-ns)
+      (string/replace \. \/)
+      (str ".edn")))
 
-  (sut/zen-init-deps! root)
 
-  (def ztx (zen.core/new-context {:paths [(str root "/zrc")
-                                          (str root "/zen-modules")]}))
+(defn spit-zrc [module-dir zen-namespaces]
+  (mkdir (str module-dir "/zrc"))
 
-  (zen.core/read-ns ztx 'veschin)
+  (doseq [zen-ns zen-namespaces]
+    (let [file-name (zen-ns->file-name (get zen-ns 'ns))]
+      (spit (str module-dir "/zrc/" file-name) zen-ns))))
 
-  (zen.core/read-ns ztx 'a)
+
+(defn spit-deps [root-dir module-dir deps]
+  (spit (str module-dir "/zen-package.edn")
+        {:deps (into {}
+                     (map (fn [dep-name]
+                            [dep-name (mk-module-dir root-dir dep-name)]))
+                     deps)}))
+
+
+(defn mk-module-fixture [root-dir module-name module-params]
+  (let [module-dir (mk-module-dir root-dir module-name)]
+
+    (spit-zrc module-dir (:zrc module-params))
+
+    (spit-deps root-dir module-dir (:deps module-params))
+
+    (git-init-commit module-dir)
+
+    :done))
+
+
+(defn mk-fixtures [test-dir deps]
+  (mkdir test-dir)
+
+  (doseq [module-name (keys deps)]
+    (mk-module-fixture test-dir module-name (get deps module-name))))
+
+
+(defn rm-fixtures [test-dir]
+  (rm test-dir))
+
+
+(t/deftest init-test
+  (def test-dir "/tmp/zen.package-test")
+
+  (rm-fixtures test-dir)
+
+  (mk-fixtures test-dir
+               {'test-module {:deps '#{a-lib}
+                              :zrc '#{{ns main
+                                       import #{a}
+                                       sym {:zen/tags #{a/tag}
+                                            :a "a"}}}}
+
+                'a-lib       {:deps '#{a-lib-dep}
+                              :zrc '#{{ns a
+                                       import #{a-dep}
+                                       tag
+                                       {:zen/tags #{zen/schema zen/tag}
+                                        :confirms #{a-dep/tag-sch}}}}}
+
+                'a-lib-dep   {:deps '#{}
+                              :zrc '#{{ns a-dep
+                                       tag-sch
+                                       {:zen/tags #{zen/schema}
+                                        :type zen/map
+                                        :require #{:a}
+                                        :keys {:a {:type zen/string}}}}}}})
+
+  (def module-dir (str test-dir "/test-module"))
+
+  (sut/zen-init-deps! module-dir)
+
+  (def ztx (zen.core/new-context {:package-paths [module-dir]}))
+
+  (zen.core/read-ns ztx 'main)
 
   (t/is (empty? (zen.core/errors ztx)))
 
-  ;; (t/is (empty? (:errors (zen.core/validate ztx #{'my-module/my-sch-from-a-which-depends-on-b}))))
-  )
+  (t/is (= #{'main/sym}
+           (zen.core/get-tag ztx 'a/tag)))
+
+  (t/is (empty? (:errors (zen.core/validate ztx
+                                            #{'a/tag}
+                                            (zen.core/get-symbol ztx 'main/sym))))))
 
 
 #_(t/deftest zen-pm
