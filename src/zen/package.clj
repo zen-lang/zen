@@ -1,6 +1,7 @@
 (ns zen.package
   (:require [clojure.string :as str]
             [clojure.java.shell :as shell]
+            [clojure.java.io :as io]
             [clojure.edn :as edn]))
 
 
@@ -36,10 +37,19 @@
     (sh! "chmod" "+x" precommit-hook-file)))
 
 
+(defn append-gitignore-zen-modules [root]
+  (let [gitignore-path (str root "/.gitignore")
+        gitignore      (when (.exists (io/file gitignore-path))
+                         (slurp gitignore-path))]
+    (when-not (str/includes? (str gitignore) "/zen-modules\n")
+      (spit (str root "/.gitignore") "\n/zen-modules\n" :append true))))
+
+
 (defn zen-init! [root] #_"TODO: templating goes here"
   (sh! "git" "init" :dir root)
   (mkdir! root "zrc")
-  (init-pre-commit-hook! root))
+  (init-pre-commit-hook! root)
+  (append-gitignore-zen-modules root))
 
 
 (defn zen-init-deps-recur! [root deps]
@@ -55,7 +65,7 @@
 
       :else
       (let [dep-name-str (name dep-name)]
-        (sh! "git" "submodule" "add" (str dep-url) dep-name-str
+        (sh! "git" "clone" (str dep-url) dep-name-str
              :dir root)
         (recur
           (concat (read-deps (str root "/" dep-name-str))
