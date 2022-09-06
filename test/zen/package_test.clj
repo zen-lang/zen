@@ -84,7 +84,8 @@
 
   (spit (str root "/zrc/veschin.edn")
         {'ns 'veschin
-         'import #{'a}})
+         ;; 'import #{'a}
+         })
 
   (spit (str root "/zen-package.edn")
         {:artifact :veschin
@@ -94,9 +95,12 @@
 
   (sut/zen-init-deps! root)
 
-  (def ztx (zen.core/new-context {:paths [(str root "/zrc")]}))
+  (def ztx (zen.core/new-context {:paths [(str root "/zrc")
+                                          (str root "/zen-modules")]}))
 
   (zen.core/read-ns ztx 'veschin)
+
+  (zen.core/read-ns ztx 'a)
 
   (t/is (empty? (zen.core/errors ztx)))
 
