@@ -1,17 +1,17 @@
 (ns zen.package-test
   (:require [zen.package :as sut]
             [zen.core :as zen]
-            [clojure.string :as string]
+            [clojure.string :as str]
             [clojure.test :as t]))
 
 
 (defn get-git-hash [path]
   (as-> (slurp (str path "/.git/HEAD")) v
-    (string/trim-newline v)
+    (str/trim-newline v)
     (subs v 5)
     (str path "/.git/" v)
     (slurp v)
-    (string/trim-newline v)))
+    (str/trim-newline v)))
 
 
 (defn zip-entries [zipfile]
@@ -61,7 +61,7 @@
 
 (defn zen-ns->file-name [zen-ns]
   (-> (name zen-ns)
-      (string/replace \. \/)
+      (str/replace \. \/)
       (str ".edn")))
 
 

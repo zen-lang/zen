@@ -1,11 +1,11 @@
 (ns zen.package
-  (:require [clojure.string :as string]
+  (:require [clojure.string :as str]
             [clojure.java.shell :as shell]
             [clojure.edn :as edn]))
 
 
 (defn sh! [& args]
-  (println "$" (clojure.string/join " " args))
+  (println "$" (str/join " " args))
   (let [result (apply shell/sh args)]
     (when-let [out (:out result)]
       (println out))
