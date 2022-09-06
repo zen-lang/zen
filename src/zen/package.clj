@@ -42,27 +42,31 @@
   (init-pre-commit-hook! root))
 
 
-(defn zen-init-deps-recur! [initted-deps root deps] #_"NOTE: add recursive pull protection"
-  (reduce
-    (fn [initted-deps-acc [dep-name dep-url]]
-      (let [dep-name (name dep-name)]
-        (if (contains? initted-deps-acc dep-name)
-          initted-deps-acc
-          (do
-            (sh! "git" "submodule" "add" (str dep-url) dep-name
-                 :dir root)
-            (zen-init-deps-recur! (conj initted-deps-acc dep-name)
-                                  root
-                                  (read-deps (str root "/" dep-name)))))))
-    initted-deps
-    deps))
+(defn zen-init-deps-recur! [root deps]
+  (loop [[[dep-name dep-url] & deps-to-init] deps
+         initted-deps #{}]
+    (cond
+      (nil? dep-name)
+      initted-deps
+
+      (contains? initted-deps dep-name)
+      (recur deps-to-init
+             initted-deps)
+
+      :else
+      (let [dep-name-str (name dep-name)]
+        (sh! "git" "submodule" "add" (str dep-url) dep-name-str
+             :dir root)
+        (recur
+          (concat (read-deps (str root "/" dep-name-str))
+                  deps-to-init)
+          (conj initted-deps dep-name))))))
 
 
 (defn zen-init-deps! [root]
   (mkdir! root "zen-modules")
 
   (zen-init-deps-recur!
-    #{}
     (str root "/zen-modules")
     (read-deps root)))
 
