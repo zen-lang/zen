@@ -143,11 +143,6 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
-(defn valid-dir? [p modules-path]
- (let [modules (io/file (str p modules-path))]
-   (when (and (.exists modules) (.isDirectory modules))
-     modules)))
-
 ;; TODO: cache find file
 (defn find-file [ctx paths pth]
   (or (io/resource pth)
