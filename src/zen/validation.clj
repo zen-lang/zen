@@ -5,6 +5,9 @@
             [zen.utils]
             [clojure.string :as str]))
 
+;; NAMESPACE DEPRECATED
+;; use zen.v2-validation
+
 (def get-symbol zen.utils/get-symbol)
 
 (defn update-acc [ctx acc {dp :path sp :schema}]

@@ -1,5 +1,5 @@
-{ns     zen.tests.keyname-schemas-test
- import #{zen.test}
+{:ns     zen.tests.keyname-schemas-test
+ :import #{zen.test}
 
  mytag {:zen/tags #{zen/tag}}
 

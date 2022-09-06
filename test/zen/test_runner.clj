@@ -102,5 +102,5 @@
               #_(report-step ztx step match-res test-def)
               {:desc (:desc step) :version version :expected (:match step) :got step-res}))))))))
 
-(defn zen-read-ns [ztx s]
+(defn zen-read-ns [ztx s & args]
   (is (= :zen/loaded (zen.core/read-ns ztx s))))

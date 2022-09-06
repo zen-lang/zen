@@ -1,6 +1,6 @@
-{ns zen.tests.types-test
+{:ns zen.tests.types-test
 
- import #{zen.test zen.tests.expr-alias}
+ :import #{zen.test}
 
  any-schema
  {:zen/tags #{zen/schema}
@@ -100,18 +100,6 @@
   :type zen/map
   :keys {:a {:type zen/date}}}
 
- date-schema-past
- {:zen/tags #{zen/schema}
-  :type zen/map
-  :keys {:a {:type zen/date
-             :in-past true}}}
-
- date-schema-future
- {:zen/tags #{zen/schema}
-  :type zen/map
-  :keys {:a {:type zen/date
-             :in-future true}}}
-
  date-tests
  {:zen/tags #{zen.test/case}
   :only-for #{:v2}
@@ -181,28 +169,6 @@
        :type "date.type"
        :message "Expected type of 'date, got 'string"
        :schema [date-schema #_:keys :a :type]}]}}
-
-   ;; TODO in-past and in-future flags are not implemented
-
-   #_{:desc "Cheks if given str with day from past"
-      :do {:type zen.test/validate :schema date-schema-past :data {:a "2021-06-20"}}
-      :match
-      {:errors zen.test/nil?}}
-
-   #_{:desc "Cheks if given str with day from past incorrect"
-      :do {:type zen.test/validate :schema date-schema-past :data {:a "3021-06-20"}}
-      :match
-      {:errors [{} nil]}}
-
-   #_{:desc "Cheks if given str with day from future"
-      :do {:type zen.test/validate :schema date-schema-future :data {:a "2100-06-20"}}
-      :match
-      {:errors zen.test/nil?}}
-
-   #_{:desc "Cheks if given str with day from future incorrect"
-      :do {:type zen.test/validate :schema date-schema-future :data {:a "1100-06-20"}}
-      :match
-      {:errors [{} nil]}}
 
    {:desc "valid date given"
     :do {:type zen.test/validate :schema date-schema :data {:a "2021-08-06"}}
@@ -703,19 +669,13 @@
              :minItems 4
              :maxItems 6}}}
 
- expr-schema
- {:zen/tags #{zen/schema}
-  :keys
-  {:my/lisp
-   {:keys
-    {:expr
-     {:type zen/list}}}}}
-
+ ;; TODO implement is-key extension for list expr
+ ;; validate expr against expr-schema
  expr
  {:zen/tags #{zen/schema}
-  :confirms expr-schema
-  :keys {:user {:type zen/string}}
-  :my/lisp {:expr (print hello user zen.tests.expr-alias/argument)}}
+  :type zen/map
+  :keys {:user {:type zen/string}
+         :list-value {:const {:value (print hello user zen.test/empty?)}}}}
 
  list-every
  {:zen/tags #{zen/schema}

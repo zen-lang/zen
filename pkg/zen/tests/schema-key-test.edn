@@ -1,6 +1,6 @@
-{ns zen.tests.schema-key-test
+{:ns zen.tests.schema-key-test
 
- import #{zen.test}
+ :import #{zen.test}
 
  test-tag {:zen/tags #{zen/tag}
            :zen/desc "a tag for test"}

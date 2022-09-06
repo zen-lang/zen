@@ -1,19 +1,17 @@
-{ns zen
+{:ns zen
 
  namespace
  {:zen/tags #{schema}
   :zen/desc "Schema for namespace"
   :type map
-  :key {:type symbol}
+  :key {:type case
+        :case [{:when {:type symbol}}
+               {:when {:type keyword}}]}
+  ;; TODO add values validation
   :values {:type zen/any}
-
-  ;; TODO impl toplevel checks
-  #_:keys #_{ns      {:type symbol}
-             imports {:type set :every {:type symbol}}
-             require {:type map
-                      :key {:type symbol}
-                   ;; TODO impl namespaced check
-                      :values {:type symbol #_:namespaced #_true}}}}
+  :keys {:ns      {:type symbol}
+         :imports {:type set :every {:type symbol}}
+         :alias {:type symbol}}}
 
  schema
  {:zen/tags #{schema tag}

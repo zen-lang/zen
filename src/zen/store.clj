@@ -7,12 +7,9 @@
             [edamame.core]
             [clojure.string :as str]))
 
-
 (def get-symbol zen.utils/get-symbol)
 
-
 (def get-tag zen.utils/get-tag)
-
 
 (defn update-types-recur [ctx tp-sym sym]
   (swap! ctx update-in [:tps tp-sym] (fn [x] (conj (or x #{}) sym)))
@@ -69,13 +66,13 @@
           (swap! ctx update :errors (fn [x] (into (or x []) (mapv #(assoc % :resource (:zen/name res)) errs)))))))))
 
 (defn load-symbol [ctx nmsps k v]
-  (let [ns-name (get nmsps 'ns)
+  (let [ns-name (or (get nmsps 'ns) (get nmsps :ns))
         ns-str (name ns-name)
         sym (zen.utils/mk-symbol ns-name k)
         res (eval-resource ctx ns-str ns-name nmsps k v)]
     (swap! ctx (fn [ctx] (update-in ctx [:symbols sym] (fn [x]
-                                                        #_(when x (println "WARN: reload" (:zen/name res)))
-                                                        res))))
+                                                         #_(when x (println "WARN: reload" (:zen/name res)))
+                                                         res))))
     (doseq [tg (:zen/tags res)]
       (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
     res))
@@ -83,20 +80,17 @@
 (defn load-alias [ctx alias-dest alias]
   (swap! ctx update :aliases zen.utils/disj-set-union-push alias-dest alias))
 
-
 (defn symbol-definition? [[k v]]
-  (and (symbol? k) (map? v))) ;; TODO: 
-
+  (and (symbol? k) (map? v)))
 
 (defn symbol-alias? [[k v]]
   (and (symbol? k) (qualified-symbol? v)))
-
 
 (defn pre-load-ns!
   "Loads symbols from nmsps to ctx without any processing
   so they can be referenced before they're processed"
   [ctx nmsps]
-  (let [ns-name (get nmsps 'ns)
+  (let [ns-name (or (get nmsps 'ns) (get nmsps :ns))
         this-ns-symbols
         (into {}
               (keep (fn [[sym schema :as kv]]
@@ -106,17 +100,17 @@
               nmsps)]
     (swap! ctx update :symbols (partial merge this-ns-symbols))))
 
-
 (defn load-ns [ctx nmsps & [opts]]
-  (let [ns-name (get nmsps 'ns)]
+  (let [ns-name (or (get nmsps 'ns) (get nmsps :ns))
+        aliased-ns (or (get nmsps 'alias) (get nmsps :alias))]
     (when (not (get-in @ctx [:ns ns-name]))
       (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
 
       (pre-load-ns! ctx nmsps)
 
-      (doseq [imp (cond->> (get nmsps 'import)
-                    (contains? nmsps 'alias)
-                    (cons (get nmsps 'alias)))]
+      (doseq [imp (cond->> (or (get nmsps 'import)
+                               (get nmsps :import))
+                    (symbol? aliased-ns) (cons aliased-ns))]
         (cond
           (get-in @ctx [:ns imp])
           :already-imported
@@ -127,8 +121,8 @@
           :else
           (read-ns ctx imp {:ns ns-name})))
 
-      (when-let [aliased-ns (get nmsps 'alias)]
-        (doseq [[aliased-sym alias-v :as kv] (get-in @ctx [:ns aliased-ns])]
+      (when (symbol? aliased-ns)
+        (doseq [[aliased-sym _ :as kv] (get-in @ctx [:ns aliased-ns])]
           (when (symbol-definition? kv)
             (let [shadowed-here? (contains? nmsps aliased-sym)]
               (when (not shadowed-here?)
@@ -136,14 +130,12 @@
                             (zen.utils/mk-symbol aliased-ns aliased-sym)
                             (zen.utils/mk-symbol ns-name aliased-sym)))))))
 
-      (->> (dissoc nmsps ['ns 'import 'alias])
+      (->> (dissoc nmsps ['ns 'import 'alias :ns :import :alias])
            (mapv (fn [[k v :as kv]]
                    (cond (symbol-definition? kv) (load-symbol ctx nmsps k (merge v opts))
                          (symbol-alias? kv)      (load-alias ctx v (zen.utils/mk-symbol ns-name k))
                          :else                   nil)))
            (mapv (fn [res] (validate-resource ctx res)))))))
-
-
 
 (defn load-ns! [ctx nmsps]
   (assert (map? nmsps) "Expected map")
@@ -213,16 +205,16 @@
                                                                   'env-integer (fn [v] (env-integer env v))
                                                                   'env-symbol  (fn [v] (env-symbol  env v))
                                                                   'env-number  (fn [v] (env-number  env v))
-                                                                  'env-keyword (fn [v] (env-keyword  env v))
-                                                                  }})]
-          (if (= nm (get nmsps 'ns))
+                                                                  'env-keyword (fn [v] (env-keyword  env v))}})
+              ns-name (or (get nmsps 'ns) (get nmsps :ns))]
+          (if (= nm ns-name)
             (do (load-ns ctx nmsps {:zen/file pth})
                 :zen/loaded)
-            (do (println :file-doesnt-match-namespace (.getPath file) nm (get nmsps 'ns))
+            (do (println :file-doesnt-match-namespace (.getPath file) nm ns-name)
                 (swap! ctx update :errors
                        (fnil conj [])
                        {:message (str "Filename should match contained namespace. Expected "
-                                      nm " got " (get nmsps 'ns))
+                                      nm " got " ns-name)
                         :file (.getPath file)
                         :ns nm})
                 :zen/load-failed)))
@@ -256,4 +248,3 @@
   (let [tps (get res 'types)]
     (or (and (set? tps) (contains? tps 'primitive))
         (= tps 'primitive))))
-

@@ -81,5 +81,18 @@
 
   (is (empty? (:errors @ctx))))
 
-(comment
-  @ctx)
+(deftest keywords-syntax
+  (def ztx (zen.core/new-context {:unsafe true}))
+
+  (zen.core/load-ns!
+   ztx {:ns 'mytest
+
+        :import #{'zen.test}
+
+        'just-schema
+        {:zen/tags #{'zen/schema}
+         :type 'zen/map}})
+
+  (def errs (:errors @ztx))
+
+  (is (empty? errs)))
