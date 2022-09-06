@@ -113,3 +113,6 @@
     (recur-flat! build-dir)
     (sh! "rm" "-rf" (str build-dir "/zen_modules") (str build-dir "/zrc"))
     (sh! "zip" "-r" "uberzen.zip" "." :dir build-dir)))
+
+
+(defn check-compatible [old-ztx new-ztx])
