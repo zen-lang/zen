@@ -8,7 +8,7 @@
   (println "$" (str/join " " args))
   (let [result (apply shell/sh args)]
     (when-let [out (:out result)]
-      (println out))
+      (print out))
     result))
 
 
