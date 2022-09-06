@@ -114,5 +114,21 @@
     (sh! "rm" "-rf" (str build-dir "/zen_modules") (str build-dir "/zrc"))
     (sh! "zip" "-r" "uberzen.zip" "." :dir build-dir)))
 
+(defn namespace-check [old-ztx new-ztx]
+  (let [[lost _new _unchanged]
+        (->> [old-ztx new-ztx]
+             (map (comp set keys :ns))
+             (apply clojure.data/diff))]
+    (when lost
+      {:type :namespace/lost
+       :message (str "Lost namespaces: "  lost)
+       :namespaces lost})))
 
-(defn check-compatible [old-ztx new-ztx])
+
+(defn check-compatible [old-ztx new-ztx]
+  (let [errors (filter some? [(namespace-check old-ztx new-ztx)
+                              ])]
+    (if (not-empty errors)
+      {:status :error
+       :errors errors}
+      {:status :ok})))
