@@ -39,31 +39,16 @@
     (spit precommit-hook-file "#!/bin/bash \n\necho \"hello world!\"")
     (sh! "chmod" "+x" precommit-hook-file)))
 
+
 (defn zen-init! [root]
-  #_(sh! "rm" "-rf" root)
-  #_(.mkdir (java.io.File. root))
-  #_(.mkdir (java.io.File. zrc))
-  #_(spit (str zrc "/main.edn") (str '{ns main}))
-
-  (mkdir! root "zrc")
-  (mkdir! root "zen-modules")
   (git-init! root)
-
-  #_(spit (str root "/.gitignore") "/zen_modules")
-
-
-  #_(sh&&! ["git" "add" "." :dir dir]
-           ["git" "commit" "-m" "\"Initial commit\"" :dir dir])
-
-  #_#_(spit pkg-file (str '[[a "/tmp/a"]
-                            [b.dir "/tmp/b"]]))
-  (zen-clone! root pkg-file))
+  (mkdir! root "zrc")
+  (mkdir! root "zen-modules"))
 
 
 (defn zen-init-deps-recur! [root deps] #_"NOTE: add recursive pull protection"
   (doseq [[dep-name dep-url] deps
           :let [dep-name (name dep-name)]]
-    (println "name->" dep-name " url-> " dep-url)
     (sh! "git" "submodule" "add" (str dep-url) dep-name
          :dir root)
     (zen-init-deps-recur! root (read-deps (str root "/" dep-name)))))
@@ -75,7 +60,6 @@
   (zen-init-deps-recur!
     (str root "/zen-modules")
     (read-deps root)))
-
 
 
 #_(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))
