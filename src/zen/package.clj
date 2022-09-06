@@ -3,7 +3,8 @@
             [clojure.java.shell :as shell]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
-            clojure.data))
+            clojure.data
+            clojure.set))
 
 
 (defn sh! [& args]
@@ -124,10 +125,16 @@
        :message    (str "Lost namespaces: "  lost)
        :namespaces lost})))
 
+(def reserverd-syms #{'import 'ns 'alias})
+
+(defn zen-ns-syms [zen-ns]
+  (apply disj (set (keys zen-ns)) reserverd-syms))
+
 (defn symbols-check [old-ztx new-ztx]
-  (let [namespaces-in-both (-> old-ztx :ns keys)
+  (let [namespaces-in-both (clojure.set/intersection (-> old-ztx :ns keys set)
+                                                     (-> new-ztx :ns keys set))
         to-set-of-syms     #(update-vals (select-keys (:ns %) namespaces-in-both)
-                                         (comp set keys))
+                                         zen-ns-syms)
         [lost _new _unchanged]
         (clojure.data/diff (to-set-of-syms old-ztx)
                            (to-set-of-syms new-ztx))]
@@ -139,7 +146,7 @@
 
 (defn check-compatible [old-ztx new-ztx]
   (let [errors (vec (filter some? [(namespace-check old-ztx new-ztx)
-                               (symbols-check old-ztx new-ztx)]))]
+                                   (symbols-check old-ztx new-ztx)]))]
     (if (not-empty errors)
       {:status :error
        :errors errors}
