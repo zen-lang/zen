@@ -143,26 +143,29 @@
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
+(defn expand-node-modules [path]
+  (let [modules (io/file (str path "/node_modules"))]
+    (when (and (.exists modules) (.isDirectory modules))
+      (->> (.listFiles modules)
+           (mapcat (fn [x]
+                     (if (and (.isDirectory x) (str/starts-with? (.getName x) "@"))
+                       (.listFiles x)
+                       [x])))
+           (filter #(.isDirectory %))))))
+
+(defn find-in-paths [paths pth]
+  (loop [[p & ps] paths]
+    (when p
+      (let [fpth (str p "/" pth)
+            file (io/file fpth)]
+        (if (.exists file)
+          file
+          (recur (concat (expand-node-modules p) ps)))))))
+
 ;; TODO: cache find file
-(defn find-file [ctx paths pth]
+(defn find-file [ctx pth]
   (or (io/resource pth)
-      (loop [[p & ps] paths]
-        (when p
-          (let [fpth (str p "/" pth)
-                file (io/file fpth)]
-            (if (.exists file)
-              file
-              (let [modules (io/file (str p "/node_modules"))]
-                (if (and (.exists modules) (.isDirectory modules))
-                  (or (->> (.listFiles modules)
-                           (mapcat (fn [x]
-                                     (if (and (.isDirectory x) (str/starts-with? (.getName x) "@"))
-                                       (.listFiles x)
-                                       [x])))
-                           (filter #(.isDirectory %))
-                           (some (fn [x] (find-file ctx [x] pth))))
-                      (recur ps))
-                  (recur ps)))))))))
+      (find-in-paths (:paths @ctx) pth)))
 
 
 (defn get-env [env env-name]
@@ -191,7 +194,7 @@
 
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
-    (if-let [file (find-file ctx (:paths @ctx) pth)]
+    (if-let [file (find-file ctx pth)]
       (try
         (let [content (slurp file)
               env (:env @ctx)
