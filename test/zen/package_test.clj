@@ -55,8 +55,8 @@
   (sut/sh! "git" "commit" "-m" "\"Initial commit\"" :dir dir))
 
 
-(defn mk-module-dir [root-dir module-name]
-  (str root-dir "/" module-name))
+(defn mk-module-dir-path [root-dir-path module-name]
+  (str root-dir-path "/" module-name))
 
 
 (defn zen-ns->file-name [zen-ns]
@@ -65,51 +65,51 @@
       (str ".edn")))
 
 
-(defn spit-zrc [module-dir zen-namespaces]
-  (mkdir (str module-dir "/zrc"))
+(defn spit-zrc [module-dir-path zen-namespaces]
+  (mkdir (str module-dir-path "/zrc"))
 
   (doseq [zen-ns zen-namespaces]
     (let [file-name (zen-ns->file-name (get zen-ns 'ns))]
-      (spit (str module-dir "/zrc/" file-name) zen-ns))))
+      (spit (str module-dir-path "/zrc/" file-name) zen-ns))))
 
 
-(defn spit-deps [root-dir module-dir deps]
-  (spit (str module-dir "/zen-package.edn")
+(defn spit-deps [root-dir-path module-dir-path deps]
+  (spit (str module-dir-path "/zen-package.edn")
         {:deps (into {}
                      (map (fn [dep-name]
-                            [dep-name (mk-module-dir root-dir dep-name)]))
+                            [dep-name (mk-module-dir-path root-dir-path dep-name)]))
                      deps)}))
 
 
-(defn mk-module-fixture [root-dir module-name module-params]
-  (let [module-dir (mk-module-dir root-dir module-name)]
+(defn mk-module-fixture [root-dir-path module-name module-params]
+  (let [module-dir-path (mk-module-dir-path root-dir-path module-name)]
 
-    (spit-zrc module-dir (:zrc module-params))
+    (spit-zrc module-dir-path (:zrc module-params))
 
-    (spit-deps root-dir module-dir (:deps module-params))
+    (spit-deps root-dir-path module-dir-path (:deps module-params))
 
-    (git-init-commit module-dir)
+    (git-init-commit module-dir-path)
 
     :done))
 
 
-(defn mk-fixtures [test-dir deps]
-  (mkdir test-dir)
+(defn mk-fixtures [test-dir-path deps]
+  (mkdir test-dir-path)
 
   (doseq [module-name (keys deps)]
-    (mk-module-fixture test-dir module-name (get deps module-name))))
+    (mk-module-fixture test-dir-path module-name (get deps module-name))))
 
 
-(defn rm-fixtures [test-dir]
-  (rm test-dir))
+(defn rm-fixtures [test-dir-path]
+  (rm test-dir-path))
 
 
 (t/deftest init-test
-  (def test-dir "/tmp/zen.package-test")
+  (def test-dir-path "/tmp/zen.package-test")
 
-  (rm-fixtures test-dir)
+  (rm-fixtures test-dir-path)
 
-  (mk-fixtures test-dir
+  (mk-fixtures test-dir-path
                {'test-module {:deps '#{a-lib}
                               :zrc '#{{ns main
                                        import #{a}
@@ -131,11 +131,11 @@
                                         :require #{:a}
                                         :keys {:a {:type zen/string}}}}}}})
 
-  (def module-dir (str test-dir "/test-module"))
+  (def module-dir-path (str test-dir-path "/test-module"))
 
-  (sut/zen-init-deps! module-dir)
+  (sut/zen-init-deps! module-dir-path)
 
-  (def ztx (zen.core/new-context {:package-paths [module-dir]}))
+  (def ztx (zen.core/new-context {:package-paths [module-dir-path]}))
 
   (zen.core/read-ns ztx 'main)
 
