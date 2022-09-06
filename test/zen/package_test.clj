@@ -118,12 +118,21 @@
                                        sym {:zen/tags #{a/tag}
                                             :a "a"}}}}
 
-                'a-lib       {:deps '#{a-lib-dep}
+                'a-lib       {:deps '#{a-lib-dep b-lib}
                               :zrc '#{{ns a
-                                       import #{a-dep}
-                                       tag
-                                       {:zen/tags #{zen/schema zen/tag}
-                                        :confirms #{a-dep/tag-sch}}}}}
+                                       import #{a-dep b}
+                                       tag {:zen/tags #{zen/schema zen/tag}
+                                            :confirms #{a-dep/tag-sch}}
+                                       recur-sch {:zen/tags #{zen/schema}
+                                                  :type zen/map
+                                                  :keys {:a {:confirms #{b/recur-sch}}}}}}}
+
+                'b-lib        {:deps '#{a-lib}
+                               :zrc '#{{ns b
+                                        import #{a}
+                                        recur-sch {:zen/tags #{zen/schema}
+                                                   :type zen/map
+                                                   :keys {:b {:confirms #{a/recur-sch}}}}}}}
 
                 'a-lib-dep   {:deps '#{}
                               :zrc '#{{ns a-dep
@@ -147,8 +156,8 @@
            (zen.core/get-tag ztx 'a/tag)))
 
   (t/is (empty? (:errors (zen.core/validate ztx
-                                            #{'a/tag}
-                                            (zen.core/get-symbol ztx 'main/sym))))))
+                                            #{'a/recur-sch}
+                                            {:a {:b {:a {:b {}}}}})))))
 
 
 #_(t/deftest zen-pm
