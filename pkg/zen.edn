@@ -434,6 +434,11 @@
  {:zen/tags #{zen/tag}
   :zen/desc "zen system operation -> (op name config request & [session])"}
 
+ engine
+ {:zen/tags #{zen/tag zen/schema}
+  :type map
+  :keys {:zen/state-key {:type keyword}}}
+
  system
  {:zen/tags #{zen/schema zen/tag}
   :zen/desc "zen system"
