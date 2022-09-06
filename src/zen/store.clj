@@ -160,9 +160,7 @@
             file (io/file fpth)]
         (if (.exists file)
           file
-          (or (some (fn [x] (find-in-paths [x] pth))
-                    (expand-node-modules p))
-              (recur ps)))))))
+          (recur (concat (expand-node-modules p) ps)))))))
 
 ;; TODO: cache find file
 (defn find-file [ctx paths pth]
