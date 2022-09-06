@@ -23,10 +23,6 @@
   (sh! "mkdir" "-p" name :dir path))
 
 
-(defn git-init! [path]
-  (sh! "git" "init" :dir path))
-
-
 (defn read-deps [root]
   (let [package-file (->> (str root "/zen-package.edn")
                           slurp
@@ -40,10 +36,10 @@
     (sh! "chmod" "+x" precommit-hook-file)))
 
 
-(defn zen-init! [root]
-  (git-init! root)
+(defn zen-init! [root] #_"TODO: templating goes here"
+  (sh! "git" "init" :dir root)
   (mkdir! root "zrc")
-  (mkdir! root "zen-modules"))
+  (init-pre-commit-hook! root))
 
 
 (defn zen-init-deps-recur! [root deps] #_"NOTE: add recursive pull protection"
