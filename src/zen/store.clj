@@ -156,58 +156,26 @@
    (when (and (.exists modules) (.isDirectory modules))
      modules)))
 
-(comment
-
-  (find-file (atom {}) ["/tmp/zen/veschin"] "a.edn")
-
-  )
-
 ;; TODO: cache find file
 (defn find-file [ctx paths pth]
   (or (io/resource pth)
-        (loop [[p & ps] paths]
-          (when p
-            (let [fpth (str p "/" pth)
-                  file (io/file fpth)]
-              (println " p -> " p
-                       " fpth -> " fpth
-                       " file -> " file
-                       " ex? " (.exists file)
-                       " mod? " (boolean (valid-dir? p "/zen-modules")))
-              (if (.exists file)
-                file
-                (if-let [modules (or (valid-dir? p "/zen-modules")
-                                     (valid-dir? p "/node_modules"))]
+      (loop [[p & ps] paths]
+        (when p
+          (let [fpth (str p "/" pth)
+                file (io/file fpth)]
+            (if (.exists file)
+              file
+              (let [modules (io/file (str p "/node_modules"))]
+                (if (and (.exists modules) (.isDirectory modules))
                   (or (->> (.listFiles modules)
                            (mapcat (fn [x]
-                                     (if (and (.isDirectory x)
-                                             (str/starts-with? (.getName x) "@"))
+                                     (if (and (.isDirectory x) (str/starts-with? (.getName x) "@"))
                                        (.listFiles x)
                                        [x])))
                            (filter #(.isDirectory %))
                            (some (fn [x] (find-file ctx [x] pth))))
                       (recur ps))
-                  (recur ps))))))))
-
-#_(defn find-file [ctx paths pth]
-    (or (io/resource pth)
-        (loop [[p & ps] paths]
-          (when p
-            (let [fpth (str p "/" pth)
-                  file (io/file fpth)]
-              (if (.exists file)
-                file
-                (let [modules (io/file (str p "/node_modules"))]
-                  (if (and (.exists modules) (.isDirectory modules))
-                    (or (->> (.listFiles modules)
-                             (mapcat (fn [x]
-                                       (if (and (.isDirectory x) (str/starts-with? (.getName x) "@"))
-                                         (.listFiles x)
-                                         [x])))
-                             (filter #(.isDirectory %))
-                             (some (fn [x] (find-file ctx [x] pth))))
-                        (recur ps))
-                    (recur ps)))))))))
+                  (recur ps)))))))))
 
 
 (defn get-env [env env-name]
