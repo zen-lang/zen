@@ -186,11 +186,14 @@
         {:ns '{a {ns a}}})
 
       (matcho/match (sut/check-compatible old-ztx new-ztx)
-                    {:status :error
-                     :errors [{}
-                              nil]}))
+                    {:status :error,
+                     :errors
+                     [{:type :namespace/lost,
+                       :namespaces '#{b}}
+                      {:type :symbol/lost,
+                       :ns-syms '{a #{import}, b #{ns}}}]}))
 
-  #_(t/testing "symbol remove"
+  (t/testing "symbol remove"
       (def old-ztx
         {:ns '{a {ns a
                   import #{b}
@@ -210,11 +213,12 @@
                         :type zen/string}}}})
 
       (matcho/match (sut/check-compatible old-ztx new-ztx)
-                    {:status :error
-                     :errors [{}
-                              nil]}))
+                    {:status :error,
+                     :errors
+                     [{:type :symbol/lost,
+                       :ns-syms '{b #{sym}}}]}))
 
-  #_(t/testing "schema breaking"
+  (t/testing "schema breaking"
       (def old-ztx
         {:ns '{a {ns a
                   import #{b}

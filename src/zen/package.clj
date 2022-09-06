@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [clojure.java.shell :as shell]
             [clojure.java.io :as io]
-            [clojure.edn :as edn]))
+            [clojure.edn :as edn]
+            clojure.data))
 
 
 (defn sh! [& args]
@@ -116,18 +117,29 @@
 
 (defn namespace-check [old-ztx new-ztx]
   (let [[lost _new _unchanged]
-        (->> [old-ztx new-ztx]
-             (map (comp set keys :ns))
-             (apply clojure.data/diff))]
+        (clojure.data/diff (-> old-ztx :ns keys set)
+                           (-> new-ztx :ns keys set))]
     (when lost
-      {:type :namespace/lost
-       :message (str "Lost namespaces: "  lost)
+      {:type       :namespace/lost
+       :message    (str "Lost namespaces: "  lost)
        :namespaces lost})))
+
+(defn symbols-check [old-ztx new-ztx]
+  (let [namespaces-in-both (-> old-ztx :ns keys)
+        to-set-of-syms     #(update-vals (select-keys (:ns %) namespaces-in-both)
+                                         (comp set keys))
+        [lost _new _unchanged]
+        (clojure.data/diff (to-set-of-syms old-ztx)
+                           (to-set-of-syms new-ztx))]
+    (when lost
+      {:type    :symbol/lost
+       :message (apply str "Lost syms: " (map (fn [[ns syms]] (str "in " ns " " syms "\n")) lost))
+       :ns-syms lost})))
 
 
 (defn check-compatible [old-ztx new-ztx]
-  (let [errors (filter some? [(namespace-check old-ztx new-ztx)
-                              ])]
+  (let [errors (vec (filter some? [(namespace-check old-ztx new-ztx)
+                               (symbols-check old-ztx new-ztx)]))]
     (if (not-empty errors)
       {:status :error
        :errors errors}
