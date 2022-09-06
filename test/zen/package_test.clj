@@ -48,7 +48,8 @@
 (defn mkdir [name] (sut/sh! "mkdir" "-p" name))
 (defn rm [& names] (apply sut/sh! "rm" "-rf" names))
 
-(defn git-init-commit [dir]
+(defn git-init-commit [dir] #_"NOTE: should be defined in zen.package.
+  TODO: Should add zen-modules to .gitignore, should add pre-commit hook"
   (sut/sh! "git" "init" :dir dir)
   (sut/sh! "git" "add" "." :dir dir)
   (sut/sh! "git" "commit" "-m" "\"Initial commit\"" :dir dir))
