@@ -1,6 +1,7 @@
 (ns zen.changes
   (:require [clojure.data]))
 
+
 (defn namespace-check [acc old-ztx new-ztx]
   (let [[lost _new unchanged]
         (clojure.data/diff (-> old-ztx :ns keys set)
@@ -11,10 +12,13 @@
                                        :message    (str "Lost namespaces: "  lost)
                                        :namespaces lost}))))
 
+
 (def reserverd-syms #{'import 'ns 'alias})
+
 
 (defn zen-ns-syms [zen-ns]
   (apply disj (set (keys zen-ns)) reserverd-syms))
+
 
 (defn symbols-check [acc old-ztx new-ztx]
   (let [namespaces-in-both (get-in acc [:data ::unchanged-namespaces])
