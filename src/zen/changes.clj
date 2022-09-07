@@ -83,6 +83,13 @@
          (mapcat get-node-values))))
 
 
+(defn zen-dsl-seq [ztx sym-def]
+  (if (= #{'zen/schema}
+         (:zen/tags sym-def))
+    (sch-seq sym-def)
+    :TODO))
+
+
 (defn check-compatible [old-ztx new-ztx]
   (let [acc (-> {:data {}, :errors []}
                 (namespace-check old-ztx new-ztx)
