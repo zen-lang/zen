@@ -5,8 +5,7 @@
             [matcho.core :as matcho]))
 
 
-
-(t/deftest sch-seq-test
+(t/deftest ^:kaocha/pending sch-seq-test
   (t/testing "any dsl traversing"
     (def ztx (zen.core/new-context))
 
