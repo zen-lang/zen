@@ -162,10 +162,28 @@
           file
           (recur (concat (expand-node-modules p) ps)))))))
 
+(defn expand-zen-modules [path]
+  (let [modules (io/file path)]
+    (when (and (.exists modules) (.isDirectory modules))
+      (->> (.listFiles modules)
+           (map (fn [x] (str x "/zrc")))
+           (filter #(.isDirectory (io/file %)))))))
+
+(defn expand-package-path [package-path]
+  (let [zrc-path         (str package-path "/zrc")
+        zen-modules-path (str package-path "/zen-modules")]
+    (cons zrc-path (expand-zen-modules zen-modules-path))))
+
+(defn find-in-package-paths [package-paths pth-to-find]
+  (find-in-paths (mapcat expand-package-path package-paths)
+                 pth-to-find))
+
 ;; TODO: cache find file
 (defn find-file [ctx pth]
   (or (io/resource pth)
+      (find-in-package-paths (:package-paths @ctx) pth)
       (find-in-paths (:paths @ctx) pth)))
+
 
 (defn get-env [env env-name]
   (or (get env (keyword env-name))

@@ -17,7 +17,7 @@ test:
 	clj -A:test:kaocha --skip zen.dev-test
 
 test-ci:
-	clojure -A:test:kaocha --skip zen.dev-test
+	clojure -A:test:kaocha --skip zen.dev-test --skip zen.package-test
 
 pub:
 	clj -A:deploy
