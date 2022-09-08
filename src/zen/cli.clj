@@ -11,6 +11,11 @@
     (zen.package/zen-init! to)))
 
 
+(defn pull-deps [_]
+  (let [to (zen.package/pwd)]
+    (zen.package/zen-init-deps! to)))
+
+
 (def cfg
   {:command     "zen"
    :description "Zen-lang cli. Provides zen validation, package managment and build tools."
@@ -21,7 +26,7 @@
                   :runs        init}
                  {:description "Recursively pulls all deps specified in package.edn to zen-modules/"
                   :command     "pull-deps"
-                  :runs        (fn [{:keys []}])}]})
+                  :runs        pull-deps}]})
 
 
 (defn -main
