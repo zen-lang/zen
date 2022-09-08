@@ -1,5 +1,5 @@
 .EXPORT_ALL_VARIABLES:
-.PHONY: test
+.PHONY: test build
 
 SHELL = bash
 
