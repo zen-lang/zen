@@ -225,7 +225,7 @@
           (if (= nm ns-name)
             (do (load-ns ctx nmsps {:zen/file pth})
                 :zen/loaded)
-            (do (println :file-doesnt-match-namespace (.getPath file) nm ns-name)
+            (do (prn :file-doesnt-match-namespace (.getPath file) nm ns-name)
                 (swap! ctx update :errors
                        (fnil conj [])
                        {:message (str "Filename should match contained namespace. Expected "
