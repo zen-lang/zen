@@ -51,12 +51,12 @@
   ([ztx]
    (load-used-namespaces ztx (collect-all-project-namespaces)))
 
-  ([ztx symbols]
+  ([ztx sym & symbols]
    (run! #(let [sym (symbol %)
-                zen-ns (or (namespace sym)
+                zen-ns (or (symbol (namespace sym))
                            sym)]
             (zen.core/read-ns ztx zen-ns))
-         symbols)))
+         (flatten (vector (cons sym symbols))))))
 
 
 (defn errors [_]
