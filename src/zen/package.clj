@@ -44,6 +44,7 @@
     (when-not (str/includes? (str gitignore) "/zen-modules\n")
       (spit (str root "/.gitignore") "\n/zen-modules\n" :append true))))
 
+(defn pwd [] (sh! "pwd"))
 
 (defn zen-init! [root] #_"TODO: templating goes here"
   (sh! "git" "init" :dir root)

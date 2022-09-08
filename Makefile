@@ -21,3 +21,6 @@ test-ci:
 
 pub:
 	clj -A:deploy
+
+build:
+	clj -T:build-pm uber

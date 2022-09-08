@@ -43,7 +43,12 @@
                                                    :sha     "3cb0a9daf1cb746259dc8309b218f9211ad3b33b"}}
            :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
            :main-opts ["-m" "test-runner"]}
-
+  :build-pm
+  {:extra-paths ["build"]
+   :ns-default build.zen
+   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
+   :extra-deps {io.github.clojure/tools.build {:git/url "https://github.com/clojure/tools.build"
+                                               :sha "0d20256c40b5a6b6adbcbdf7d0c52cf9e22e994d"}}}
   :build
   {:extra-paths ["build"]
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
