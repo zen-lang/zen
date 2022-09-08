@@ -21,7 +21,7 @@
 
 
 (defn errors [_]
-  (let [pwd "/tmp/foo" #_(zen.package/pwd :silent true)
+  (let [pwd (zen.package/pwd :silent true)
         ztx (zen.core/new-context {:package-paths [pwd]})
         zrc (str pwd "/zrc")
         relativize #(subs % (count zrc))
