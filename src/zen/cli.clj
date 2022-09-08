@@ -73,6 +73,20 @@
     (clojure.pprint/pprint (zen.core/validate ztx symbols data))))
 
 
+(defn get-symbol [{[symbol-str] :_arguments}]
+  (let [sym (clojure.edn/read-string symbol-str)
+        ztx (load-ztx)]
+    (load-used-namespaces ztx sym)
+    (clojure.pprint/pprint (zen.core/get-symbol ztx sym))))
+
+
+(defn get-tag [{[tag-str] :_arguments}]
+  (let [sym (clojure.edn/read-string tag-str)
+        ztx (load-ztx)]
+    (load-used-namespaces ztx sym)
+    (clojure.pprint/pprint (zen.core/get-tag ztx sym))))
+
+
 (defn exit [_]
   (System/exit 0))
 
@@ -94,6 +108,12 @@
                  {:description "Validates data with specified symbol. Use: `zen validate #{symbol} data`"
                   :command     "validate"
                   :runs        validate}
+                 {:description "Gets symbol definition"
+                  :command     "get-symbol"
+                  :runs        get-symbol}
+                 {:description "Gets symbols by tag"
+                  :command     "get-tag"
+                  :runs        get-tag}
                  {:description "Exits zen REPL"
                   :command     "exit"
                   :runs        exit}]})
