@@ -1,0 +1,2 @@
+#!/bin/sh
+rlwrap java -jar ~/bin/zen.jar "$@"
