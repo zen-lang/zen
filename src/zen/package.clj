@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [clojure.java.shell :as shell]
             [clojure.java.io :as io]
-            [clojure.edn :as edn]))
+            [clojure.edn :as edn]
+            clojure.pprint))
 
 
 (defn sh! [& args]
@@ -44,7 +45,7 @@
     (when-not (str/includes? (str gitignore) "/zen-modules\n")
       (spit (str root "/.gitignore") "\n/zen-modules\n" :append true))))
 
-(defn pwd [] (sh! "pwd"))
+(defn pwd [] (str/trim-newline (:out (sh! "pwd"))))
 
 (defn zen-init! [root] #_"TODO: templating goes here"
   (sh! "git" "init" :dir root)
@@ -52,6 +53,26 @@
   (init-pre-commit-hook! root)
   (append-gitignore-zen-modules root))
 
+(defn create-file!
+  [name content & [root]]
+  (let [name (if root (str root "/" name) name)
+        file (io/file name)]
+    (when-not (.exists file)
+      (io/make-parents file))
+    (spit name content)))
+
+(defn make-template! [root package-name]
+  (let [package (io/file (str root "/package.edn"))]
+    (if (.exists package)
+      :done
+      (do
+        (create-file! "package.edn" {:deps {}} root)
+        (create-file! ".gitignore" "\nzen-modules\n" root)
+        (when package-name
+          (create-file! (format "zrc/%s.edn" package-name)
+                        (format "{ns %s \n import #{}\n\n}"(symbol package-name))
+                        root))
+        (mkdir! root "zen-modules")))))
 
 (defn zen-init-deps-recur! [root deps]
   (loop [[[dep-name dep-url] & deps-to-init] deps
