@@ -53,7 +53,7 @@
 
   ([ztx sym & symbols]
    (run! #(let [sym (symbol %)
-                zen-ns (or (symbol (namespace sym))
+                zen-ns (or (some-> sym namespace symbol)
                            sym)]
             (zen.core/read-ns ztx zen-ns))
          (flatten (vector (cons sym symbols))))))
