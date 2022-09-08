@@ -2,7 +2,9 @@
   (:gen-class)
   (:require [cli-matic.core]
             [cli-matic.utils]
-            [zen.package]))
+            [zen.package]
+            [zen.core]
+            [clojure.pprint]))
 
 
 (defn init [{[name] :_arguments}]
@@ -16,6 +18,12 @@
     (zen.package/zen-init-deps! to)))
 
 
+(defn errors [_]
+  (let [pwd (zen.package/pwd :silent true)
+        ztx (zen.core/new-context {:package-paths [pwd]})]
+    (clojure.pprint/pprint (zen.core/errors ztx))))
+
+
 (def cfg
   {:command     "zen"
    :description "Zen-lang cli. Provides zen validation, package managment and build tools."
@@ -26,7 +34,10 @@
                   :runs        init}
                  {:description "Recursively pulls all deps specified in package.edn to zen-modules/"
                   :command     "pull-deps"
-                  :runs        pull-deps}]})
+                  :runs        pull-deps}
+                 {:description "Validates zen, returns errors"
+                  :command     "errors"
+                  :runs        errors}]})
 
 
 (defn -main

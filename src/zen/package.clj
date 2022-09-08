@@ -46,7 +46,9 @@
       (spit (str root "/.gitignore") "\n/zen-modules\n" :append true))))
 
 
-(defn pwd [] (str/trim-newline (:out (sh! "pwd"))))
+(defn pwd [& {:keys [silent]}]
+  (let [sh-fn (if silent shell/sh sh!)]
+    (str/trim-newline (:out (sh-fn "pwd")))))
 
 
 (defn zen-init! [root] #_"TODO: templating goes here"
