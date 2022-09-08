@@ -6,7 +6,8 @@
             [zen.core]
             [clojure.pprint]
             [clojure.java.io]
-            [clojure.string]))
+            [clojure.string]
+            [clojure.edn]))
 
 
 (defn init [{[name] :_arguments}]
@@ -42,6 +43,19 @@
     (clojure.pprint/pprint (zen.core/errors ztx))))
 
 
+(defn validate [{[symbols-str data-str] :_arguments }]
+  (let [pwd (zen.package/pwd :silent true)
+        ztx (zen.core/new-context {:package-paths [pwd]})
+
+        symbols (clojure.edn/read-string symbols-str)
+        data (clojure.edn/read-string data-str)
+
+        namespaces (map (comp symbol namespace) symbols)]
+
+    (run! #(zen.core/read-ns ztx %) namespaces)
+    (clojure.pprint/pprint (zen.core/validate ztx symbols data))))
+
+
 (def cfg
   {:command     "zen"
    :description "Zen-lang cli. Provides zen validation, package managment and build tools."
@@ -55,7 +69,10 @@
                   :runs        pull-deps}
                  {:description "Validates zen, returns errors"
                   :command     "errors"
-                  :runs        errors}]})
+                  :runs        errors}
+                 {:description "Validates data with specified symbol. Use: `zen validate #{symbol} data`"
+                  :command     "validate"
+                  :runs        validate}]})
 
 
 (defn -main
