@@ -4,7 +4,9 @@
             [cli-matic.utils]
             [zen.package]
             [zen.core]
-            [clojure.pprint]))
+            [clojure.pprint]
+            [clojure.java.io]
+            [clojure.string]))
 
 
 (defn init [{[name] :_arguments}]
@@ -19,8 +21,24 @@
 
 
 (defn errors [_]
-  (let [pwd (zen.package/pwd :silent true)
-        ztx (zen.core/new-context {:package-paths [pwd]})]
+  (let [pwd "/tmp/foo" #_(zen.package/pwd :silent true)
+        ztx (zen.core/new-context {:package-paths [pwd]})
+        zrc (str pwd "/zrc")
+        relativize #(subs % (count zrc))
+        zrc-edns (->> zrc
+                      clojure.java.io/file
+                      file-seq
+                      (filter #(clojure.string/ends-with? % ".edn"))
+                      (map #(relativize (.getAbsolutePath %)))
+                      (remove clojure.string/blank?)
+                      (map #(subs % 1)))
+        namespaces (map #(-> %
+                             (clojure.string/replace ".edn" "")
+                             (clojure.string/replace \/ \.)
+                             symbol)
+                        zrc-edns)]
+    (run! #(zen.core/read-ns ztx %) namespaces)
+
     (clojure.pprint/pprint (zen.core/errors ztx))))
 
 
