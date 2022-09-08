@@ -7,7 +7,8 @@
             [clojure.pprint]
             [clojure.java.io]
             [clojure.string]
-            [clojure.edn]))
+            [clojure.edn]
+            [clojure.stacktrace]))
 
 
 (defn init [{[name] :_arguments}]
@@ -56,11 +57,35 @@
     (clojure.pprint/pprint (zen.core/validate ztx symbols data))))
 
 
+(defn exit [_]
+  (System/exit 0))
+
+
+(defn repl [cfg _]
+  (let [commands (into {}
+                       (map (juxt :command :runs))
+                       (:subcommands cfg))
+        prompt "zen> "]
+    (while true
+      (try
+        (print prompt)
+        (flush)
+        (let [line         (read-line)
+              [cmd rest-s] (clojure.string/split line #" " 2)
+              args         (map pr-str (clojure.edn/read-string (str \[ rest-s \])))]
+          (when-let [f (get commands cmd)]
+            (f {:_arguments args})
+            (prn)))
+        (catch Exception e
+          (clojure.stacktrace/print-stack-trace e))))))
+
+
 (def cfg
   {:command     "zen"
-   :description "Zen-lang cli. Provides zen validation, package managment and build tools."
+   :description "Zen-lang cli. Provides zen validation, package managment and build tools. Without subcommand starts REPL"
    :version     "0.0.1"
    :opts        []
+   :runs        #(repl cfg %)
    :subcommands [{:description "Builds zen project from provided IG"
                   :command     "init"
                   :runs        init}
@@ -72,7 +97,10 @@
                   :runs        errors}
                  {:description "Validates data with specified symbol. Use: `zen validate #{symbol} data`"
                   :command     "validate"
-                  :runs        validate}]})
+                  :runs        validate}
+                 {:description "Exits zen REPL"
+                  :command     "exit"
+                  :runs        exit}]})
 
 
 (defn -main
