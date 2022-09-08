@@ -45,13 +45,16 @@
     (when-not (str/includes? (str gitignore) "/zen-modules\n")
       (spit (str root "/.gitignore") "\n/zen-modules\n" :append true))))
 
+
 (defn pwd [] (str/trim-newline (:out (sh! "pwd"))))
+
 
 (defn zen-init! [root] #_"TODO: templating goes here"
   (sh! "git" "init" :dir root)
   (mkdir! root "zrc")
   (init-pre-commit-hook! root)
   (append-gitignore-zen-modules root))
+
 
 (defn create-file!
   [name content & [root]]
@@ -60,6 +63,7 @@
     (when-not (.exists file)
       (io/make-parents file))
     (spit name content)))
+
 
 (defn make-template! [root package-name]
   (let [package (io/file (str root "/package.edn"))]
@@ -73,6 +77,7 @@
                         (format "{ns %s \n import #{}\n\n}"(symbol package-name))
                         root))
         (mkdir! root "zen-modules")))))
+
 
 (defn zen-init-deps-recur! [root deps]
   (loop [[[dep-name dep-url] & deps-to-init] deps

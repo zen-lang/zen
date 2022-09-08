@@ -4,6 +4,13 @@
             [cli-matic.utils]
             [zen.package]))
 
+
+(defn init [{[name] :_arguments}]
+  (let [to (zen.package/pwd)]
+    (zen.package/make-template! to name)
+    (zen.package/zen-init! to)))
+
+
 (def cfg
   {:command     "zen"
    :description "Zen-lang cli. Provides zen validation, package managment and build tools."
@@ -11,17 +18,16 @@
    :opts        []
    :subcommands [{:description "Builds zen project from provided IG"
                   :command     "init"
-                  :runs        (fn [{[name] :_arguments}]
-                                 (let [to (zen.package/pwd)]
-                                   (zen.package/make-template! to name)
-                                   (zen.package/zen-init! to)))}
+                  :runs        init}
                  {:description "Recursively pulls all deps specified in package.edn to zen-modules/"
                   :command     "pull-deps"
                   :runs        (fn [{:keys []}])}]})
 
+
 (defn -main
   [& args]
   (cli-matic.core/run-cmd args cfg))
+
 
 (comment
 
