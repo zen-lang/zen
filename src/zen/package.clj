@@ -66,11 +66,11 @@
 
 
 (defn make-template! [root package-name]
-  (let [package (io/file (str root "/package.edn"))]
+  (let [package (io/file (str root "/zen-package.edn"))]
     (if (.exists package)
       :done
       (do
-        (create-file! "package.edn" {:deps {}} root)
+        (create-file! "zen-package.edn" {:deps {}} root)
         (create-file! ".gitignore" "\nzen-modules\n" root)
         (when package-name
           (create-file! (format "zrc/%s.edn" package-name)
