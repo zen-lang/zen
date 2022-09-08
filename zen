@@ -1,2 +1,8 @@
 #!/bin/sh
-rlwrap java -jar ~/bin/zen.jar "$@"
+
+if [ $# -eq 0 ]
+  then
+    rlwrap java -jar ~/bin/zen.jar
+  else
+    java -jar ~/bin/zen.jar "$@"
+fi

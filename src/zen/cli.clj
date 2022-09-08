@@ -61,31 +61,11 @@
   (System/exit 0))
 
 
-(defn repl [cfg _]
-  (let [commands (into {}
-                       (map (juxt :command :runs))
-                       (:subcommands cfg))
-        prompt "zen> "]
-    (while true
-      (try
-        (print prompt)
-        (flush)
-        (let [line         (read-line)
-              [cmd rest-s] (clojure.string/split line #" " 2)
-              args         (map pr-str (clojure.edn/read-string (str \[ rest-s \])))]
-          (when-let [f (get commands cmd)]
-            (f {:_arguments args})
-            (prn)))
-        (catch Exception e
-          (clojure.stacktrace/print-stack-trace e))))))
-
-
 (def cfg
   {:command     "zen"
-   :description "Zen-lang cli. Provides zen validation, package managment and build tools. Without subcommand starts REPL"
+   :description "Zen-lang cli. Provides zen validation, package managment and build tools"
    :version     "0.0.1"
    :opts        []
-   :runs        #(repl cfg %)
    :subcommands [{:description "Builds zen project from provided IG"
                   :command     "init"
                   :runs        init}
@@ -103,9 +83,33 @@
                   :runs        exit}]})
 
 
+(defn repl [cfg]
+  (let [commands (into {}
+                       (map (juxt :command :runs))
+                       (:subcommands cfg))
+        prompt "zen> "]
+
+    (while true
+      (try
+        (print prompt)
+        (flush)
+        (let [line         (read-line)
+              [cmd rest-s] (clojure.string/split line #" " 2)
+              args         (map pr-str (clojure.edn/read-string (str \[ rest-s \])))]
+          (if-let [f (get commands cmd)]
+            (do
+              (f {:_arguments args})
+              (prn))
+            (println "Command not found. Available commands: " (clojure.string/join ", " (keys commands)))))
+        (catch Exception e
+          (clojure.stacktrace/print-stack-trace e))))))
+
+
 (defn -main
   [& args]
-  (cli-matic.core/run-cmd args cfg))
+  (if (seq args)
+    (cli-matic.core/run-cmd args cfg)
+    (repl cfg)))
 
 
 (comment
