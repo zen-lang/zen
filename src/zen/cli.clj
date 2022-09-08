@@ -22,9 +22,14 @@
     (zen.package/zen-init-deps! to)))
 
 
-(defn errors [_]
+(defn load-ztx []
   (let [pwd (zen.package/pwd :silent true)
-        ztx (zen.core/new-context {:package-paths [pwd]})
+        ztx (zen.core/new-context {:package-paths [pwd]})]
+    ztx))
+
+
+(defn collect-all-project-namespaces []
+  (let [pwd (zen.package/pwd :silent true)
         zrc (str pwd "/zrc")
         relativize #(subs % (count zrc))
         zrc-edns (->> zrc
@@ -39,21 +44,32 @@
                              (clojure.string/replace \/ \.)
                              symbol)
                         zrc-edns)]
-    (run! #(zen.core/read-ns ztx %) namespaces)
+    namespaces))
 
+
+(defn load-used-namespaces
+  ([ztx]
+   (load-used-namespaces ztx (collect-all-project-namespaces)))
+
+  ([ztx symbols]
+   (run! #(let [sym (symbol %)
+                zen-ns (or (namespace sym)
+                           sym)]
+            (zen.core/read-ns ztx zen-ns))
+         symbols)))
+
+
+(defn errors [_]
+  (let [ztx (load-ztx)]
+    (load-used-namespaces ztx)
     (clojure.pprint/pprint (zen.core/errors ztx))))
 
 
-(defn validate [{[symbols-str data-str] :_arguments }]
-  (let [pwd (zen.package/pwd :silent true)
-        ztx (zen.core/new-context {:package-paths [pwd]})
-
-        symbols (clojure.edn/read-string symbols-str)
+(defn validate [{[symbols-str data-str] :_arguments}]
+  (let [symbols (clojure.edn/read-string symbols-str)
         data (clojure.edn/read-string data-str)
-
-        namespaces (map (comp symbol namespace) symbols)]
-
-    (run! #(zen.core/read-ns ztx %) namespaces)
+        ztx (load-ztx)]
+    (load-used-namespaces ztx symbols)
     (clojure.pprint/pprint (zen.core/validate ztx symbols data))))
 
 
