@@ -5,7 +5,7 @@
             [matcho.core :as matcho]))
 
 
-(t/deftest ^:kaocha/pending changes-test
+(t/deftest changes-test
   (t/testing "ns remove"
       (def old-ztx
         {:ns '{a {ns a}}})
@@ -30,7 +30,7 @@
                     {:status :error,
                      :errors
                      [{:type :namespace/lost,
-                       :namespaces '#{b}}
+                       :namespace 'b}
                       nil]}))
 
   (t/testing "symbol remove"
@@ -54,9 +54,9 @@
 
       (matcho/match (sut/check-compatible old-ztx new-ztx)
                     {:status :error,
-                     :errors
-                     [{:type :symbol/lost,
-                       :ns-syms '{b #{sym}}}]}))
+                     :errors [{:type :symbol/lost,
+                               :symbol 'b/sym}
+                              nil]}))
 
   #_(t/testing "schema breaking"
       (def old-ztx

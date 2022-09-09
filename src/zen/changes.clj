@@ -8,9 +8,13 @@
                            (-> new-ztx :ns keys set))]
     (cond-> acc
       :always    (update :data merge {::unchanged-namespaces unchanged})
-      (seq lost) (update :errors conj {:type       :namespace/lost
-                                       :message    (str "Lost namespaces: "  lost)
-                                       :namespaces lost}))))
+      (seq lost) (update :errors
+                         into
+                         (map (fn [lost-ns]
+                                {:type      :namespace/lost
+                                 :message   (str "Lost namespace: "  lost-ns)
+                                 :namespace lost-ns}))
+                         lost))))
 
 
 (def reserverd-syms #{'import 'ns 'alias})
@@ -29,9 +33,16 @@
                            (to-set-of-syms new-ztx))]
     (cond-> acc
       :always    (update :data merge {::unchanged-symbols unchanged})
-      (seq lost) (update :errors conj {:type    :symbol/lost
-                                       :message (apply str "Lost syms: " (map (fn [[ns syms]] (str "in " ns " " syms "\n")) lost))
-                                       :ns-syms lost}))))
+      (seq lost) (update :errors
+                         into
+                         (mapcat (fn [[zen-ns lost-syms]]
+                                   (map (fn [lost-sym]
+                                          (let [ns-sym (symbol (name zen-ns) (name lost-sym))]
+                                            {:type    :symbol/lost
+                                             :message (str "Lost symbol: " ns-sym)
+                                             :symbol  ns-sym}))
+                                        lost-syms)))
+                         lost))))
 
 
 (defn check-compatible [old-ztx new-ztx]
