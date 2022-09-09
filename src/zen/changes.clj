@@ -33,23 +33,27 @@
                     (apply disj symbols core-zen-syms))))))
 
 
+(defn ns-symbols->qualified-symbols [[zen-ns symbols]]
+  (map #(symbol (name zen-ns) (name %))
+       symbols))
+
+
 (defn symbols-check [acc old-ztx new-ztx]
   (let [unchanged-namespaces (get-in acc [:data ::unchanged-namespaces])
 
         [lost _new unchanged]
-        (clojure.data/diff (ztx->ns-symbols-set old-ztx unchanged-namespaces)
-                           (ztx->ns-symbols-set new-ztx unchanged-namespaces))]
+        (map #(mapcat ns-symbols->qualified-symbols %)
+             (clojure.data/diff (ztx->ns-symbols-set old-ztx unchanged-namespaces)
+                                (ztx->ns-symbols-set new-ztx unchanged-namespaces)))]
+
     (cond-> acc
       :always    (update :data merge {::unchanged-symbols unchanged})
       (seq lost) (update :errors
                          into
-                         (mapcat (fn [[zen-ns lost-syms]]
-                                   (map (fn [lost-sym]
-                                          (let [ns-sym (symbol (name zen-ns) (name lost-sym))]
-                                            {:type    :symbol/lost
-                                             :message (str "Lost symbol: " ns-sym)
-                                             :symbol  ns-sym}))
-                                        lost-syms)))
+                         (map (fn [lost-sym]
+                                {:type    :symbol/lost
+                                 :message (str "Lost symbol: " lost-sym)
+                                 :symbol  lost-sym}))
                          lost))))
 
 
