@@ -1,5 +1,7 @@
 (ns zen.changes
-  (:require [clojure.data]))
+  (:require [clojure.data]
+            [zen.core]
+            [zen.walk]))
 
 
 (defn namespace-check [acc old-ztx new-ztx]
@@ -57,10 +59,78 @@
                          lost))))
 
 
+(defn index-sch-seq [sch-seq]
+  (reduce (fn [acc {:keys [path], [op value] :value}]
+            (assoc acc [path op] {:path path, :op op :value value}))
+          {}
+          sch-seq))
+
+
+(defn get-indexed-sch-seq [ztx sym]
+  (index-sch-seq (zen.walk/sch-seq (get-in ztx [:ns (symbol (namespace sym)) (symbol (name sym))]))))
+
+
+(defn process-change [sym path op before after]
+  (let [change-type (cond
+                      (= before after) :same
+                      (nil? before)    :added
+                      (nil? after)     :removed
+                      :else            :changed)]
+    (when (not= :same change-type)
+      {:change-type change-type
+       :sym         sym
+       :path        path
+       :op          op
+       :before      before
+       :after       after})))
+
+
+(defn sym-changes [old-ztx new-ztx sym]
+  (let [old (get-indexed-sch-seq old-ztx sym)
+        new (get-indexed-sch-seq new-ztx sym)
+
+        {errs :acc, added :new}
+        (reduce (fn [{:keys [acc new]} [ch-pth old-el]]
+                  (let [{:keys [op path]} old-el
+                        new-el (get new ch-pth)
+                        change (process-change sym path op (:value old-el) (:value new-el))]
+                    {:acc (cond-> acc (some? change) (conj change))
+                     :new (dissoc new ch-pth)}))
+                {:acc []
+                 :new new}
+                old)]
+
+    (reduce (fn [acc [ch-pth new-el]]
+              (let [{:keys [op path]} new-el
+                    change (process-change sym path op nil (:value new-el))]
+                (cond-> acc (some? change) (conj change))))
+            errs
+            added)))
+
+
+(defn schema-check [acc old-ztx new-ztx]
+  (let [unchanged-symbols (get-in acc [:data ::unchanged-symbols])
+        changes (mapcat #(sym-changes old-ztx new-ztx %) unchanged-symbols)]
+    (cond-> acc
+      (seq changes)
+      (update :errors
+              into
+              (map (fn [{:keys [change-type before after sym path op]}]
+                     (let [error-type (keyword "schema" (name change-type))]
+                       {:type   error-type
+                        :sym    sym
+                        :path   path
+                        :op     op
+                        :before before
+                        :after  after})))
+              changes))))
+
+
 (defn check-compatible [old-ztx new-ztx]
   (let [acc (-> {:data {}, :errors []}
                 (namespace-check old-ztx new-ztx)
-                (symbols-check old-ztx new-ztx))
+                (symbols-check old-ztx new-ztx)
+                (schema-check old-ztx new-ztx))
         errors (:errors acc)]
     (if (not-empty errors)
       {:status :error

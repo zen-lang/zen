@@ -47,7 +47,7 @@
         {:ns '{a {ns a
                   import #{b}
                   sym {:zen/tags #{zen/schema}
-                       :confirms #{b/sym2}}}
+                       :confirms #{b/sym}}}
                b {ns b
                   sym2 {:zen/tags #{zen/schema}
                         :type zen/string}}}})
@@ -58,26 +58,49 @@
                                :symbol 'b/sym}
                               nil]}))
 
-  #_(t/testing "schema breaking"
-      (def old-ztx
-        {:ns '{a {ns a
-                  import #{b}
-                  sym {:zen/tags #{zen/schema}
-                       :confirms #{b/sym}}}
-               b {ns b
-                  sym {:zen/tags #{zen/schema}
-                       :type zen/number}}}})
+  (t/testing "schema breaking"
+    (def old-ztx
+      {:ns '{a {ns a
+                import #{b}
+                sym {:zen/tags #{zen/schema}
+                     :confirms #{b/sym}}}
+             b {ns b
+                sym {:zen/tags #{zen/schema}
+                     :type zen/map
+                     :keys {:foo {:type zen/number}
+                            :bar {:type zen/string}
+                            :baz {:type zen/any}}}}}})
 
-      (def new-ztx
-        {:ns '{a {ns a
-                  import #{b}
-                  sym {:zen/tags #{zen/schema}
-                       :confirms #{b/sym}}}
-               b {ns b
-                  sym {:zen/tags #{zen/schema}
-                       :type zen/integer}}}})
+    (def new-ztx
+      {:ns '{a {ns a
+                import #{b}
+                sym {:zen/tags #{zen/schema}
+                     :confirms #{b/sym}}}
+             b {ns b
+                sym {:zen/tags #{zen/schema}
+                     :type zen/map
+                     :keys {:foo  {:type zen/integer}
+                            :bar  {:type zen/string}
+                            :quux {:type zen/any}}}}}})
 
-      (matcho/match (sut/check-compatible old-ztx new-ztx)
-                    {:status :error
-                     :errors [{}
-                              nil]})))
+    (matcho/match (sut/check-compatible old-ztx new-ztx)
+                  {:status :error
+                   :errors [{:type   :schema/changed
+                             :sym    'b/sym
+                             :path   [:keys :foo]
+                             :op     :type
+                             :before 'zen/number
+                             :after  'zen/integer}
+                            {:type   :schema/removed
+                             :sym    'b/sym
+                             :path   [:keys :baz]
+                             :op     :type
+                             :before 'zen/any
+                             :after  nil}
+                            {:type   :schema/added
+                             :sym    'b/sym
+                             :path   [:keys :quux]
+                             :op     :type
+                             :before nil
+                             :after  'zen/any}
+                            nil]})))
