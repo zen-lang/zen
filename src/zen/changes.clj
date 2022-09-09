@@ -3,9 +3,11 @@
 
 
 (defn namespace-check [acc old-ztx new-ztx]
-  (let [[lost _new unchanged]
-        (clojure.data/diff (-> old-ztx :ns keys set)
-                           (-> new-ztx :ns keys set))]
+  (let [get-set-of-ns #(set (keys (:ns %)))
+
+        [lost _new unchanged]
+        (clojure.data/diff (get-set-of-ns old-ztx)
+                           (get-set-of-ns new-ztx))]
     (cond-> acc
       :always    (update :data merge {::unchanged-namespaces unchanged})
       (seq lost) (update :errors
@@ -17,20 +19,26 @@
                          lost))))
 
 
-(def reserverd-syms #{'import 'ns 'alias})
+(def core-zen-syms #{'import 'ns 'alias})
 
 
-(defn zen-ns-syms [zen-ns]
-  (apply disj (set (keys zen-ns)) reserverd-syms))
+(defn ztx->ns-symbols-set
+  ([ztx selected-namespaces]
+   (ztx->ns-symbols-set (update ztx :ns select-keys selected-namespaces)))
+
+  ([ztx]
+   (update-vals (:ns ztx)
+                (fn [zen-ns]
+                  (let [symbols (set (keys zen-ns))]
+                    (apply disj symbols core-zen-syms))))))
 
 
 (defn symbols-check [acc old-ztx new-ztx]
-  (let [namespaces-in-both (get-in acc [:data ::unchanged-namespaces])
-        to-set-of-syms     #(update-vals (select-keys (:ns %) namespaces-in-both)
-                                         zen-ns-syms)
+  (let [unchanged-namespaces (get-in acc [:data ::unchanged-namespaces])
+
         [lost _new unchanged]
-        (clojure.data/diff (to-set-of-syms old-ztx)
-                           (to-set-of-syms new-ztx))]
+        (clojure.data/diff (ztx->ns-symbols-set old-ztx unchanged-namespaces)
+                           (ztx->ns-symbols-set new-ztx unchanged-namespaces))]
     (cond-> acc
       :always    (update :data merge {::unchanged-symbols unchanged})
       (seq lost) (update :errors
