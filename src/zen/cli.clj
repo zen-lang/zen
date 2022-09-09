@@ -3,12 +3,14 @@
   (:require [cli-matic.core]
             [cli-matic.utils]
             [zen.package]
+            [zen.changes]
             [zen.core]
             [clojure.pprint]
             [clojure.java.io]
             [clojure.string]
             [clojure.edn]
-            [clojure.stacktrace]))
+            [clojure.stacktrace]
+            [clojure.java.shell]))
 
 
 (defn init [{[name] :_arguments}]
@@ -56,7 +58,8 @@
                 zen-ns (or (some-> sym namespace symbol)
                            sym)]
             (zen.core/read-ns ztx zen-ns))
-         (flatten (vector (cons sym symbols))))))
+         (flatten (vector (cons sym symbols))))
+   ztx))
 
 
 (defn errors [_]
@@ -91,6 +94,14 @@
   (System/exit 0))
 
 
+(defn changes [_]
+  (let [_stash! (clojure.java.shell/sh "git" "stash")
+        old-ztx (load-used-namespaces (load-ztx))
+        _pop!   (clojure.java.shell/sh "git" "stash" "pop")
+        new-ztx (load-used-namespaces (load-ztx))]
+    (clojure.pprint/pprint (zen.changes/check-compatible @old-ztx @new-ztx))))
+
+
 (def cfg
   {:command     "zen"
    :description "Zen-lang cli. Provides zen validation, package managment and build tools"
@@ -105,6 +116,9 @@
                  {:description "Validates zen, returns errors"
                   :command     "errors"
                   :runs        errors}
+                 {:description "Compare new changes with committed"
+                  :command     "changes"
+                  :runs        changes}
                  {:description "Validates data with specified symbol. Use: `zen validate #{symbol} data`"
                   :command     "validate"
                   :runs        validate}
