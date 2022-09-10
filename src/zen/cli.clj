@@ -13,17 +13,6 @@
             [clojure.java.shell]))
 
 
-(defn init [{[name] :_arguments}]
-  (let [to (zen.package/pwd)]
-    (zen.package/make-template! to name)
-    (zen.package/zen-init! to)))
-
-
-(defn pull-deps [_]
-  (let [to (zen.package/pwd)]
-    (zen.package/zen-init-deps! to)))
-
-
 (defn load-ztx []
   (let [pwd (zen.package/pwd :silent true)
         ztx (zen.core/new-context {:package-paths [pwd]})]
@@ -62,44 +51,74 @@
    ztx))
 
 
-(defn errors [_]
-  (let [ztx (load-ztx)]
-    (load-used-namespaces ztx)
-    (clojure.pprint/pprint (zen.core/errors ztx))))
+(defn init
+  ([args] (init nil args))
+
+  ([_ztx {[name] :_arguments}]
+   (let [to (zen.package/pwd)]
+     (zen.package/make-template! to name)
+     (zen.package/zen-init! to))))
 
 
-(defn validate [{[symbols-str data-str] :_arguments}]
-  (let [symbols (clojure.edn/read-string symbols-str)
-        data (clojure.edn/read-string data-str)
-        ztx (load-ztx)]
-    (load-used-namespaces ztx symbols)
-    (clojure.pprint/pprint (zen.core/validate ztx symbols data))))
+(defn pull-deps
+  ([args] (pull-deps nil args))
+
+  ([_ztx _args]
+   (let [to (zen.package/pwd)]
+     (zen.package/zen-init-deps! to))))
 
 
-(defn get-symbol [{[symbol-str] :_arguments}]
-  (let [sym (clojure.edn/read-string symbol-str)
-        ztx (load-ztx)]
-    (load-used-namespaces ztx sym)
-    (clojure.pprint/pprint (zen.core/get-symbol ztx sym))))
+(defn errors
+  ([args] (errors (load-ztx) args))
+
+  ([ztx _args]
+   (load-used-namespaces ztx)
+   (clojure.pprint/pprint (zen.core/errors ztx))))
 
 
-(defn get-tag [{[tag-str] :_arguments}]
-  (let [sym (clojure.edn/read-string tag-str)
-        ztx (load-ztx)]
-    (load-used-namespaces ztx sym)
-    (clojure.pprint/pprint (zen.core/get-tag ztx sym))))
+(defn validate
+  ([args] (validate (load-ztx) args))
+
+  ([ztx {[symbols-str data-str] :_arguments}]
+   (let [symbols (clojure.edn/read-string symbols-str)
+         data (clojure.edn/read-string data-str)]
+     (load-used-namespaces ztx symbols)
+     (clojure.pprint/pprint (zen.core/validate ztx symbols data)))))
 
 
-(defn exit [_]
-  (System/exit 0))
+(defn get-symbol
+  ([args] (get-symbol (load-ztx) args))
+
+  ([ztx {[symbol-str] :_arguments}]
+   (let [sym (clojure.edn/read-string symbol-str)]
+     (load-used-namespaces ztx sym)
+     (clojure.pprint/pprint (zen.core/get-symbol ztx sym)))))
 
 
-(defn changes [_]
-  (let [_stash! (clojure.java.shell/sh "git" "stash")
-        old-ztx (load-used-namespaces (load-ztx))
-        _pop!   (clojure.java.shell/sh "git" "stash" "pop")
-        new-ztx (load-used-namespaces (load-ztx))]
-    (clojure.pprint/pprint (zen.changes/check-compatible @old-ztx @new-ztx))))
+(defn get-tag
+  ([args] (get-tag (load-ztx) args))
+
+  ([ztx {[tag-str] :_arguments}]
+   (let [sym (clojure.edn/read-string tag-str)]
+     (load-used-namespaces ztx sym)
+     (clojure.pprint/pprint (zen.core/get-tag ztx sym)))))
+
+
+(defn exit
+  ([args] (exit nil args))
+
+  ([_ _] (System/exit 0)))
+
+
+(defn changes
+  ([args] (changes (load-ztx) args))
+
+  ([new-ztx _args]
+   (let [new-ztx (load-used-namespaces new-ztx)
+         _stash! (clojure.java.shell/sh "git" "stash")
+         old-ztx (load-used-namespaces (load-ztx))
+         _pop!   (clojure.java.shell/sh "git" "stash" "pop")]
+     (clojure.pprint/pprint (zen.changes/check-compatible @old-ztx @new-ztx)))))
 
 
 (def cfg
