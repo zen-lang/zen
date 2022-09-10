@@ -60,8 +60,8 @@
 
 
 (defn index-sch-seq [sch-seq]
-  (reduce (fn [acc {:keys [path], [op value] :value}]
-            (assoc acc [path op] {:path path, :op op :value value}))
+  (reduce (fn [acc {:keys [path], [attr value] :value}]
+            (assoc acc [path attr] {:path path, :attr attr :value value}))
           {}
           sch-seq))
 
@@ -70,7 +70,7 @@
   (index-sch-seq (zen.walk/sch-seq (get-in ztx [:ns (symbol (namespace sym)) (symbol (name sym))]))))
 
 
-(defn process-change [sym path op before after]
+(defn process-change [sym path attr before after]
   (let [change-type (cond
                       (= before after) :same
                       (nil? before)    :added
@@ -80,7 +80,7 @@
       {:change-type change-type
        :sym         sym
        :path        path
-       :op          op
+       :attr        attr
        :before      before
        :after       after})))
 
@@ -91,9 +91,9 @@
 
         {errs :acc, added :new}
         (reduce (fn [{:keys [acc new]} [ch-pth old-el]]
-                  (let [{:keys [op path]} old-el
+                  (let [{:keys [attr path]} old-el
                         new-el (get new ch-pth)
-                        change (process-change sym path op (:value old-el) (:value new-el))]
+                        change (process-change sym path attr (:value old-el) (:value new-el))]
                     {:acc (cond-> acc (some? change) (conj change))
                      :new (dissoc new ch-pth)}))
                 {:acc []
@@ -101,8 +101,8 @@
                 old)]
 
     (reduce (fn [acc [ch-pth new-el]]
-              (let [{:keys [op path]} new-el
-                    change (process-change sym path op nil (:value new-el))]
+              (let [{:keys [attr path]} new-el
+                    change (process-change sym path attr nil (:value new-el))]
                 (cond-> acc (some? change) (conj change))))
             errs
             added)))
@@ -115,12 +115,12 @@
       (seq changes)
       (update :errors
               into
-              (map (fn [{:keys [change-type before after sym path op]}]
+              (map (fn [{:keys [change-type before after sym path attr]}]
                      (let [error-type (keyword "schema" (name change-type))]
                        {:type   error-type
                         :sym    sym
                         :path   path
-                        :op     op
+                        :attr   attr
                         :before before
                         :after  after})))
               changes))))

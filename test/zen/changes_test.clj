@@ -88,19 +88,19 @@
                    :errors [{:type   :schema/changed
                              :sym    'b/sym
                              :path   [:keys :foo]
-                             :op     :type
+                             :attr   :type
                              :before 'zen/number
                              :after  'zen/integer}
                             {:type   :schema/removed
                              :sym    'b/sym
                              :path   [:keys :baz]
-                             :op     :type
+                             :attr   :type
                              :before 'zen/any
                              :after  nil}
                             {:type   :schema/added
                              :sym    'b/sym
                              :path   [:keys :quux]
-                             :op     :type
+                             :attr   :type
                              :before nil
                              :after  'zen/any}
                             nil]})))
