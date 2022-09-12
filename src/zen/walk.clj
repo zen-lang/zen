@@ -4,7 +4,7 @@
 
 
 (defn compare-path-lexicographical [v1 v2]
-  (or (first (drop-while zero? (map compare v1 v2)))
+  (or (first (drop-while zero? (map #(compare (str %1) (str %2)) v1 v2)))
       (compare (count v1) (count v2))))
 
 
