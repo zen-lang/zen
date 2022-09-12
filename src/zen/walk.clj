@@ -1,58 +1,41 @@
-(ns zen.walk)
+(ns zen.walk
+  (:require [zen.core]
+            [zen.v2-validation]))
 
 
-(def nested-schema-keys #{:keys :every})
+(defn compare-path-lexicographical [v1 v2]
+  (or (first (drop-while zero? (map compare v1 v2)))
+      (compare (count v1) (count v2))))
 
 
-(defn get-nested-schemas-dispatch [{sch :node}]
-  (first (filter sch nested-schema-keys)))
+(defn remove-nested-paths
+  "Removes nested paths by sorting in lexicographical order
+   and then checking if a path is included in the next path"
+  [paths]
+  (let [sorted-paths (sort compare-path-lexicographical paths)]
+    (->> (map (fn [cur-path next-path]
+                (when (not= cur-path (take (count cur-path) next-path))
+                  cur-path))
+              sorted-paths
+              (concat (rest sorted-paths) [nil]))
+         (remove nil?))))
 
 
-(defmulti get-nested-schemas #'get-nested-schemas-dispatch)
-
-
-(defmethod get-nested-schemas :keys [{sch :node, :keys [path]}]
-  (map (fn [[k v]]
-         {:path (conj path :keys k)
-          :node v})
-       (:keys sch)))
-
-
-(defmethod get-nested-schemas :every [{sch :node, :keys [path]}]
-  [{:path (conj path :every)
-    :node (:every sch)}])
-
-
-(defmethod get-nested-schemas :default [{sch :node}]
-  nil)
-
-
-(defn nested-schema-entry? [[k v]]
-  (contains? nested-schema-keys k))
-
-
-(defn sch-seq [sch]
-  (let [contains-nested-schemas?
-        (fn [{:keys [node]}]
-          (and (map? node)
-               (some #(contains? node %) nested-schema-keys)))
-
-        get-node-values
-        (fn [node-map]
-          (->> (:node node-map)
-               (remove nested-schema-entry?)
-               (map (fn [[k v]]
-                      {:path (conj (:path node-map) k)
-                       :value v}))))]
-
-    (->> {:path [], :node sch}
-         (tree-seq contains-nested-schemas? get-nested-schemas)
-         (mapcat get-node-values))))
+(defn iterate-dsl
+  "Returns seq of paths in a provided dsl-expr.
+   Paths are calculated in the `zen.v2-validation/validate-schema"
+  [ztx dsl-schema dsl-expr]
+  (->> (zen.v2-validation/validate-schema ztx dsl-schema dsl-expr)
+       :visited
+       remove-nested-paths))
 
 
 (defn zen-dsl-seq [ztx sym-def]
-  (if (= #{'zen/schema}
-         (:zen/tags sym-def))
-    (sch-seq sym-def)
-    :TODO))
+  (for [tag   (:zen/tags sym-def)
+        :let  [tag-sym (zen.core/get-symbol ztx tag)]
+        :when (contains? (:zen/tags tag-sym) 'zen/schema)
+        path  (iterate-dsl ztx tag-sym sym-def)]
+    {:tag   tag
+     :path  path
+     :value (get-in sym-def path)}))
 
