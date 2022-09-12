@@ -5,7 +5,7 @@
             [matcho.core :as matcho]))
 
 
-(t/deftest ^:kaocha/pending sch-seq-test
+(t/deftest sch-seq-test
   (t/testing "any dsl traversing"
     (def ztx (zen.core/new-context))
 
@@ -18,27 +18,27 @@
           :zen/desc "2"
           :keys {:a {:type zen/string
                      :zen/desc "3"}
-                 :b {:type zen4/vector
+                 :b {:type zen/vector
                      :zen/desc "4"
                      :every {:type zen/map
                              :zen/desc "5"
                              :keys {:c {:zen/desc "6"
                                         :type zen/any}}}}}})
-      [{:path [nil], :value [:zen/tags #{'zen/schema}]} #_"NOTE: zen itself, not schema. move? Same for :zen/desc"
-       {:path [nil], :value [:type]}
-       {:path [nil], :value [:confirms]}
-       {:path [nil], :value [:zen/desc]}
-       {:path [:keys :a nil], :value [:type]}
-       {:path [:keys :a nil], :value [:zen/desc]}
-       {:path [:keys :b nil], :value [:type]}
-       {:path [:keys :b nil], :value [:zen/desc]}
-       {:path [:keys :b :every nil], :value [:type]}
-       {:path [:keys :b :every nil], :value [:zen/desc]}
-       {:path [:keys :b :every :keys :c nil], :value [:zen/desc]}
-       {:path [:keys :b :every :keys :c nil], :value [:type]}
+      [{:path [:zen/tags nil], :value #{'zen/schema}} #_"NOTE: zen itself, not schema. move? Same for :zen/desc"
+       {:path [:type nil], :value 'zen/map}
+       {:path [:confirms nil], :value #{'foo}}
+       {:path [:zen/desc nil], :value "2"}
+       {:path [:keys :a :type nil], :value 'zen/string}
+       {:path [:keys :a :zen/desc nil], :value "3"}
+       {:path [:keys :b :type nil], :value 'zen/vector}
+       {:path [:keys :b :zen/desc nil], :value "4"}
+       {:path [:keys :b :every :type nil], :value 'zen/map}
+       {:path [:keys :b :every :zen/desc nil], :value "5"}
+       {:path [:keys :b :every :keys :c :zen/desc nil], :value "6"}
+       {:path [:keys :b :every :keys :c :type nil], :value 'zen/any}
        nil])
 
-    (matcho/match
+    #_(matcho/match
       (sut/zen-dsl-seq
         ztx
         '{:zen/tags #{api}
@@ -49,7 +49,7 @@
        {:path [[:id] :GET nil], :value ['read nil]}
        nil])
 
-    (matcho/match
+    #_(matcho/match
       (sut/zen-dsl-seq
         ztx
         '{:zen/tags #{rpc}

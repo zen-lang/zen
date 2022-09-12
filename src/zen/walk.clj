@@ -41,9 +41,9 @@
         (fn [node-map]
           (->> (:node node-map)
                (remove nested-schema-entry?)
-               (map (fn [entry]
-                      {:path (:path node-map)
-                       :value entry}))))]
+               (map (fn [[k v]]
+                      {:path (conj (:path node-map) k)
+                       :value v}))))]
 
     (->> {:path [], :node sch}
          (tree-seq contains-nested-schemas? get-nested-schemas)

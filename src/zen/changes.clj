@@ -60,8 +60,9 @@
 
 
 (defn index-sch-seq [sch-seq]
-  (reduce (fn [acc {:keys [path], [attr value] :value}]
-            (assoc acc [path attr] {:path path, :attr attr :value value}))
+  (reduce (fn [acc {:keys [path], value :value}]
+            (let [attr (last path)]
+              (assoc acc [path attr] {:path path, :attr attr :value value})))
           {}
           sch-seq))
 
