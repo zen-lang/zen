@@ -86,7 +86,7 @@
        (map #(conj (:path vtx) %))
        set))
 
-(defn valtype-rule [vtx data open-world?]
+(defn valtype-rule [vtx data open-world?] #_"NOTE: maybe refactor name to 'set-unknown-keys ?"
   (let [filter-allowed
         (fn [unknown]
           (->> unknown
@@ -123,10 +123,10 @@
                         (= (:validation-type schema) :open)
                         (= (:type schema) 'zen/any))]
     (fn compiled-sch [vtx data opts]
-      (loop [rs rulesets
+      (loop [rs rulesets #_"NOTE: refactor to reduce?"
              vtx* (validate-props (assoc vtx :type (:type schema)) data props opts)]
         (cond
-          (and (empty? rs) (map? data) (:type schema))
+          (and (empty? rs) (map? data) (:type schema)) #_"NOTE: why not (= 'zen/map (:type schema)) ?"
           (valtype-rule vtx* data open-world?)
 
           (empty? rs) vtx*
@@ -678,7 +678,7 @@
 (defmethod compile-key :default [schema-key ztx sch-params]
   (cond
     (qualified-ident? schema-key)
-    (let [{:keys [zen/tags] :as sch} (utils/get-symbol ztx (symbol schema-key))]
+    (let [{:keys [zen/tags] :as sch} (utils/get-symbol ztx (symbol schema-key))] #_"NOTE: `:keys [zen/tags]` does it work? Is it used?"
       {:rule
        (fn [vtx data opts]
          (cond
