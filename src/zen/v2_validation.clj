@@ -185,11 +185,14 @@
 (defn *validate-schema
   "internal, use validate function"
   [ztx vtx schema data {:keys [sch-symbol] :as opts}]
-  (-> vtx
-      (assoc :schema [(or sch-symbol (:zen/name schema))])
-      (assoc :path [])
-      (assoc-in [::confirmed [] (:zen/name schema)] true)
-      ((get-cached ztx schema true) data opts)))
+  (let [vtx (-> vtx
+                (assoc :schema [(or sch-symbol (:zen/name schema))])
+                (assoc :path [])
+                (assoc-in [::confirmed [] (:zen/name schema)] true))
+
+        compiled-schema-fn (get-cached ztx schema true)]
+
+    (compiled-schema-fn vtx data opts)))
 
 (defn validate-schema [ztx schema data & [opts]]
   (let [empty-vtx {:errors []
