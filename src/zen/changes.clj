@@ -8,8 +8,8 @@
   (let [get-set-of-ns #(set (keys (:ns %)))
 
         [lost _new unchanged]
-        (clojure.data/diff (get-set-of-ns old-ztx)
-                           (get-set-of-ns new-ztx))]
+        (clojure.data/diff (get-set-of-ns @old-ztx)
+                           (get-set-of-ns @new-ztx))]
     (cond-> acc
       :always    (update :data merge {::unchanged-namespaces unchanged})
       (seq lost) (update :errors
@@ -45,8 +45,8 @@
 
         [lost _new unchanged]
         (map #(mapcat ns-symbols->qualified-symbols %)
-             (clojure.data/diff (ztx->ns-symbols-set old-ztx unchanged-namespaces)
-                                (ztx->ns-symbols-set new-ztx unchanged-namespaces)))]
+             (clojure.data/diff (ztx->ns-symbols-set @old-ztx unchanged-namespaces)
+                                (ztx->ns-symbols-set @new-ztx unchanged-namespaces)))]
 
     (cond-> acc
       :always    (update :data merge {::unchanged-symbols unchanged})
@@ -68,7 +68,7 @@
 
 
 (defn get-indexed-sch-seq [ztx sym]
-  (index-sch-seq (zen.walk/sch-seq (get-in ztx [:ns (symbol (namespace sym)) (symbol (name sym))]))))
+  (index-sch-seq (zen.walk/zen-dsl-seq ztx (zen.core/get-symbol ztx sym))))
 
 
 (defn process-change [sym path attr before after]
