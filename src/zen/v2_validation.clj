@@ -132,10 +132,10 @@
           (empty? rs) vtx*
 
           :else
-          (let [r (first rs)]
-            (if (or (nil? (get r :when)) ((get r :when) data))
-              (recur (rest rs)
-                     ((get r :rule) vtx* data opts))
+          (let [{when-fn :when rule-fn :rule} (first rs)
+                when-fn (or when-fn (constantly true))]
+            (if (when-fn data)
+              (recur (rest rs) (rule-fn vtx* data opts))
               (recur (rest rs) vtx*))))))))
 
 (declare resolve-props)
