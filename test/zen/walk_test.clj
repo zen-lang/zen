@@ -56,13 +56,16 @@
 (t/deftest sch-seq-test
   (t/testing "any dsl traversing"
     (def ztx (zen.core/new-context))
+    (zen.core/load-ns ztx '{ns myns
+                            foo {:zen/tags #{zen/schema}
+                                 :require #{:a}}})
 
     (matcho/match
       (sut/zen-dsl-seq
         ztx
         '{:zen/tags #{zen/schema}
           :type zen/map
-          :confirms #{foo}
+          :confirms #{myns/foo}
           :zen/desc "2"
           :keys {:a {:type zen/string
                      :zen/desc "3"}
@@ -73,7 +76,7 @@
                              :keys {:c {:zen/desc "6"
                                         :type zen/any}}}}}})
 
-      [{:path [:confirms]                          :value #{'foo}}
+      [{:path [:confirms]                          :value #{'myns/foo}}
        {:path [:keys :a :type]                     :value 'zen/string}
        {:path [:keys :a :zen/desc]                 :value "3"}
        {:path [:keys :b :every :keys :c :type]     :value 'zen/any}
@@ -82,24 +85,34 @@
        {:path [:keys :b :every :zen/desc]          :value "5"}
        {:path [:keys :b :type]                     :value 'zen/vector}
        {:path [:keys :b :zen/desc]                 :value "4"}
+       #_{:path [:require]                           :value #{:a}}
        {:path [:type]                              :value 'zen/map}
        {:path [:zen/desc]                          :value "2"}
        {:path [:zen/tags]                          :value #{'zen/schema}} #_"NOTE: zen itself, not schema. move? Same for :zen/desc"
        nil])
 
     (zen.core/load-ns ztx rest-ns)
+    (zen.core/load-ns ztx '{ns myns2
+                            import #{rest}
+
+                            other-api
+                            {:zen/tags #{rest/api}
+                             :DELETE delete}})
 
     (matcho/match
       (sut/zen-dsl-seq
         ztx
         '{:zen/tags #{rest/api}
 
+          :apis     #{myns2/other-api}
           :GET      search
           "$export" {:POST export}
           [:id]     {:GET read}})
 
-      [{:path ["$export" :POST nil] :value 'export}
+      [#_{:path [:DELETE nil] :value 'delete}
+       {:path ["$export" :POST nil] :value 'export}
        {:path [:GET nil]            :value 'search}
+       {:path [:apis nil]           :value #{'myns2/other-api}}
        {:path [:zen/tags]           :value #{'rest/api}} #_"NOTE: zen itself, not schema. move? Same for :zen/desc"
        {:path [[:id] :GET nil]      :value 'read}
        nil])
