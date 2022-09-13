@@ -6,7 +6,7 @@
 
 
 (def rest-ns
-  '{ns rest
+  '{:ns rest
 
     rpc
     {:zen/tags #{zen/tag zen/schema}
@@ -25,39 +25,45 @@
      :schema-key {:key :engine}
      :keys       {:engine {:type zen/symbol :tags #{op-engine}}}}
 
-    .api-op
+    api-op
     {:zen/tags #{zen/schema}
      :type zen/case
      :case [{:when {:type zen/symbol} :then {:type zen/symbol :tags #{op}}}
             {:when {:type zen/map} :then {:type zen/map
                                           :confirms #{op}}}]}
 
+    route-node
+    {:zen/tags #{zen/schema}
+     :type zen/map
+     :keys {:apis    {:type zen/set
+                      :every {:type zen/symbol :tags #{api}}}
+            :routes  {:type zen/map
+                      :key {:type zen/case
+                            :case [{:when {:type zen/string}
+                                    :then {}}
+                                   {:when {:type zen/vector}
+                                    :then {:type zen/vector
+                                           :every {:type zen/keyword}
+                                           :minItems 1
+                                           :maxItems 1}}]}
+                      :values {:confirms #{route-node}}}
+            :methods {:type zen/map
+                      :keys {:GET    {:confirms #{api-op}}
+                             :POST   {:confirms #{api-op}}
+                             :PUT    {:confirms #{api-op}}
+                             :DELETE {:confirms #{api-op}}
+                             :PATCH  {:confirms #{api-op}}}}}}
+
     api
     {:zen/tags #{zen/tag zen/schema}
      :type zen/map
-     :values {:confirms #{api}}
-     :keys {:apis   {:type zen/set :every {:type zen/symbol :tags #{api}}}
-            :GET    {:confirms #{.api-op}}
-            :POST   {:confirms #{.api-op}}
-            :PUT    {:confirms #{.api-op}}
-            :DELETE {:confirms #{.api-op}}
-            :PATCH  {:confirms #{.api-op}}}
-     :key {:type zen/case
-           :case [{:when {:type zen/string}
-                   :then {:type zen/string}}
-                  {:when {:type zen/keyword}
-                   :then {:type zen/keyword}}
-                  {:when {:type zen/vector}
-                   :then {:type zen/vector
-                          :every {:type zen/keyword}
-                          :minItems 1
-                          :maxItems 1}}]}}})
+     :keys {:routing {:confirms #{route-node}}}}})
 
 
 (t/deftest sch-seq-test
   (t/testing "any dsl traversing"
     (def ztx (zen.core/new-context))
-    (zen.core/load-ns ztx '{ns myns
+    (zen.core/load-ns ztx '{:ns myns
                             foo {:zen/tags #{zen/schema}
                                  :type zen/map
                                  :require #{:a}}
@@ -98,8 +104,8 @@
 
     (t/testing "rpc method dsl"
       (zen.core/load-ns ztx rest-ns)
-      (zen.core/load-ns ztx '{ns myns3
-                              import #{rest}
+      (zen.core/load-ns ztx '{:ns myns3
+                              :import #{rest}
 
                               myrpc
                               {:zen/tags #{rest/rpc}
@@ -126,8 +132,8 @@
 
     (t/testing "rest api dsl"
       (zen.core/load-ns ztx rest-ns)
-      (zen.core/load-ns ztx '{ns myns2
-                              import #{rest}
+      (zen.core/load-ns ztx '{:ns myns2
+                              :import #{rest}
 
                               engine
                               {:zen/tags #{rest/op-engine zen/schema}}
@@ -136,27 +142,26 @@
                               {:zen/tags #{rest/op}
                                :engine engine}
 
-
                               other-api
                               {:zen/tags #{rest/api}
-                               :DELETE op}
+                               :routing {:methods {:DELETE op}}}
 
                               myapi
                               {:zen/tags #{rest/api}
-                               :apis     #{other-api}
-                               :GET      op
-                               "$export" {:POST op}
-                               [:id]     {:GET op}}})
+                               :routing {:apis    #{other-api}
+                                         :methods {:GET op}
+                                         :routes  {"$export" {:methods {:POST op}}
+                                                   [:id]     {:methods {:GET op}}}}}})
 
-      #_(t/is (empty? (zen.core/errors ztx))) #_"NOTE: looks like it fails only on v2 validation"
+      (t/is (empty? (zen.core/errors ztx)))
 
       (matcho/match
         (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns2/myapi))
         [#_{:path [:DELETE nil] :value 'myns2/delete}
-         {:path ["$export" :POST nil] :value 'myns2/op}
-         {:path [:GET nil]            :value 'myns2/op}
-         {:path [:apis nil]           :value #{'myns2/other-api}}
-         {:path [:zen/name]           :value 'myns2/myapi}
-         {:path [:zen/tags]           :value #{'rest/api}} #_"NOTE: zen itself, not schema. move? Same for :zen/desc"
-         {:path [[:id] :GET nil]      :value 'myns2/op}
+         {:path [:routing :apis nil]                            :value #{'myns2/other-api}}
+         {:path [:routing :methods :GET nil]                    :value 'myns2/op}
+         {:path [:routing :routes "$export" :methods :POST nil] :value 'myns2/op}
+         {:path [:routing :routes [:id] :methods :GET nil]      :value 'myns2/op}
+         {:path [:zen/name]                                     :value 'myns2/myapi}
+         {:path [:zen/tags]                                     :value #{'rest/api}} #_"NOTE: zen itself, not schema. move? Same for :zen/name"
          nil]))))
