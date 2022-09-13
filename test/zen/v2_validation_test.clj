@@ -94,7 +94,7 @@
       (is (empty? (:errors result))))))
 
 
-(deftest validation-compatibility-test
+(deftest ^:kaocha/pending validation-compatibility-test
   (def rest-ns
     '{ns rest
 
