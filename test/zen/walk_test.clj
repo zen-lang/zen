@@ -167,4 +167,27 @@
        {:path [:routing :routes [:id] :methods :GET nil]      :value 'myns2/op}
        {:path [:zen/name]                                     :value 'myns2/myapi}
        {:path [:zen/tags]                                     :value #{'rest/api}} #_"NOTE: zen itself, not schema. move? Same for :zen/name"
+       nil]))
+
+  (t/testing "multiple tags"
+    (zen.core/load-ns ztx '{:ns myns4
+
+                            mytag
+                            {:zen/tags #{zen/schema zen/tag}
+                             :type zen/map
+                             :keys {:foo {:const {:value :bar}}}}
+
+                            mysym
+                            {:zen/tags #{zen/schema mytag}
+                             :foo :bar
+                             :type zen/string}})
+
+    (t/is (empty? (zen.core/errors ztx)))
+
+    (matcho/match
+      (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns4/mysym))
+      [{:path [:foo nil]       :value :bar}
+       {:path [:type nil]      :value 'zen/string}
+       {:path [:zen/name nil]  :value 'myns4/mysym}
+       {:path [:zen/tags nil]  :value '#{zen/schema myns4/mytag}}
        nil])))

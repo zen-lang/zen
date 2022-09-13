@@ -212,7 +212,9 @@
               :unknown-keys #{}
               :effects []}]
     (if (empty? schemas)
-      (dissoc (unknown-errs vtx) :visited :unknown-keys ::confirmed)
+      (-> (unknown-errs vtx)
+          (dissoc :unknown-keys ::confirmed)
+          (cond-> (not (:vtx-visited opts)) (dissoc :visited)))
       (if-let [schema (utils/get-symbol ztx (first schemas))]
         (if (true? (get-in vtx [::confirmed [] (first schemas)]))
           (recur (rest schemas) vtx)

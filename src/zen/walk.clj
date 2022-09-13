@@ -24,18 +24,18 @@
 (defn iterate-dsl
   "Returns seq of paths in a provided dsl-expr.
    Paths are calculated in the `zen.v2-validation/validate-schema"
-  [ztx dsl-schema dsl-expr]
-  (->> (zen.v2-validation/validate-schema ztx dsl-schema dsl-expr)
+  [ztx tags dsl-expr]
+  (->> (zen.v2-validation/validate ztx tags dsl-expr {:vtx-visited true})
        :visited
        remove-nested-paths))
 
 
 (defn zen-dsl-seq [ztx sym-def]
-  (for [tag   (:zen/tags sym-def)
-        :let  [tag-sym (zen.core/get-symbol ztx tag)]
-        :when (contains? (:zen/tags tag-sym) 'zen/schema)
-        path  (iterate-dsl ztx tag-sym sym-def)]
-    {:tag   tag
-     :path  path
-     :value (get-in sym-def path)}))
+  (let [schema-tags (->> (:zen/tags sym-def)
+                         (filter #(-> (zen.core/get-symbol ztx %)
+                                      :zen/tags
+                                      (contains? 'zen/schema))))]
+    (for [path (iterate-dsl ztx schema-tags sym-def)]
+      {:path  path
+       :value (get-in sym-def path)})))
 
