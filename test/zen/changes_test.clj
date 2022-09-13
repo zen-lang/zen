@@ -5,6 +5,61 @@
             [matcho.core :as matcho]))
 
 
+(def rest-ns
+  '{:ns rest
+
+    rpc
+    {:zen/tags #{zen/tag zen/schema}
+     :type zen/map
+     :keys {:params {:confirms #{zen/schema}}
+            :result {:confirms #{zen/schema}}}}
+
+    op-engine
+    {:zen/tags #{zen/tag}
+     :zen/desc "tag for op engines"}
+
+    op
+    {:zen/tags   #{zen/tag zen/schema}
+     :type       zen/map
+     :require    #{:engine}
+     :schema-key {:key :engine}
+     :keys       {:engine {:type zen/symbol :tags #{op-engine}}}}
+
+    api-op
+    {:zen/tags #{zen/schema}
+     :type zen/case
+     :case [{:when {:type zen/symbol} :then {:type zen/symbol :tags #{op}}}
+            {:when {:type zen/map} :then {:type zen/map
+                                          :confirms #{op}}}]}
+
+    route-node
+    {:zen/tags #{zen/schema}
+     :type zen/map
+     :keys {:apis    {:type zen/set
+                      :every {:type zen/symbol :tags #{api}}}
+            :routes  {:type zen/map
+                      :key {:type zen/case
+                            :case [{:when {:type zen/string}
+                                    :then {}}
+                                   {:when {:type zen/vector}
+                                    :then {:type zen/vector
+                                           :every {:type zen/keyword}
+                                           :minItems 1
+                                           :maxItems 1}}]}
+                      :values {:confirms #{route-node}}}
+            :methods {:type zen/map
+                      :keys {:GET    {:confirms #{api-op}}
+                             :POST   {:confirms #{api-op}}
+                             :PUT    {:confirms #{api-op}}
+                             :DELETE {:confirms #{api-op}}
+                             :PATCH  {:confirms #{api-op}}}}}}
+
+    api
+    {:zen/tags #{zen/tag zen/schema}
+     :type zen/map
+     :keys {:routing {:confirms #{route-node}}}}})
+
+
 (t/deftest changes-test
   (t/testing "ns remove"
     (def old-ztx (zen.core/new-context))
@@ -105,4 +160,126 @@
                              :attr   :type
                              :before nil
                              :after  'zen/any}
-                            nil]})))
+                            nil]}))
+
+  (t/testing "dsl changes"
+    (t/testing "rpc"
+      (def old-ztx (zen.core/new-context))
+
+      (zen.core/load-ns old-ztx rest-ns)
+      (zen.core/load-ns old-ztx
+                        '{:ns myns
+                          :import #{rest}
+
+                          myrpc
+                          {:zen/tags #{rest/rpc}
+                           :params {:type zen/map
+                                    :require #{:foo}
+                                    :keys {:foo {:type zen/string}}}
+                           :result {:type zen/map
+                                    :require #{:bar}
+                                    :keys {:bar {:type zen/string}}}}})
+
+      (def new-ztx (zen.core/new-context))
+
+      (zen.core/load-ns new-ztx rest-ns)
+      (zen.core/load-ns new-ztx
+                        '{:ns myns
+                          :import #{rest}
+
+                          myrpc
+                          {:zen/tags #{rest/rpc}
+                           :params {:type zen/map
+                                    :keys {:foo {:type zen/string}}}
+                           :result {:type zen/map
+                                    :keys {:bar {:type zen/string}}}}})
+
+      (matcho/match (sut/check-compatible old-ztx new-ztx)
+                    {:status :changed
+                     :changes [{:type   :schema/removed
+                                :sym    'myns/myrpc
+                                :path   [:params]
+                                :attr   :require
+                                :before #{:foo}
+                                :after  nil}
+                               {:type   :schema/removed
+                                :sym    'myns/myrpc
+                                :path   [:result]
+                                :attr   :require
+                                :before #{:bar}
+                                :after  nil}
+                               nil]}))
+
+    (t/testing "routing"
+      (def old-ztx (zen.core/new-context))
+
+      (zen.core/load-ns old-ztx rest-ns)
+      (zen.core/load-ns old-ztx
+                        '{:ns myns
+                          :import #{rest}
+
+                          engine
+                          {:zen/tags #{rest/op-engine zen/schema}}
+
+                          op
+                          {:zen/tags #{rest/op}
+                           :engine engine}
+
+                          other-api
+                          {:zen/tags #{rest/api}
+                           :routing {:methods {:DELETE op}}}
+
+                          myapi
+                          {:zen/tags #{rest/api}
+                           :routing {:apis    #{other-api}
+                                     :methods {:GET op
+                                               :POST op}
+                                     :routes  {"$export" {:methods {:POST op}}
+                                               [:id]     {:methods {:GET op}}}}}})
+
+      (def new-ztx (zen.core/new-context))
+
+      (zen.core/load-ns new-ztx rest-ns)
+      (zen.core/load-ns new-ztx
+                        '{:ns myns
+                          :import #{rest}
+
+                          engine
+                          {:zen/tags #{rest/op-engine zen/schema}}
+
+                          op
+                          {:zen/tags #{rest/op}
+                           :engine engine}
+
+                          other-api
+                          {:zen/tags #{rest/api}
+                           :routing {:methods {:DELETE op
+                                               :GET op}}}
+
+                          myapi
+                          {:zen/tags #{rest/api}
+                           :routing {:apis   #{other-api}
+                                     :routes {"$export" {:methods {:POST op}}
+                                              [:id]     {:methods {:GET op}}}}}})
+
+      (matcho/match (sut/check-compatible old-ztx new-ztx)
+                    {:status :changed
+                     :changes [{:type   :schema/added
+                                :sym    'myns/other-api
+                                :path   [:routing :methods]
+                                :attr   :GET
+                                :before nil
+                                :after  'myns/op}
+                               {:type   :schema/removed
+                                :sym    'myns/myapi
+                                :path   [:routing :methods]
+                                :attr   :GET
+                                :before 'myns/op
+                                :after  nil}
+                               {:type   :schema/removed
+                                :sym    'myns/myapi
+                                :path   [:routing :methods]
+                                :attr   :POST
+                                :before 'myns/op
+                                :after  nil}
+                               nil]}))))
