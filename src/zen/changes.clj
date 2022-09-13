@@ -148,4 +148,4 @@
     (if (not-empty errors)
       {:status :changed
        :changes errors}
-      {:status :ok})))
+      {:status :unchanged})))

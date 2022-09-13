@@ -69,7 +69,7 @@
     (zen.core/load-ns new-ztx '{ns a})
 
     (matcho/match (sut/check-compatible old-ztx new-ztx)
-                  {:status :ok
+                  {:status :unchanged
                    :changes empty?}))
 
   (t/testing "ns remove"
