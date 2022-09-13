@@ -61,7 +61,7 @@
 
 
 (t/deftest sch-seq-test
-  (t/testing "any dsl traversing"
+  (t/testing "schema traversing"
     (def ztx (zen.core/new-context))
     (zen.core/load-ns ztx '{:ns myns
                             foo {:zen/tags #{zen/schema}
@@ -100,68 +100,68 @@
        {:path [:zen/desc]                          :value "2"}
        {:path [:zen/name]                          :value 'myns/mysch}
        {:path [:zen/tags]                          :value #{'zen/schema}} #_"NOTE: zen itself, not schema. move? Same for :zen/desc"
-       nil])
+       nil]))
 
-    (t/testing "rpc method dsl"
-      (zen.core/load-ns ztx rest-ns)
-      (zen.core/load-ns ztx '{:ns myns3
-                              :import #{rest}
+  (t/testing "rpc method dsl"
+    (zen.core/load-ns ztx rest-ns)
+    (zen.core/load-ns ztx '{:ns myns3
+                            :import #{rest}
 
-                              myrpc
-                              {:zen/tags #{rest/rpc}
-                               :params {:type zen/map
-                                        :require #{:foo}
-                                        :keys {:foo {:type zen/string}}}
-                               :result {:type zen/map
-                                        :require #{:bar}
-                                        :keys {:bar {:type zen/string}}}}})
+                            myrpc
+                            {:zen/tags #{rest/rpc}
+                             :params {:type zen/map
+                                      :require #{:foo}
+                                      :keys {:foo {:type zen/string}}}
+                             :result {:type zen/map
+                                      :require #{:bar}
+                                      :keys {:bar {:type zen/string}}}}})
 
-      (t/is (empty? (zen.core/errors ztx)))
+    (t/is (empty? (zen.core/errors ztx)))
 
-      (matcho/match
-        (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns3/myrpc))
-        [{:path [:params :keys :foo :type nil] :value 'zen/string}
-         {:path [:params :require nil]         :value #{:foo}}
-         {:path [:params :type nil]            :value 'zen/map}
-         {:path [:result :keys :bar :type]     :value 'zen/string}
-         {:path [:result :require nil]         :value #{:bar}}
-         {:path [:result :type nil]            :value 'zen/map}
-         {:path [:zen/name nil]                :value 'myns3/myrpc}
-         {:path [:zen/tags nil]                :value #{'rest/rpc}} #_"NOTE: zen itself, not schema. move? Same for :zen/desc"
-         nil]))
+    (matcho/match
+      (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns3/myrpc))
+      [{:path [:params :keys :foo :type nil] :value 'zen/string}
+       {:path [:params :require nil]         :value #{:foo}}
+       {:path [:params :type nil]            :value 'zen/map}
+       {:path [:result :keys :bar :type]     :value 'zen/string}
+       {:path [:result :require nil]         :value #{:bar}}
+       {:path [:result :type nil]            :value 'zen/map}
+       {:path [:zen/name nil]                :value 'myns3/myrpc}
+       {:path [:zen/tags nil]                :value #{'rest/rpc}} #_"NOTE: zen itself, not schema. move? Same for :zen/desc"
+       nil]))
 
-    (t/testing "rest api dsl"
-      (zen.core/load-ns ztx rest-ns)
-      (zen.core/load-ns ztx '{:ns myns2
-                              :import #{rest}
+  (t/testing "rest api dsl"
+    (zen.core/load-ns ztx rest-ns)
+    (zen.core/load-ns ztx '{:ns myns2
+                            :import #{rest}
 
-                              engine
-                              {:zen/tags #{rest/op-engine zen/schema}}
+                            engine
+                            {:zen/tags #{rest/op-engine zen/schema}}
 
-                              op
-                              {:zen/tags #{rest/op}
-                               :engine engine}
+                            op
+                            {:zen/tags #{rest/op}
+                             :engine engine}
 
-                              other-api
-                              {:zen/tags #{rest/api}
-                               :routing {:methods {:DELETE op}}}
+                            other-api
+                            {:zen/tags #{rest/api}
+                             :routing {:methods {:DELETE op}}}
 
-                              myapi
-                              {:zen/tags #{rest/api}
-                               :routing {:apis    #{other-api}
-                                         :methods {:GET op}
-                                         :routes  {"$export" {:methods {:POST op}}
-                                                   [:id]     {:methods {:GET op}}}}}})
+                            myapi
+                            {:zen/tags #{rest/api}
+                             :routing {:apis    #{other-api}
+                                       :methods {:GET op}
+                                       :routes  {"$export" {:methods {:POST op}}
+                                                 [:id]     {:methods {:GET op}}}}}})
 
-      (t/is (empty? (zen.core/errors ztx)))
+    (t/is (empty? (zen.core/errors ztx)))
 
-      (matcho/match
-        (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns2/myapi))
-        [#_{:path [:DELETE nil] :value 'myns2/delete}
-         {:path [:routing :apis nil]                            :value #{'myns2/other-api}}
-         {:path [:routing :methods :GET nil]                    :value 'myns2/op}
-         {:path [:routing :routes "$export" :methods :POST nil] :value 'myns2/op}
-         {:path [:routing :routes [:id] :methods :GET nil]      :value 'myns2/op}
-         {:path [:zen/name]                                     :value 'myns2/myapi}
-         {:path [:zen/tags]                                     :value #{'rest/api}} #_"NOTE: zen itself, not schema. move? Same for :zen/name"
-         nil]))))
+    (matcho/match
+      (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns2/myapi))
+      [#_{:path [:DELETE nil] :value 'myns2/delete}
+       {:path [:routing :apis nil]                            :value #{'myns2/other-api}}
+       {:path [:routing :methods :GET nil]                    :value 'myns2/op}
+       {:path [:routing :routes "$export" :methods :POST nil] :value 'myns2/op}
+       {:path [:routing :routes [:id] :methods :GET nil]      :value 'myns2/op}
+       {:path [:zen/name]                                     :value 'myns2/myapi}
+       {:path [:zen/tags]                                     :value #{'rest/api}} #_"NOTE: zen itself, not schema. move? Same for :zen/name"
+       nil])))
