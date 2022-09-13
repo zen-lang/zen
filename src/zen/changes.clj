@@ -139,7 +139,7 @@
               changes))))
 
 
-(defn check-compatible [old-ztx new-ztx]
+(defn check-changes [old-ztx new-ztx]
   (let [acc (-> {:data {}, :changes []}
                 (namespace-check old-ztx new-ztx)
                 (symbols-check old-ztx new-ztx)

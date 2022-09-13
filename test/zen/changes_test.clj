@@ -68,7 +68,7 @@
     (def new-ztx (zen.core/new-context))
     (zen.core/load-ns new-ztx '{ns a})
 
-    (matcho/match (sut/check-compatible old-ztx new-ztx)
+    (matcho/match (sut/check-changes old-ztx new-ztx)
                   {:status :unchanged
                    :changes empty?}))
 
@@ -81,7 +81,7 @@
     (zen.core/load-ns new-ztx '{ns a})
     (zen.core/load-ns new-ztx '{ns c})
 
-    (matcho/match (sut/check-compatible old-ztx new-ztx)
+    (matcho/match (sut/check-changes old-ztx new-ztx)
                   {:status :changed,
                    :changes
                    [{:type :namespace/lost
@@ -109,7 +109,7 @@
                                 sym {:zen/tags #{zen/schema}
                                      :confirms #{b/sym}}})
 
-    (matcho/match (sut/check-compatible old-ztx new-ztx)
+    (matcho/match (sut/check-changes old-ztx new-ztx)
                   {:status :changed,
                    :changes [{:type :symbol/lost,
                               :symbol 'b/sym}
@@ -142,7 +142,7 @@
                                 sym {:zen/tags #{zen/schema}
                                      :confirms #{b/sym}}})
 
-    (matcho/match (sut/check-compatible old-ztx new-ztx)
+    (matcho/match (sut/check-changes old-ztx new-ztx)
                   {:status :changed
                    :changes [{:type   :schema/removed
                               :sym    'b/sym
@@ -193,7 +193,7 @@
                            :result {:type zen/map
                                     :keys {:bar {:type zen/string}}}}})
 
-      (matcho/match (sut/check-compatible old-ztx new-ztx)
+      (matcho/match (sut/check-changes old-ztx new-ztx)
                     {:status :changed
                      :changes [{:type   :schema/removed
                                 :sym    'myns/myrpc
@@ -259,7 +259,7 @@
                                      :routes  {"$export" {:methods {:POST op}}
                                                [:id]     {:methods {:GET op}}}}}})
 
-      (matcho/match (sut/check-compatible old-ztx new-ztx)
+      (matcho/match (sut/check-changes old-ztx new-ztx)
                     {:status :changed
                      :changes [{:type   :schema/added
                                 :sym    'myns/other-api
