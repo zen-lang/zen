@@ -15,7 +15,7 @@
 
     (matcho/match (sut/check-compatible old-ztx new-ztx)
                   {:status :ok
-                   :errors empty?}))
+                   :changes empty?}))
 
   (t/testing "ns remove"
     (def old-ztx (zen.core/new-context))
@@ -26,8 +26,8 @@
     (zen.core/load-ns new-ztx '{ns a})
 
     (matcho/match (sut/check-compatible old-ztx new-ztx)
-                  {:status :error,
-                   :errors
+                  {:status :changed,
+                   :changes
                    [{:type :namespace/lost,
                      :namespace 'b}
                     nil]}))
@@ -52,12 +52,12 @@
                                      :confirms #{b/sym}}})
 
     (matcho/match (sut/check-compatible old-ztx new-ztx)
-                  {:status :error,
-                   :errors [{:type :symbol/lost,
+                  {:status :changed,
+                   :changes [{:type :symbol/lost,
                              :symbol 'b/sym}
                             nil]}))
 
-  (t/testing "schema breaking"
+  (t/testing "schema changes"
     (def old-ztx (zen.core/new-context))
     (zen.core/load-ns old-ztx '{ns b
                                 sym {:zen/tags #{zen/schema}
@@ -83,14 +83,14 @@
                                      :confirms #{b/sym}}})
 
     (matcho/match (sut/check-compatible old-ztx new-ztx)
-                  {:status :error
-                   :errors [{:type   :schema/removed
+                  {:status :changed
+                   :changes [{:type   :schema/removed
                              :sym    'b/sym
                              :path   [:keys :baz]
                              :attr   :type
                              :before 'zen/any
                              :after  nil}
-                            {:type   :schema/changed
+                            {:type   :schema/updated
                              :sym    'b/sym
                              :path   [:keys :foo]
                              :attr   :type

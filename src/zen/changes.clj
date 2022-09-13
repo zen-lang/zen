@@ -12,7 +12,7 @@
                            (get-set-of-ns @new-ztx))]
     (cond-> acc
       :always    (update :data merge {::unchanged-namespaces unchanged})
-      (seq lost) (update :errors
+      (seq lost) (update :changes
                          into
                          (map (fn [lost-ns]
                                 {:type      :namespace/lost
@@ -50,7 +50,7 @@
 
     (cond-> acc
       :always    (update :data merge {::unchanged-symbols unchanged})
-      (seq lost) (update :errors
+      (seq lost) (update :changes
                          into
                          (map (fn [lost-sym]
                                 {:type    :symbol/lost
@@ -76,7 +76,7 @@
                       (= before after) :same
                       (nil? before)    :added
                       (nil? after)     :removed
-                      :else            :changed)]
+                      :else            :updated)]
     (when (not= :same change-type)
       {:change-type change-type
        :sym         sym
@@ -114,7 +114,7 @@
         changes (mapcat #(sym-changes old-ztx new-ztx %) unchanged-symbols)]
     (cond-> acc
       (seq changes)
-      (update :errors
+      (update :changes
               into
               (map (fn [{:keys [change-type before after sym path attr]}]
                      (let [error-type (keyword "schema" (name change-type))]
@@ -128,12 +128,12 @@
 
 
 (defn check-compatible [old-ztx new-ztx]
-  (let [acc (-> {:data {}, :errors []}
+  (let [acc (-> {:data {}, :changes []}
                 (namespace-check old-ztx new-ztx)
                 (symbols-check old-ztx new-ztx)
                 (schema-check old-ztx new-ztx))
-        errors (:errors acc)]
+        errors (:changes acc)]
     (if (not-empty errors)
-      {:status :error
-       :errors errors}
+      {:status :changed
+       :changes errors}
       {:status :ok})))
