@@ -205,18 +205,11 @@
           (is (empty? (zen.core/errors ztx))))))
 
     (testing "previous validation engine with previous zen.edn"
-      (with-redefs [zen.v2-validation/validate zen.validation/validate
-                    zen.core/validate zen.validation/validate
-                    zen.v2-validation/validate-schema zen.validation/validate-schema
-                    zen.core/validate-schema zen.validation/validate-schema]
+      (with-redefs [zen.v2-validation/validate zen.validation/validate]
 
         (def ztx (atom {}))
 
-        (zen.core/load-ns
-          ztx
-          (->> (clojure.java.io/resource "v1/zen.edn")
-               slurp
-               edamame.core/parse-string))
+        (zen.core/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
 
         (testing "zen ns load"
           (is (empty? (zen.core/errors ztx))))
