@@ -50,7 +50,7 @@
 (defn symbols-check [acc old-ztx new-ztx]
   (let [same-namespaces (get-in acc [:data ::same-namespaces])
 
-        [lost _new same]
+        [lost new same]
         (map #(mapcat ns-symbols->qualified-symbols %)
              (clojure.data/diff (ztx->ns-symbols-set @old-ztx same-namespaces)
                                 (ztx->ns-symbols-set @new-ztx same-namespaces)))]
@@ -63,7 +63,14 @@
                                 {:type    :symbol/lost
                                  :message (str "Lost symbol: " lost-sym)
                                  :symbol  lost-sym}))
-                         lost))))
+                         lost)
+      (seq new)  (update :changes
+                        into
+                        (map (fn [new-sym]
+                               {:type    :symbol/new
+                                :message (str "New symbol: " new-sym)
+                                :symbol  new-sym}))
+                        new))))
 
 
 (defn index-sch-seq [sch-seq]

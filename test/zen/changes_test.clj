@@ -112,7 +112,9 @@
     (matcho/match (sut/check-compatible old-ztx new-ztx)
                   {:status :changed,
                    :changes [{:type :symbol/lost,
-                             :symbol 'b/sym}
+                              :symbol 'b/sym}
+                             {:type :symbol/new,
+                              :symbol 'b/sym2}
                             nil]}))
 
   (t/testing "schema changes"
