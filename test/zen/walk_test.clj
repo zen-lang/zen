@@ -65,8 +65,9 @@
     (def ztx (zen.core/new-context))
     (zen.core/load-ns ztx '{:ns myns
                             foo {:zen/tags #{zen/schema}
-                                 :type zen/map
-                                 :require #{:a}}
+                                 :type     zen/map
+                                 :require  #{:a}
+                                 :keys     {:c {:type zen/string}}}
 
                             mysch
                             {:zen/tags #{zen/schema}
