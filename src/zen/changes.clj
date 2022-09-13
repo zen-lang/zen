@@ -74,10 +74,9 @@
 
 
 (defn index-sch-seq [sch-seq]
-  (reduce (fn [acc {:keys [path], value :value}]
-            (assoc acc path {:path path :value value}))
-          {}
-          sch-seq))
+  (into {}
+        (map (fn [el] [(:path el) el]))
+        sch-seq))
 
 
 (defn get-indexed-sch-seq [ztx sym]
