@@ -113,8 +113,8 @@
            {:errors
             [{:type "symbol"
               :message "Expected symbol 'zen.tests.core-validate-test/not-schema tagged with '#{zen/schema}, but only #{}"
-              :path [:confirms 0]
-              :schema [zen/schema :confirms :every 0 :tags]}]}}
+              :path [:confirms not-schema]
+              :schema [zen/schema :confirms :every not-schema :tags]}]}}
 
           {:desc "Confirms contains schema with schema tag"
            :do {:type zen.test/validate-schema

@@ -787,12 +787,12 @@
          :data {:a #{"a" 2 "b" 4}}}
     :match
     {:errors
-     [{:path [:a 1]
+     [{:path [:a "a"]
        :type "integer.type"
-       :schema [set-schema :a :every 1 :type]}
-      {:path [:a 3]
+       :schema [set-schema :a :every "a" :type]}
+      {:path [:a "b"]
        :type "integer.type"
-       :schema [set-schema :a :every 3 :type]}]}}
+       :schema [set-schema :a :every "b" :type]}]}}
 
    {:desc "fewer values in given set than was defined in :minItems"
     :do {:type zen.test/validate

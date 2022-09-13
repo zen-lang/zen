@@ -227,8 +227,8 @@
      ;; error from schema validation
       {:message "No symbol 'zen.tests.confirms-test/schema-b found",
        :type "symbol",
-       :path [:confirms 1],
-       :schema [zen/schema :confirms :every 1 :tags]}
+       :path [:confirms zen.tests.confirms-test/schema-b],
+       :schema [zen/schema :confirms :every zen.tests.confirms-test/schema-b :tags]}
 
       ;; error from data validation
       {:message "Could not resolve schema 'zen.tests.confirms-test/schema-b"

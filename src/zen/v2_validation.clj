@@ -497,8 +497,14 @@
                    (merge-vtx vtx)))
 
              data*
-             (if-let [indices (not-empty (:indices opts))]
-               (map vector indices data)
+             (cond
+               (seq (:indices opts))
+               (map vector (:indices opts) data)
+
+               (set? data)
+               (map (fn [set-el] [set-el set-el]) data)
+
+               :else
                (map-indexed vector data))]
 
          (reduce err-fn vtx data*)))}))

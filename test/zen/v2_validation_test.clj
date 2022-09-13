@@ -9,7 +9,8 @@
    [zen.v2-validation :as v]
    [zen.validation]
    [zen.core :as zen]
-   [edamame.core]))
+   [edamame.core]
+   [matcho.core :as matcho]))
 
 ;; see slicing-test/zen-fx-engine-slicing-test
 (defmethod fx/fx-evaluator 'zen.tests.slicing-test/slice-key-check
@@ -253,3 +254,34 @@
       (zen.core/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
       (zen.core/load-ns ztx myns)
       (is (empty? (zen.core/errors ztx))))))
+
+
+(deftest set-validation-test
+  (def myns
+    '{ns myns
+
+      my-set-schema
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:strings
+              {:type zen/set
+               :every {:type zen/string
+                       :minLength 2}}}}})
+
+  (testing "current valiatdion"
+    (def ztx (zen.core/new-context))
+    (zen.core/load-ns ztx myns)
+
+    (matcho/match (zen.core/validate ztx #{'myns/my-set-schema} {:strings #{"aa" "bb" "c"}})
+                  {:errors [{:path [:strings "c" nil]}
+                            nil]}))
+
+  (testing "previous validation engine with previous zen.edn"
+    (with-redefs [zen.v2-validation/validate zen.validation/validate]
+      (def ztx (atom {}))
+      (zen.core/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
+      (zen.core/load-ns ztx myns)
+
+      (matcho/match (zen.core/validate ztx #{'myns/my-set-schema} {:strings #{"aa" "bb" "c"}})
+                    {:errors [{:path [:strings "c" nil]}
+                              nil]}))))

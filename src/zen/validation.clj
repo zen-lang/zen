@@ -288,13 +288,13 @@
   (if (or (set? data) (sequential? data))
     (let [acc (if evr
                 (->
-                 (loop [acc (update-acc ctx acc {:schema [:every]}), idx 0, [d & ds] data]
+                 (loop [acc (update-acc ctx acc {:schema [:every]}), [d & ds] data]
                    (if (and (nil? d) (empty? ds))
                      acc
                      (recur
-                      (-> (validate-node ctx (update-acc ctx acc {:path [idx]}) evr d)
+                      (-> (validate-node ctx (update-acc ctx acc {:path [d]}) evr d)
                           (restore-acc acc))
-                      (inc idx) ds)))
+                      ds)))
                  (restore-acc acc))
                 acc)
           cnt (count data)
