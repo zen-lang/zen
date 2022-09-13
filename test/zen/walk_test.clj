@@ -79,6 +79,7 @@
                                         :zen/desc "4"
                                         :every {:type zen/map
                                                 :zen/desc "5"
+                                                :require #{:c}
                                                 :keys {:c {:zen/desc "6"
                                                            :type zen/any}}}}}}})
 
@@ -91,6 +92,7 @@
        {:path [:keys :a :zen/desc]                 :value "3"}
        {:path [:keys :b :every :keys :c :type]     :value 'zen/any}
        {:path [:keys :b :every :keys :c :zen/desc] :value "6"}
+       {:path [:keys :b :every :require]           :value #{:c}}
        {:path [:keys :b :every :type]              :value 'zen/map}
        {:path [:keys :b :every :zen/desc]          :value "5"}
        {:path [:keys :b :type]                     :value 'zen/vector}
