@@ -7,11 +7,11 @@
 (defn namespace-check [acc old-ztx new-ztx]
   (let [get-set-of-ns #(set (keys (:ns %)))
 
-        [lost new unchanged]
+        [lost new same]
         (clojure.data/diff (get-set-of-ns @old-ztx)
                            (get-set-of-ns @new-ztx))]
     (cond-> acc
-      :always   (update :data merge {::unchanged-namespaces unchanged})
+      :always    (update :data merge {::same-namespaces same})
       (seq lost) (update :changes
                          into
                          (map (fn [lost-ns]
@@ -48,15 +48,15 @@
 
 
 (defn symbols-check [acc old-ztx new-ztx]
-  (let [unchanged-namespaces (get-in acc [:data ::unchanged-namespaces])
+  (let [same-namespaces (get-in acc [:data ::same-namespaces])
 
-        [lost _new unchanged]
+        [lost _new same]
         (map #(mapcat ns-symbols->qualified-symbols %)
-             (clojure.data/diff (ztx->ns-symbols-set @old-ztx unchanged-namespaces)
-                                (ztx->ns-symbols-set @new-ztx unchanged-namespaces)))]
+             (clojure.data/diff (ztx->ns-symbols-set @old-ztx same-namespaces)
+                                (ztx->ns-symbols-set @new-ztx same-namespaces)))]
 
     (cond-> acc
-      :always    (update :data merge {::unchanged-symbols unchanged})
+      :always    (update :data merge {::same-symbols same})
       (seq lost) (update :changes
                          into
                          (map (fn [lost-sym]
@@ -117,8 +117,8 @@
 
 
 (defn schema-check [acc old-ztx new-ztx]
-  (let [unchanged-symbols (get-in acc [:data ::unchanged-symbols])
-        changes (mapcat #(sym-changes old-ztx new-ztx %) unchanged-symbols)]
+  (let [same-symbols (get-in acc [:data ::same-symbols])
+        changes      (mapcat #(sym-changes old-ztx new-ztx %) same-symbols)]
     (cond-> acc
       (seq changes)
       (update :changes
