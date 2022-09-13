@@ -85,7 +85,7 @@
   (index-sch-seq (zen.walk/zen-dsl-seq ztx (zen.core/get-symbol ztx sym))))
 
 
-(defn process-change [sym path attr before after]
+(defn process-change [sym path before after]
   (let [change-type (cond
                       (= before after) :same
                       (nil? before)    :added
@@ -95,7 +95,6 @@
       {:change-type change-type
        :sym         sym
        :path        path
-       :attr        attr
        :before      before
        :after       after})))
 
@@ -106,9 +105,9 @@
 
         {errs :acc, added :new}
         (reduce (fn [{:keys [acc new]} [ch-pth old-el]]
-                  (let [{:keys [attr path]} old-el
+                  (let [{:keys [path]} old-el
                         new-el (get new ch-pth)
-                        change (process-change sym path attr (:value old-el) (:value new-el))]
+                        change (process-change sym path (:value old-el) (:value new-el))]
                     {:acc (cond-> acc (some? change) (conj change))
                      :new (dissoc new ch-pth)}))
                 {:acc []
@@ -116,8 +115,8 @@
                 old)]
 
     (reduce (fn [acc [ch-pth new-el]]
-              (let [{:keys [attr path]} new-el
-                    change (process-change sym path attr nil (:value new-el))]
+              (let [{:keys [path]} new-el
+                    change (process-change sym path nil (:value new-el))]
                 (cond-> acc (some? change) (conj change))))
             errs
             added)))
@@ -130,12 +129,11 @@
       (seq changes)
       (update :changes
               into
-              (map (fn [{:keys [change-type before after sym path attr]}]
+              (map (fn [{:keys [change-type before after sym path]}]
                      (let [error-type (keyword "schema" (name change-type))]
                        {:type   error-type
                         :sym    sym
                         :path   path
-                        :attr   attr
                         :before before
                         :after  after})))
               changes))))

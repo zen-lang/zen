@@ -145,21 +145,18 @@
     (matcho/match (sut/check-compatible old-ztx new-ztx)
                   {:status :changed
                    :changes [{:type   :schema/removed
-                             :sym    'b/sym
-                             :path   [:keys :baz]
-                             :attr   :type
+                              :sym    'b/sym
+                              :path   [:keys :baz :type nil]
                              :before 'zen/any
                              :after  nil}
                             {:type   :schema/updated
                              :sym    'b/sym
-                             :path   [:keys :foo]
-                             :attr   :type
+                             :path   [:keys :foo :type nil]
                              :before 'zen/number
                              :after  'zen/integer}
                             {:type   :schema/added
                              :sym    'b/sym
-                             :path   [:keys :quux]
-                             :attr   :type
+                             :path   [:keys :quux :type nil]
                              :before nil
                              :after  'zen/any}
                             nil]}))
@@ -200,14 +197,12 @@
                     {:status :changed
                      :changes [{:type   :schema/removed
                                 :sym    'myns/myrpc
-                                :path   [:params]
-                                :attr   :require
+                                :path   [:params :require nil]
                                 :before #{:foo}
                                 :after  nil}
                                {:type   :schema/removed
                                 :sym    'myns/myrpc
-                                :path   [:result]
-                                :attr   :require
+                                :path   [:result :require nil]
                                 :before #{:bar}
                                 :after  nil}
                                nil]}))
@@ -260,28 +255,25 @@
 
                           myapi
                           {:zen/tags #{rest/api}
-                           :routing {:apis   #{other-api}
-                                     :routes {"$export" {:methods {:POST op}}
-                                              [:id]     {:methods {:GET op}}}}}})
+                           :routing {:apis    #{other-api}
+                                     :routes  {"$export" {:methods {:POST op}}
+                                               [:id]     {:methods {:GET op}}}}}})
 
       (matcho/match (sut/check-compatible old-ztx new-ztx)
                     {:status :changed
                      :changes [{:type   :schema/added
                                 :sym    'myns/other-api
-                                :path   [:routing :methods]
-                                :attr   :GET
+                                :path   [:routing :methods :GET nil]
                                 :before nil
                                 :after  'myns/op}
                                {:type   :schema/removed
                                 :sym    'myns/myapi
-                                :path   [:routing :methods]
-                                :attr   :GET
+                                :path   [:routing :methods :GET nil]
                                 :before 'myns/op
                                 :after  nil}
                                {:type   :schema/removed
                                 :sym    'myns/myapi
-                                :path   [:routing :methods]
-                                :attr   :POST
+                                :path   [:routing :methods :POST nil]
                                 :before 'myns/op
                                 :after  nil}
                                nil]}))))
