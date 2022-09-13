@@ -8,7 +8,8 @@
    [clojure.test :refer [deftest is testing]]
    [zen.v2-validation :as v]
    [zen.validation]
-   [zen.core :as zen]))
+   [zen.core :as zen]
+   [edamame.core]))
 
 ;; see slicing-test/zen-fx-engine-slicing-test
 (defmethod fx/fx-evaluator 'zen.tests.slicing-test/slice-key-check
@@ -162,7 +163,13 @@
 
   (testing "composing map validations"
     (testing "current validation engine"
+
       (def ztx (zen.core/new-context))
+
+      (testing "zen ns load"
+        (is (empty? (zen.core/errors ztx))))
+
+      (swap! ztx assoc :errors [])
 
       (testing "loading rest ns"
         (zen.core/load-ns ztx rest-ns)
@@ -174,12 +181,47 @@
         (zen.core/load-ns ztx myns)
         (is (empty? (zen.core/errors ztx)))))
 
-    (testing "current validation engine"
+    (testing "previous validation engine with current zen.edn"
       (with-redefs [zen.v2-validation/validate zen.validation/validate
                     zen.core/validate zen.validation/validate
                     zen.v2-validation/validate-schema zen.validation/validate-schema
                     zen.core/validate-schema zen.validation/validate-schema]
+
         (def ztx (zen.core/new-context))
+
+        (testing "zen ns load"
+          (is (empty? (zen.core/errors ztx))))
+
+        (swap! ztx assoc :errors [])
+
+        (testing "loading rest ns"
+          (zen.core/load-ns ztx rest-ns)
+          (is (empty? (zen.core/errors ztx))))
+
+        (swap! ztx assoc :errors [])
+
+        (testing "loading myns"
+          (zen.core/load-ns ztx myns)
+          (is (empty? (zen.core/errors ztx))))))
+
+    (testing "previous validation engine with previous zen.edn"
+      (with-redefs [zen.v2-validation/validate zen.validation/validate
+                    zen.core/validate zen.validation/validate
+                    zen.v2-validation/validate-schema zen.validation/validate-schema
+                    zen.core/validate-schema zen.validation/validate-schema]
+
+        (def ztx (atom {}))
+
+        (zen.core/load-ns
+          ztx
+          (->> (clojure.java.io/resource "v1/zen.edn")
+               slurp
+               edamame.core/parse-string))
+
+        (testing "zen ns load"
+          (is (empty? (zen.core/errors ztx))))
+
+        (swap! ztx assoc :errors [])
 
         (testing "loading rest ns"
           (zen.core/load-ns ztx rest-ns)
