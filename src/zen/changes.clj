@@ -7,18 +7,25 @@
 (defn namespace-check [acc old-ztx new-ztx]
   (let [get-set-of-ns #(set (keys (:ns %)))
 
-        [lost _new unchanged]
+        [lost new unchanged]
         (clojure.data/diff (get-set-of-ns @old-ztx)
                            (get-set-of-ns @new-ztx))]
     (cond-> acc
-      :always    (update :data merge {::unchanged-namespaces unchanged})
+      :always   (update :data merge {::unchanged-namespaces unchanged})
       (seq lost) (update :changes
                          into
                          (map (fn [lost-ns]
                                 {:type      :namespace/lost
                                  :message   (str "Lost namespace: "  lost-ns)
                                  :namespace lost-ns}))
-                         lost))))
+                         lost)
+      (seq new) (update :changes
+                         into
+                         (map (fn [new-ns]
+                                {:type      :namespace/new
+                                 :message   (str "New namespace: "  new-ns)
+                                 :namespace new-ns}))
+                         new))))
 
 
 (def core-zen-syms #{'import 'ns 'alias})

@@ -24,12 +24,15 @@
 
     (def new-ztx (zen.core/new-context))
     (zen.core/load-ns new-ztx '{ns a})
+    (zen.core/load-ns new-ztx '{ns c})
 
     (matcho/match (sut/check-compatible old-ztx new-ztx)
                   {:status :changed,
                    :changes
-                   [{:type :namespace/lost,
+                   [{:type :namespace/lost
                      :namespace 'b}
+                    {:type :namespace/new
+                     :namespace 'c}
                     nil]}))
 
   (t/testing "symbol remove"
