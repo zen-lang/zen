@@ -232,3 +232,31 @@
         (testing "loading myns"
           (zen.core/load-ns ztx myns)
           (is (empty? (zen.core/errors ztx))))))))
+
+
+(deftest ^:kaocha/pending values-validation-test
+  (def myns
+    '{ns myns
+
+      my-simple-map-tag
+      {:zen/tags #{zen/tag zen/schema}
+       :type     zen/map
+       :key      {:type zen/keyword}
+       :values   {:type zen/string}}
+
+      my-simple-map
+      {:zen/tags #{my-simple-map-tag}
+
+       :hello "world"}})
+
+  (testing "current valiatdion"
+    (def ztx (zen.core/new-context))
+    (zen.core/load-ns ztx myns)
+    (is (empty? (zen.core/errors ztx))))
+
+  (testing "previous validation engine with previous zen.edn"
+    (with-redefs [zen.v2-validation/validate zen.validation/validate]
+      (def ztx (atom {}))
+      (zen.core/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
+      (zen.core/load-ns ztx myns)
+      (is (empty? (zen.core/errors ztx))))))
