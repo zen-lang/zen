@@ -9,8 +9,14 @@
 (defn sh! [& args]
   (println "$" (str/join " " args))
   (let [result (apply shell/sh args)]
-    (when-let [out (:out result)]
-      (print out))
+
+    (when-not (str/blank? (:out result))
+      (print (:out result)))
+
+    (when-not (str/blank? (:err result))
+      (print "!" (:err result)))
+
+    (flush)
     result))
 
 
