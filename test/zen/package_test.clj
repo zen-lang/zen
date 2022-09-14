@@ -210,7 +210,23 @@
                        (map #(str (name %) ".edn"))
                        all-test-ns)
                  (into #{}
-                       (build-zip-flat-tree build-zip-path))))))))
+                       (zip-entries build-zip-path))))))
+
+    (t/testing "zip archive read-ns"
+      (def ztx (zen.core/new-context {:zip-paths [build-zip-path]}))
+
+      (t/testing "no errors on read"
+        (zen.core/read-ns ztx 'main)
+        (t/is (empty? (zen.core/errors ztx))))
+
+      (t/testing "symbols loaded"
+        (t/is (= #{'main/sym}
+                 (zen.core/get-tag ztx 'a/tag))))
+
+      (t/testing "recursive deps schemas work"
+        (t/is (empty? (:errors (zen.core/validate ztx
+                                                  #{'a/recur-sch}
+                                                  {:a {:b {:a {:b {}}}}}))))))))
 
 
 #_(t/deftest zen-pm

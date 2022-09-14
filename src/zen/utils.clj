@@ -168,6 +168,6 @@
       (let [entry-name (.getName etr)
             file? (not (str/ends-with? entry-name "/"))]
         (when (and file? (not (str/blank? entry-name)))
-          (let [file (clojure.java.io/file (str dest-dir entry-name))]
+          (let [file (clojure.java.io/file (str dest-dir "/" entry-name))]
             (input-stream->file zip-input-stream file :create-parents? true)))))
     dest-dir))
