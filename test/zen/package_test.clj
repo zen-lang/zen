@@ -180,20 +180,37 @@
 
     (sut/zen-build! module-dir-path user-cfg-fixture)
 
-    (t/testing "all namespaces from the fixture are present in the build zrc path"
-      (def all-test-ns
-        (->> (vals test-zen-repos)
-             (mapcat :zrc)
-             (map :ns)))
+    (def all-test-ns
+      (->> (vals test-zen-repos)
+           (mapcat :zrc)
+           (map :ns)))
 
-      (def build-zrc-path (str module-dir-path "/" (:build-path user-cfg-fixture) "/zrc"))
+    (t/testing "all namespaces from the fixture are present in the build zrc path"
+      (def build-zrc-path (str module-dir-path
+                               "/" (:build-path user-cfg-fixture)
+                               "/zrc"))
 
       (t/is (= (into #{}
                      (map #(str build-zrc-path "/" (name %) ".edn"))
                      all-test-ns)
                (into #{}
                      (map str)
-                     (rest (file-seq (io/file build-zrc-path)))))))))
+                     (rest (file-seq (io/file build-zrc-path)))))))
+
+    (t/testing "zip archive present"
+      (def build-zip-path
+        (str module-dir-path
+             "/" (:build-path user-cfg-fixture)
+             "/" (:package-name user-cfg-fixture) ".zip"))
+
+      (t/is (.exists (io/file build-zip-path)))
+
+      (t/testing "all namespaces from the fixture are present in zip"
+        (= (into #{}
+                 (map #(str build-zrc-path "/" (name %) ".edn"))
+                 all-test-ns)
+           (into #{}
+                 (build-zip-flat-tree build-zip-path)))))))
 
 
 #_(t/deftest zen-pm
