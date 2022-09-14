@@ -206,11 +206,11 @@
       (t/is (.exists (io/file build-zip-path)))
 
       (t/testing "all namespaces from the fixture are present in zip"
-        (= (into #{}
-                 (map #(str build-zrc-path "/" (name %) ".edn"))
-                 all-test-ns)
-           (into #{}
-                 (build-zip-flat-tree build-zip-path)))))))
+        (t/is (= (into #{}
+                       (map #(str (name %) ".edn"))
+                       all-test-ns)
+                 (into #{}
+                       (build-zip-flat-tree build-zip-path))))))))
 
 
 #_(t/deftest zen-pm
