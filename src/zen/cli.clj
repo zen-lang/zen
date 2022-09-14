@@ -118,7 +118,7 @@
          _stash! (clojure.java.shell/sh "git" "stash")
          old-ztx (load-used-namespaces (load-ztx))
          _pop!   (clojure.java.shell/sh "git" "stash" "pop")]
-     (clojure.pprint/pprint (zen.changes/check-compatible @old-ztx @new-ztx)))))
+     (clojure.pprint/pprint (zen.changes/check-changes old-ztx new-ztx)))))
 
 
 (def cfg
