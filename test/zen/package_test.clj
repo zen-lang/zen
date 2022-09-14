@@ -16,13 +16,11 @@
     (str/trim-newline v)))
 
 
-(defn zip-entries [zipfile]
-  (enumeration-seq (.entries zipfile)))
-
-
-(defn build-zip-flat-tree [filename]
+(defn zip-entries [filename]
   (let [zf (java.util.zip.ZipFile. filename)]
-    (try (->> zf zip-entries (map #(.getName %)) vec)
+    (try (->> (.entries zf)
+              enumeration-seq
+              (mapv #(.getName %)))
          (finally (.close zf)))))
 
 
@@ -260,4 +258,4 @@
                "b/dir/main.edn"
                "b/dir/c/"
                "b/dir/c/main.edn"}
-             (set (build-zip-flat-tree "/tmp/zen/build/uberzen.zip"))))))
+             (set (zip-entries "/tmp/zen/build/uberzen.zip"))))))
