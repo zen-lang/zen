@@ -174,16 +174,23 @@
         zen-modules-path (str package-path "/zen-modules")]
     (cons zrc-path (expand-zen-modules zen-modules-path))))
 
-(defn find-in-package-paths [package-paths pth-to-find]
-  (find-in-paths (mapcat expand-package-path package-paths)
-                 pth-to-find))
+(def ^:const unzip-cache-dir "/tmp/zen-unzip/")
+
+(defn unzip-to-cache-dir [zip-paths]
+  (for [path zip-paths]
+    (let [path-hash (zen.utils/string->md5 path)
+          unzip-dest (str unzip-cache-dir "/" path-hash)]
+      (if (.exists (io/file unzip-dest))
+        unzip-dest
+        (zen.utils/unzip! path unzip-dest)))))
 
 ;; TODO: cache find file
 (defn find-file [ctx pth]
   (or (io/resource pth)
-      (find-in-package-paths (:package-paths @ctx) pth)
-      (find-in-paths (:paths @ctx) pth)))
-
+      (find-in-paths (concat (mapcat expand-package-path (:package-paths @ctx))
+                             (:paths @ctx)
+                             (mapcat unzip-to-cache-dir (:zip-paths @ctx)))
+                     pth)))
 
 (defn get-env [env env-name]
   (or (get env (keyword env-name))

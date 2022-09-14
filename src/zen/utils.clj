@@ -1,4 +1,6 @@
-(ns zen.utils)
+(ns zen.utils
+  (:require [clojure.string :as str]
+            [clojure.java.io :as io]))
 
 (defn deep-merge
   "efficient deep merge"
@@ -147,3 +149,25 @@
       (namespace ns-part)
       (name ns-part))
     (name name-part)))
+
+(defn string->md5 [s]
+  (let [md5-digest (doto (java.security.MessageDigest/getInstance "MD5")
+                     (.update (.getBytes s)))]
+    (format "%032x" (BigInteger. 1 (.digest md5-digest)))))
+
+(defn input-stream->file [^java.io.InputStream input-stream
+                          ^java.io.File file
+                          & {:keys [create-parents?]}]
+  (when create-parents?
+    (clojure.java.io/make-parents file))
+  (clojure.java.io/copy input-stream file))
+
+(defn unzip! [url dest-dir]
+  (with-open [zip-input-stream (java.util.zip.ZipInputStream. (clojure.java.io/input-stream url))]
+    (doseq [^java.util.zip.ZipEntry etr (iteration (fn [_] (.getNextEntry zip-input-stream)))]
+      (let [entry-name (.getName etr)
+            file? (not (str/ends-with? entry-name "/"))]
+        (when (and file? (not (str/blank? entry-name)))
+          (let [file (clojure.java.io/file (str dest-dir entry-name))]
+            (input-stream->file zip-input-stream file :create-parents? true)))))
+    dest-dir))
