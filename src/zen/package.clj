@@ -76,7 +76,7 @@
         (create-file! ".gitignore" "\nzen-modules\n" root)
         (when package-name
           (create-file! (format "zrc/%s.edn" package-name)
-                        (format "{ns %s \n import #{}\n\n}"(symbol package-name))
+                        (format "{ns %s \n import #{}\n\n}" (symbol package-name))
                         root))
         (mkdir! root "zen-modules")))))
 
@@ -110,13 +110,33 @@
     (read-deps root)))
 
 
+(comment
+  (shell/sh "cp" "-r" "/tmp/zen.package-test/test-module/zen-modules/*/zrc/" "/tmp/zen.package-test/zen-build/zrc")
+  nil
+  )
+
+(defn dir-list [dir] (-> dir clojure.java.io/file .list))
+
+
+(defn zen-build! [root {:as _cfg :keys [build-path package-name]}]
+  (zen-init-deps! root)
+
+  (let [zrc-main-path (str root "/zrc/")
+        zen-modules-path (str root "/zen-modules/*/zrc/")
+        zrc-dest (str build-path "/zrc")
+        zip-dest (str build-path "/" package-name ".zip")]
+    (sh! "mkdir" "-p" zrc-dest)
+    (sh! "cp" "-r" zrc-main-path zrc-dest)
+    (sh! "cp" "-r" zen-modules-path zrc-dest)
+    (sh! "zip" "-r" zip-dest "." :dir zrc-dest)))
+
 #_(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))
 
 
 #_(defn flat-dir! [dir to] (copy! dir to))
 
 
-#_(defn dir-list [dir] (-> dir clojure.java.io/file .list))
+
 
 
 #_(defn clear-files! [dir & files]

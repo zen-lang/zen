@@ -2,6 +2,7 @@
   (:require [zen.package :as sut]
             [zen.core :as zen]
             [clojure.string :as str]
+            [clojure.java.io :as io]
             [clojure.test :as t]
             [matcho.core :as matcho]))
 
@@ -159,6 +160,59 @@
   (t/is (empty? (:errors (zen.core/validate ztx
                                             #{'a/recur-sch}
                                             {:a {:b {:a {:b {}}}}})))))
+
+
+(t/deftest build-test
+  (def test-dir-path "/tmp/zen.package-test")
+  (def user-cfg-fixture {:package-name "package"
+                         :build-path (str test-dir-path "/" "zen-build")
+                         :with-latest true})
+
+
+  (rm-fixtures test-dir-path)
+
+  (mk-fixtures test-dir-path
+               {'test-module {:deps '#{a-lib}
+                              :zrc '#{{ns main
+                                       import #{a}
+                                       sym {:zen/tags #{a/tag}
+                                            :a "a"}}}}
+
+                'a-lib       {:deps '#{a-lib-dep b-lib}
+                              :zrc '#{{ns a
+                                       import #{a-dep b}
+                                       tag {:zen/tags #{zen/schema zen/tag}
+                                            :confirms #{a-dep/tag-sch}}
+                                       recur-sch {:zen/tags #{zen/schema}
+                                                  :type zen/map
+                                                  :keys {:a {:confirms #{b/recur-sch}}}}}}}
+
+                'b-lib        {:deps '#{a-lib}
+                               :zrc '#{{ns b
+                                        import #{a}
+                                        recur-sch {:zen/tags #{zen/schema}
+                                                   :type zen/map
+                                                   :keys {:b {:confirms #{a/recur-sch}}}}}}}
+
+                'a-lib-dep   {:deps '#{}
+                              :zrc '#{{ns a-dep
+                                       tag-sch
+                                       {:zen/tags #{zen/schema}
+                                        :type zen/map
+                                        :require #{:a}
+                                        :keys {:a {:type zen/string}}}}}}})
+
+  (def module-dir-path (str test-dir-path "/test-module"))
+
+  (t/testing "Zen can build zrc folder with module files on top-level"
+    (sut/zen-build! module-dir-path user-cfg-fixture)
+    (let [build-zrc-path (str (:build-path user-cfg-fixture) "/zrc")
+          expected-flat-tree-files ["a-dep.edn"
+                                    "a.edn"
+                                    "b.edn"
+                                    "main.edn"]]
+      (t/is (= (set (map #(str build-zrc-path "/" %) expected-flat-tree-files))
+               (set (map str (file-seq (io/file build-zrc-path)))))))))
 
 
 #_(t/deftest zen-pm
