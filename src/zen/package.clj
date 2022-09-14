@@ -3,7 +3,8 @@
             [clojure.java.shell :as shell]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
-            clojure.pprint))
+            clojure.pprint
+            [zen.store]))
 
 
 (defn sh! [& args]
@@ -127,13 +128,12 @@
 (defn zen-build! [root {:as _cfg :keys [build-path package-name]}]
   (zen-init-deps! root)
 
-  (let [zrc-main-path (str root "/zrc/")
-        zen-modules-path (str root "/zen-modules/*/zrc/")
-        zrc-dest (str build-path "/zrc")
-        zip-dest (str build-path "/" package-name ".zip")]
+  (let [zrc-paths (zen.store/expand-package-path root)
+        zrc-dest (str root "/" build-path "/zrc/")
+        zip-dest (str root "/" build-path "/" package-name ".zip")]
     (sh! "mkdir" "-p" zrc-dest)
-    (sh! "cp" "-r" zrc-main-path zrc-dest)
-    (sh! "cp" "-r" zen-modules-path zrc-dest)
+    (doseq [path zrc-paths]
+      (sh! "cp" "-r" (str path "/") zrc-dest))
     (sh! "zip" "-r" zip-dest "." :dir zrc-dest)))
 
 #_(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))

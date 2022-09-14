@@ -164,10 +164,10 @@
 
 (t/deftest build-test
   (def test-dir-path "/tmp/zen.package-test")
-  (def user-cfg-fixture {:package-name "package"
-                         :build-path (str test-dir-path "/" "zen-build")
-                         :with-latest true})
 
+  (def user-cfg-fixture {:package-name "package"
+                         :build-path "zen-build"
+                         :with-latest true})
 
   (rm-fixtures test-dir-path)
 
@@ -206,13 +206,18 @@
 
   (t/testing "Zen can build zrc folder with module files on top-level"
     (sut/zen-build! module-dir-path user-cfg-fixture)
-    (let [build-zrc-path (str (:build-path user-cfg-fixture) "/zrc")
-          expected-flat-tree-files ["a-dep.edn"
-                                    "a.edn"
-                                    "b.edn"
-                                    "main.edn"]]
-      (t/is (= (set (map #(str build-zrc-path "/" %) expected-flat-tree-files))
-               (set (map str (file-seq (io/file build-zrc-path)))))))))
+
+    (def build-zrc-path (str module-dir-path "/" (:build-path user-cfg-fixture) "/zrc"))
+
+    (t/is (= #{(str build-zrc-path "/main.edn")
+               (str build-zrc-path "/a.edn")
+               (str build-zrc-path "/b.edn")
+               (str build-zrc-path "/a-dep.edn")}
+
+             (->> (file-seq (io/file build-zrc-path))
+                  rest
+                  (map str)
+                  set)))))
 
 
 #_(t/deftest zen-pm
