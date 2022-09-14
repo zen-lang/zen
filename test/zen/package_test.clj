@@ -24,27 +24,6 @@
          (finally (.close zf)))))
 
 
-;; (defn init-stub-dependencies! []
-;;   (doseq [repo [{:name "/a"
-;;                  :deps [['c "/tmp/c"]]}
-;;                 {:name "/b"
-;;                  :deps [['c "/tmp/c"]]}
-;;                 {:name "/c"
-;;                  :deps []}]]
-;;     (let [dir (str "/tmp" (:name repo))
-;;           ]
-
-;;       (def dir "/tmp/a")
-;;       (def deps [['c "/tmp/c"]])
-
-;;       (sut/sh! "rm" "-rf" dir)
-;;       (sut/sh! "mkdir" "-p" dir)
-;;       (sut/git-init! dir)
-;;       (spit (str dir "/main.edn") (str {'ns 'main (symbol (str (random-uuid))) {}}))
-;;       (spit (str dir "/package.edn") (str deps))
-;;       (sut/sh! "git" "add" "." :dir dir)
-;;       (sut/sh! "git" "commit" "-m" "\"Initial commit\"" :dir dir))))
-
 (defn mkdir [name] (sut/sh! "mkdir" "-p" name))
 (defn rm [& names] (apply sut/sh! "rm" "-rf" names))
 
@@ -225,37 +204,3 @@
         (t/is (empty? (:errors (zen.core/validate ztx
                                                   #{'a/recur-sch}
                                                   {:a {:b {:a {:b {}}}}}))))))))
-
-
-#_(t/deftest zen-pm
-  (init-stub-dependencies!)
-
-  (def root "/tmp/zen")
-
-  (t/testing "Zen can recursively load dependencies"
-    (sut/zen-init! root)
-
-    (t/is (= (get-git-hash "/tmp/a")
-             (get-git-hash "/tmp/zen/zen_modules/a")))
-    (t/is (= (get-git-hash "/tmp/c")
-             (get-git-hash "/tmp/zen/zen_modules/a/zen_modules/c")))
-
-    (t/is (= (get-git-hash "/tmp/b")
-             (get-git-hash "/tmp/zen/zen_modules/b/dir")))
-    (t/is (= (get-git-hash "/tmp/c")
-             (get-git-hash "/tmp/zen/zen_modules/b/dir/zen_modules/c"))))
-
-  (t/testing "Zen can build uberzen"
-    (sut/zen-build! root)
-
-    (t/is (= #{"main.edn"
-               "a/"
-               "a/main.edn"
-               "a/c/"
-               "a/c/main.edn"
-               "b/"
-               "b/dir/"
-               "b/dir/main.edn"
-               "b/dir/c/"
-               "b/dir/c/main.edn"}
-             (set (zip-entries "/tmp/zen/build/uberzen.zip"))))))
