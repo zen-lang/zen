@@ -69,7 +69,7 @@
   (mkdir (str module-dir-path "/zrc"))
 
   (doseq [zen-ns zen-namespaces]
-    (let [file-name (zen-ns->file-name (get zen-ns 'ns))]
+    (let [file-name (zen-ns->file-name (or (get zen-ns :ns) (get zen-ns 'ns)))]
       (spit (str module-dir-path "/zrc/" file-name) zen-ns))))
 
 
@@ -108,116 +108,92 @@
   (rm test-dir-path))
 
 
+(def test-zen-repos
+  {'test-module {:deps '#{a-lib}
+                 :zrc '#{{:ns main
+                          :import #{a}
+                          sym {:zen/tags #{a/tag}
+                               :a "a"}}}}
+
+   'a-lib       {:deps '#{a-lib-dep b-lib}
+                 :zrc '#{{:ns a
+                          :import #{a-dep b}
+                          tag {:zen/tags #{zen/schema zen/tag}
+                               :confirms #{a-dep/tag-sch}}
+                          recur-sch {:zen/tags #{zen/schema}
+                                     :type zen/map
+                                     :keys {:a {:confirms #{b/recur-sch}}}}}}}
+
+   'b-lib        {:deps '#{a-lib}
+                  :zrc '#{{:ns b
+                           :import #{a}
+                           recur-sch {:zen/tags #{zen/schema}
+                                      :type zen/map
+                                      :keys {:b {:confirms #{a/recur-sch}}}}}}}
+
+   'a-lib-dep   {:deps '#{}
+                 :zrc '#{{:ns a-dep
+                          tag-sch
+                          {:zen/tags #{zen/schema}
+                           :type zen/map
+                           :require #{:a}
+                           :keys {:a {:type zen/string}}}}}}})
+
+
 (t/deftest init-test
   (def test-dir-path "/tmp/zen.package-test")
-
-  (rm-fixtures test-dir-path)
-
-  (mk-fixtures test-dir-path
-               {'test-module {:deps '#{a-lib}
-                              :zrc '#{{ns main
-                                       import #{a}
-                                       sym {:zen/tags #{a/tag}
-                                            :a "a"}}}}
-
-                'a-lib       {:deps '#{a-lib-dep b-lib}
-                              :zrc '#{{ns a
-                                       import #{a-dep b}
-                                       tag {:zen/tags #{zen/schema zen/tag}
-                                            :confirms #{a-dep/tag-sch}}
-                                       recur-sch {:zen/tags #{zen/schema}
-                                                  :type zen/map
-                                                  :keys {:a {:confirms #{b/recur-sch}}}}}}}
-
-                'b-lib        {:deps '#{a-lib}
-                               :zrc '#{{ns b
-                                        import #{a}
-                                        recur-sch {:zen/tags #{zen/schema}
-                                                   :type zen/map
-                                                   :keys {:b {:confirms #{a/recur-sch}}}}}}}
-
-                'a-lib-dep   {:deps '#{}
-                              :zrc '#{{ns a-dep
-                                       tag-sch
-                                       {:zen/tags #{zen/schema}
-                                        :type zen/map
-                                        :require #{:a}
-                                        :keys {:a {:type zen/string}}}}}}})
-
   (def module-dir-path (str test-dir-path "/test-module"))
 
-  (sut/zen-init-deps! module-dir-path)
+  (rm-fixtures test-dir-path)
+  (mk-fixtures test-dir-path test-zen-repos)
 
-  (def ztx (zen.core/new-context {:package-paths [module-dir-path]}))
+  (t/testing "init & read initted"
+    (sut/zen-init-deps! module-dir-path)
 
-  (zen.core/read-ns ztx 'main)
+    (def ztx (zen.core/new-context {:package-paths [module-dir-path]}))
 
-  (t/is (empty? (zen.core/errors ztx)))
+    (t/testing "no errors on read"
+      (zen.core/read-ns ztx 'main)
+      (t/is (empty? (zen.core/errors ztx))))
 
-  (t/is (= #{'main/sym}
-           (zen.core/get-tag ztx 'a/tag)))
+    (t/testing "symbols loaded"
+      (t/is (= #{'main/sym}
+               (zen.core/get-tag ztx 'a/tag))))
 
-  (t/is (empty? (:errors (zen.core/validate ztx
-                                            #{'a/recur-sch}
-                                            {:a {:b {:a {:b {}}}}})))))
+    (t/testing "recursive deps schemas work"
+      (t/is (empty? (:errors (zen.core/validate ztx
+                                                #{'a/recur-sch}
+                                                {:a {:b {:a {:b {}}}}})))))))
 
 
 (t/deftest build-test
   (def test-dir-path "/tmp/zen.package-test")
-
-  (def user-cfg-fixture {:package-name "package"
-                         :build-path "zen-build"
-                         :with-latest true})
-
-  (rm-fixtures test-dir-path)
-
-  (mk-fixtures test-dir-path
-               {'test-module {:deps '#{a-lib}
-                              :zrc '#{{ns main
-                                       import #{a}
-                                       sym {:zen/tags #{a/tag}
-                                            :a "a"}}}}
-
-                'a-lib       {:deps '#{a-lib-dep b-lib}
-                              :zrc '#{{ns a
-                                       import #{a-dep b}
-                                       tag {:zen/tags #{zen/schema zen/tag}
-                                            :confirms #{a-dep/tag-sch}}
-                                       recur-sch {:zen/tags #{zen/schema}
-                                                  :type zen/map
-                                                  :keys {:a {:confirms #{b/recur-sch}}}}}}}
-
-                'b-lib        {:deps '#{a-lib}
-                               :zrc '#{{ns b
-                                        import #{a}
-                                        recur-sch {:zen/tags #{zen/schema}
-                                                   :type zen/map
-                                                   :keys {:b {:confirms #{a/recur-sch}}}}}}}
-
-                'a-lib-dep   {:deps '#{}
-                              :zrc '#{{ns a-dep
-                                       tag-sch
-                                       {:zen/tags #{zen/schema}
-                                        :type zen/map
-                                        :require #{:a}
-                                        :keys {:a {:type zen/string}}}}}}})
-
   (def module-dir-path (str test-dir-path "/test-module"))
 
+  (rm-fixtures test-dir-path)
+  (mk-fixtures test-dir-path test-zen-repos)
+
   (t/testing "Zen can build zrc folder with module files on top-level"
+    (def user-cfg-fixture {:package-name "package"
+                           :build-path "zen-build"
+                           :with-latest true})
+
     (sut/zen-build! module-dir-path user-cfg-fixture)
 
-    (def build-zrc-path (str module-dir-path "/" (:build-path user-cfg-fixture) "/zrc"))
+    (t/testing "all namespaces from the fixture are present in the build zrc path"
+      (def all-test-ns
+        (->> (vals test-zen-repos)
+             (mapcat :zrc)
+             (map :ns)))
 
-    (t/is (= #{(str build-zrc-path "/main.edn")
-               (str build-zrc-path "/a.edn")
-               (str build-zrc-path "/b.edn")
-               (str build-zrc-path "/a-dep.edn")}
+      (def build-zrc-path (str module-dir-path "/" (:build-path user-cfg-fixture) "/zrc"))
 
-             (->> (file-seq (io/file build-zrc-path))
-                  rest
-                  (map str)
-                  set)))))
+      (t/is (= (into #{}
+                     (map #(str build-zrc-path "/" (name %) ".edn"))
+                     all-test-ns)
+               (into #{}
+                     (map str)
+                     (rest (file-seq (io/file build-zrc-path)))))))))
 
 
 #_(t/deftest zen-pm
