@@ -22,9 +22,8 @@
                                                                               {:value :android}
                                                                               {:value :other}]}}}
                                                 :slicing  {:slices {"ios"
-                                                                    {:filter {:engine :zen
-                                                                              :zen    {:type zen/map
-                                                                                       :keys {:os {:const {:value :ios}}}}}
+                                                                    {:filter {:engine :match
+                                                                              :match {:os :ios}}
                                                                      :schema {:type     zen/vector
                                                                               :minItems 1}}}}}}}
                              :rest   {:type  zen/vector
