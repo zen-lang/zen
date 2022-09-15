@@ -103,39 +103,38 @@
 (defn load-ns [ctx nmsps & [opts]]
   (let [ns-name (or (get nmsps 'ns) (get nmsps :ns))
         aliased-ns (or (get nmsps 'alias) (get nmsps :alias))]
-    (when (not (get-in @ctx [:ns ns-name]))
-      (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
+    (swap! ctx (fn [ctx] (assoc-in ctx [:ns ns-name] (assoc nmsps :zen/file (:zen/file opts)))))
 
-      (pre-load-ns! ctx nmsps)
+    (pre-load-ns! ctx nmsps)
 
-      (doseq [imp (cond->> (or (get nmsps 'import)
-                               (get nmsps :import))
-                    (symbol? aliased-ns) (cons aliased-ns))]
-        (cond
-          (get-in @ctx [:ns imp])
-          :already-imported
+    (doseq [imp (cond->> (or (get nmsps 'import)
+                             (get nmsps :import))
+                  (symbol? aliased-ns) (cons aliased-ns))]
+      (cond
+        (get-in @ctx [:ns imp])
+        :already-imported
 
-          (contains? (:memory-store @ctx) imp)
-          (load-ns ctx (get-in @ctx [:memory-store imp]) opts)
+        (contains? (:memory-store @ctx) imp)
+        (load-ns ctx (get-in @ctx [:memory-store imp]) opts)
 
-          :else
-          (read-ns ctx imp {:ns ns-name})))
+        :else
+        (read-ns ctx imp {:ns ns-name})))
 
-      (when (symbol? aliased-ns)
-        (doseq [[aliased-sym _ :as kv] (get-in @ctx [:ns aliased-ns])]
-          (when (symbol-definition? kv)
-            (let [shadowed-here? (contains? nmsps aliased-sym)]
-              (when (not shadowed-here?)
-                (load-alias ctx
-                            (zen.utils/mk-symbol aliased-ns aliased-sym)
-                            (zen.utils/mk-symbol ns-name aliased-sym)))))))
+    (when (symbol? aliased-ns)
+      (doseq [[aliased-sym _ :as kv] (get-in @ctx [:ns aliased-ns])]
+        (when (symbol-definition? kv)
+          (let [shadowed-here? (contains? nmsps aliased-sym)]
+            (when (not shadowed-here?)
+              (load-alias ctx
+                          (zen.utils/mk-symbol aliased-ns aliased-sym)
+                          (zen.utils/mk-symbol ns-name aliased-sym)))))))
 
-      (->> (dissoc nmsps ['ns 'import 'alias :ns :import :alias])
-           (mapv (fn [[k v :as kv]]
-                   (cond (symbol-definition? kv) (load-symbol ctx nmsps k (merge v opts))
-                         (symbol-alias? kv)      (load-alias ctx v (zen.utils/mk-symbol ns-name k))
-                         :else                   nil)))
-           (mapv (fn [res] (validate-resource ctx res)))))))
+    (->> (dissoc nmsps ['ns 'import 'alias :ns :import :alias])
+         (mapv (fn [[k v :as kv]]
+                 (cond (symbol-definition? kv) (load-symbol ctx nmsps k (merge v opts))
+                       (symbol-alias? kv)      (load-alias ctx v (zen.utils/mk-symbol ns-name k))
+                       :else                   nil)))
+         (mapv (fn [res] (validate-resource ctx res))))))
 
 (defn load-ns! [ctx nmsps]
   (assert (map? nmsps) "Expected map")
