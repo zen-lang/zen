@@ -11,12 +11,27 @@
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
-      <version>1.10.1</version>
+      <version>1.11.1</version>
+    </dependency>
+    <dependency>
+      <groupId>cli-matic</groupId>
+      <artifactId>cli-matic</artifactId>
+      <version>0.5.4</version>
+    </dependency>
+    <dependency>
+      <groupId>healthsamurai</groupId>
+      <artifactId>matcho</artifactId>
+      <version>0.3.9</version>
     </dependency>
     <dependency>
       <groupId>borkdude</groupId>
       <artifactId>edamame</artifactId>
-      <version>0.0.11-alpha.16</version>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>hawk</groupId>
+      <artifactId>hawk</artifactId>
+      <version>0.2.11</version>
     </dependency>
   </dependencies>
   <build>
