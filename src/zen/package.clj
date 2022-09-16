@@ -33,10 +33,12 @@
 
 
 (defn read-deps [root]
-  (let [package-file (->> (str root "/zen-package.edn")
-                          slurp
-                          edn/read-string)]
-    (:deps package-file)))
+  (try
+    (let [package-file (->> (str root "/zen-package.edn")
+                            slurp
+                            edn/read-string)]
+      (:deps package-file))
+    (catch Exception e (println (.getMessage e)))))
 
 
 (defn init-pre-commit-hook! [root]
