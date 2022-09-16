@@ -208,72 +208,86 @@
                                nil]}))
 
     (t/testing "routing"
+
+      (def my-routing
+        '{:ns myns
+          :import #{rest}
+
+          engine
+          {:zen/tags #{rest/op-engine zen/schema}}
+
+          op
+          {:zen/tags #{rest/op}
+           :engine engine}
+
+          op2
+          {:zen/tags #{rest/op}
+           :engine engine}
+
+          other-api
+          {:zen/tags #{rest/api}
+           :routing {:methods {:DELETE op
+                               :PATCH op}}}
+
+          myapi
+          {:zen/tags #{rest/api}
+           :routing {:apis    #{other-api}
+                     :methods {:GET op
+                               :PUT op
+                               :POST op}
+                     :routes  {"$export" {:methods {:POST op}}
+                               [:id]     {:methods {:GET op}}}}}})
+
+      (def my-new-routing
+        (-> my-routing
+            (update-in ['myapi :routing :methods] dissoc :POST) #_"NOTE: remove; breaking"
+
+            (update-in ['myapi :routing :methods] dissoc :GET) #_"NOTE: move to 'other-api, refactor; effect is not breaking"
+            (assoc-in ['other-api :routing :methods :GET] 'op) #_"NOTE: move from 'other-api, accretion; not breaking"
+
+            (assoc-in ['myapi :routing :methods :PUT] 'op2) #_"NOTE: change value; breaking"
+
+            (assoc-in ['myapi :routing :methods :DELETE] 'op) #_"NOTE: overlaps with other-api, but values are the same, not breaking"
+            (assoc-in ['myapi :routing :methods :PATCH] 'op2) #_"NOTE: overlaps with other-api, but values are different, breaking"))
+
       (def old-ztx (zen.core/new-context))
-
       (zen.core/load-ns old-ztx rest-ns)
-      (zen.core/load-ns old-ztx
-                        '{:ns myns
-                          :import #{rest}
-
-                          engine
-                          {:zen/tags #{rest/op-engine zen/schema}}
-
-                          op
-                          {:zen/tags #{rest/op}
-                           :engine engine}
-
-                          other-api
-                          {:zen/tags #{rest/api}
-                           :routing {:methods {:DELETE op}}}
-
-                          myapi
-                          {:zen/tags #{rest/api}
-                           :routing {:apis    #{other-api}
-                                     :methods {:GET op
-                                               :POST op}
-                                     :routes  {"$export" {:methods {:POST op}}
-                                               [:id]     {:methods {:GET op}}}}}})
+      (zen.core/load-ns old-ztx my-routing)
 
       (def new-ztx (zen.core/new-context))
-
       (zen.core/load-ns new-ztx rest-ns)
-      (zen.core/load-ns new-ztx
-                        '{:ns myns
-                          :import #{rest}
-
-                          engine
-                          {:zen/tags #{rest/op-engine zen/schema}}
-
-                          op
-                          {:zen/tags #{rest/op}
-                           :engine engine}
-
-                          other-api
-                          {:zen/tags #{rest/api}
-                           :routing {:methods {:DELETE op
-                                               :GET op}}}
-
-                          myapi
-                          {:zen/tags #{rest/api}
-                           :routing {:apis    #{other-api}
-                                     :routes  {"$export" {:methods {:POST op}}
-                                               [:id]     {:methods {:GET op}}}}}})
+      (zen.core/load-ns new-ztx my-new-routing)
 
       (matcho/match (sut/check-changes old-ztx new-ztx)
-                    {:status :changed
-                     :changes [{:type   :schema/added
+                    {:status  :changed
+                     :changes [{:type   :schema/added #_"NOTE: moved from 'myns/myapi"
                                 :sym    'myns/other-api
                                 :path   [:routing :methods :GET nil]
                                 :before nil
                                 :after  'myns/op}
-                               {:type   :schema/removed
+                               {:type   :schema/removed #_"NOTE: moved to 'myns/other-api"
                                 :sym    'myns/myapi
                                 :path   [:routing :methods :GET nil]
                                 :before 'myns/op
                                 :after  nil}
-                               {:type   :schema/removed
+                               {:type   :schema/removed #_"NOTE: removed; breaking"
                                 :sym    'myns/myapi
                                 :path   [:routing :methods :POST nil]
                                 :before 'myns/op
                                 :after  nil}
+                               {:type   :schema/updated #_"NOTE: changes value; breaking"
+                                :sym    'myns/myapi
+                                :path   [:routing :methods :PUT nil]
+                                :before 'myns/op
+                                :after  'myns/op2}
+                               {:type   :schema/added #_"NOTE: overlaps with other-api, but values are the same, not breaking"
+                                :sym    'myns/myapi
+                                :path   [:routing :methods :DELETE nil]
+                                :before nil
+                                :after  'myns/op}
+                               {:type   :schema/added #_"NOTE: overlaps with other-api, but values are different, breaking"
+                                :sym    'myns/myapi
+                                :path   [:routing :methods :PATCH nil]
+                                :before nil
+                                :after  'myns/op2}
                                nil]}))))
