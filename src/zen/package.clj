@@ -52,19 +52,12 @@
         gitignore      (when (.exists (io/file gitignore-path))
                          (slurp gitignore-path))]
     (when-not (str/includes? (str gitignore) "/zen-packages\n")
-      (spit (str root "/.gitignore") "\n/zen-packages\n" :append true))))
+      (spit (str root "/.gitignore") "\n/zen-packages" :append true))))
 
 
 (defn pwd [& {:keys [silent]}]
   (let [sh-fn (if silent shell/sh sh!)]
     (str/trim-newline (:out (sh-fn "pwd")))))
-
-
-(defn zen-init! [root] #_"TODO: templating goes here"
-  (sh! "git" "init" :dir root)
-  (mkdir! root "zrc")
-  (init-pre-commit-hook! root)
-  (append-gitignore-zen-packages root))
 
 
 (defn create-file!
@@ -76,18 +69,24 @@
     (spit name content)))
 
 
-(defn make-template! [root package-name]
+(defn make-template! [root & {:keys [package-name]}]
   (let [package (io/file (str root "/zen-package.edn"))]
     (if (.exists package)
       :done
       (do
+        (mkdir! root "zrc")
         (create-file! "zen-package.edn" {:deps {}} root)
-        (create-file! ".gitignore" "\nzen-packages\n" root)
+        (append-gitignore-zen-packages root)
         (when package-name
           (create-file! (format "zrc/%s.edn" package-name)
                         (format "{ns %s \n import #{}\n\n}" (symbol package-name))
-                        root))
-        (mkdir! root "zen-packages")))))
+                        root))))))
+
+
+(defn zen-init! [root & {:keys [package-name]}]
+  (sh! "git" "init" :dir root)
+  (make-template! root {:package-name package-name})
+  (init-pre-commit-hook! root))
 
 
 (defn zen-init-deps-recur! [root deps]

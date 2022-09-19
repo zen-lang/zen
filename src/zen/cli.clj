@@ -56,8 +56,7 @@
 
   ([_ztx {[name] :_arguments}]
    (let [to (zen.package/pwd)]
-     (zen.package/make-template! to name)
-     (zen.package/zen-init! to))))
+     (zen.package/zen-init! to {:package-name name}))))
 
 
 (defn pull-deps

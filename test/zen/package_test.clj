@@ -123,10 +123,23 @@
   (def module-dir-path (str test-dir-path "/test-module"))
 
   (rm-fixtures test-dir-path)
-  (mk-fixtures test-dir-path test-zen-repos)
 
-  (t/testing "init & read initted"
+  (t/testing "init"
+    (mk-fixtures test-dir-path test-zen-repos)
+
+    (t/is (and (.exists (io/file (str module-dir-path "/zen-package.edn")))
+               (matcho/match
+                 (read-string (slurp (io/file (str module-dir-path "/zen-package.edn"))))
+                 {:deps {'a-lib string?}})))
+
+    (t/is (and (.exists (io/file (str module-dir-path "/.gitignore")))
+               (= (slurp (io/file (str module-dir-path "/.gitignore")))
+                  "\n/zen-packages"))))
+
+  (t/testing "read initted"
     (sut/zen-init-deps! module-dir-path)
+
+    (t/is (.exists (io/file (str module-dir-path "/zen-packages/"))))
 
     (def ztx (zen.core/new-context {:package-paths [module-dir-path]}))
 
