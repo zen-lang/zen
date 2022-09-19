@@ -1,6 +1,7 @@
 (ns zen.package-test
   (:require [zen.package :as sut]
             [zen.core :as zen]
+            [zen.store]
             [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.test :as t]
@@ -148,6 +149,7 @@
   (def module-dir-path (str test-dir-path "/test-module"))
 
   (rm-fixtures test-dir-path)
+  (rm zen.store/unzip-cache-dir)
   (mk-fixtures test-dir-path test-zen-repos)
 
   (t/testing "Zen can build zrc folder with module files on top-level"

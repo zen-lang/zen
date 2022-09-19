@@ -47,12 +47,12 @@
     (sh! "chmod" "+x" precommit-hook-file)))
 
 
-(defn append-gitignore-zen-modules [root]
+(defn append-gitignore-zen-packages [root]
   (let [gitignore-path (str root "/.gitignore")
         gitignore      (when (.exists (io/file gitignore-path))
                          (slurp gitignore-path))]
-    (when-not (str/includes? (str gitignore) "/zen-modules\n")
-      (spit (str root "/.gitignore") "\n/zen-modules\n" :append true))))
+    (when-not (str/includes? (str gitignore) "/zen-packages\n")
+      (spit (str root "/.gitignore") "\n/zen-packages\n" :append true))))
 
 
 (defn pwd [& {:keys [silent]}]
@@ -64,7 +64,7 @@
   (sh! "git" "init" :dir root)
   (mkdir! root "zrc")
   (init-pre-commit-hook! root)
-  (append-gitignore-zen-modules root))
+  (append-gitignore-zen-packages root))
 
 
 (defn create-file!
@@ -82,12 +82,12 @@
       :done
       (do
         (create-file! "zen-package.edn" {:deps {}} root)
-        (create-file! ".gitignore" "\nzen-modules\n" root)
+        (create-file! ".gitignore" "\nzen-packages\n" root)
         (when package-name
           (create-file! (format "zrc/%s.edn" package-name)
                         (format "{ns %s \n import #{}\n\n}" (symbol package-name))
                         root))
-        (mkdir! root "zen-modules")))))
+        (mkdir! root "zen-packages")))))
 
 
 (defn zen-init-deps-recur! [root deps]
@@ -112,15 +112,15 @@
 
 
 (defn zen-init-deps! [root]
-  (mkdir! root "zen-modules")
+  (mkdir! root "zen-packages")
 
   (zen-init-deps-recur!
-    (str root "/zen-modules")
+    (str root "/zen-packages")
     (read-deps root)))
 
 
 (comment
-  (shell/sh "cp" "-r" "/tmp/zen.package-test/test-module/zen-modules/*/zrc/" "/tmp/zen.package-test/zen-build/zrc")
+  (shell/sh "cp" "-r" "/tmp/zen.package-test/test-module/zen-packages/*/zrc/" "/tmp/zen.package-test/zen-build/zrc")
   nil
   )
 

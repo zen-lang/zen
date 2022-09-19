@@ -129,7 +129,7 @@
    :subcommands [{:description "Builds zen project from provided IG"
                   :command     "init"
                   :runs        init}
-                 {:description "Recursively pulls all deps specified in package.edn to zen-modules/"
+                 {:description "Recursively pulls all deps specified in package.edn to zen-packages/"
                   :command     "pull-deps"
                   :runs        pull-deps}
                  {:description "Validates zen, returns errors"

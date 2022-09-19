@@ -161,7 +161,7 @@
           file
           (recur (concat (expand-node-modules p) ps)))))))
 
-(defn expand-zen-modules [path]
+(defn expand-zen-packages [path]
   (let [modules (io/file path)]
     (when (and (.exists modules) (.isDirectory modules))
       (->> (.listFiles modules)
@@ -170,8 +170,8 @@
 
 (defn expand-package-path [package-path]
   (let [zrc-path         (str package-path "/zrc")
-        zen-modules-path (str package-path "/zen-modules")]
-    (cons zrc-path (expand-zen-modules zen-modules-path))))
+        zen-packages-path (str package-path "/zen-packages")]
+    (cons zrc-path (expand-zen-packages zen-packages-path))))
 
 (def ^:const unzip-cache-dir "/tmp/zen-unzip/")
 
