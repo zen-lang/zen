@@ -95,6 +95,34 @@
 
       (is (empty? (:errors result))))))
 
+(deftest ^:kaocha/pending is-key-extension
+  (def ztx (zen/new-context {:unsafe true}))
+
+  (def ex-ns
+    '{ns extension-ns
+
+      ext-1
+      {:zen/tags #{zen/is-key zen/schema}
+       :type zen/vector
+       :every {:type zen/integer}}
+
+      myns/ext-2
+      {:zen/tags #{zen/is-key zen/schema}
+       :type zen/vector
+       :every {:type zen/string}}})
+
+  (zen/load-ns ztx ex-ns)
+
+  (is (empty? (zen/errors ztx)))
+
+  (def sch
+    '{:zen/tags #{zen/schema}
+      :type zen/map
+      :ext-1 [1 2 3]
+      :myns/ext-2 ["a" "string" "vector"]})
+
+  (is (empty? (:errors (zen/validate ztx #{'zen/schema} sch)))))
+
 
 (deftest ^:kaocha/pending validation-compatibility-test
   (def rest-ns

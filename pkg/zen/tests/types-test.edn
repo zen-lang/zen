@@ -667,7 +667,10 @@
   :type zen/map
   :keys {:a {:type zen/list
              :minItems 4
-             :maxItems 6}}}
+             :maxItems 6}
+         :b {:type zen/list
+             :nth {0 {:type zen/number}
+                   1 {:type zen/symbol}}}}}
 
  ;; TODO implement is-key extension for list expr
  ;; validate expr against expr-schema
@@ -744,6 +747,13 @@
     :do {:type zen.test/validate
          :schema list-schema
          :data {:a (2 3 4 5)}}
+    :match
+    {:errors zen.test/nil?}}
+
+   {:desc "nth is bounds safe"
+    :do {:type zen.test/validate
+         :schema list-schema
+         :data {:b (1)}}
     :match
     {:errors zen.test/nil?}}]}
 

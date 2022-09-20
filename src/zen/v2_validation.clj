@@ -657,7 +657,8 @@
      :rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [index v]]
-                 (if-let [nth-el (nth data index)]
+                 (if-let [nth-el (and (< index (count data))
+                                      (nth data index))]
                    (-> (node-vtx vtx* [:nth index] [index])
                        (v nth-el opts)
                        (merge-vtx vtx*))
