@@ -134,14 +134,16 @@
         (when-let [alias-root (disj-set-get-root (:aliases @ctx) nm)]
           (get-in @ctx [:symbols alias-root])))))
 
+
+#_"TODO: profile performance with alisases"
 (defn get-tag [ctx tag]
-  (let [tag-sym (:zen/name (get-symbol ctx tag))]
-    (when-let [aliases (conj (or (disj-set-get-group (:aliases @ctx) tag)
-                                 #{})
-                             tag)]
-      (reduce (fn [acc alias] (into acc (get-in @ctx [:tags alias])))
-              #{}
-              aliases))))
+  (let [ctx-value @ctx
+        tagged-symbols (get-in ctx-value [:tags tag])]
+    (if-let [aliases (seq (disj-set-get-group (:aliases @ctx) tag))]
+      (into (or tagged-symbols #{})
+            (mapcat #(get-in ctx-value [:tags %]))
+            aliases)
+      tagged-symbols)))
 
 (defn mk-symbol [ns-part name-part]
   (symbol
