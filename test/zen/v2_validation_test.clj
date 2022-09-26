@@ -54,15 +54,22 @@
 
     (r/zen-read-ns ztx 'zen.tests.key-schema-test)
 
-    #_(is (empty? (:errors @ztx)))
-
     (r/zen-read-ns ztx 'zen.tests.core-validate-test)
 
     (r/zen-read-ns ztx 'zen.tests.effects-test)
 
     (r/zen-read-ns ztx 'zen.tests.fn-test)
 
-    (r/run-tests ztx)))
+    (r/run-tests ztx))
+
+  (testing "valmode :extended"
+    "keys, values and key impl dependent validation"
+    (do
+      (def ztx (zen/new-context {:unsafe true}))
+
+      (r/zen-read-ns ztx 'zen.tests.routing-test)
+
+      (is (empty? (zen/errors ztx))))))
 
 (defn resolve-zen-ns [ztx]
   (->> (read-string (slurp (clojure.java.io/resource "zen.edn")))
@@ -191,24 +198,6 @@
        [:id]     {:GET op}}})
 
   (testing "composing map validations"
-    (testing "current validation engine"
-
-      (def ztx (zen.core/new-context))
-
-      (testing "zen ns load"
-        (is (empty? (zen.core/errors ztx))))
-
-      (swap! ztx assoc :errors [])
-
-      (testing "loading rest ns"
-        (zen.core/load-ns ztx rest-ns)
-        (is (empty? (zen.core/errors ztx))))
-
-      (swap! ztx assoc :errors [])
-
-      (testing "loading myns"
-        (zen.core/load-ns ztx myns)
-        (is (empty? (zen.core/errors ztx)))))
 
     (testing "previous validation engine with current zen.edn"
       (with-redefs [zen.v2-validation/validate zen.validation/validate
@@ -217,28 +206,6 @@
                     zen.core/validate-schema zen.validation/validate-schema]
 
         (def ztx (zen.core/new-context))
-
-        (testing "zen ns load"
-          (is (empty? (zen.core/errors ztx))))
-
-        (swap! ztx assoc :errors [])
-
-        (testing "loading rest ns"
-          (zen.core/load-ns ztx rest-ns)
-          (is (empty? (zen.core/errors ztx))))
-
-        (swap! ztx assoc :errors [])
-
-        (testing "loading myns"
-          (zen.core/load-ns ztx myns)
-          (is (empty? (zen.core/errors ztx))))))
-
-    (testing "previous validation engine with previous zen.edn"
-      (with-redefs [zen.v2-validation/validate zen.validation/validate]
-
-        (def ztx (atom {}))
-
-        (zen.core/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
 
         (testing "zen ns load"
           (is (empty? (zen.core/errors ztx))))

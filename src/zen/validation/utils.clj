@@ -68,6 +68,9 @@
       (assoc! :visited (conj (:visited vtx) (into (:path vtx) path)))
       (persistent!)))
 
+(defn cur-path [vtx path]
+  (into (:path vtx) path))
+
 (defn merge-vtx [*node-vtx global-vtx]
   (-> global-vtx
       (update :errors into (:errors *node-vtx))

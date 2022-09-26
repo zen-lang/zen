@@ -113,17 +113,27 @@
           (update :visited into (cur-keyset vtx data)))
       (update vtx :unknown-keys set-unknown))))
 
+(defn rule-priority [k]
+  (cond
+    (= k :keys) 0
+    (= k :key) 10
+    (= k :values) 1
+    :else 100))
+
 (defn compile-schema [ztx schema props]
   (let [rulesets (->> (dissoc schema :validation-type)
+                      (remove (fn [[k _]] (contains? props k)))
                       (map (fn [[k kfg]]
-                             (compile-key k ztx kfg)))
+                             #_(compile-key k ztx kfg)
+                             (assoc (compile-key k ztx kfg) ::priority (rule-priority k))))
+                      (sort-by ::priority)
                       doall)
         open-world? (or (:key schema)
                         (:values schema)
                         (= (:validation-type schema) :open)
                         (= (:type schema) 'zen/any))]
     (fn compiled-sch [vtx data opts]
-      (loop [rs rulesets #_"NOTE: refactor to reduce?"
+      (loop [rs rulesets
              vtx* (validate-props (assoc vtx :type (:type schema)) data props opts)]
         (cond
           (and (empty? rs) (map? data) (:type schema)) #_"NOTE: why not (= 'zen/map (:type schema)) ?"
@@ -458,7 +468,6 @@
      :rule
 
      (fn keys-sch [vtx data opts]
-
        (loop [data (seq data)
               unknown (transient [])
               vtx* vtx]
@@ -480,9 +489,15 @@
      :rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [key value]]
-                 (-> (node-vtx&log vtx* [:values] [key])
-                     (v value opts)
-                     (merge-vtx vtx*)))
+                 (let [node-visited?
+                       (get (:visited vtx) (cur-path vtx [key]))
+                       strict?
+                       (= (:valmode opts) :strict)]
+                   (if (and node-visited? (not strict?))
+                     vtx*
+                     (-> (node-vtx&log vtx* [:values] [key])
+                         (v value opts)
+                         (merge-vtx vtx*)))))
                vtx
                data))}))
 
@@ -852,32 +867,33 @@
 
 (defmethod compile-key :key-schema
   [_ ztx {:keys [tags key]}]
-  (let [keys-schemas
-        (->> tags
-             (mapcat #(utils/get-tag ztx %))
-             (map (fn [sch-name]
-                    (let [sch (utils/get-symbol ztx sch-name)]
+  {:when map?
+   :rule
+   (fn key-schema-fn [vtx data opts]
+     (let [keys-schemas
+           (->> tags
+                (mapcat #(utils/get-tag ztx %))
+                (map (fn [sch-name]
+                       (let [sch (utils/get-symbol ztx sch-name)]
                       ;; TODO get rid of type coercion
-                      [(keyword (name sch-name)) (:for sch) (get-cached ztx sch false)])))
-             doall)]
-    {:when map?
-     :rule
-     (fn key-schema-fn [vtx data opts]
-       (let [key-rules
-             (->> keys-schemas
-                  (filter (fn [[sch-key for? v]]
-                            (or (nil? for?) (contains? for? (get data key)))))
-                  (reduce (fn [acc [sch-key _ v]] (assoc acc sch-key v)) {}))]
-         (loop [data (seq data)
-                unknown (transient [])
-                vtx* vtx]
-           (if (empty? data)
-             (update vtx* :unknown-keys into (persistent! unknown))
-             (let [[k v] (first data)]
-               (if (not (contains? key-rules k))
-                 (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
-                 (recur (rest data)
-                        unknown
-                        (-> (node-vtx&log vtx* [k] [k])
-                            ((get key-rules k) v opts)
-                            (merge-vtx vtx*)))))))))}))
+                         [(keyword (name sch-name)) (:for sch) (get-cached ztx sch false)])))
+                doall)
+
+           key-rules
+           (->> keys-schemas
+                (filter (fn [[sch-key for? v]]
+                          (or (nil? for?) (contains? for? (get data key)))))
+                (reduce (fn [acc [sch-key _ v]] (assoc acc sch-key v)) {}))]
+       (loop [data (seq data)
+              unknown (transient [])
+              vtx* vtx]
+         (if (empty? data)
+           (update vtx* :unknown-keys into (persistent! unknown))
+           (let [[k v] (first data)]
+             (if (not (contains? key-rules k))
+               (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
+               (recur (rest data)
+                      unknown
+                      (-> (node-vtx&log vtx* [k] [k])
+                          ((get key-rules k) v opts)
+                          (merge-vtx vtx*)))))))))})
