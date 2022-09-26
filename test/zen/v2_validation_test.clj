@@ -223,7 +223,7 @@
           (is (empty? (zen.core/errors ztx))))))))
 
 
-(deftest ^:kaocha/pending values-validation-test
+(deftest values-validation-test
   (def myns
     '{ns myns
 
