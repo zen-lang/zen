@@ -31,8 +31,6 @@
   :key {:type zen/case
         :case [{:when {:type zen/string}
                 :then {:type zen/string}}
-               {:when {:type zen/keyword}
-                :then {:type zen/keyword}}
                {:when {:type zen/vector}
                 :then {:type zen/vector
                        :every {:type zen/keyword}
@@ -54,5 +52,7 @@
  {:zen/tags #{api}
   :apis     #{other-api}
   :GET      myop
-  "$export" {:POST myop}
-  [:id]     {:GET myop}}}
+  "$export" {:POST myop
+             [:id] {:GET myop}}
+  [:id]     {:GET myop
+             "Patient" {:GET myop}}}}

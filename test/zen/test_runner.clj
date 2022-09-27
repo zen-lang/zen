@@ -4,10 +4,11 @@
    [clojure.walk]
    [matcho.core :as matcho]
    [zen.core :as zen]
+   [zen.validation :as v1]
    [zen.v2-validation :as v2]))
 
 (def versions
-  {:v1 #'zen/validate
+  {:v1 #'v1/validate
    :v2 #'v2/validate})
 
 (def replacements
@@ -29,7 +30,7 @@
   (let [f (get versions version)
         sch (zen.core/get-symbol ztx (get-in step [:do :schema]))
         validated-sch (f ztx #{'zen/schema} (dissoc sch :zen/name :zen/file :zen/desc :zen/tags))]
-    (-> (f ztx #{(get-in step [:do :schema])} (get-in step [:do :data]))
+    (-> (f ztx #{(get-in step [:do :schema])} (get-in step [:do :data]) (or (:val-opts step) {}))
         (update :errors into (map #(assoc % ::validate-schema-error true)
                                   (:errors validated-sch))))))
 

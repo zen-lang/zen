@@ -49,6 +49,7 @@
     {:errors zen.test/nil?}}
 
    {:desc "Invalid map, values do not pass schema"
+    :val-opts {:valmode :strict}
     :do {:type zen.test/validate
          :schema picture-map
          :data {{:x 0, :y "non-number"} {:r 255, :g 255, :b 300}}}
@@ -59,12 +60,13 @@
        :path [{:x 0 :y "non-number"} :b]
        :schema [zen.tests.map-test/picture-map :values :values :confirms zen.tests.map-test/color-channel :max]}
 
-      #_{:type "integer.type"
+      {:type "integer.type"
        :message "Expected type of 'integer, got 'string"
        :path [{:x 0 :y "non-number"} :y]
        :schema [zen.tests.map-test/picture-map :key :values :type]}]}}
 
    {:desc "Invalid map, keys do not pass schema"
+    :val-opts {:valmode :strict}
     :do {:type zen.test/validate
          :schema picture-map
          :data {[0 0] {:r 255, :g 255, :b 127}}}

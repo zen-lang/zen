@@ -758,9 +758,15 @@
      :rule
      (fn [vtx data opts]
        (reduce (fn [vtx* [k _]]
-                 (-> (node-vtx&log vtx* [:key] [k])
-                     (v k opts)
-                     (merge-vtx vtx*)))
+                 (let [node-visited?
+                       (get (:visited vtx) (cur-path vtx [k]))
+                       strict?
+                       (= (:valmode opts) :strict)]
+                   (if (and node-visited? (not strict?))
+                     vtx*
+                     (-> (node-vtx&log vtx* [:key] [k])
+                         (v k opts)
+                         (merge-vtx vtx*)))))
                vtx
                data))}))
 
