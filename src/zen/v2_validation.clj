@@ -124,7 +124,6 @@
   (let [rulesets (->> (dissoc schema :validation-type)
                       (remove (fn [[k _]] (contains? props k)))
                       (map (fn [[k kfg]]
-                             #_(compile-key k ztx kfg)
                              (assoc (compile-key k ztx kfg) ::priority (rule-priority k))))
                       (sort-by ::priority)
                       doall)
@@ -222,9 +221,10 @@
               :unknown-keys #{}
               :effects []}]
     (if (empty? schemas)
-      (-> (unknown-errs vtx)
-          (dissoc :unknown-keys ::confirmed)
-          (cond-> (not (:vtx-visited opts)) (dissoc :visited)))
+      (unknown-errs vtx)
+      #_(-> (unknown-errs vtx)
+            (dissoc :unknown-keys ::confirmed)
+            (cond-> (not (:vtx-visited opts)) (dissoc :visited)))
       (if-let [schema (utils/get-symbol ztx (first schemas))]
         (if (true? (get-in vtx [::confirmed [] (first schemas)]))
           (recur (rest schemas) vtx)
@@ -239,12 +239,18 @@
   (let [type-cfg (get types-cfg sym)
         type-pred (if (fn? type-cfg) type-cfg (:fn type-cfg))]
     (fn [vtx data _]
-      (if (type-pred data)
-        vtx
-        (let [error-msg
-              {:message (str "Expected type of '" (or (:to-str type-cfg) sym)
-                             ", got '" (pretty-type data))}]
-          (add-err vtx :type error-msg))))))
+      (let [pth-key (last (:path vtx))]
+        (cond
+          ;; TODO fix this when compile-opts are implemented
+          (get #{:zen/tags :zen/file :zen/desc :zen/name} pth-key) vtx
+
+          (type-pred data) vtx
+
+          :else
+          (let [error-msg
+                {:message (str "Expected type of '" (or (:to-str type-cfg) sym)
+                               ", got '" (pretty-type data))}]
+            (add-err vtx :type error-msg)))))))
 
 (defmethod compile-type-check 'zen/string [_ _] (type-fn 'zen/string))
 (defmethod compile-type-check 'zen/number [_ _] (type-fn 'zen/number))
@@ -478,7 +484,7 @@
                (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
                (recur (rest data)
                       unknown
-                      (-> (node-vtx&log vtx* [k] [k])
+                      (-> (node-vtx&log vtx* [k] [k] :keys)
                           ((get key-rules k) v opts)
                           (merge-vtx vtx*))))))))}))
 
@@ -490,7 +496,9 @@
      (fn [vtx data opts]
        (reduce (fn [vtx* [key value]]
                  (let [node-visited?
-                       (get (:visited vtx) (cur-path vtx [key]))
+                       (when-let [pth (get (:visited vtx*) (cur-path vtx* [key]))]
+                         (:keys (get (:visited-by vtx*) pth)))
+
                        strict?
                        (= (:valmode opts) :strict)]
                    (if (and node-visited? (not strict?))

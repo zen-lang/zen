@@ -63,11 +63,18 @@
     (r/run-tests ztx))
 
   (testing "valmode :extended"
+
     "keys, values and key impl dependent validation"
     (do
       (def ztx (zen/new-context {:unsafe true}))
 
       (r/zen-read-ns ztx 'zen.tests.routing-test)
+
+      (zen.v2-validation/validate ztx
+                                  #{'zen/schema
+                                    'zen.tests.routing-test/Configuration
+                                    'zen.tests.routing-test/nested-schema}
+                                  (zen/get-symbol ztx 'zen.tests.routing-test/config))
 
       (is (empty? (zen/errors ztx))))))
 
@@ -249,7 +256,6 @@
       (zen.core/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
       (zen.core/load-ns ztx myns)
       (is (empty? (zen.core/errors ztx))))))
-
 
 (deftest set-validation-test
   (def myns

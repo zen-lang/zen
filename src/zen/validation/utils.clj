@@ -59,14 +59,18 @@
        (assoc! :schema (into (:schema vtx) sch-path))
        (persistent!))))
 
-(defn node-vtx&log [vtx sch-path path]
-  (-> (transient vtx)
-      (assoc! :errors [])
-      (assoc! :path (into (:path vtx) path))
-      (assoc! :unknown-keys (:unknown-keys vtx))
-      (assoc! :schema (into (:schema vtx) sch-path))
-      (assoc! :visited (conj (:visited vtx) (into (:path vtx) path)))
-      (persistent!)))
+(defn node-vtx&log [vtx sch-path path & [rule-name]]
+  (let [vtx*
+        (-> (transient vtx)
+            (assoc! :errors [])
+            (assoc! :path (into (:path vtx) path))
+            (assoc! :unknown-keys (:unknown-keys vtx))
+            (assoc! :schema (into (:schema vtx) sch-path))
+            (assoc! :visited (conj (:visited vtx) (into (:path vtx) path)))
+            (persistent!))]
+    (cond-> vtx*
+      rule-name
+      (update-in [:visited-by (into (:path vtx) path)] (fnil conj #{}) rule-name))))
 
 (defn cur-path [vtx path]
   (into (:path vtx) path))

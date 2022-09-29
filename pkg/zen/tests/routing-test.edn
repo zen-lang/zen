@@ -55,4 +55,276 @@
   "$export" {:POST myop
              [:id] {:GET myop}}
   [:id]     {:GET myop
-             "Patient" {:GET myop}}}}
+             "Patient" {:GET myop}}}
+
+ Configuration
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :keys {:aidbox/default    {:type zen/any}
+         :aidbox/ref        {:type zen/vector :every {:type zen/keyword}}
+         :aidbox/legacy-env {:type zen/keyword}
+         :keys {:type zen/map
+                :values {:confirms #{Configuration}}}}}
+
+ nested-schema
+ {:zen/tags #{zen/schema zen/tag}
+  :type zen/map
+  :keys {:string-schema {:type zen/map
+                         :confirms #{zen/schema}}
+         :keys {:type zen/map
+                :values {:confirms #{nested-schema}}}
+         :every {:confirms #{nested-schema}}}}
+
+ config
+ {:zen/tags #{zen/schema Configuration nested-schema}
+  :type zen/map
+  :keys {:entrypoint {:type zen/symbol
+                      :zen/desc "aidbox project entrypoint <ns>/<symbol>"}
+         ;; TODO: do we need it?
+         :instances-number {:type zen/integer
+                            :aidbox/default 1}
+         :instance {:type zen/map
+                    :keys {:name {:type zen/string
+                                  :zen/desc "Aidbox instance name using for metrics"}}}
+         :replication {:type zen/map
+                       :keys  {:instances {:type zen/integer}
+                               :port {:type zen/integer}
+                               :kube {:type zen/map
+                                      :zen/desc "Kubernetes meta"
+                                      :keys {:service-name {:type zen/string}
+                                             :namespace {:type zen/string
+                                                         :zen/desc "Kubernetes namespace"}
+                                             :hostname {:type zen/string
+                                                        :zen/desc "Kubernetes hostname. Deduce instance number"}}}}}
+         :web {:type zen/map
+               :zen/desc "Configure http server"
+               :keys {:port     {:type zen/integer
+                                 :aidbox/default 8080}
+                      :thread   {:type zen/integer
+                                 :aidbox/ref [:db :pool :maximum-pool-size]}
+                      :max-body {:type zen/integer}
+                      :request-save-raw-body {:type zen/boolean
+                                              :aidbox/default false
+                                              :zen/desc "Attach raw body to response"}}}
+
+         :bulk-storage {:type zen/map
+                        :keys {:backend {:type zen/string
+                                         :enum [{:value "gcp"}
+                                                {:value "azure"}
+                                                {:value "aws"}
+                                                {:value "test-delay"}
+                                                {:value "test-cloud"}]}
+                               :gcp {:type zen/map
+                                     :keys {:service-account {:type zen/string}
+                                            :bucket {:type zen/string}}}
+
+                               :aws {:type zen/map
+                                     :keys {:account {:type zen/string}
+                                            :bucket {:type zen/string}}}
+
+                               :azure {:type zen/map
+                                       :keys {:container {:type zen/string}}}}}
+         :search {:type zen/map
+                  :keys {:zen-fhir {:type zen/keyword
+                                    :enum [{:value :enable}
+                                           {:value :disable}]}
+                         :default-params
+                         {:type zen/map
+                          :keys {:timeout {:type zen/integer
+                                           :zen/desc "default timeout value (seconds). also uses at timeout to the `count` query"
+                                           :aidbox/default 60
+                                           :min 0}
+                                 :total {:type zen/string
+                                         :enum [{:value "none"}
+                                                {:value "estimate"}
+                                                {:value "accurate"}]}
+                                 :count {:type zen/integer
+                                         :zen/desc "default count value"
+                                         :aidbox/default 100
+                                         :min 0
+                                         :max 1000}}}
+                         :chain {:type zen/map
+                                 :keys {:subselect {:type zen/boolean
+                                                    :zen/desc "Use subselect for simple forward chain searches. That is only one chain which doesn't contain intermediate hops."
+                                                    :aidbox/default false}}}}}
+
+         :smartbox {:type zen/map
+                    :keys {:sandbox-url {:type zen/string}
+                           :sandbox-basic {:type zen/string}}}
+
+         :auth {:type zen/map
+                :keys {:grant-page-url {:type zen/string}
+                       :login-redirect {:type zen/string}
+                       :keys {:type zen/map
+                              :keys {:private {:type zen/string}
+                                     :public {:type zen/string}
+                                     :secret {:type zen/string}}}}}
+
+         :provider {:type zen/map
+                    :keys {:mailgun-provider
+                           {:type zen/map
+                            :keys {:type     {:type zen/string
+                                              :aidbox/default "mailgun"}
+                                   :from     {:type zen/string}
+                                   :username {:type zen/string
+                                              :aidbox/default "api"}
+                                   :password {:type zen/string}
+                                   :url      {:type zen/string}}}
+                           :postmark-provider
+                           {:type zen/map
+                            :keys {:type {:type zen/string
+                                          :aidbox/default "postmark"}
+                                   :from {:type zen/string}
+                                   :api-key {:type zen/string}}}}}
+
+
+         ;; box_compatibility_validation_json__schema_regex="#{:fhir-datetime}"
+         :compatibility {:type zen/map
+                         :keys
+                         {:validation {:type zen/map
+                                       :keys
+                                       {:json-schema {:type zen/map
+                                                      :keys
+                                                      {:regex {:type zen/any
+                                                               :string-schema {:type zen/set
+                                                                               :every {:type zen/keyword
+                                                                                       :enum [{:value :fhir-datetime}]}}}}}}}
+                          :auth {:type zen/map
+                                 :keys
+                                 {:pkce {:type zen/map
+                                         :keys
+                                         {:code-challenge {:type zen/map
+                                                           :keys
+                                                           {:s256 {:type zen/map
+                                                                   :keys {:conformant {:type zen/boolean
+                                                                                       :aidbox/default false
+                                                                                       :zen/desc "RFC-conformant code challenge validation"}}}}}}}}}}}
+
+         :debug {:type zen/map
+                 :keys
+                 {:su {:type zen/map
+                       :zen/desc "Allow su header"
+                       :keys
+                       {:enable {:type zen/boolean
+                                 :aidbox/default false}}}}}
+
+         :features {:type zen/map
+                    :keys
+                    {:zenboard {:type zen/map
+                                :keys {:enabled {:type zen/boolean}}}
+                     :graphql {:type zen/map
+                               :keys
+                               {:access-control {:type zen/string
+                                                 :zen/desc "`disabled`: only access to graphql endpoint is verified;
+                                                            `rest-search`: additionally authorization checks access to corresponding search queries"
+                                                 :enum [{:value "disabled"}
+                                                        {:value "rest-search"}]
+                                                 :aidbox/default "disabled"}}}
+                     :validation {:type zen/map
+                                  :keys
+                                  {:skip {:type zen/map
+                                          :zen/desc "Allow skip validation header"
+                                          :keys {:reference {:type zen/boolean
+                                                             :zen/desc "Allow skip reference validation"
+                                                             :aidbox/default false}}}
+                                   :value-set {:type zen/map
+                                               :keys {:mode
+                                                      {:type zen/string
+                                                       :zen/desc "`disabled`: ignores all value-set binding rules
+                                                                  `enabled`: validates value-set binding; only `required` strength bindings are supported now"
+                                                       :enum [{:value "disabled"}
+                                                              {:value "enabled"}]
+                                                       :aidbox/default "enabled"}}}}}
+                     :mapping {:type zen/map
+                               :keys
+                               {:enable-access-control {:type zen/boolean
+                                                        :zen/desc "`false`: only access to $apply endpoints are verified
+                                                                   `true`: enable access control for resulting transaction"
+                                                        :aidbox/default false}}}
+                     :authentication
+                     {:type zen/map
+                      :keys {:skip-jwt-validation {:type zen/boolean}
+                             :introspection
+                             {:type zen/map
+                              :keys {:create-user {:type zen/boolean
+                                                   :aidbox/default false
+                                                   :zen/desc "create a user when not exists and JWT is valid"}}}
+                             :auth-with-not-validated-jwt
+                             {:type zen/any
+                              :string-schema {:type zen/map
+                                              :keys {:headers {:type zen/set
+                                                               :every {:type zen/string}}
+                                                     :user-id-paths {:type zen/set
+                                                                     :every {:type zen/vector
+                                                                             :every {:type zen/case
+                                                                                     :case [{:when {:type zen/string}
+                                                                                             :then {:type zen/string}}
+                                                                                            {:when {:type zen/keyword}
+                                                                                             :then {:type zen/keyword}}]}}}}}}}}
+                     :http
+                     {:type zen/map
+                      :keys {:return-404-on-empty-delete {:type zen/boolean
+                                                          :zen/desc "Return 404 HTTP code when no resources are deleted."}}}
+
+                     :terminology
+                     {:type zen/map
+                      :keys {:import {:type zen/map
+                                      :keys {:sync {:type zen/boolean}}}}}}}
+
+         :db {:type zen/map
+              :keys {:pool {:type zen/map
+                            :keys {:connection-timeout  {:type zen/integer
+                                                         :zen/desc "ms"
+                                                         :aidbox/default 30000}
+                                   :idle-timeout        {:type zen/integer
+                                                         :zen/desc "ms"
+                                                         :aidbox/default 10000}
+                                   :minimum-idle        {:type zen/integer
+                                                         :aidbox/default 0}
+                                   :maximum-pool-size   {:type zen/integer
+                                                         :aidbox/default 8}
+                                   :connection-init-sql {:type zen/string
+                                                         :aidbox/default "select 1"}}}
+                     :database {:type zen/string}
+                     :host {:type zen/string}
+                     :port {:type zen/string}
+                     :user {:type zen/string}
+                     :password {:type zen/string}}}
+
+         :apm {:type zen/map
+               :keys {:disable {:type zen/boolean}
+                      :server {:type zen/string
+                               :zen/desc "APM Server"
+                               :aidbox/legacy-env :elastic-apm-server-urls}}}
+
+         :metrics {:type zen/map
+                   :keys {:postgres {:type zen/map
+                                     :keys {:on {:type zen/boolean
+                                                 :zen/desc "Enable/disable postgres metrics"
+                                                 :aidbox/default true}}}
+                          :port {:type zen/integer
+                                 :zen/desc "Metrics server port"}
+                          :grafana {:type zen/map
+                                    :zen/desc "Connection to grafana to update the metrics dashboards"
+                                    :keys {:user {:type zen/string}
+                                           :password {:type zen/string}
+                                           :url {:type zen/string}}}}}
+         :project {:type zen/map
+                   :zen/desc "Aidbox project configuration"
+                   :keys {:git {:type zen/map
+                                :zen/desc "Git repository configuration"
+                                :keys {:protocol {:type zen/string
+                                                  :enum [{:value "https"}
+                                                         {:value "ssh"}]}
+                                       :public-key {:type zen/string}
+                                       :private-key {:type zen/string}
+                                       :url      {:type zen/string}
+                                       :sub-path {:type zen/string
+                                                  :zen/desc "To specify path to zen directory related to the root"}
+                                       :access-token {:type zen/string
+                                                      :zen/desc "Token to access HTTPS private repository"}
+                                       :target-path {:type zen/string
+                                                     :zen/desc "Clone the repository into a directory"}
+                                       :checkout {:type zen/string
+                                                  :zen/desc "Git branch or commit"}}}
+                          :entrypoint {:type zen/string}}}}}}
