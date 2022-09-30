@@ -501,7 +501,7 @@
 
                        strict?
                        (= (:valmode opts) :strict)]
-                   (if (and node-visited? (not strict?))
+                   (if (and (not strict?) node-visited?)
                      vtx*
                      (-> (node-vtx&log vtx* [:values] [key])
                          (v value opts)
@@ -767,10 +767,12 @@
      (fn [vtx data opts]
        (reduce (fn [vtx* [k _]]
                  (let [node-visited?
-                       (get (:visited vtx) (cur-path vtx [k]))
+                       (when-let [pth (get (:visited vtx*) (cur-path vtx* [k]))]
+                         (:keys (get (:visited-by vtx*) pth)))
+
                        strict?
                        (= (:valmode opts) :strict)]
-                   (if (and node-visited? (not strict?))
+                   (if (and (not strict?) node-visited?)
                      vtx*
                      (-> (node-vtx&log vtx* [:key] [k])
                          (v k opts)
