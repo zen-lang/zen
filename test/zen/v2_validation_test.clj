@@ -165,3 +165,25 @@
       (matcho/match (zen.core/validate ztx #{'myns/my-set-schema} {:strings #{"aa" "bb" "c"}})
                     {:errors [{:path [:strings "c" nil]}
                               nil]}))))
+
+(comment
+
+  (do
+    (def ztx (zen/new-context))
+
+    (zen/read-ns ztx 'lisp)
+    (zen/read-ns ztx 'lisp-test)
+
+    (zen/validate-schema ztx
+                         (zen/get-symbol ztx 'lisp/expr)
+                         (zen/get-symbol ztx 'lisp-test/vals_test))
+
+    (zen/validate-schema ztx
+                         {:zen/tags #{'zen/schema}
+                          :zen/name 'example-schema
+                          :type 'zen/case
+                          :case [{:when {:type 'zen/apply :tags #{'zen/fn}}}]}
+                         '(lisp/vals {:foo 12}))
+
+    (zen/errors ztx)))
+

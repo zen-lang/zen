@@ -300,7 +300,7 @@
           :else
           (let [v (get-cached ztx args false)]
             (-> (node-vtx vtx [sch-sym :args])
-                (v (rest data) opts)
+                (v (vec (rest data)) opts)
                 (merge-vtx vtx))))))))
 
 (defmethod compile-key :type

@@ -863,7 +863,7 @@
                     :ret  {:type 'zen/string}}
 
          'get {:zen/tags #{'zen/fn 'fn}
-               :args {:type 'zen/list :every {:type 'zen/keyword}}
+               :args {:type 'zen/vector :every {:type 'zen/keyword}}
                :ret  {:type 'zen/string}}
 
          'tpl {:zen/tags  #{'zen/schema 'zen/tag}
@@ -890,14 +890,8 @@
            :path [:path]
            :schema ['test.fn/tpl :path :tags]}])
 
-  ;; TODO revisit this errors later
   (match tctx 'test.fn/tpl {:path (list 'test.fn/other-fn "1")}
-         [{:message "Expected type of 'vector, got 'persistentlist",
-           :path [:path],
-           :type "vector.type",
-           :schema ['test.fn/tpl :path 'test.fn/other-fn :args :type]}
-
-          {:message "Expected type of 'keyword, got 'string"
+         [{:message "Expected type of 'keyword, got 'string"
            :path [:path 0]
            :type "keyword.type"
            :schema ['test.fn/tpl :path 'test.fn/other-fn :args :every 0 :type]}

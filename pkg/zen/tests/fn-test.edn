@@ -5,11 +5,11 @@
  fn {:zen/tags #{zen/tag}}
 
  other-fn {:zen/tags #{zen/fn}
-           :args {:type zen/list :every {:type zen/keyword}}
+           :args {:type zen/vector :every {:type zen/keyword}}
            :ret  {:type zen/string}}
 
  get {:zen/tags #{zen/fn fn}
-      :args {:type zen/list :every {:type zen/keyword}}
+      :args {:type zen/vector :every {:type zen/keyword}}
       :ret  {:type zen/string}}
 
  tpl {:zen/tags  #{zen/schema zen/tag}
