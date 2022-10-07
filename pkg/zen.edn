@@ -271,12 +271,12 @@
                                    :require #{:engine}
                                    :keys {:zen {:confirms #{schema}}
                                           :match {:type zen/any}
-                                          :engine {:type case
-                                                   :case
-                                                   [{:when {:enum [{:value :zen} {:value :zen-fx}]}}
-                                                    {:when {:const {:value :match}}}
-                                                    {:when {:type any}
-                                                     :then {:fail "Unsupported engine"}}]}}}
+                                          #_#_:engine {:type case #_"FIXME: doesn't allow to define custom slicing engines. Refactor to extensibility"
+                                                       :case
+                                                       [{:when {:enum [{:value :zen} {:value :zen-fx}]}}
+                                                        {:when {:const {:value :match}}}
+                                                        {:when {:type any}
+                                                         :then {:fail "Unsupported engine"}}]}}}
 
                           :schema {:confirms #{schema}}}}}}}
 
