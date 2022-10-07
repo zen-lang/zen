@@ -809,7 +809,6 @@
 
 (defn slice-fn [ztx [slice-name slice-schema]]
   (let [eng (get-in slice-schema [:filter :engine])]
-    ;; TODO add error if engine is not found?
     (cond
       (= eng :zen)
       (let [v (get-cached ztx (get-in slice-schema [:filter :zen]) false)]
@@ -832,7 +831,11 @@
           (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)
                 effect-errs (zen.effect/apply-fx ztx vtx* el)]
             (when (empty? (:errors effect-errs))
-              slice-name)))))))
+              slice-name))))
+
+      :else
+      (fn [vtx [idx el] opts]
+        nil) #_"TODO add error if engine is not found?")))
 
 (defn err-fn [schemas rest-fn opts vtx [slice-name slice]]
   (if (and (= slice-name :slicing/rest) (nil? rest-fn))
