@@ -317,22 +317,32 @@
     {:rule
      (fn [vtx data opts]
        (loop [[{wh :when th :then :as v} & rest] vs
-              item-idx 0]
-         (if (nil? v)
-           (add-err vtx
+              item-idx 0
+              vtx* vtx
+              passed []]
+         (cond
+           (and (nil? v) (not-empty passed))
+           vtx*
+
+           (nil? v)
+           (add-err vtx*
                     :case
                     {:message (format "Expected one of the cases to be true") :type "case"})
-           (let [vtx* (wh (node-vtx vtx [:case item-idx :when]) data opts)]
+
+           :else
+           (let [when-vtx (wh (node-vtx vtx* [:case item-idx :when]) data opts)]
              (cond
-               (and (empty? (:errors vtx*)) th)
-               (-> (merge-vtx vtx* vtx)
-                   (node-vtx [:case item-idx :then])
-                   (th data opts)
-                   (merge-vtx vtx))
+               (and (empty? (:errors when-vtx)) th)
+               (let [merged-vtx (merge-vtx when-vtx vtx*)]
+                 (-> merged-vtx
+                     (node-vtx [:case item-idx :then])
+                     (th data opts)
+                     (merge-vtx merged-vtx)))
 
-               (empty? (:errors vtx*)) (merge-vtx vtx vtx*)
+               (empty? (:errors when-vtx))
+               (recur rest (inc item-idx) (merge-vtx when-vtx vtx*) (conj passed v))
 
-               :else (recur rest (inc item-idx)))))))}))
+               :else (recur rest (inc item-idx) vtx* passed))))))}))
 
 (defmethod compile-key :enum
   [_ ztx values]

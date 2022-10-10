@@ -60,8 +60,6 @@
       {:path []
        :type "case"
        :message "Expected one of the cases to be true"
-
-       #_"Expected one of ({:type zen/map, :require #{:is}, :keys {:is {:type zen/boolean}}}), but none is conformant"
        :schema [cases :case]}]}}
 
    {:desc "valid data given"
@@ -86,28 +84,41 @@
   :type zen/map
   :keys {:layout {:type zen/case
                   :case [{:when {:confirms #{title-schema}}}
-                         {:when {:confirms #{label-schema}}}]}}
-  }
+                         {:when {:confirms #{label-schema}}}]}}}
 
- case-confirms-test
+ when-predicate-test
  {:zen/tags #{zen.test/case}
   :only-for #{:v2}
-  :title "Cases validations in map"
+  :title "if when predicate is true, it adds to :visited in vtx"
   :steps
-  [{:desc "valid test"
+  [{:desc "valid data, label is present"
     :do {:type zen.test/validate
          :schema layout-schema
          :data {:layout {:label "Super Label"}}}
     :match
-    {:errors [nil?]}}
+    {:errors zen.test/nil?}}
 
-   {:desc "valid test"
+   {:desc "valid data, title is present"
     :do {:type zen.test/validate
          :schema layout-schema
          :data {:layout {:title "Super Title"}}}
     :match
-    {:errors [nil?]}}
+    {:errors zen.test/nil?}}
 
-   ]}
+   {:desc "valid data, both label and title are present"
+    :do {:type zen.test/validate
+         :schema layout-schema
+         :data {:layout {:title "Super Title"}}}
+    :match
+    {:errors zen.test/nil?}}
 
- }
+   {:desc "invalid data"
+    :do {:type zen.test/validate
+         :schema layout-schema
+         :data {:layout "just a string"}}
+    :match
+    {:errors
+     [{:message "Expected one of the cases to be true"
+       :type "case"
+       :path [:layout]
+       :schema [zen.tests.case-test/layout-schema :layout :case]}]}}]}}
