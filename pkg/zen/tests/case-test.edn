@@ -69,4 +69,45 @@
          :schema cases
          :data {:is true :foo 1}}
     :match
-    {:errors zen.test/nil?}}]}}
+    {:errors zen.test/nil?}}]}
+
+ title-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:title {:type zen/string}}}
+
+ label-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:label {:type zen/string}}}
+
+ layout-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys {:layout {:type zen/case
+                  :case [{:when {:confirms #{title-schema}}}
+                         {:when {:confirms #{label-schema}}}]}}
+  }
+
+ case-confirms-test
+ {:zen/tags #{zen.test/case}
+  :only-for #{:v2}
+  :title "Cases validations in map"
+  :steps
+  [{:desc "valid test"
+    :do {:type zen.test/validate
+         :schema layout-schema
+         :data {:layout {:label "Super Label"}}}
+    :match
+    {:errors [nil?]}}
+
+   {:desc "valid test"
+    :do {:type zen.test/validate
+         :schema layout-schema
+         :data {:layout {:title "Super Title"}}}
+    :match
+    {:errors [nil?]}}
+
+   ]}
+
+ }
