@@ -908,17 +908,20 @@
      (let [keys-schemas
            (->> tags
                 (mapcat #(utils/get-tag ztx %))
-                (map (fn [sch-name]
-                       (let [sch (utils/get-symbol ztx sch-name)]
-                      ;; TODO get rid of type coercion
-                         [(keyword (name sch-name)) (:for sch) (get-cached ztx sch false)])))
-                doall)
+                (mapv (fn [sch-name]
+                        (let [sch (utils/get-symbol ztx sch-name)] ;; TODO get rid of type coercion
+                          {:sch-key (keyword (name sch-name))
+                           :for?    (:for sch)
+                           :v       (get-cached ztx sch false)}))))
 
            key-rules
-           (->> keys-schemas
-                (filter (fn [[sch-key for? v]]
-                          (or (nil? for?) (contains? for? (get data key)))))
-                (reduce (fn [acc [sch-key _ v]] (assoc acc sch-key v)) {}))]
+           (into {}
+                 (keep (fn [{:keys [sch-key for? v]}]
+                         (when (or (nil? for?)
+                                   (contains? for? (get data key)))
+                           [sch-key v])))
+                 keys-schemas)]
+
        (loop [data (seq data)
               unknown (transient [])
               vtx* vtx]
