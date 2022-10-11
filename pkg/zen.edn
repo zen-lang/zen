@@ -70,6 +70,14 @@
   :every {:type symbol
           :tags #{is-type}}}
 
+ key-name
+ {:zen/tags #{is-key schema}
+  :zen/desc "sets schema key name.
+             Used in zen/schema :key-schema keys compilation (zen.v2-validation/compile-key :key-schema).
+             If missing then symbol name is used instead"
+  :type keyword}
+
+
  primitive
  {:zen/tags #{tag}}
 
