@@ -26,11 +26,6 @@
   :type zen/vector
   :every {:type zen/string}}
 
- namespaced-key
- {:zen/tags #{zen/schema my-key}
-  :type zen/string
-  :key-name :my-custom-key-ns/my-custom-key}
-
  my-schema
  {:zen/tags #{zen/schema}
   :type zen/map
@@ -86,21 +81,6 @@
        :path [:b-key :c-key],
        :type "string.type",
        :schema [zen.tests.key-schema-test/my-schema :b-key :c-key :type]}]}}
-
-   {:desc "namespaced key is valid"
-    :do {:type zen.test/validate
-         :schema my-schema
-         :data {:dispatch :doesntmatter
-                :my-custom-key-ns/my-custom-key "should work"}}
-    :match {:errors zen.test/empty?}}
-
-   {:desc "namespaced key is invalid"
-    :do {:type zen.test/validate
-         :schema my-schema
-         :data {:dispatch :doesntmatter
-                :my-custom-key-ns/my-custom-key :should-not-work}}
-    :match {:errors [{:path [:my-custom-key-ns/my-custom-key nil]}
-                     nil]}}
 
    {:desc "extra key is provided"
     :do {:type zen.test/validate

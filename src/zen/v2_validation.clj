@@ -910,8 +910,7 @@
                 (mapcat #(utils/get-tag ztx %))
                 (mapv (fn [sch-name]
                         (let [sch (utils/get-symbol ztx sch-name)] ;; TODO get rid of type coercion
-                          {:sch-key (or (:key-name sch)
-                                        (keyword (name sch-name)))
+                          {:sch-key (keyword (name sch-name))
                            :for?    (:for sch)
                            :v       (get-cached ztx sch false)}))))
 
