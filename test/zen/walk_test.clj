@@ -87,7 +87,7 @@
     (t/is (empty? (zen.core/errors ztx)))
 
     (matcho/match
-      (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns/mysch))
+      (sut/zen-dsl-leafs-seq ztx (zen.core/get-symbol ztx 'myns/mysch))
       [{:path [:confirms]                          :value #{'myns/foo}}
        {:path [:keys :a :type]                     :value 'zen/string}
        {:path [:keys :a :zen/desc]                 :value "3"}
@@ -122,7 +122,7 @@
     (t/is (empty? (zen.core/errors ztx)))
 
     (matcho/match
-      (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns3/myrpc))
+      (sut/zen-dsl-leafs-seq ztx (zen.core/get-symbol ztx 'myns3/myrpc))
       [{:path [:params :keys :foo :type nil] :value 'zen/string}
        {:path [:params :require nil]         :value #{:foo}}
        {:path [:params :type nil]            :value 'zen/map}
@@ -159,7 +159,7 @@
     (t/is (empty? (zen.core/errors ztx)))
 
     (matcho/match
-      (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns2/myapi))
+      (sut/zen-dsl-leafs-seq ztx (zen.core/get-symbol ztx 'myns2/myapi))
       [#_{:path [:DELETE nil] :value 'myns2/delete}
        {:path [:routing :apis nil]                            :value #{'myns2/other-api}}
        {:path [:routing :methods :GET nil]                    :value 'myns2/op}
@@ -185,7 +185,7 @@
     (t/is (empty? (zen.core/errors ztx)))
 
     (matcho/match
-      (sut/zen-dsl-seq ztx (zen.core/get-symbol ztx 'myns4/mysym))
+      (sut/zen-dsl-leafs-seq ztx (zen.core/get-symbol ztx 'myns4/mysym))
       [{:path [:foo nil]       :value :bar}
        {:path [:type nil]      :value 'zen/string}
        {:path [:zen/name nil]  :value 'myns4/mysym}

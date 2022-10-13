@@ -80,7 +80,7 @@
 
 
 (defn get-indexed-sch-seq [ztx sym]
-  (index-sch-seq (zen.walk/zen-dsl-seq ztx (zen.core/get-symbol ztx sym))))
+  (index-sch-seq (zen.walk/zen-dsl-leafs-seq ztx (zen.core/get-symbol ztx sym))))
 
 
 (defn process-change [sym path before after]

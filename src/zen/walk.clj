@@ -8,6 +8,14 @@
       (compare (count v1) (count v2))))
 
 
+(defn iterate-dsl
+  "Returns seq of paths in a provided dsl-expr.
+   Paths are calculated in the `zen.v2-validation/validate-schema"
+  [ztx tags dsl-expr]
+  (->> (zen.v2-validation/validate ztx tags dsl-expr {:vtx-visited true})
+       :visited))
+
+
 (defn remove-nested-paths
   "Removes nested paths by sorting in lexicographical order
    and then checking if a path is included in the next path"
@@ -21,12 +29,10 @@
          (remove nil?))))
 
 
-(defn iterate-dsl
-  "Returns seq of paths in a provided dsl-expr.
-   Paths are calculated in the `zen.v2-validation/validate-schema"
+(defn iterate-dsl-leafs
+  "Returns seq of paths to leafs in a provided dsl-expr. "
   [ztx tags dsl-expr]
-  (->> (zen.v2-validation/validate ztx tags dsl-expr {:vtx-visited true})
-       :visited
+  (->> (iterate-dsl ztx tags dsl-expr)
        remove-nested-paths))
 
 
@@ -39,3 +45,12 @@
       {:path  path
        :value (get-in sym-def path)})))
 
+
+(defn zen-dsl-leafs-seq [ztx sym-def]
+  (let [schema-tags (->> (:zen/tags sym-def)
+                         (filter #(-> (zen.core/get-symbol ztx %)
+                                      :zen/tags
+                                      (contains? 'zen/schema))))]
+    (for [path (iterate-dsl-leafs ztx schema-tags sym-def)]
+      {:path  path
+       :value (get-in sym-def path)})))
