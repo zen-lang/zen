@@ -51,7 +51,7 @@
 
   (t/testing "declare a symbol with tag and import ns from a dependency"
 
-    (t/testing "the symbol doesn't exist before update"
+    #_(t/testing "the symbol doesn't exist before update"
       (t/is (nil? (sut/get-symbol 'my-package/sym {:pwd my-package-dir-path})))
 
       (t/is (empty? (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path}))))
@@ -71,7 +71,7 @@
       (matcho/match (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path})
                     #{'my-package/sym})))
 
-  (t/testing "specify a dependency in zen-package.edn"
+  #_(t/testing "specify a dependency in zen-package.edn"
     (t/testing "check errors, see that namespace the dependency ns is missing"
 
       (matcho/match (sut/errors {:pwd my-package-dir-path})

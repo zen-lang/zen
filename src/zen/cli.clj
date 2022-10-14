@@ -3,7 +3,6 @@
   (:require [cli-matic.core]
             [cli-matic.utils]
             [zen.package]
-            [zen.test-utils :as u]
             [zen.changes]
             [zen.core]
             [clojure.pprint]
@@ -21,7 +20,9 @@
 
 
 (defn collect-all-project-namespaces [{:keys [pwd]}]
-  (let [pwd (or pwd (zen.package/pwd :silent true))
+  (let [raw-pwd (or pwd (zen.package/pwd :silent true))
+        pwd (clojure.string/replace raw-pwd #"/+$" "")
+
         zrc (str pwd "/zrc")
         relativize #(subs % (count zrc))
         zrc-edns (->> zrc
@@ -40,15 +41,15 @@
 
 
 (defn load-used-namespaces
-  ([ztx]
-   (load-used-namespaces ztx (collect-all-project-namespaces)))
+  ([ztx args]
+   (load-used-namespaces ztx (collect-all-project-namespaces args) args))
 
-  ([ztx sym & symbols]
-   (run! #(let [sym (symbol %)
-                zen-ns (or (some-> sym namespace symbol)
-                           sym)]
-            (zen.core/read-ns ztx zen-ns))
-         (flatten (vector (cons sym symbols))))
+  ([ztx symbols _args]
+   (doseq [s symbols]
+     (let [sym (symbol s)
+           zen-ns (or (some-> sym namespace symbol)
+                      sym)]
+       (zen.core/read-ns ztx zen-ns)))
    ztx))
 
 
@@ -95,19 +96,18 @@
   ([sym args]
    (get-symbol (load-ztx args) sym args))
 
-  ([ztx sym {:keys [pwd] :as _args}]
+  ([ztx sym {:keys [pwd] :as args}]
    (let [_ (zen.core/read-ns ztx sym)]
-     (load-used-namespaces ztx sym)
-     (clojure.pprint/pprint (zen.core/get-symbol ztx sym)))))
+     (load-used-namespaces ztx [sym] args)
+     (zen.core/get-symbol ztx sym))))
 
 
 (defn get-tag
-  ([args] (get-tag (load-ztx args) args))
+  ([tag args] (get-tag (load-ztx args) tag args))
 
-  ([ztx {[tag-str] :_arguments}]
-   (let [sym (clojure.edn/read-string tag-str)]
-     (load-used-namespaces ztx sym)
-     (clojure.pprint/pprint (zen.core/get-tag ztx sym)))))
+  ([ztx tag args]
+   (load-used-namespaces ztx args)
+   (zen.core/get-tag ztx (symbol tag))))
 
 
 (defn exit
