@@ -1,5 +1,6 @@
 (ns zen.cli-test
   (:require [zen.cli :as sut]
+            [zen.core :as z]
             [clojure.string :as str]
             [clojure.test :as t]
             [zen.test-utils]
@@ -19,18 +20,24 @@
 
 (t/deftest ^:kaocha/pending cli-usecases-test
 
-  (def test-dir-path "/tmp/zen-cli-test/")
+  (def t-ztx (z/new-context))
+
+  (def test-dir-path "/tmp/zen-cli-test")
+
   (def my-package-dir-path (str test-dir-path "/my-package/"))
+
   (def dependency-dir-path (str test-dir-path "/my-dep/"))
 
   (zen.test-utils/rm-fixtures test-dir-path)
+
   (zen.test-utils/mk-fixtures test-dir-path zen-packages-fixtures)
 
   (t/testing "create template"
     (zen.test-utils/mkdir my-package-dir-path)
 
-    (matcho/match (sut/init 'my-package {:pwd my-package-dir-path})
-                  {:status :ok, :code :initted-new})
+    (matcho/match (sut/init 'my-package {:pwd my-package-dir-path
+                                         :name "my-package"})
+                  {:exit 0, :out "", :err "", :code :initted-new, :status :ok})
 
     (matcho/match (zen.test-utils/fs-tree->tree-map my-package-dir-path)
                   {"zen-package.edn" some?
@@ -46,6 +53,7 @@
 
     (t/testing "the symbol doesn't exist before update"
       (t/is (nil? (sut/get-symbol 'my-package/sym {:pwd my-package-dir-path})))
+
       (t/is (empty? (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path}))))
 
     (zen.test-utils/update-edn-file (str my-package-dir-path "/zrc/my-package.edn")

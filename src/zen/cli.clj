@@ -3,24 +3,25 @@
   (:require [cli-matic.core]
             [cli-matic.utils]
             [zen.package]
+            [zen.test-utils :as u]
             [zen.changes]
             [zen.core]
             [clojure.pprint]
-            [clojure.java.io]
+            [clojure.java.io :as io]
             [clojure.string]
             [clojure.edn]
             [clojure.stacktrace]
             [clojure.java.shell]))
 
 
-(defn load-ztx []
-  (let [pwd (zen.package/pwd :silent true)
+(defn load-ztx [{:keys [pwd] :as _args}]
+  (let [pwd (or pwd (zen.package/pwd :silent true))
         ztx (zen.core/new-context {:package-paths [pwd]})]
     ztx))
 
 
-(defn collect-all-project-namespaces []
-  (let [pwd (zen.package/pwd :silent true)
+(defn collect-all-project-namespaces [{:keys [pwd]}]
+  (let [pwd (or pwd (zen.package/pwd :silent true))
         zrc (str pwd "/zrc")
         relativize #(subs % (count zrc))
         zrc-edns (->> zrc
@@ -53,10 +54,15 @@
 
 (defn init
   ([args] (init nil args))
-
-  ([_ztx {[name] :_arguments}]
-   (let [to (zen.package/pwd)]
-     (zen.package/zen-init! to {:package-name name}))))
+  ([_ztx {:keys [pwd name] :as _d}]
+   (let [to (or pwd (str (zen.package/pwd) pwd))
+         not-empty-zen-dir? (->> pwd io/file file-seq
+                                 (filter #(.isFile %))
+                                 seq)
+         status :ok
+         code (if not-empty-zen-dir? :already-exists :initted-new)]
+     (merge (zen.package/zen-init! to {:package-name name})
+            {:code code :status status}))))
 
 
 (defn pull-deps
@@ -68,7 +74,7 @@
 
 
 (defn errors
-  ([args] (errors (load-ztx) args))
+  ([args] (errors (load-ztx args) args))
 
   ([ztx _args]
    (load-used-namespaces ztx)
@@ -76,7 +82,7 @@
 
 
 (defn validate
-  ([args] (validate (load-ztx) args))
+  ([args] (validate (load-ztx args) args))
 
   ([ztx {[symbols-str data-str] :_arguments}]
    (let [symbols (clojure.edn/read-string symbols-str)
@@ -86,16 +92,17 @@
 
 
 (defn get-symbol
-  ([args] (get-symbol (load-ztx) args))
+  ([sym args]
+   (get-symbol (load-ztx args) sym args))
 
-  ([ztx {[symbol-str] :_arguments}]
-   (let [sym (clojure.edn/read-string symbol-str)]
+  ([ztx sym {:keys [pwd] :as _args}]
+   (let [_ (zen.core/read-ns ztx sym)]
      (load-used-namespaces ztx sym)
      (clojure.pprint/pprint (zen.core/get-symbol ztx sym)))))
 
 
 (defn get-tag
-  ([args] (get-tag (load-ztx) args))
+  ([args] (get-tag (load-ztx args) args))
 
   ([ztx {[tag-str] :_arguments}]
    (let [sym (clojure.edn/read-string tag-str)]
@@ -110,12 +117,12 @@
 
 
 (defn changes
-  ([args] (changes (load-ztx) args))
+  ([args] (changes (load-ztx args) args))
 
-  ([new-ztx _args]
+  ([new-ztx args]
    (let [new-ztx (load-used-namespaces new-ztx)
          _stash! (clojure.java.shell/sh "git" "stash")
-         old-ztx (load-used-namespaces (load-ztx))
+         old-ztx (load-used-namespaces (load-ztx args))
          _pop!   (clojure.java.shell/sh "git" "stash" "pop")]
      (clojure.pprint/pprint (zen.changes/check-changes old-ztx new-ztx)))))
 
