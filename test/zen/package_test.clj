@@ -5,7 +5,8 @@
             [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.test :as t]
-            [matcho.core :as matcho]))
+            [matcho.core :as matcho]
+            [zen.test-utils]))
 
 
 (defn get-git-hash [path]
@@ -15,75 +16,6 @@
     (str path "/.git/" v)
     (slurp v)
     (str/trim-newline v)))
-
-
-(defn zip-entries [filename]
-  (let [zf (java.util.zip.ZipFile. filename)]
-    (try (->> (.entries zf)
-              enumeration-seq
-              (mapv #(.getName %)))
-         (finally (.close zf)))))
-
-
-(defn mkdir [name] (sut/sh! "mkdir" "-p" name))
-(defn rm [& names] (apply sut/sh! "rm" "-rf" names))
-
-(defn git-init-commit [dir]
-  (sut/sh! "git" "add" "." :dir dir)
-  (sut/sh! "git" "commit" "-m" "\"Initial commit\"" :dir dir))
-
-
-(defn mk-module-dir-path [root-dir-path module-name]
-  (str root-dir-path "/" module-name))
-
-
-(defn zen-ns->file-name [zen-ns]
-  (-> (name zen-ns)
-      (str/replace \. \/)
-      (str ".edn")))
-
-
-(defn spit-zrc [module-dir-path zen-namespaces]
-  (mkdir (str module-dir-path "/zrc"))
-
-  (doseq [zen-ns zen-namespaces]
-    (let [file-name (zen-ns->file-name (or (get zen-ns :ns) (get zen-ns 'ns)))]
-      (spit (str module-dir-path "/zrc/" file-name) zen-ns))))
-
-
-(defn spit-deps [root-dir-path module-dir-path deps]
-  (spit (str module-dir-path "/zen-package.edn")
-        {:deps (into {}
-                     (map (fn [dep-name]
-                            [dep-name (mk-module-dir-path root-dir-path dep-name)]))
-                     deps)}))
-
-
-(defn mk-module-fixture [root-dir-path module-name module-params]
-  (let [module-dir-path (mk-module-dir-path root-dir-path module-name)]
-
-    (mkdir module-dir-path)
-
-    (sut/zen-init! module-dir-path)
-
-    (spit-zrc module-dir-path (:zrc module-params))
-
-    (spit-deps root-dir-path module-dir-path (:deps module-params))
-
-    (git-init-commit module-dir-path)
-
-    :done))
-
-
-(defn mk-fixtures [test-dir-path deps]
-  (mkdir test-dir-path)
-
-  (doseq [module-name (keys deps)]
-    (mk-module-fixture test-dir-path module-name (get deps module-name))))
-
-
-(defn rm-fixtures [test-dir-path]
-  (rm test-dir-path))
 
 
 (def test-zen-repos
@@ -122,10 +54,10 @@
   (def test-dir-path "/tmp/zen.package-test")
   (def module-dir-path (str test-dir-path "/test-module"))
 
-  (rm-fixtures test-dir-path)
+  (zen.test-utils/rm-fixtures test-dir-path)
 
   (t/testing "init"
-    (mk-fixtures test-dir-path test-zen-repos)
+    (zen.test-utils/mk-fixtures test-dir-path test-zen-repos)
 
     (t/is (and (.exists (io/file (str module-dir-path "/zen-package.edn")))
                (matcho/match
@@ -161,9 +93,9 @@
   (def test-dir-path "/tmp/zen.package-test")
   (def module-dir-path (str test-dir-path "/test-module"))
 
-  (rm-fixtures test-dir-path)
-  (rm zen.store/unzip-cache-dir)
-  (mk-fixtures test-dir-path test-zen-repos)
+  (zen.test-utils/rm-fixtures test-dir-path)
+  (zen.test-utils/rm zen.store/unzip-cache-dir)
+  (zen.test-utils/mk-fixtures test-dir-path test-zen-repos)
 
   (t/testing "Zen can build zrc folder with module files on top-level"
     (def user-cfg-fixture {:package-name "package"
@@ -202,7 +134,7 @@
                        (map #(str (name %) ".edn"))
                        all-test-ns)
                  (into #{}
-                       (zip-entries build-zip-path))))))
+                       (zen.test-utils/zip-entries build-zip-path))))))
 
     (t/testing "zip archive read-ns"
       (def ztx (zen.core/new-context {:zip-paths [build-zip-path]}))
