@@ -70,7 +70,10 @@
 (defn pull-deps
   ([args] (pull-deps nil args))
 
-  ([_ztx args] (zen.package/zen-init-deps! (get-pwd args))))
+  ([_ztx args]
+   (if-let [initted-deps (zen.package/zen-init-deps! (get-pwd args))]
+     {:status :ok, :code :pulled, :deps initted-deps}
+     {:status :ok, :code :nothing-to-pull})))
 
 
 (defn errors

@@ -33,12 +33,13 @@
 
 
 (defn read-deps [root]
-  (try
-    (let [package-file (->> (str root "/zen-package.edn")
-                            slurp
-                            edn/read-string)]
-      (:deps package-file))
-    (catch Exception e (println (.getMessage e)))))
+  (let [package-file (io/file (str root "/zen-package.edn"))]
+    (if (.exists package-file)
+      (let [package-file-content
+            (->> package-file
+                 slurp
+                 edn/read-string)]
+        (not-empty (:deps package-file-content))))))
 
 
 (defn init-pre-commit-hook! [root]
@@ -89,16 +90,25 @@
   (init-pre-commit-hook! root))
 
 
-(defn zen-init-deps-recur! [root deps]
+(defn zen-pull-deps-recur! [root deps]
   (loop [[[dep-name dep-url] & deps-to-init] deps
-         initted-deps #{}]
+         pulled-deps #{}]
     (cond
       (nil? dep-name)
-      initted-deps
+      pulled-deps
 
-      (contains? initted-deps dep-name)
+      (contains? pulled-deps dep-name)
       (recur deps-to-init
-             initted-deps)
+             pulled-deps)
+
+      #_"TODO: check if remote is the same as dep-url, if not remove dir and clone again"
+      (.exists (io/file (str root "/" (name dep-name))))
+      (let [dep-name-str (name dep-name)]
+        (sh! "git" "pull" :dir (str root "/" dep-name-str))
+        (recur
+          (concat (read-deps (str root "/" dep-name-str))
+                  deps-to-init)
+          (conj pulled-deps dep-name)))
 
       :else
       (let [dep-name-str (name dep-name)]
@@ -107,15 +117,14 @@
         (recur
           (concat (read-deps (str root "/" dep-name-str))
                   deps-to-init)
-          (conj initted-deps dep-name))))))
+          (conj pulled-deps dep-name))))))
 
 
 (defn zen-init-deps! [root]
-  (mkdir! root "zen-packages")
-
-  (zen-init-deps-recur!
-    (str root "/zen-packages")
-    (read-deps root)))
+  (when-let [deps (read-deps root)]
+    (mkdir! root "zen-packages")
+    (zen-pull-deps-recur! (str root "/zen-packages")
+                          deps)))
 
 
 (comment

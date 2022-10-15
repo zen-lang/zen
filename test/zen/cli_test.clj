@@ -82,13 +82,17 @@
                      {:unresolved-symbol 'my-dep/tag}
                      nil]))
 
-    #_(zen.test-utils/update-edn-file (str my-package-dir-path "/zen-package.edn")
+    (t/testing "can safely pull deps without deps specified"
+      (matcho/match (sut/pull-deps {:pwd my-package-dir-path})
+                    {:status :ok, :code :nothing-to-pull, :deps empty?}))
+
+    (zen.test-utils/update-edn-file (str my-package-dir-path "/zen-package.edn")
                                     #(assoc % :deps {'my-dep dependency-dir-path}))
 
-    #_#_(t/testing "do pull-deps & check for errors, should be no errors"
+    (t/testing "do pull-deps & check for errors, should be no errors"
 
       (matcho/match (sut/pull-deps {:pwd my-package-dir-path})
-                    {:status :ok, :code :pulled, :data ['my-dep nil]})
+                    {:status :ok, :code :pulled, :deps #{'my-dep}})
 
       (matcho/match (sut/errors {:pwd my-package-dir-path})
                     empty?))
@@ -96,7 +100,7 @@
     (t/testing "do pull-deps again should be no errors and no changes"
 
       (matcho/match (sut/pull-deps {:pwd my-package-dir-path})
-                    {:status :ok, :code :nothing-to-update, :data empty?})
+                    {:status :ok})
 
       (matcho/match (sut/errors {:pwd my-package-dir-path})
                     empty?)))
