@@ -76,9 +76,9 @@
 (defn errors
   ([args] (errors (load-ztx args) args))
 
-  ([ztx _args]
-   (load-used-namespaces ztx)
-   (zen.core/errors ztx)))
+  ([ztx args]
+   (load-used-namespaces ztx args)
+   (zen.core/errors ztx :order :as-is)))
 
 
 (defn validate

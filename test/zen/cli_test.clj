@@ -18,7 +18,7 @@
                           :keys {:a {:type zen/string}}}}}}})
 
 
-(t/deftest ^:kaocha/pending cli-usecases-test
+(t/deftest cli-usecases-test
 
   (def test-dir-path "/tmp/zen-cli-test")
   (def my-package-dir-path (str test-dir-path "/my-package/"))
@@ -44,9 +44,13 @@
     (matcho/match (sut/init 'my-package {:pwd my-package-dir-path})
                   {:status :ok, :code :already-exists}))
 
+  (t/testing "check new template no errors"
+    (matcho/match (sut/errors {:pwd my-package-dir-path})
+                  empty?))
+
   (t/testing "declare a symbol with tag and import ns from a dependency"
 
-    #_(t/testing "the symbol doesn't exist before update"
+    (t/testing "the symbol doesn't exist before update"
       (t/is (nil? (sut/get-symbol 'my-package/sym {:pwd my-package-dir-path})))
 
       (t/is (empty? (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path}))))
@@ -66,19 +70,22 @@
       (matcho/match (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path})
                     #{'my-package/sym})))
 
-  #_(t/testing "specify a dependency in zen-package.edn"
+  (t/testing "specify a dependency in zen-package.edn"
     (t/testing "check errors, see that namespace the dependency ns is missing"
 
+      (let [z (zen.core/new-context {:package-paths my-package-dir-path})]
+        (zen.core/read-ns z 'my-package)
+        (zen.core/errors z))
+
       (matcho/match (sut/errors {:pwd my-package-dir-path})
-                    [{}
-                     {}
-                     {}
+                    [{:missing-ns 'my-dep}
+                     {:unresolved-symbol 'my-dep/tag}
                      nil]))
 
-    (zen.test-utils/update-edn-file (str my-package-dir-path "/zen-package.edn")
+    #_(zen.test-utils/update-edn-file (str my-package-dir-path "/zen-package.edn")
                                     #(assoc % :deps {'my-dep dependency-dir-path}))
 
-    (t/testing "do pull-deps & check for errors, should be no errors"
+    #_#_(t/testing "do pull-deps & check for errors, should be no errors"
 
       (matcho/match (sut/pull-deps {:pwd my-package-dir-path})
                     {:status :ok, :code :pulled, :data ['my-dep nil]})
