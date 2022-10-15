@@ -38,12 +38,16 @@
                     (swap! ctx update :errors
                            (fnil conj [])
                            {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)
+                            :type :unresolved-qualified-symbol
+                            :unresolved-symbol x
                             :ns ns-name}))
                   x)
               (do (when-not (get-symbol ctx (zen.utils/mk-symbol ns-name x))
                     (swap! ctx update :errors
                            (fnil conj [])
                            {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
+                            :type :unresolved-local-symbol
+                            :unresolved-symbol x
                             :ns ns-name}))
                   (zen.utils/mk-symbol ns-str x)))
             x))]
@@ -236,7 +240,8 @@
                        {:message (str "Filename should match contained namespace. Expected "
                                       nm " got " ns-name)
                         :file (.getPath file)
-                        :ns nm})
+                        :ns nm
+                        :got-ns ns-name})
                 :zen/load-failed)))
         (catch Exception e
           (println :error-while-reading (.getPath file) e)
