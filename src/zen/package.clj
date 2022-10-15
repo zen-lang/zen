@@ -79,7 +79,7 @@
         (append-gitignore-zen-packages root)
         (when package-name
           (create-file! (format "zrc/%s.edn" package-name)
-                        (format "{ns %s \n import #{}\n\n}" (symbol package-name))
+                        (format "{:ns %s \n :import #{}\n\n}" (symbol package-name))
                         root))))))
 
 
