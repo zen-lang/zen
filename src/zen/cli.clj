@@ -56,15 +56,15 @@
 
 (defn init
   ([args] (init nil args))
-  ([_ztx {:keys [pwd name] :as _d}]
-   (let [to (or pwd (str (zen.package/pwd) pwd))
-         not-empty-zen-dir? (->> pwd io/file file-seq
-                                 (filter #(.isFile %))
-                                 seq)
-         status :ok
-         code (if not-empty-zen-dir? :already-exists :initted-new)]
-     (merge (zen.package/zen-init! to {:package-name name})
-            {:code code :status status}))))
+
+  ([_ztx {:keys [name] :as args}]
+   (let [dest (get-pwd args)
+         not-empty-zen-dir? (seq (filter #(.isFile %)
+                                         (file-seq (io/file dest))))]
+     (if not-empty-zen-dir?
+       {:status :ok, :code :already-exists}
+       (do (zen.package/zen-init! dest {:package-name name})
+           {:status :ok, :code :initted-new})))))
 
 
 (defn pull-deps

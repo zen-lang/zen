@@ -37,7 +37,7 @@
 
     (matcho/match (sut/init 'my-package {:pwd my-package-dir-path
                                          :name "my-package"})
-                  {:exit 0, :out "", :err "", :code :initted-new, :status :ok})
+                  {:code :initted-new, :status :ok})
 
     (matcho/match (zen.test-utils/fs-tree->tree-map my-package-dir-path)
                   {"zen-package.edn" some?
