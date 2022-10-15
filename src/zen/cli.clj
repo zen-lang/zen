@@ -13,16 +13,17 @@
             [clojure.java.shell]))
 
 
-(defn load-ztx [{:keys [pwd] :as _args}]
-  (let [pwd (or pwd (zen.package/pwd :silent true))
-        ztx (zen.core/new-context {:package-paths [pwd]})]
-    ztx))
+(defn get-pwd [{:keys [pwd] :as _args}]
+  (or (some-> pwd (clojure.string/replace #"/+$" ""))
+      (zen.package/pwd :silent true)))
 
 
-(defn collect-all-project-namespaces [{:keys [pwd]}]
-  (let [raw-pwd (or pwd (zen.package/pwd :silent true))
-        pwd (clojure.string/replace raw-pwd #"/+$" "")
+(defn load-ztx [args]
+  (zen.core/new-context {:package-paths [(get-pwd args)]}))
 
+
+(defn collect-all-project-namespaces [args]
+  (let [pwd (get-pwd args)
         zrc (str pwd "/zrc")
         relativize #(subs % (count zrc))
         zrc-edns (->> zrc
@@ -69,9 +70,7 @@
 (defn pull-deps
   ([args] (pull-deps nil args))
 
-  ([_ztx _args]
-   (let [to (zen.package/pwd)]
-     (zen.package/zen-init-deps! to))))
+  ([_ztx args] (zen.package/zen-init-deps! (get-pwd args))))
 
 
 (defn errors
