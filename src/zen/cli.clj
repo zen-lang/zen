@@ -78,7 +78,7 @@
 
   ([ztx _args]
    (load-used-namespaces ztx)
-   (clojure.pprint/pprint (zen.core/errors ztx))))
+   (zen.core/errors ztx)))
 
 
 (defn validate

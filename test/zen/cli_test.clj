@@ -20,16 +20,11 @@
 
 (t/deftest ^:kaocha/pending cli-usecases-test
 
-  (def t-ztx (z/new-context))
-
   (def test-dir-path "/tmp/zen-cli-test")
-
   (def my-package-dir-path (str test-dir-path "/my-package/"))
-
   (def dependency-dir-path (str test-dir-path "/my-dep/"))
 
   (zen.test-utils/rm-fixtures test-dir-path)
-
   (zen.test-utils/mk-fixtures test-dir-path zen-packages-fixtures)
 
   (t/testing "create template"

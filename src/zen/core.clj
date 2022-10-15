@@ -35,12 +35,18 @@
   (zen.effect/apply-fx ztx (v2/validate ztx symbols data) data))
 
 (defn errors
-  "get zen metastorage errors"
-  [ztx]
-  (->>
-   (:errors @ztx)
-   (sort-by (fn [e] (str (:ns e) "-" (:message e)) ))
-   vec))
+  "get zen metastorage errors. :order param values :ns&message (default) or :as-is
+   throws error if order param value is unknown"
+  [ztx & {:keys [order]}]
+  (let [errs (:errors @ztx)]
+    (case (or order :ns&message)
+      :ns&message #_"NOTE: by errors fn was always sorting messages,
+                           now this is the default for compatibility"
+      (->> errs
+           (sort-by (fn [e] (str (:ns e) "-" (:message e))))
+           vec)
+
+      :as-is errs)))
 
 ;; zen.system functions
 
