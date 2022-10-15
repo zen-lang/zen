@@ -93,31 +93,38 @@
 (defn zen-pull-deps-recur! [root deps]
   (loop [[[dep-name dep-url] & deps-to-init] deps
          pulled-deps #{}]
-    (cond
-      (nil? dep-name)
+    (if (nil? dep-name)
       pulled-deps
+      (let [dep-name-str (name dep-name)
+            dep-dir-path (str root "/" dep-name-str)
+            dep-dir (io/file dep-dir-path)]
+        (cond
+          (contains? pulled-deps dep-name)
+          (recur deps-to-init
+                 pulled-deps)
 
-      (contains? pulled-deps dep-name)
-      (recur deps-to-init
-             pulled-deps)
+          (and (.exists dep-dir)
+               (= dep-url
+                  (->> (sh! "git" "remote" "get-url" "origin" :dir dep-dir-path)
+                       :out
+                       str/trim-newline)))
+          (do
+            (sh! "git" "pull" :dir (str root "/" dep-name-str))
+            (recur
+              (concat (read-deps (str root "/" dep-name-str))
+                      deps-to-init)
+              (conj pulled-deps dep-name)))
 
-      #_"TODO: check if remote is the same as dep-url, if not remove dir and clone again"
-      (.exists (io/file (str root "/" (name dep-name))))
-      (let [dep-name-str (name dep-name)]
-        (sh! "git" "pull" :dir (str root "/" dep-name-str))
-        (recur
-          (concat (read-deps (str root "/" dep-name-str))
-                  deps-to-init)
-          (conj pulled-deps dep-name)))
-
-      :else
-      (let [dep-name-str (name dep-name)]
-        (sh! "git" "clone" (str dep-url) dep-name-str
-             :dir root)
-        (recur
-          (concat (read-deps (str root "/" dep-name-str))
-                  deps-to-init)
-          (conj pulled-deps dep-name))))))
+          :else
+          (do
+            (when (.exists dep-dir)
+              (sh! "rm" "-rf" dep-name-str :dir root))
+            (sh! "git" "clone" (str dep-url) dep-name-str
+                 :dir root)
+            (recur
+              (concat (read-deps dep-dir-path)
+                      deps-to-init)
+              (conj pulled-deps dep-name))))))))
 
 
 (defn zen-init-deps! [root]

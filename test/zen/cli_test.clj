@@ -15,7 +15,18 @@
                      tag {:zen/tags #{zen/schema zen/tag}
                           :type zen/map
                           :require #{:a}
-                          :keys {:a {:type zen/string}}}}}}})
+                          :keys {:a {:type zen/string}}}}}}
+
+   'my-dep-fork {:deps '#{}
+                 :zrc '#{{:ns my-dep
+                          :import #{}
+
+                          new-sym {:i-am-forked :not-the-original-repo}
+
+                          tag {:zen/tags #{zen/schema zen/tag}
+                               :type zen/map
+                               :require #{:a}
+                               :keys {:a {:type zen/string}}}}}}})
 
 
 (t/deftest cli-usecases-test
@@ -23,6 +34,7 @@
   (def test-dir-path "/tmp/zen-cli-test")
   (def my-package-dir-path (str test-dir-path "/my-package/"))
   (def dependency-dir-path (str test-dir-path "/my-dep/"))
+  (def dependency-fork-dir-path (str test-dir-path "/my-dep-fork/"))
 
   (zen.test-utils/rm-fixtures test-dir-path)
   (zen.test-utils/mk-fixtures test-dir-path zen-packages-fixtures)
@@ -103,7 +115,20 @@
                     {:status :ok})
 
       (matcho/match (sut/errors {:pwd my-package-dir-path})
-                    empty?)))
+                    empty?))
+
+    (t/testing "change repo url, pull"
+      (zen.test-utils/update-edn-file (str my-package-dir-path "/zen-package.edn")
+                                      #(assoc % :deps {'my-dep dependency-fork-dir-path}))
+
+      (matcho/match (sut/pull-deps {:pwd my-package-dir-path})
+                    {:status :ok, :code :pulled, :deps #{'my-dep}})
+
+      (matcho/match (sut/errors {:pwd my-package-dir-path})
+                    empty?)
+
+      (matcho/match (sut/get-symbol 'my-dep/new-sym {:pwd my-package-dir-path})
+                    {:i-am-forked :not-the-original-repo})))
 
   #_#_#_#_(t/testing "commit update to the dependency"
 
