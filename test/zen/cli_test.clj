@@ -119,10 +119,6 @@
   (t/testing "specify a dependency in zen-package.edn"
     (t/testing "check errors, see that namespace the dependency ns is missing"
 
-      (let [z (zen.core/new-context {:package-paths my-package-dir-path})]
-        (zen.core/read-ns z 'my-package)
-        (zen.core/errors z))
-
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
                     [{:missing-ns 'my-dep}
                      {:unresolved-symbol 'my-dep/tag}
