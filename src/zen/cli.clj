@@ -81,13 +81,13 @@
 
 
 (defn validate
-  ([args] (validate (load-ztx args) args))
+  ([symbols-str data-str args] (validate (load-ztx args) symbols-str data-str args))
 
-  ([ztx {[symbols-str data-str] :_arguments}]
-   (let [symbols (clojure.edn/read-string symbols-str)
-         data (clojure.edn/read-string data-str)]
-     (load-used-namespaces ztx symbols)
-     (clojure.pprint/pprint (zen.core/validate ztx symbols data)))))
+  ([ztx symbols-str data-str args]
+   (let [symbols (clojure.edn/read-string (str symbols-str))
+         data (clojure.edn/read-string (str data-str))]
+     (load-used-namespaces ztx symbols args)
+     (zen.core/validate ztx symbols data))))
 
 
 (defn get-symbol

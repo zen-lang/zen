@@ -38,6 +38,7 @@
   (zen.test-utils/rm-fixtures test-dir-path)
   (zen.test-utils/mk-fixtures test-dir-path zen-packages-fixtures)
 
+
   (t/testing "create template"
     (zen.test-utils/mkdir my-package-dir-path)
 
@@ -166,6 +167,7 @@
       (matcho/match (sut/get-symbol 'my-dep/new-sym {:pwd my-package-dir-path})
                     {:i-am-forked :fork-updated})))
 
-  #_(t/testing "use validate command to validate on some data "
 
-    (sut/validate)))
+  (t/testing "use validate command to validate some data"
+    (matcho/match (sut/validate '#{my-dep/tag} '{} {:pwd my-package-dir-path})
+                  {:errors [{} nil]})))
