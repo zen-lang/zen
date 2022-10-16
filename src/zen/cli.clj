@@ -20,12 +20,12 @@
       (zen.package/pwd :silent true)))
 
 
-(defn load-ztx [args]
-  (zen.core/new-context {:package-paths [(get-pwd args)]}))
+(defn load-ztx [opts]
+  (zen.core/new-context {:package-paths [(get-pwd opts)]}))
 
 
-(defn collect-all-project-namespaces [args]
-  (let [pwd (get-pwd args)
+(defn collect-all-project-namespaces [opts]
+  (let [pwd (get-pwd opts)
         zrc (str pwd "/zrc")
         relativize #(subs % (count zrc))
         zrc-edns (->> zrc
@@ -44,8 +44,8 @@
 
 
 (defn load-used-namespaces
-  ([ztx args]
-   (load-used-namespaces ztx (collect-all-project-namespaces args) args))
+  ([ztx opts]
+   (load-used-namespaces ztx (collect-all-project-namespaces opts) opts))
 
   ([ztx symbols _args]
    (doseq [s symbols]
@@ -57,74 +57,74 @@
 
 
 (defn init
-  ([args] (init nil args))
+  ([opts] (init nil opts))
 
-  ([_ztx {:keys [name] :as args}]
-   (if (zen.package/zen-init! (get-pwd args) {:package-name (str->edn name)})
+  ([_ztx {:keys [name] :as opts}]
+   (if (zen.package/zen-init! (get-pwd opts) {:package-name (str->edn name)})
      {:status :ok, :code :initted-new}
      {:status :ok, :code :already-exists})))
 
 
 (defn pull-deps
-  ([args] (pull-deps nil args))
+  ([opts] (pull-deps nil opts))
 
-  ([_ztx args]
-   (if-let [initted-deps (zen.package/zen-init-deps! (get-pwd args))]
+  ([_ztx opts]
+   (if-let [initted-deps (zen.package/zen-init-deps! (get-pwd opts))]
      {:status :ok, :code :pulled, :deps initted-deps}
      {:status :ok, :code :nothing-to-pull})))
 
 
 (defn errors
-  ([args] (errors (load-ztx args) args))
+  ([opts] (errors (load-ztx opts) opts))
 
-  ([ztx args]
-   (load-used-namespaces ztx args)
+  ([ztx opts]
+   (load-used-namespaces ztx opts)
    (zen.core/errors ztx :order :as-is)))
 
 
 (defn validate
-  ([symbols-str data-str args] (validate (load-ztx args) symbols-str data-str args))
+  ([symbols-str data-str opts] (validate (load-ztx opts) symbols-str data-str opts))
 
-  ([ztx symbols-str data-str args]
+  ([ztx symbols-str data-str opts]
    (let [symbols (str->edn symbols-str)
          data (str->edn data-str)]
-     (load-used-namespaces ztx symbols args)
+     (load-used-namespaces ztx symbols opts)
      (zen.core/validate ztx symbols data))))
 
 
 (defn get-symbol
-  ([sym-str args]
-   (get-symbol (load-ztx args) sym-str args))
+  ([sym-str opts]
+   (get-symbol (load-ztx opts) sym-str opts))
 
-  ([ztx sym-str args]
+  ([ztx sym-str opts]
    (let [sym (str->edn sym-str)]
      (zen.core/read-ns ztx sym)
-     (load-used-namespaces ztx [sym] args)
+     (load-used-namespaces ztx [sym] opts)
      (zen.core/get-symbol ztx sym))))
 
 
 (defn get-tag
-  ([tag-str args] (get-tag (load-ztx args) tag-str args))
+  ([tag-str opts] (get-tag (load-ztx opts) tag-str opts))
 
-  ([ztx tag-str args]
-   (load-used-namespaces ztx args)
+  ([ztx tag-str opts]
+   (load-used-namespaces ztx opts)
    (zen.core/get-tag ztx (str->edn tag-str))))
 
 
 (defn exit
-  ([args] (exit nil args))
+  ([opts] (exit nil opts))
 
   ([_ _] (System/exit 0)))
 
 
 (defn changes
-  ([args] (changes (load-ztx args) args))
+  ([opts] (changes (load-ztx opts) opts))
 
-  ([new-ztx args]
-   (let [pwd     (get-pwd args)
-         new-ztx (load-used-namespaces new-ztx args)
+  ([new-ztx opts]
+   (let [pwd     (get-pwd opts)
+         new-ztx (load-used-namespaces new-ztx opts)
          _stash! (clojure.java.shell/sh "git" "stash" :dir pwd) #_"NOTE: should this logic be moved to zen.package?"
-         old-ztx (load-used-namespaces (load-ztx args) args)
+         old-ztx (load-used-namespaces (load-ztx opts) opts)
          _pop!   (clojure.java.shell/sh "git" "stash" "pop" :dir pwd)]
      (zen.changes/check-changes old-ztx new-ztx))))
 
@@ -152,10 +152,10 @@
         (flush)
         (let [line         (read-line)
               [cmd rest-s] (clojure.string/split line #" " 2)
-              args         (map pr-str (clojure.edn/read-string (str \[ rest-s \])))]
+              opts         (map pr-str (clojure.edn/read-string (str \[ rest-s \])))]
           (if-let [f (get commands cmd)]
             (do
-              (f {:_arguments args})
+              (f opts)
               (prn))
             (println (command-not-found-err-message cmd (keys commands)))))
         (catch Exception e
