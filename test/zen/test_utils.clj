@@ -46,6 +46,12 @@
 (defn rm [& names] (apply shell/sh "rm" "-rf" names))
 
 
+(defn git-commit [dir to-add message]
+  (let [to-add-seq (if (sequential? to-add) to-add [to-add])]
+    (apply shell/sh (concat ["git" "add"] to-add-seq [:dir dir]))
+    (shell/sh "git" "commit" "-m" message :dir dir)))
+
+
 (defn git-init-commit [dir]
   (shell/sh "git" "add" "." :dir dir)
   (shell/sh "git" "commit" "-m" "\"Initial commit\"" :dir dir))

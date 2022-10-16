@@ -130,19 +130,24 @@
       (matcho/match (sut/get-symbol 'my-dep/new-sym {:pwd my-package-dir-path})
                     {:i-am-forked :not-the-original-repo})))
 
-  #_#_#_#_(t/testing "commit update to the dependency"
 
-    (spit "a" {:ns 'a})
-    ('commit "a"))
+  (t/testing "commit update to the dependency"
+    (zen.test-utils/update-zen-file (str dependency-fork-dir-path "/zrc/my-dep.edn")
+                                    #(assoc-in % ['new-sym :i-am-forked] :fork-updated))
 
-  (t/testing "do pull-deps and see the update"
+    (zen.test-utils/git-commit dependency-fork-dir-path "zrc/" "Update my-dep/new-sym")
 
-    (sut/pull-deps)
-    (sut/errors)
+    (t/testing "do pull-deps and see the update"
+      (matcho/match (sut/pull-deps {:pwd my-package-dir-path})
+                    {:status :ok, :code :pulled, :deps #{'my-dep}})
 
-    (sut/get-sybmol 'a/tag))
+      (matcho/match (sut/errors {:pwd my-package-dir-path})
+                    empty?)
 
-  (t/testing "do changes command, see your changes"
+      (matcho/match (sut/get-symbol 'my-dep/new-sym {:pwd my-package-dir-path})
+                    {:i-am-forked :fork-updated})))
+
+  #_#_(t/testing "do changes command, see your changes"
 
     (sut/changes))
 
