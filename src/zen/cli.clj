@@ -154,17 +154,6 @@
      (zen.changes/check-changes old-ztx new-ztx))))
 
 
-(def commands
-  {"init"       init
-   "pull-deps"  pull-deps
-   "errors"     errors
-   "changes"    changes
-   "validate"   validate
-   "get-symbol" get-symbol
-   "get-tag"    get-tag
-   "exit"       exit})
-
-
 (defn command-not-found-err-message [cmd-name available-commands]
   {:status :error
    :code :command-not-found
@@ -210,20 +199,18 @@
     (apply cmd-unsafe args)))
 
 
+(def commands
+  {"init"       init
+   "pull-deps"  pull-deps
+   "errors"     errors
+   "changes"    changes
+   "validate"   validate
+   "get-symbol" get-symbol
+   "get-tag"    get-tag
+   "exit"       exit})
+
+
 (defn -main [& [cmd-name & args]]
   (if (some? cmd-name)
     ((get-return-fn) (cmd commands cmd-name args))
     (repl commands)))
-
-
-(comment
-
-  (require 'clojure.java.shell)
-
-  (do
-    (clojure.java.shell/sh "rm" "-rf" "/tmp/zen")
-    (clojure.java.shell/sh "mkdir" "-p" "/tmp/zen"))
-
-  (clojure.java.shell/sh "make" "-B" "build")
-  ;;
-  )
