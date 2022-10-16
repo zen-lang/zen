@@ -30,7 +30,6 @@
 
 
 (t/deftest cli-usecases-test
-
   (def test-dir-path "/tmp/zen-cli-test")
   (def my-package-dir-path (str test-dir-path "/my-package/"))
   (def dependency-dir-path (str test-dir-path "/my-dep/"))
@@ -61,7 +60,6 @@
                   empty?))
 
   (t/testing "declare a symbol with tag and import ns from a dependency"
-
     (t/testing "the symbol doesn't exist before update"
       (t/is (nil? (sut/get-symbol 'my-package/sym {:pwd my-package-dir-path})))
 
@@ -102,7 +100,6 @@
                                     #(assoc % :deps {'my-dep dependency-dir-path}))
 
     (t/testing "do pull-deps & check for errors, should be no errors"
-
       (matcho/match (sut/pull-deps {:pwd my-package-dir-path})
                     {:status :ok, :code :pulled, :deps #{'my-dep}})
 
@@ -116,6 +113,7 @@
 
       (matcho/match (sut/errors {:pwd my-package-dir-path})
                     empty?))
+
 
     (t/testing "change repo url, pull"
       (zen.test-utils/update-zen-file (str my-package-dir-path "/zen-package.edn")
