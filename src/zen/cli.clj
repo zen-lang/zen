@@ -213,4 +213,5 @@
 (defn -main [& [cmd-name & args]]
   (if (some? cmd-name)
     ((get-return-fn) (cmd commands cmd-name args))
-    (repl commands)))
+    (repl commands))
+  (System/exit 0))
