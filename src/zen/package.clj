@@ -85,9 +85,15 @@
 
 
 (defn zen-init! [root & {:keys [package-name]}]
-  (sh! "git" "init" :dir root)
-  (make-template! root {:package-name package-name})
-  (init-pre-commit-hook! root))
+  (let [not-empty-zen-dir? (->> (file-seq (io/file root))
+                                (filter #(.isFile %))
+                                seq)]
+    (if not-empty-zen-dir?
+      nil
+      (do
+        (sh! "git" "init" :dir root)
+        (make-template! root {:package-name package-name})
+        (init-pre-commit-hook! root)))))
 
 
 (defn zen-pull-deps-recur! [root deps]

@@ -58,13 +58,9 @@
   ([args] (init nil args))
 
   ([_ztx {:keys [name] :as args}]
-   (let [dest (get-pwd args)
-         not-empty-zen-dir? (seq (filter #(.isFile %)
-                                         (file-seq (io/file dest))))]
-     (if not-empty-zen-dir?
-       {:status :ok, :code :already-exists}
-       (do (zen.package/zen-init! dest {:package-name name})
-           {:status :ok, :code :initted-new})))))
+   (if (zen.package/zen-init! (get-pwd args) {:package-name name})
+     {:status :ok, :code :initted-new}
+     {:status :ok, :code :already-exists})))
 
 
 (defn pull-deps
