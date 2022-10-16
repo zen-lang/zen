@@ -15,6 +15,10 @@
   (clojure.edn/read-string (str x)))
 
 
+(defn split-args-by-space [args-str]
+  (map pr-str (clojure.edn/read-string (str \[ args-str \]))))
+
+
 (defn get-pwd [{:keys [pwd] :as _args}]
   (or (some-> pwd (clojure.string/replace #"/+$" ""))
       (zen.package/pwd :silent true)))
@@ -57,10 +61,10 @@
 
 
 (defn init
-  ([opts] (init nil opts))
+  ([package-name opts] (init nil package-name opts))
 
-  ([_ztx {:keys [name] :as opts}]
-   (if (zen.package/zen-init! (get-pwd opts) {:package-name (str->edn name)})
+  ([_ztx package-name opts]
+   (if (zen.package/zen-init! (get-pwd opts) {:package-name (str->edn package-name)})
      {:status :ok, :code :initted-new}
      {:status :ok, :code :already-exists})))
 
@@ -140,8 +144,10 @@
    "exit"       exit})
 
 
-(defn command-not-found-err-message [cmd available-commands]
-  (str "Command " cmd " not found. Available commands: " (clojure.string/join ", " available-commands)))
+(defn command-not-found-err-message [cmd-name available-commands]
+  {:status :error
+   :code :command-not-found
+   :message (str "Command " cmd-name " not found. Available commands: " (clojure.string/join ", " available-commands))})
 
 
 (defn repl [commands]
@@ -150,24 +156,29 @@
       (try
         (print prompt)
         (flush)
-        (let [line         (read-line)
-              [cmd rest-s] (clojure.string/split line #" " 2)
-              opts         (map pr-str (clojure.edn/read-string (str \[ rest-s \])))]
-          (if-let [f (get commands cmd)]
+        (let [line              (read-line)
+              [cmd-name rest-s] (clojure.string/split line #" " 2)
+              opts              (split-args-by-space rest-s)]
+          (if-let [f (get commands cmd-name)]
             (do
               (f opts)
               (prn))
-            (println (command-not-found-err-message cmd (keys commands)))))
+            (println (command-not-found-err-message cmd-name (keys commands)))))
         (catch Exception e
           (clojure.stacktrace/print-stack-trace e))))))
 
 
-(defn -main [& [cmd & args]]
-  (if (some? cmd)
-    (if-let [cmd-fn (get commands cmd)]
-      (apply cmd-fn (conj (vec args) {:pwd (zen.package/pwd :silent true)}))
-      (println (command-not-found-err-message cmd (keys commands))))
-    (repl commands)))
+(defn cmd [commands cmd-name args & [opts]]
+  (if-let [cmd-fn (get commands cmd-name)]
+    (apply cmd-fn (conj (vec args) opts))
+    (command-not-found-err-message cmd-name (keys commands))))
+
+
+(defn -main [& [cmd-name & args]]
+  (let [opts {:pwd (zen.package/pwd :silent true)}]
+    (if (some? cmd-name)
+      (println (cmd commands cmd-name args opts))
+      (repl commands opts))))
 
 
 (comment
