@@ -42,7 +42,7 @@
   (t/testing "create template"
     (zen.test-utils/mkdir my-package-dir-path)
 
-    (matcho/match (sut/init 'my-package {:pwd my-package-dir-path
+    (matcho/match (sut/init "my-package" {:pwd my-package-dir-path
                                          :name "my-package"})
                   {:code :initted-new, :status :ok})
 
@@ -54,7 +54,7 @@
 
 
   (t/testing "try to create new template over existing directory, get error that repo already exists"
-    (matcho/match (sut/init 'my-package {:pwd my-package-dir-path})
+    (matcho/match (sut/init "my-package" {:pwd my-package-dir-path})
                   {:status :ok, :code :already-exists}))
 
 
@@ -72,9 +72,9 @@
                     {:status :unchanged}))
 
     (t/testing "the symbol doesn't exist before update"
-      (t/is (nil? (sut/get-symbol 'my-package/sym {:pwd my-package-dir-path})))
+      (t/is (nil? (sut/get-symbol "my-package/sym" {:pwd my-package-dir-path})))
 
-      (t/is (empty? (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path}))))
+      (t/is (empty? (sut/get-tag "my-dep/tag" {:pwd my-package-dir-path}))))
 
     (zen.test-utils/update-zen-file (str my-package-dir-path "/zrc/my-package.edn")
                      #(assoc %
@@ -83,12 +83,12 @@
                                    :a "a"}))
 
     (t/testing "get the symbol"
-      (matcho/match (sut/get-symbol 'my-package/sym {:pwd my-package-dir-path})
+      (matcho/match (sut/get-symbol "my-package/sym" {:pwd my-package-dir-path})
                     {:zen/tags #{'my-dep/tag}
                      :a "a"}))
 
     (t/testing "get the symbol by the tag"
-      (matcho/match (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path})
+      (matcho/match (sut/get-tag "my-dep/tag" {:pwd my-package-dir-path})
                     #{'my-package/sym}))
 
     (t/testing "see changes"
@@ -147,7 +147,7 @@
       (matcho/match (sut/errors {:pwd my-package-dir-path})
                     empty?)
 
-      (matcho/match (sut/get-symbol 'my-dep/new-sym {:pwd my-package-dir-path})
+      (matcho/match (sut/get-symbol "my-dep/new-sym" {:pwd my-package-dir-path})
                     {:i-am-forked :not-the-original-repo})))
 
 
@@ -164,10 +164,10 @@
       (matcho/match (sut/errors {:pwd my-package-dir-path})
                     empty?)
 
-      (matcho/match (sut/get-symbol 'my-dep/new-sym {:pwd my-package-dir-path})
+      (matcho/match (sut/get-symbol "my-dep/new-sym" {:pwd my-package-dir-path})
                     {:i-am-forked :fork-updated})))
 
 
   (t/testing "use validate command to validate some data"
-    (matcho/match (sut/validate '#{my-dep/tag} '{} {:pwd my-package-dir-path})
+    (matcho/match (sut/validate "#{my-dep/tag}" "{}" {:pwd my-package-dir-path})
                   {:errors [{} nil]})))

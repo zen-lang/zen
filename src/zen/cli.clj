@@ -13,6 +13,10 @@
             [clojure.java.shell]))
 
 
+(defn str->edn [x]
+  (clojure.edn/read-string (str x)))
+
+
 (defn get-pwd [{:keys [pwd] :as _args}]
   (or (some-> pwd (clojure.string/replace #"/+$" ""))
       (zen.package/pwd :silent true)))
@@ -58,7 +62,7 @@
   ([args] (init nil args))
 
   ([_ztx {:keys [name] :as args}]
-   (if (zen.package/zen-init! (get-pwd args) {:package-name name})
+   (if (zen.package/zen-init! (get-pwd args) {:package-name (str->edn name)})
      {:status :ok, :code :initted-new}
      {:status :ok, :code :already-exists})))
 
@@ -84,28 +88,29 @@
   ([symbols-str data-str args] (validate (load-ztx args) symbols-str data-str args))
 
   ([ztx symbols-str data-str args]
-   (let [symbols (clojure.edn/read-string (str symbols-str))
-         data (clojure.edn/read-string (str data-str))]
+   (let [symbols (str->edn symbols-str)
+         data (str->edn data-str)]
      (load-used-namespaces ztx symbols args)
      (zen.core/validate ztx symbols data))))
 
 
 (defn get-symbol
-  ([sym args]
-   (get-symbol (load-ztx args) sym args))
+  ([sym-str args]
+   (get-symbol (load-ztx args) sym-str args))
 
-  ([ztx sym {:keys [pwd] :as args}]
-   (let [_ (zen.core/read-ns ztx sym)]
+  ([ztx sym-str args]
+   (let [sym (str->edn sym-str)]
+     (zen.core/read-ns ztx sym)
      (load-used-namespaces ztx [sym] args)
      (zen.core/get-symbol ztx sym))))
 
 
 (defn get-tag
-  ([tag args] (get-tag (load-ztx args) tag args))
+  ([tag-str args] (get-tag (load-ztx args) tag-str args))
 
-  ([ztx tag args]
+  ([ztx tag-str args]
    (load-used-namespaces ztx args)
-   (zen.core/get-tag ztx (symbol tag))))
+   (zen.core/get-tag ztx (str->edn tag-str))))
 
 
 (defn exit
