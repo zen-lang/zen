@@ -67,7 +67,7 @@
 
       (t/is (empty? (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path}))))
 
-    (zen.test-utils/update-edn-file (str my-package-dir-path "/zrc/my-package.edn")
+    (zen.test-utils/update-zen-file (str my-package-dir-path "/zrc/my-package.edn")
                      #(assoc %
                              :import #{'my-dep}
                              'sym {:zen/tags #{'my-dep/tag}
@@ -98,7 +98,7 @@
       (matcho/match (sut/pull-deps {:pwd my-package-dir-path})
                     {:status :ok, :code :nothing-to-pull, :deps empty?}))
 
-    (zen.test-utils/update-edn-file (str my-package-dir-path "/zen-package.edn")
+    (zen.test-utils/update-zen-file (str my-package-dir-path "/zen-package.edn")
                                     #(assoc % :deps {'my-dep dependency-dir-path}))
 
     (t/testing "do pull-deps & check for errors, should be no errors"
@@ -118,7 +118,7 @@
                     empty?))
 
     (t/testing "change repo url, pull"
-      (zen.test-utils/update-edn-file (str my-package-dir-path "/zen-package.edn")
+      (zen.test-utils/update-zen-file (str my-package-dir-path "/zen-package.edn")
                                       #(assoc % :deps {'my-dep dependency-fork-dir-path}))
 
       (matcho/match (sut/pull-deps {:pwd my-package-dir-path})

@@ -113,5 +113,5 @@
     (get-in tree-map splitted-path)))
 
 
-(defn update-edn-file [file-path update-fn]
+(defn update-zen-file [file-path update-fn]
   (spit file-path (update-fn (read-string (slurp file-path)))))
