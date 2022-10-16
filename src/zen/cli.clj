@@ -118,11 +118,12 @@
   ([args] (changes (load-ztx args) args))
 
   ([new-ztx args]
-   (let [new-ztx (load-used-namespaces new-ztx)
-         _stash! (clojure.java.shell/sh "git" "stash")
-         old-ztx (load-used-namespaces (load-ztx args))
-         _pop!   (clojure.java.shell/sh "git" "stash" "pop")]
-     (clojure.pprint/pprint (zen.changes/check-changes old-ztx new-ztx)))))
+   (let [pwd     (get-pwd args)
+         new-ztx (load-used-namespaces new-ztx args)
+         _stash! (clojure.java.shell/sh "git" "stash" :dir pwd) #_"NOTE: should this logic be moved to zen.package?"
+         old-ztx (load-used-namespaces (load-ztx args) args)
+         _pop!   (clojure.java.shell/sh "git" "stash" "pop" :dir pwd)]
+     (zen.changes/check-changes old-ztx new-ztx))))
 
 
 (def cfg

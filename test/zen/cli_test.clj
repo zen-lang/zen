@@ -51,15 +51,25 @@
                    ".git"            {}
                    ".gitignore"      some?}))
 
+
   (t/testing "try to create new template over existing directory, get error that repo already exists"
     (matcho/match (sut/init 'my-package {:pwd my-package-dir-path})
                   {:status :ok, :code :already-exists}))
+
 
   (t/testing "check new template no errors"
     (matcho/match (sut/errors {:pwd my-package-dir-path})
                   empty?))
 
+
+  (zen.test-utils/git-init-commit my-package-dir-path)
+
+
   (t/testing "declare a symbol with tag and import ns from a dependency"
+    (t/testing "no changes are made yet"
+      (matcho/match (sut/changes {:pwd my-package-dir-path})
+                    {:status :unchanged}))
+
     (t/testing "the symbol doesn't exist before update"
       (t/is (nil? (sut/get-symbol 'my-package/sym {:pwd my-package-dir-path})))
 
@@ -78,7 +88,18 @@
 
     (t/testing "get the symbol by the tag"
       (matcho/match (sut/get-tag 'my-dep/tag {:pwd my-package-dir-path})
-                    #{'my-package/sym})))
+                    #{'my-package/sym}))
+
+    (t/testing "see changes"
+      (matcho/match (sut/changes {:pwd my-package-dir-path})
+                    {:status :changed
+                     :changes [{} nil]})
+
+      (zen.test-utils/git-commit my-package-dir-path "zrc/" "Add my-dep/new-sym")
+
+      (matcho/match (sut/changes {:pwd my-package-dir-path})
+                    {:status :unchanged})))
+
 
   (t/testing "specify a dependency in zen-package.edn"
     (t/testing "check errors, see that namespace the dependency ns is missing"
@@ -145,10 +166,6 @@
       (matcho/match (sut/get-symbol 'my-dep/new-sym {:pwd my-package-dir-path})
                     {:i-am-forked :fork-updated})))
 
-  #_#_(t/testing "do changes command, see your changes"
-
-    (sut/changes))
-
-  (t/testing "use validate command to validate on some data "
+  #_(t/testing "use validate command to validate on some data "
 
     (sut/validate)))
