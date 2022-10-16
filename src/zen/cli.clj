@@ -160,7 +160,11 @@
         :exception (Throwable->map e#)})))
 
 
-(defn repl-unsafe [commands]
+(defn apply-with-opts [f args opts]
+  (apply f (conj (vec args) opts)))
+
+
+(defn repl-unsafe [commands opts] #_"FIXME. TODO: tests"
   (let [prompt "zen> "]
     (while true
       (try
@@ -168,12 +172,12 @@
         (flush)
         (let [line              (read-line)
               [cmd-name rest-s] (clojure.string/split line #" " 2)
-              opts              (split-args-by-space rest-s)]
-          (if-let [f (get commands cmd-name)]
+              args              (split-args-by-space rest-s)]
+          (if-let [cmd-fn (get commands cmd-name)]
             (do
-              (f opts)
+              (apply-with-opts cmd-fn args opts)
               (prn))
-            (println (command-not-found-err-message cmd-name (keys commands)))))
+            (clojure.pprint/pprint (command-not-found-err-message cmd-name (keys commands)))))
         (catch Exception e
           (clojure.stacktrace/print-stack-trace e))))))
 
@@ -185,7 +189,7 @@
 
 (defn cmd-unsafe [commands cmd-name args & [opts]]
   (if-let [cmd-fn (get commands cmd-name)]
-    (apply cmd-fn (conj (vec args) opts))
+    (apply-with-opts cmd-fn args opts)
     (command-not-found-err-message cmd-name (keys commands))))
 
 
@@ -197,7 +201,7 @@
 (defn -main [& [cmd-name & args]]
   (let [opts {:pwd (zen.package/pwd :silent true)}]
     (if (some? cmd-name)
-      (println (cmd commands cmd-name args opts))
+      (clojure.pprint/pprint (cmd commands cmd-name args opts))
       (repl commands opts))))
 
 
