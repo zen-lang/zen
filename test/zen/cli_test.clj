@@ -49,6 +49,9 @@
 
   (t/testing "wrong command"
     (matcho/match (sut-cmd "AAAAAAAAAAAAAA" {:pwd test-dir-path})
+                  {:status :error})
+
+    (matcho/match (sut-cmd "init" "a" "b" "c" "d" "too many args" {:pwd test-dir-path})
                   {:status :error}))
 
   (t/testing "create template"

@@ -150,7 +150,17 @@
    :message (str "Command " cmd-name " not found. Available commands: " (clojure.string/join ", " available-commands))})
 
 
-(defn repl [commands]
+(defmacro exception->error-result [& body]
+  `(try
+     ~@body
+     (catch Exception e#
+       {:status    :error
+        :code      :exception
+        :message   (.getMessage e#)
+        :exception (Throwable->map e#)})))
+
+
+(defn repl-unsafe [commands]
   (let [prompt "zen> "]
     (while true
       (try
@@ -168,10 +178,20 @@
           (clojure.stacktrace/print-stack-trace e))))))
 
 
-(defn cmd [commands cmd-name args & [opts]]
+(defn repl [& args]
+  (exception->error-result
+    (apply repl-unsafe args)))
+
+
+(defn cmd-unsafe [commands cmd-name args & [opts]]
   (if-let [cmd-fn (get commands cmd-name)]
     (apply cmd-fn (conj (vec args) opts))
     (command-not-found-err-message cmd-name (keys commands))))
+
+
+(defn cmd [& args]
+  (exception->error-result
+    (apply cmd-unsafe args)))
 
 
 (defn -main [& [cmd-name & args]]
