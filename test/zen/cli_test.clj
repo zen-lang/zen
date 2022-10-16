@@ -181,3 +181,119 @@
   (t/testing "use validate command to validate some data"
     (matcho/match (sut-cmd "validate" "#{my-dep/tag}" "{}" {:pwd my-package-dir-path})
                   {:errors [{} nil]})))
+
+
+(defn sut-repl [opts]
+  (assert (contains? opts :pwd) "Test repl must specify PWD")
+
+  (let [timeout 5000
+
+        return-atom-promise (atom (promise))
+        input-atom-promise  (atom (promise))
+
+        get&promise-new (fn [atom-promise timeout timeout-value]
+                          (let [result (deref @atom-promise timeout timeout-value)]
+                            (reset! atom-promise (promise))
+                            result))
+
+        eval-in-repl! (fn [s]
+                        (deliver @input-atom-promise s)
+                        (get&promise-new return-atom-promise
+                                         timeout
+                                         {:status :error, :code :eval-timeout}))
+
+        repl-opts (merge {:prompt-fn (fn [])
+                          :read-fn   #(get&promise-new input-atom-promise timeout "exit")
+                          :return-fn #(deliver @return-atom-promise %)}
+                         opts)
+
+        start-repl! (fn []
+                      (future (sut/repl sut/commands repl-opts)))]
+    (start-repl!)
+    eval-in-repl!))
+
+
+(def repl-zen-packages-fixtures
+  {'my-dep {:deps '#{}
+            :zrc '#{{:ns my-dep
+                     :import #{}
+
+                     tag {:zen/tags #{zen/schema zen/tag}
+                          :type zen/map
+                          :require #{:a}
+                          :keys {:a {:type zen/string}}}}}}})
+
+
+(t/deftest repl-test
+  (def test-dir-path "/tmp/zen-cli-repl-test")
+  (def my-package-dir-path (str test-dir-path "/my-package/"))
+  (def dependency-dir-path (str test-dir-path "/my-dep/"))
+
+  (zen.test-utils/rm-fixtures test-dir-path)
+  (zen.test-utils/mk-fixtures test-dir-path repl-zen-packages-fixtures)
+
+  (def stop-repl-atom (atom false))
+
+  (def eval-in-repl! (sut-repl {:pwd my-package-dir-path
+                                :stop-repl-atom stop-repl-atom}))
+
+  (t/testing "init"
+    (zen.test-utils/mkdir my-package-dir-path)
+
+    (matcho/match (eval-in-repl! "init my-package")
+                  {:status :ok, :code :initted-new})
+
+    (zen.test-utils/git-init-commit my-package-dir-path))
+
+  (zen.test-utils/update-zen-file (str my-package-dir-path "/zrc/my-package.edn")
+                                  #(assoc %
+                                          :import #{'my-dep}
+                                          'sym {:zen/tags #{'my-dep/tag}
+                                                :a "a"}))
+
+  (t/testing "errors"
+    (matcho/match (eval-in-repl! "errors")
+                  [{:missing-ns 'my-dep}
+                   {:unresolved-symbol 'my-dep/tag}
+                   nil]))
+
+  (zen.test-utils/update-zen-file (str my-package-dir-path "/zen-package.edn")
+                                  #(assoc % :deps {'my-dep dependency-dir-path}))
+
+  (t/testing "pull-deps"
+    (matcho/match (eval-in-repl! "pull-deps")
+                  {:status :ok, :code :pulled, :deps #{'my-dep}})
+
+    (matcho/match (eval-in-repl! "errors")
+                  empty?))
+
+  (t/testing "changes"
+    (matcho/match (eval-in-repl! "changes")
+                  {:changes
+                   [{:type :namespace/new, :namespace 'my-dep}
+                    {:type :symbol/new, :symbol 'my-package/sym}
+                    nil]}))
+
+  (t/testing "validate"
+    (matcho/match (eval-in-repl! "validate #{my-dep/tag} {:a :wrong-type}")
+                  {:errors [{} nil]})
+
+    (matcho/match (eval-in-repl! "validate #{my-dep/tag} {:a \"correct-type\"}")
+                  {:errors empty?}))
+
+  (t/testing "get-symbol"
+    (matcho/match (eval-in-repl! "get-symbol my-package/sym")
+                  {:zen/name 'my-package/sym}))
+
+  (t/testing "get-tag"
+    (matcho/match (eval-in-repl! "get-tag my-dep/tag")
+                  #{'my-package/sym}))
+
+  (t/testing "exit"
+    (matcho/match (eval-in-repl! "exit")
+                  {:status :ok, :code :exit})
+
+    (t/is (true? @stop-repl-atom)))
+
+  #_"NOTE: this is safety stop if repl eval couldn't stop for some reason"
+  (reset! stop-repl-atom true))

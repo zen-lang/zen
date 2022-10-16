@@ -19,9 +19,27 @@
   (map pr-str (clojure.edn/read-string (str \[ args-str \]))))
 
 
-(defn get-pwd [{:keys [pwd] :as _args}]
+(defn apply-with-opts [f args opts]
+  (apply f (conj (vec args) opts)))
+
+
+(defn get-pwd [& [{:keys [pwd] :as opts}]]
   (or (some-> pwd (clojure.string/replace #"/+$" ""))
       (zen.package/pwd :silent true)))
+
+
+(defn get-return-fn [& [opts]]
+  (or (:return-fn opts) clojure.pprint/pprint))
+
+
+(defn get-read-fn [& [opts]]
+  (or (:read-fn opts) read-line))
+
+
+(defn get-prompt-fn [& [opts]]
+  (or (:prompt-fn opts)
+      #(do (print "zen> ")
+           (flush))))
 
 
 (defn load-ztx [opts]
@@ -118,7 +136,10 @@
 (defn exit
   ([opts] (exit nil opts))
 
-  ([_ _] (System/exit 0)))
+  ([_ opts]
+   (when-let [stop-atom (:stop-repl-atom opts)]
+     (reset! stop-atom true))
+   {:status :ok, :code :exit, :message "Bye!"}))
 
 
 (defn changes
@@ -160,31 +181,22 @@
         :exception (Throwable->map e#)})))
 
 
-(defn apply-with-opts [f args opts]
-  (apply f (conj (vec args) opts)))
+(defn repl [commands & [opts]]
+  (let [prompt-fn (get-prompt-fn opts)
+        read-fn   (get-read-fn opts)
+        return-fn (get-return-fn opts)
 
-
-(defn repl-unsafe [commands opts] #_"FIXME. TODO: tests"
-  (let [prompt "zen> "]
-    (while true
-      (try
-        (print prompt)
-        (flush)
-        (let [line              (read-line)
-              [cmd-name rest-s] (clojure.string/split line #" " 2)
-              args              (split-args-by-space rest-s)]
-          (if-let [cmd-fn (get commands cmd-name)]
-            (do
+        opts (update opts :stop-repl-atom #(or % (atom false)))]
+    (while (not @(:stop-repl-atom opts))
+      (return-fn
+        (exception->error-result
+          (prompt-fn)
+          (let [line              (read-fn)
+                [cmd-name rest-s] (clojure.string/split line #" " 2)
+                args              (split-args-by-space rest-s)]
+            (if-let [cmd-fn (get commands cmd-name)]
               (apply-with-opts cmd-fn args opts)
-              (prn))
-            (clojure.pprint/pprint (command-not-found-err-message cmd-name (keys commands)))))
-        (catch Exception e
-          (clojure.stacktrace/print-stack-trace e))))))
-
-
-(defn repl [& args]
-  (exception->error-result
-    (apply repl-unsafe args)))
+              (command-not-found-err-message cmd-name (keys commands)))))))))
 
 
 (defn cmd-unsafe [commands cmd-name args & [opts]]
@@ -199,10 +211,9 @@
 
 
 (defn -main [& [cmd-name & args]]
-  (let [opts {:pwd (zen.package/pwd :silent true)}]
-    (if (some? cmd-name)
-      (clojure.pprint/pprint (cmd commands cmd-name args opts))
-      (repl commands opts))))
+  (if (some? cmd-name)
+    ((get-return-fn) (cmd commands cmd-name args))
+    (repl commands)))
 
 
 (comment
