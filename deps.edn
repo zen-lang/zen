@@ -6,8 +6,7 @@
  :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
         borkdude/edamame     {:mvn/version "1.0.0"}
         hawk/hawk            {:mvn/version "0.2.11"}
-        healthsamurai/matcho {:mvn/version "0.3.9"}
-        cli-matic/cli-matic  {:mvn/version "0.5.4"}}
+        healthsamurai/matcho {:mvn/version "0.3.9"}}
 
  :aliases
  {:nrepl

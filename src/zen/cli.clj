@@ -1,8 +1,6 @@
 (ns zen.cli
   (:gen-class)
-  (:require [cli-matic.core]
-            [cli-matic.utils]
-            [zen.package]
+  (:require [zen.package]
             [zen.changes]
             [zen.core]
             [clojure.pprint]
@@ -131,43 +129,23 @@
      (zen.changes/check-changes old-ztx new-ztx))))
 
 
-(def cfg
-  {:command     "zen"
-   :description "Zen-lang cli. Provides zen validation, package managment and build tools"
-   :version     "0.0.1"
-   :opts        []
-   :subcommands [{:description "Builds zen project from provided IG"
-                  :command     "init"
-                  :runs        init}
-                 {:description "Recursively pulls all deps specified in package.edn to zen-packages/"
-                  :command     "pull-deps"
-                  :runs        pull-deps}
-                 {:description "Validates zen, returns errors"
-                  :command     "errors"
-                  :runs        errors}
-                 {:description "Compare new changes with committed"
-                  :command     "changes"
-                  :runs        changes}
-                 {:description "Validates data with specified symbol. Use: `zen validate #{symbol} data`"
-                  :command     "validate"
-                  :runs        validate}
-                 {:description "Gets symbol definition"
-                  :command     "get-symbol"
-                  :runs        get-symbol}
-                 {:description "Gets symbols by tag"
-                  :command     "get-tag"
-                  :runs        get-tag}
-                 {:description "Exits zen REPL"
-                  :command     "exit"
-                  :runs        exit}]})
+(def commands
+  {"init"       init
+   "pull-deps"  pull-deps
+   "errors"     errors
+   "changes"    changes
+   "validate"   validate
+   "get-symbol" get-symbol
+   "get-tag"    get-tag
+   "exit"       exit})
 
 
-(defn repl [cfg]
-  (let [commands (into {}
-                       (map (juxt :command :runs))
-                       (:subcommands cfg))
-        prompt "zen> "]
+(defn command-not-found-err-message [cmd available-commands]
+  (str "Command " cmd " not found. Available commands: " (clojure.string/join ", " available-commands)))
 
+
+(defn repl [commands]
+  (let [prompt "zen> "]
     (while true
       (try
         (print prompt)
@@ -179,16 +157,17 @@
             (do
               (f {:_arguments args})
               (prn))
-            (println "Command not found. Available commands: " (clojure.string/join ", " (keys commands)))))
+            (println (command-not-found-err-message cmd (keys commands)))))
         (catch Exception e
           (clojure.stacktrace/print-stack-trace e))))))
 
 
-(defn -main
-  [& args]
-  (if (seq args)
-    (cli-matic.core/run-cmd args cfg)
-    (repl cfg)))
+(defn -main [& [cmd & args]]
+  (if (some? cmd)
+    (if-let [cmd-fn (get commands cmd)]
+      (apply cmd-fn (conj (vec args) {:pwd (zen.package/pwd :silent true)}))
+      (println (command-not-found-err-message cmd (keys commands))))
+    (repl commands)))
 
 
 (comment
