@@ -223,6 +223,31 @@
                   {:errors
                    [{:type "compile-key-exception"
                      :message "compile exception"}
+                    nil]}))
+
+  #_(testing "compile exception once" #_"TODO"
+    (def already-thrown? (atom false))
+    (defmethod v/compile-key ::compile-exception-once [_ _ztx _]
+      (when (not @already-thrown?)
+        (reset! already-thrown? true)
+        (throw (Exception. "compile exception once")))
+      {:rule sample-rule})
+
+    (zen.core/load-ns ztx '{:ns myns2
+                            sym {:zen/tags #{zen/schema}
+                                 :type zen/any
+                                 ::compile-exception-once true}})
+
+    (matcho/match (v/validate ztx #{'myns2/sym} {:a "1"})
+                  {:errors
+                   [{:type "compile-key-exception"
+                     :message "compile exception once"}
+                    nil]})
+
+    (matcho/match (v/validate ztx #{'myns2/sym} {:a "1"})
+                  {:errors
+                   [{:type "test"
+                     :message "rule has been executed"}
                     nil]})))
 
 (comment
