@@ -248,7 +248,25 @@
                   {:errors
                    [{:type "test"
                      :message "rule has been executed"}
-                    nil]})))
+                    nil]}))
+
+  (testing "compile timeout"
+    (defmethod v/compile-key ::compile-timeout [_ _ztx _]
+      (Thread/sleep 500)
+      {:rule sample-rule})
+
+    (zen.core/load-ns ztx '{:ns myns3
+                            sym {:zen/tags #{zen/schema}
+                                 :type zen/any
+                                 ::compile-timeout true}})
+
+    (def v1 (future (v/validate ztx #{'myns3/sym} {:a "1"} {:compile-schema-timeout 1})))
+    (def v2 (future (v/validate ztx #{'myns3/sym} {:a "1"} {:compile-schema-timeout 1})))
+
+    (matcho/match (sort-by :type (concat (:errors @v1) (:errors @v2)))
+                  [{:type "compile-schema-timeout"}
+                   {:type "test" :message "rule has been executed"}
+                   nil])))
 
 (comment
 
