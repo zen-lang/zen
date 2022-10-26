@@ -179,7 +179,7 @@
                                    :keys {:a {:type zen/string}}}})
 
       (def futures
-        (mapv (fn [n]
+        (mapv (fn [_]
                 (future
                   @lock
                   (zen.core/validate ztx

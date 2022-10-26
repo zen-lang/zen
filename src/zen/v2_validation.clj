@@ -158,19 +158,18 @@
         ;; TODO add to vtx :warning
         (@v-promise vtx data opts))
 
-      (do
-        (let [v-promise (promise)
-              _ (swap! ztx assoc-in [::compiled-schemas hash*] v-promise)
+      (let [v-promise (promise)
+            _ (swap! ztx assoc-in [::compiled-schemas hash*] v-promise)
 
-              props
-              (if init?
-                (resolve-props ztx)
-                (::prop-schemas @ztx))
+            props
+            (if init?
+              (resolve-props ztx)
+              (::prop-schemas @ztx))
 
-              v (compile-schema ztx schema props)]
+            v (compile-schema ztx schema props)]
 
-          (deliver v-promise v)
-          v)))))
+        (deliver v-promise v)
+        v))))
 
 (defn resolve-props [ztx]
   (->> (utils/get-tag ztx 'zen/property)
