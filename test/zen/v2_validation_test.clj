@@ -193,6 +193,38 @@
                     [{:errors empty?}
                      {:errors empty?}]))))
 
+
+(deftest compile-key-error-handling-test
+
+  (defn sample-rule [vtx _data _opts]
+    (v/add-err vtx
+               ::compile-timeout
+               {:message "rule has been executed" :type "test"}))
+
+  (def ztx (zen.core/new-context))
+
+  (testing "compile exception"
+    (defmethod v/compile-key ::compile-exception [_ _ztx _]
+      (throw (Exception. "compile exception"))
+      {:rule sample-rule})
+
+    (zen.core/load-ns ztx '{:ns myns1
+                            sym {:zen/tags #{zen/schema}
+                                 :type zen/any
+                                 ::compile-exception true}})
+
+    (matcho/match (v/validate ztx #{'myns1/sym} {:a "1"})
+                  {:errors
+                   [{:type "compile-key-exception"
+                     :message "compile exception"}
+                    nil]})
+
+    (matcho/match (v/validate ztx #{'myns1/sym} {:a "1"})
+                  {:errors
+                   [{:type "compile-key-exception"
+                     :message "compile exception"}
+                    nil]})))
+
 (comment
 
   (do

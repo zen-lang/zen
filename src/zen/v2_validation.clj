@@ -120,11 +120,20 @@
     (= k :values) 1
     :else 100))
 
+(defn safe-compile-key [k ztx kfg]
+  (try (compile-key k ztx kfg)
+       (catch Exception e
+         {:rule (fn [vtx _data _opts]
+                  (add-err vtx
+                           k
+                           {:type "compile-key-exception"
+                            :message (.getMessage e)}))})))
+
 (defn compile-schema [ztx schema props]
   (let [rulesets (->> (dissoc schema :validation-type)
                       (remove (fn [[k _]] (contains? props k)))
                       (map (fn [[k kfg]]
-                             (assoc (compile-key k ztx kfg) ::priority (rule-priority k))))
+                             (assoc (safe-compile-key k ztx kfg) ::priority (rule-priority k))))
                       (sort-by ::priority)
                       doall)
         open-world? (or (:key schema)
