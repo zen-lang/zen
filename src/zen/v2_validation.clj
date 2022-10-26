@@ -159,14 +159,6 @@
 (declare resolve-props)
 
 
-(defn schema-compile-timeout-error-fn [schema]
-  (fn [vtx _data _opts]
-    (update vtx :errors conj
-            {:message "Schema compilation took too long"
-             :schema [(:zen/name schema)]
-             :type "compile-schema-timeout"})))
-
-
 (defn get-cached
   [ztx schema init?]
   (let [hash* (hash schema)
@@ -176,8 +168,12 @@
         ;; TODO add to vtx :warning
         (let [v (deref v-promise
                        (:compile-schema-timeout opts 60000)
-                       (schema-compile-timeout-error-fn schema))]
-          (v vtx data opts)))
+                       ::timeout)]
+          (if (= ::timeout v) ;; can't wait this long for the compilation to end, going to compile ourselves
+            (do (swap! ztx update ::compiled-schemas dissoc hash*)
+                ((get-cached ztx schema init?)
+                 vtx data opts))
+            (v vtx data opts))))
 
       (let [v-promise (promise)
             _ (swap! ztx assoc-in [::compiled-schemas hash*] v-promise)

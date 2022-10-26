@@ -264,7 +264,7 @@
     (def v2 (future (v/validate ztx #{'myns3/sym} {:a "1"} {:compile-schema-timeout 1})))
 
     (matcho/match (sort-by :type (concat (:errors @v1) (:errors @v2)))
-                  [{:type "compile-schema-timeout"}
+                  [{:type "test" :message "rule has been executed"}
                    {:type "test" :message "rule has been executed"}
                    nil])))
 
