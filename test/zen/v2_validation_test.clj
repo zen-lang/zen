@@ -166,6 +166,33 @@
                     {:errors [{:path [:strings "c" nil]}
                               nil]}))))
 
+(deftest concurerncy-compilation-npe-test
+  (testing "validate by schema which currently is compiling"
+    (dotimes [_ 100]
+      (def ztx (zen.core/new-context))
+
+      (def lock (promise))
+
+      (zen.core/load-ns ztx '{:ns myns
+                              sym {:zen/tags #{zen/schema}
+                                   :type zen/map
+                                   :keys {:a {:type zen/string}}}})
+
+      (def futures
+        (mapv (fn [n]
+                (future
+                  @lock
+                  (zen.core/validate ztx
+                                     #{'myns/sym}
+                                     {:a "1"})))
+              [1 2]))
+
+      (deliver lock :unlock)
+
+      (matcho/match (mapv (fn [req-fut] @req-fut) futures)
+                    [{:errors empty?}
+                     {:errors empty?}]))))
+
 (comment
 
   (do

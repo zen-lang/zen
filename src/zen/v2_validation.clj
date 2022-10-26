@@ -152,31 +152,24 @@
 (defn get-cached
   [ztx schema init?]
   (let [hash* (hash schema)
-        v (get-in @ztx [::compiled-schemas hash*])]
-    (cond
-      (fn? v)
-      v
+        v-promise (get-in @ztx [::compiled-schemas hash*])]
+    (if (some? v-promise) #_"NOTE: race condition will result in double compilation, but this shouldn't crash anything"
+      (fn [vtx data opts]
+        ;; TODO add to vtx :warning
+        (@v-promise vtx data opts))
 
-      (true? (get-in @ztx [::in-compile hash*]))
       (do
-        (swap! ztx update ::in-compile dissoc hash*)
-        (fn [vtx data opts]
-          ;; TODO add to vtx :warning
-          (let [v (get-in @ztx [::compiled-schemas hash*])]
-            (v vtx data opts))))
+        (let [v-promise (promise)
+              _ (swap! ztx assoc-in [::compiled-schemas hash*] v-promise)
 
-      :else
-      (do
-        (swap! ztx assoc-in [::in-compile hash*] true)
-        (let [props
+              props
               (if init?
                 (resolve-props ztx)
                 (::prop-schemas @ztx))
 
               v (compile-schema ztx schema props)]
 
-          (swap! ztx update ::in-compile dissoc hash*)
-          (swap! ztx assoc-in [::compiled-schemas hash*] v)
+          (deliver v-promise v)
           v)))))
 
 (defn resolve-props [ztx]
