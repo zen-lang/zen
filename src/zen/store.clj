@@ -232,7 +232,7 @@
                                                                   'env-keyword (fn [v] (env-keyword  env v))}})
               ns-name (or (get nmsps 'ns) (get nmsps :ns))]
           (if (= nm ns-name)
-            (do (load-ns ctx nmsps {:zen/file pth})
+            (do (load-ns ctx nmsps {:zen/file (.getPath file)})
                 :zen/loaded)
             (do (prn :file-doesnt-match-namespace (.getPath file) nm ns-name)
                 (swap! ctx update :errors
