@@ -13,8 +13,8 @@
   {:extra-paths []
    :extra-deps {org.clojure/tools.nrepl       {:mvn/version "0.2.13"}
                 org.clojure/core.rrb-vector   {:mvn/version "0.1.2"}
-                cider/cider-nrepl             {:mvn/version "0.28.5"}
-                refactor-nrepl/refactor-nrepl {:mvn/version "3.5.5"}}
+                cider/cider-nrepl             {:mvn/version "0.28.7"}
+                refactor-nrepl/refactor-nrepl {:mvn/version "3.6.0"}}
 
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
    :main-opts   ["-m" "nrepl.cmdline"
@@ -27,9 +27,9 @@
                        "-XX:+UnlockDiagnosticVMOptions"
                        "-XX:+DebugNonSafepoints"]
             :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
-                         com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.0"}}}
+                         com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.1"}}}
   :kaocha
-  {:extra-deps {lambdaisland/kaocha  {:mvn/version "1.69.1069"}}
+  {:extra-deps {lambdaisland/kaocha  {:mvn/version "1.71.1119"}}
    :extra-paths ["runner" "test"]
    :jvm-opts    ^:replace ["-XX:-OmitStackTraceInFastThrow"]
    :main-opts   ["-m" "kaocha.runner" "--config-file" "test/test.edn"]}
@@ -39,7 +39,7 @@
    :ns-default build.zen
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
    :extra-deps {io.github.clojure/tools.build {:git/url "https://github.com/clojure/tools.build"
-                                               :sha "cde5adf5d56fe7238de509339e63627f438e5d4b"}}}
+                                               :sha "984a24c0ef0a6af3f304b567adb45af40baefd08"}}}
   :deploy
   {:extra-deps {slipset/deps-deploy {:mvn/version "RELEASE"}}
    :main-opts ["-m" "deps-deploy.deps-deploy" "deploy" "target/zen.jar"]}}}
