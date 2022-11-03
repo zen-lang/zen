@@ -125,7 +125,7 @@
           (do
             (when (.exists dep-dir)
               (sh! "rm" "-rf" dep-name-str :dir root))
-            (sh! "git" "clone" (str dep-url) dep-name-str
+            (sh! "git" "clone" "--depth=1" (str dep-url) dep-name-str
                  :dir root)
             (recur
               (concat (read-deps dep-dir-path)
