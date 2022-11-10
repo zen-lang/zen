@@ -37,16 +37,14 @@
 
   (def ztx (zen/new-context {}))
 
-  (zen/load-ns!
+  (zen/load-ns
    ztx '{ns mysystem
 
          save
-         {:zen/tags #{zen/op}
-          :params {}}
+         {:zen/tags #{zen/op}}
 
          search
-         {:zen/tags #{zen/op}
-          :params {}}
+         {:zen/tags #{zen/op}}
 
          comp-sch
          {:zen/tags #{zen/schema zen/tag}
