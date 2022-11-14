@@ -420,7 +420,6 @@
   :type map
   :keys {:errors {:confirms #{schema-errors}}}}
 
- ;; zen.system definition
  start
  {:zen/tags #{zen/tag zen/schema}
   :type map
@@ -428,29 +427,23 @@
          {:type keyword
           :zen/desc "Key to assoc state into context (:zen/ctx @ztx)"}}}
 
+ binding
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :keys {:binds {:type zen/symbol}
+         :key {:type zen/keyword}}}
+
  event
  {:zen/tags #{zen/tag}
   :zen/desc "zen event"}
-
- op-arg
- {:zen/tags #{zen/tag zen/schema}
-  :type map
-  :keys {:zen/op {:type zen/case
-                  :case [{:when {:type zen/vector}
-                          :then {:type zen/vector
-                                 :every {:type zen/symbol
-                                         :tags #{zen/op}}}}
-                         {:when {:type zen/symbol}
-                          :then {:type zen/symbol
-                                 :tags #{zen/op}}}]}}}
 
  op
  {:zen/tags #{zen/tag zen/schema}
   :zen/desc "zen system operation -> (op name config request & [session])"
   :type zen/map
-  :keys {:zen/args {:type zen/vector
-                    :every {:type zen/symbol
-                            :tags #{zen/schema}}}}}
+  :keys {:config {:zen/desc "late bound config map"
+                  :type zen/symbol
+                  :tags #{binding}}}}
 
  engine
  {:zen/tags #{zen/tag zen/schema}
