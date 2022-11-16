@@ -105,4 +105,7 @@
   (t/testing "No errors on ns load"
     (sut/read-ns ztx 'main)
 
-    (is (empty? (:errors @ztx)))))
+    (is (empty? (:errors @ztx)))
+
+    (is (= 'name.spaced/quoted-symbol (:a (zen.core/get-symbol ztx 'main/qsch))))
+    (is (= 'unqualified-quoted-symbol (:b (zen.core/get-symbol ztx 'main/qsch))))))
