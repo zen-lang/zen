@@ -55,6 +55,12 @@
    'zen/symbol {:fn symbol?
                 :to-str "symbol"}
 
+   'zen/qsymbol {:fn (fn [sym]
+                       (and
+                         (symbol? sym)
+                         (:zen/quote (meta sym))))
+                 :to-str "quoted-symbol"}
+
    'zen/any (constantly true)
    'zen/case (constantly true)
 
@@ -272,6 +278,7 @@
 (defmethod compile-type-check 'zen/any [_ _] (type-fn 'zen/any))
 (defmethod compile-type-check 'zen/integer [_ _] (type-fn 'zen/integer))
 (defmethod compile-type-check 'zen/symbol [_ _] (type-fn 'zen/symbol))
+(defmethod compile-type-check 'zen/qsymbol [_ _] (type-fn 'zen/qsymbol))
 (defmethod compile-type-check 'zen/regex [_ _] (type-fn 'zen/regex))
 (defmethod compile-type-check 'zen/case [_ _] (type-fn 'zen/case))
 (defmethod compile-type-check 'zen/date [_ _] (type-fn 'zen/date))

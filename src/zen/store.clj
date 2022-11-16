@@ -32,7 +32,7 @@
 (defn eval-resource [ctx ns-str ns-name nmsps k resource]
   (let [walk-fn
         (fn [x]
-          (if (symbol? x)
+          (if (and (symbol? x) (not (:zen/quote (meta x))))
             (if (namespace x)
               (do (when-not (get-symbol ctx x)
                     (swap! ctx update :errors
@@ -218,6 +218,9 @@
   (when-let [v (get-env env env-name)]
     (Double/parseDouble v)))
 
+(defn zen-quote [d]
+  (with-meta d {:zen/quote true}))
+
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [file (find-file ctx pth)]
@@ -229,7 +232,8 @@
                                                                   'env-integer (fn [v] (env-integer env v))
                                                                   'env-symbol  (fn [v] (env-symbol  env v))
                                                                   'env-number  (fn [v] (env-number  env v))
-                                                                  'env-keyword (fn [v] (env-keyword  env v))}})
+                                                                  'env-keyword (fn [v] (env-keyword  env v))
+                                                                  'zen/quote   (fn [d] (zen-quote d))}})
               ns-name (or (get nmsps 'ns) (get nmsps :ns))]
           (if (= nm ns-name)
             (do (load-ns ctx nmsps {:zen/file (.getPath file)})

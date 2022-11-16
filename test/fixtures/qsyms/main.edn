@@ -1,0 +1,7 @@
+{ns  main
+ msch {:zen/tags #{zen/schema zen/tag}
+      :type     zen/map
+      :keys     {:a {:type zen/qsymbol}}}
+
+ qsch {:zen/tags #{msch}
+       :a #zen/quote name.spaced/quoted-symbol}}

@@ -95,6 +95,29 @@
     :match
     {:errors zen.test/nil?}}]}
 
+ qsymbol-schema
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :keys  {:a {:type zen/qsymbol}}}
+
+ qsymbol-test
+{:zen/tags #{zen.test/case}
+ :only-for #{:v2}
+ :title "Quoted symbol validations in map"
+ :steps
+ [{:desc "given value has invalid type"
+   :do {:type zen.test/validate :schema qsymbol-schema :data {:a "definitely-not-a-quoted-symbol"}}
+   :match
+   {:errors
+    [{:path [:a]
+      :type "quoted-symbol.type"
+      :message "Expected type of 'quoted-symbol, got 'string"}]}}
+
+  {:desc "Valid qsymbol was given"
+   :do {:type zen.test/validate :schema qsymbol-schema :data {:a #zen/quote definitely-a-quoted-symbol}}
+   :match
+   {:errors zen.test/nil?}}]}
+
  date-schema
  {:zen/tags #{zen/schema}
   :type zen/map

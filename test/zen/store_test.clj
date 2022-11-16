@@ -1,6 +1,7 @@
 (ns zen.store-test
   (:require [zen.core :as sut]
-            [clojure.test :refer [deftest is]]))
+            [clojure.test :refer [deftest is]]
+            [clojure.test :as t]))
 
 (deftest core-schema-test
   (def ctx (sut/new-context))
@@ -96,3 +97,12 @@
   (def errs (:errors @ztx))
 
   (is (empty? errs)))
+
+(t/deftest zen-quote-reader-tag-test
+  (t/testing "Store preparation"
+    (def ztx (sut/new-context {:paths ["test/fixtures/qsyms"]})))
+
+  (t/testing "No errors on ns load"
+    (sut/read-ns ztx 'main)
+
+    (is (empty? (:errors @ztx)))))

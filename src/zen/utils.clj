@@ -146,11 +146,13 @@
       tagged-symbols)))
 
 (defn mk-symbol [ns-part name-part]
-  (symbol
-    (if (qualified-ident? ns-part)
-      (namespace ns-part)
-      (name ns-part))
-    (name name-part)))
+  (with-meta
+    (symbol
+      (if (qualified-ident? ns-part)
+        (namespace ns-part)
+        (name ns-part))
+      (name name-part))
+    (merge (meta ns-part) (meta name-part))))
 
 (defn string->md5 [s]
   (let [md5-digest (doto (java.security.MessageDigest/getInstance "MD5")
