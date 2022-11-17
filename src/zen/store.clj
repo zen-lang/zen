@@ -24,7 +24,7 @@
        (str/join "->" )))
 
 (defn walk-resource [walk-fn resource]
-  ;; NOTE disables symbol expansions in lists (expr types)
+  ;; disables sym expansion in zen/list (expr types)
   (if (list? resource)
     resource
     (walk/walk (partial walk-resource walk-fn) walk-fn resource)))
@@ -32,24 +32,40 @@
 (defn eval-resource [ctx ns-str ns-name nmsps k resource]
   (let [walk-fn
         (fn [x]
-          (if (and (symbol? x) (not (:zen/quote (meta x))))
-            (if (namespace x)
-              (do (when-not (get-symbol ctx x)
-                    (swap! ctx update :errors
-                           (fnil conj [])
-                           {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)
-                            :type :unresolved-qualified-symbol
-                            :unresolved-symbol x
-                            :ns ns-name}))
-                  x)
-              (do (when-not (get-symbol ctx (zen.utils/mk-symbol ns-name x))
-                    (swap! ctx update :errors
-                           (fnil conj [])
-                           {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
-                            :type :unresolved-local-symbol
-                            :unresolved-symbol x
-                            :ns ns-name}))
-                  (zen.utils/mk-symbol ns-str x)))
+          ;; validate sym definition, upd zen/binding idx
+          (when (and (symbol? x)
+                     (not (:zen/quote (meta x))))
+            (let [sym (if (namespace x)
+                        x
+                        (zen.utils/mk-symbol ns-name x))
+                  res (get-symbol ctx sym)]
+
+              (when (contains? (:zen/tags res) 'zen/binding)
+                (swap! ctx update-in [:bindings sym]
+                       (fn [cfg]
+                         (update (or cfg res)
+                                 :diref
+                                 (fnil conj #{})
+                                 k))))
+
+              (when (nil? res)
+                (swap! ctx update :errors
+                       (fnil conj [])
+                       (if (namespace x)
+                         {:message (format "Could not resolve symbol '%s in %s/%s" x ns-name k)
+                          :type :unresolved-qualified-symbol
+                          :unresolved-symbol x
+                          :ns ns-name}
+                         {:message (format "Could not resolve local symbol '%s in %s/%s" x ns-name k)
+                          :type :unresolved-local-symbol
+                          :unresolved-symbol x
+                          :ns ns-name})))))
+
+          ;; resolve sym ns if needed
+          (if (and (symbol? x)
+                   (not (:zen/quote (meta x)))
+                   (not (namespace x)))
+            (zen.utils/mk-symbol ns-str x)
             x))]
 
     (-> (walk-resource walk-fn resource)
@@ -73,13 +89,16 @@
   (let [ns-name (or (get nmsps 'ns) (get nmsps :ns))
         ns-str (name ns-name)
         sym (zen.utils/mk-symbol ns-name k)
-        res (eval-resource ctx ns-str ns-name nmsps k v)]
-    (swap! ctx (fn [ctx] (update-in ctx [:symbols sym] (fn [x]
-                                                         #_(when x (println "WARN: reload" (:zen/name res)))
-                                                         res))))
-    (doseq [tg (:zen/tags res)]
-      (swap! ctx update-in [:tags tg] (fn [x] (conj (or x #{}) sym))))
-    res))
+
+        {:keys [zen/tags zen/late-bind] :as resource}
+        (eval-resource ctx ns-str ns-name nmsps k v)]
+
+    (swap! ctx (fn [ctx]
+                 (as-> (assoc-in ctx [:symbols sym] resource) ctx*
+                   (reduce #(update-in %1 [:tags %2] (fnil conj #{}) sym) ctx* tags)
+                   (cond-> ctx*
+                     late-bind (assoc-in [:bindings late-bind :backref] sym)))))
+    resource))
 
 (defn load-alias [ctx alias-dest alias]
   (swap! ctx update :aliases zen.utils/disj-set-union-push alias-dest alias))
@@ -91,8 +110,7 @@
   (and (symbol? k) (qualified-symbol? v)))
 
 (defn pre-load-ns!
-  "Loads symbols from nmsps to ctx without any processing
-  so they can be referenced before they're processed"
+  "loads symbols from namespace to ztx before processing"
   [ctx nmsps]
   (let [ns-name (or (get nmsps 'ns) (get nmsps :ns))
         this-ns-symbols
@@ -111,6 +129,7 @@
 
     (pre-load-ns! ctx nmsps)
 
+    ;; do imports
     (doseq [imp (cond->> (or (get nmsps 'import)
                              (get nmsps :import))
                   (symbol? aliased-ns) (cons aliased-ns))]
@@ -124,6 +143,7 @@
         :else
         (read-ns ctx imp {:ns ns-name})))
 
+    ;; process aliases
     (when (symbol? aliased-ns)
       (doseq [[aliased-sym _ :as kv] (get-in @ctx [:ns aliased-ns])]
         (when (symbol-definition? kv)
@@ -133,6 +153,7 @@
                           (zen.utils/mk-symbol aliased-ns aliased-sym)
                           (zen.utils/mk-symbol ns-name aliased-sym)))))))
 
+    ;; eval symbols
     (->> (dissoc nmsps ['ns 'import 'alias :ns :import :alias])
          (mapv (fn [[k v :as kv]]
                  (cond (symbol-definition? kv) (load-symbol ctx nmsps k (merge v opts))

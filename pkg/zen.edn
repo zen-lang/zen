@@ -429,9 +429,7 @@
 
  binding
  {:zen/tags #{zen/tag zen/schema}
-  :type zen/map
-  :keys {:binds {:type zen/symbol}
-         :key {:type zen/keyword}}}
+  :type zen/map}
 
  event
  {:zen/tags #{zen/tag}
