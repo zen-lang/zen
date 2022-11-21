@@ -1,0 +1,2 @@
+{ns     missing-things
+ import #{non-existent-ns}}

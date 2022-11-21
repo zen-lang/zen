@@ -150,7 +150,7 @@
         (contains? (:memory-store @ctx) imp)
         (load-ns ctx (get-in @ctx [:memory-store imp]) opts)
 
-        :else (read-ns ctx imp opts)))
+        :else (read-ns ctx imp (assoc opts :ns zen-ns))))
 
     ;; process aliases
     (when (symbol? aliased-ns)

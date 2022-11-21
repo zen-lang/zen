@@ -109,3 +109,15 @@
 
     (is (= 'name.spaced/quoted-symbol (:a (zen.core/get-symbol ztx 'main/qsch))))
     (is (= 'unqualified-quoted-symbol (:b (zen.core/get-symbol ztx 'main/qsch))))))
+
+(t/deftest zen-loading-errors-test
+  (t/testing "Store preparation"
+    (def ztx (sut/new-context {:paths ["test/fixtures/loading"]})))
+
+  (t/testing "No errors on ns load"
+    (sut/read-ns ztx 'missing-things)
+
+    (is (= ['{:message    "No file for ns 'non-existent-ns"
+              :missing-ns non-existent-ns
+              :ns         missing-things}]
+           (:errors @ztx)))))
