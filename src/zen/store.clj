@@ -11,6 +11,8 @@
 
 (def get-tag zen.utils/get-tag)
 
+(def mk-symbol zen.utils/mk-symbol)
+
 (defn update-types-recur [ctx tp-sym sym]
   (swap! ctx update-in [:tps tp-sym] (fn [x] (conj (or x #{}) sym)))
   (doseq [tp-sym' (:isa (get-symbol ctx tp-sym))]
@@ -32,18 +34,18 @@
 (defn validate-symbol
   "try to resolve symbol, add error, add direct late binding reference"
   [ctx zen-ns ns-key sym]
-  (let [resolved (if (namespace sym)
-                   sym
-                   (zen.utils/mk-symbol zen-ns sym))
-        res (get-symbol ctx resolved)]
+  (let [resolved-sym (if (namespace sym)
+                       sym
+                       (mk-symbol zen-ns sym))
+        res (get-symbol ctx resolved-sym)]
 
     (when (contains? (:zen/tags res) 'zen/binding)
-      (swap! ctx update-in [:bindings sym]
+      (swap! ctx update-in [:bindings resolved-sym]
              (fn [cfg]
                (update (or cfg res)
                        :diref
                        (fnil conj #{})
-                       ns-key))))
+                       (mk-symbol zen-ns ns-key)))))
 
     (when (nil? res)
       (swap! ctx update :errors
@@ -59,7 +61,7 @@
                 :ns zen-ns})))))
 
 (defn eval-resource
-  "walks resource, expands symbols and validates refs"
+  "walk resource, expand symbols and validate refs"
   [ctx zen-ns ns-sym resource]
   (let [walk-fn
         (fn [v]
@@ -70,11 +72,11 @@
 
             ;; resolve local sym
             (if (and zen-sym? (not (namespace v)))
-              (zen.utils/mk-symbol zen-ns v)
+              (mk-symbol zen-ns v)
               v)))]
 
     (-> (walk-resource walk-fn resource)
-        (assoc :zen/name (zen.utils/mk-symbol zen-ns ns-sym)))))
+        (assoc :zen/name (mk-symbol zen-ns ns-sym)))))
 
 (defn validate-resource [ctx res]
   (let [tags (get res :zen/tags)
@@ -90,10 +92,12 @@
         (when-not (empty? errs)
           (swap! ctx update :errors (fn [x] (into (or x []) (mapv #(assoc % :resource (:zen/name res)) errs)))))))))
 
-(defn load-symbol [ctx zen-ns ns-sym v]
-  (let [sym (zen.utils/mk-symbol zen-ns ns-sym)
+(defn load-symbol
+  "resolve refs in resource, update indices"
+  [ctx zen-ns ns-sym v]
+  (let [sym (mk-symbol zen-ns ns-sym)
 
-        {:keys [zen/tags zen/late-bind] :as resource}
+        {:keys [zen/tags zen/bind] :as resource}
         (eval-resource ctx zen-ns ns-sym v)]
 
     (swap! ctx (fn [ctx]
@@ -105,10 +109,8 @@
                            ctx*
                            tags)
                    ;; resolve late binding
-                   (do
-                     (when late-bind
-                       (assoc-in ctx* [:bindings late-bind :backref] sym))
-                     ctx*))))
+                   (cond-> ctx*
+                     bind (assoc-in [:bindings bind :backref] sym)))))
     resource))
 
 (defn load-alias [ctx alias-dest alias]
@@ -127,7 +129,7 @@
         (into {}
               (keep (fn [[sym resource :as kv]]
                       (when (symbol-definition? kv)
-                        [(zen.utils/mk-symbol zen-ns sym)
+                        [(mk-symbol zen-ns sym)
                          (select-keys resource #{:zen/tags})]))) ;; TODO: maybe not only tags must be saved?
               ns-map)]
     (swap! ctx update :symbols merge symbols)))
@@ -159,16 +161,19 @@
           (let [shadowed-here? (contains? ns-map aliased-sym)]
             (when (not shadowed-here?)
               (load-alias ctx
-                          (zen.utils/mk-symbol aliased-ns aliased-sym)
-                          (zen.utils/mk-symbol zen-ns aliased-sym)))))))
+                          (mk-symbol aliased-ns aliased-sym)
+                          (mk-symbol zen-ns aliased-sym)))))))
 
-    ;; eval symbols
-    (->> (dissoc ns-map ['ns 'import 'alias :ns :import :alias])
-         (mapv (fn [[k v :as kv]]
-                 (cond (symbol-definition? kv) (load-symbol ctx zen-ns k (merge v opts))
-                       (symbol-alias? kv)      (load-alias ctx v (zen.utils/mk-symbol zen-ns k))
-                       :else                   nil)))
-         (mapv (fn [res] (validate-resource ctx res))))))
+    ;; eval symbols and aliases
+    (let [load-result
+          (->> (dissoc ns-map ['ns 'import 'alias :ns :import :alias])
+               (mapv (fn [[k v :as kv]]
+                       (cond (symbol-definition? kv) (load-symbol ctx zen-ns k (merge v opts))
+                             (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns k))
+                             :else                   nil)))
+               (mapv (fn [res] (validate-resource ctx res))))]
+
+      [:resources-loaded (count load-result)])))
 
 (defn load-ns! [ctx ns-map]
   (assert (map? ns-map) "Expected map")
@@ -269,7 +274,7 @@
           (if (= nm zen-ns)
             (do (load-ns ctx ns-map {:zen/file (.getPath file)})
                 :zen/loaded)
-            (do (prn :file-doesnt-match-namespace (.getPath file) nm zen-ns)
+            (do (println :file-doesnt-match-namespace (.getPath file) nm zen-ns)
                 (swap! ctx update :errors
                        (fnil conj [])
                        {:message (str "Filename should match contained namespace. Expected "

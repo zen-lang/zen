@@ -128,12 +128,18 @@
              (or disj-set {})
              new-group))))
 
-(defn get-symbol [ctx nm]
-  (when (symbol? nm)
-    (or (get-in @ctx [:symbols nm])
-        (when-let [alias-root (disj-set-get-root (:aliases @ctx) nm)]
-          (get-in @ctx [:symbols alias-root])))))
-
+(defn get-symbol [ctx sym]
+  (when (symbol? sym)
+    (let [{:keys [zen/tags] :as resource}
+          (or (get-in @ctx [:symbols sym])
+              (when-let [alias-root (disj-set-get-root (:aliases @ctx) sym)]
+                (get-in @ctx [:symbols alias-root])))]
+      (if (contains? tags 'zen/binding)
+        (let [{:keys [backref]} (get-in @ctx [:bindings sym])]
+          (if backref
+            (merge (get-symbol ctx backref) resource)
+            resource))
+        resource))))
 
 #_"TODO: profile performance with alisases"
 (defn get-tag [ctx tag]
