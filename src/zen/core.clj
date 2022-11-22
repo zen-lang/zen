@@ -38,7 +38,15 @@
   "get zen metastorage errors. :order param values :ns&message (default) or :as-is
    throws error if order param value is unknown"
   [ztx & {:keys [order]}]
-  (let [errs (:errors @ztx)]
+  (let [binding-errs
+        (->> (vals (:bindings @ztx))
+             (remove :backref)
+             (map (fn [{:keys [diref] bn :zen/name}]
+                    {:message (format "No binding for '%s" bn)
+                     :type :unbound-binding
+                     :ns 'zen.store
+                     :diref diref})))
+        errs (into (:errors @ztx) binding-errs)]
     (case (or order :ns&message)
       :ns&message #_"NOTE: by errors fn was always sorting messages,
                            now this is the default for compatibility"
@@ -47,8 +55,6 @@
            vec)
 
       :as-is errs)))
-
-;; zen.system functions
 
 (defn engine-or-name [config]
   (or (:engine config) (:zen/name config)))

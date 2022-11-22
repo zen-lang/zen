@@ -147,7 +147,12 @@
      :zen/name mylib/config-binding}
    (zen/get-symbol ztx 'mylib/config-binding))
 
-  (is (empty? (zen/errors ztx)))
+  (matcho/assert
+   [{:message "No binding for 'mylib/config-binding"
+     :type :unbound-binding
+     :ns 'zen.store
+     :diref #{'mylib/operation}}]
+   (zen/errors ztx))
 
   (testing "late binding"
 
