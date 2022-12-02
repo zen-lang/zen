@@ -390,7 +390,7 @@
   {:when number?
    :rule
    (fn [vtx num opts]
-     (let [dc (BigDecimal/valueOf num)
+     (let [dc (bigdec num)
            num-scale (.scale dc)
            fraction (.remainder dc BigDecimal/ONE)]
        (if (or (= num-scale scale)
@@ -406,7 +406,7 @@
   {:when number?
    :rule
    (fn [vtx num opts]
-     (let [dc (BigDecimal/valueOf num)
+     (let [dc (bigdec num)
            num-precision (.precision dc)
            fraction (.remainder dc BigDecimal/ONE)]
        (if (or (= num-precision precision)
