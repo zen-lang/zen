@@ -408,7 +408,7 @@
                            {:schema [:maxLength]})
                 acc)]
       acc)
-    (add-error ctx acc {:message (format "Expected type of 'integer, got '%s" (pretty-type data)) :type "primitive-type"})))
+    (add-error ctx acc {:message (format "Expected type of 'number, got '%s" (pretty-type data)) :type "primitive-type"})))
 
 
 (defmethod validate-type 'zen/symbol
