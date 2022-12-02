@@ -395,7 +395,6 @@
            fraction (.remainder dc BigDecimal/ONE)]
        (if (or (= num-scale scale)
                (and (zero? fraction)
-                    (= num-scale 1)
                     (> scale 1)))
          vtx
          (add-err vtx :scale
@@ -411,7 +410,6 @@
            fraction (.remainder dc BigDecimal/ONE)]
        (if (or (= num-precision precision)
                (and (zero? fraction)
-                    (= (.scale dc) 1)
                     (< num-precision precision)))
          vtx
          (add-err vtx :precision
