@@ -331,8 +331,7 @@
 
     (t/testing "Archive contains only zen-project files, .git is ommited"
       (t/is
-        (= {"zen-cli-build-cmd-test"
-            {"my-package"
-             {"zrc" {"my-package.edn" {}},
-              "zen-package.edn" {}}}}
+        (= {"my-package"
+            {"zrc" {"my-package.edn" {}},
+             "zen-package.edn" {}}}
            (zen.test-utils/zip-archive->fs-tree (str my-package-dir-path \/ "zen-project.zip")))))))

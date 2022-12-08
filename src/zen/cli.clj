@@ -219,7 +219,7 @@
                           (not= (.getName f) "zen-project.zip"))
                :let [sep-regex (java.util.regex.Pattern/compile (str (File/separatorChar)))
                      splitted-file-path (str/split (.getPath f) sep-regex)
-                     relative-to-wd-file-path (str/join (File/separatorChar) (drop-while (complement #{parent-dir}) splitted-file-path))
+                     relative-to-wd-file-path (str/join (File/separatorChar) (rest (drop-while (complement #{parent-dir}) splitted-file-path)))
 
                      zip-entry
                      ^java.util.zip.ZipEntry
