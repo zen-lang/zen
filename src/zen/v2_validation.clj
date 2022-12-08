@@ -391,11 +391,8 @@
    :rule
    (fn [vtx num opts]
      (let [dc (bigdec num)
-           num-scale (.scale dc)
-           fraction (.remainder dc BigDecimal/ONE)]
-       (if (or (= num-scale scale)
-               (and (zero? fraction)
-                    (> scale 1)))
+           num-scale (.scale dc)]
+       (if (<= num-scale scale)
          vtx
          (add-err vtx :scale
                   {:message (str "Expected scale = " scale ", got " (.scale dc))}))))})
@@ -407,10 +404,9 @@
    (fn [vtx num opts]
      (let [dc (bigdec num)
            num-precision (.precision dc)
-           fraction (.remainder dc BigDecimal/ONE)]
-       (if (or (= num-precision precision)
-               (and (zero? fraction)
-                    (< num-precision precision)))
+           ;; NOTE: fraction will be used when we add composite checking scale + precision
+           #_#_fraction (.remainder dc BigDecimal/ONE)]
+       (if (<= num-precision precision)
          vtx
          (add-err vtx :precision
                   {:message (str "Expected precision = " precision ", got " num-precision)}))))})
