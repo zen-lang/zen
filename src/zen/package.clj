@@ -3,8 +3,9 @@
             [clojure.java.shell :as shell]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
-            clojure.pprint
-            [zen.store]))
+            [zen.store]
+            [zen.utils])
+  (:import java.io.File))
 
 
 (defn sh! [& args]
@@ -145,19 +146,49 @@
   nil
   )
 
+
 (defn dir-list [dir] (-> dir clojure.java.io/file .list))
 
 
-(defn zen-build! [root {:as _cfg :keys [build-path package-name]}]
+(defn zen-build! [root {:as _cfg,
+                        :keys [build-path package-name]}]
   (zen-init-deps! root)
 
-  (let [zrc-paths (zen.store/expand-package-path root)
-        zrc-dest (str root "/" build-path "/zrc/")
-        zip-dest (str root "/" build-path "/" package-name ".zip")]
-    (sh! "mkdir" "-p" zrc-dest)
-    (doseq [path zrc-paths]
-      (sh! "cp" "-r" (str path "/") zrc-dest))
-    (sh! "zip" "-r" zip-dest "." :dir zrc-dest)))
+  (let [sep-char (File/separatorChar)
+        build-dir-name (if build-path
+                         (.getName (io/file build-path))
+                         (name (gensym)))
+        build-dir (if build-path (str root sep-char build-path) (str root sep-char build-dir-name))
+        zip-name (str (or package-name "zen-project") ".zip")
+        zip-write-path (str build-dir sep-char zip-name)
+        zip-write-file (io/file zip-write-path)
+        _ (when-not (.exists zip-write-file) (.mkdir zip-write-file))
+        expanded-package-paths (zen.store/expand-package-path root)
+        _ (doseq [p expanded-package-paths]
+            (zen.utils/copy-directory p (str build-dir sep-char "zrc")))
+        _ (when (.exists (io/file (str root sep-char "ftr")))
+            (zen.utils/copy-directory (str root sep-char "ftr") (str build-dir sep-char "ftr")))
+        sep-regex (java.util.regex.Pattern/compile (str (File/separatorChar)))]
+
+    (with-open [zip-stream
+                ^java.util.zip.ZipOutputStream
+                (->
+                  zip-write-path
+                  (io/output-stream)
+                  (java.util.zip.ZipOutputStream.))]
+
+      (doseq [^java.io.File f (file-seq (io/file build-dir))
+              :when (and (not (.isDirectory f))
+                         (not (str/includes? (.getPath f) ".git"))
+                         (not= (.getName f) zip-name))
+              :let [splitted-file-path (str/split (.getPath f) sep-regex)
+                    relative-to-build-directory-path (str/join sep-char (rest (drop-while (complement #{build-dir-name}) splitted-file-path)))
+                    zip-entry
+                    ^java.util.zip.ZipEntry
+                    (java.util.zip.ZipEntry. relative-to-build-directory-path)]]
+        (.putNextEntry zip-stream zip-entry)
+        (io/copy f zip-stream)
+        (.closeEntry zip-stream)))))
 
 #_(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))
 

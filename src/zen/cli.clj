@@ -9,8 +9,7 @@
             [clojure.edn]
             [clojure.stacktrace]
             [clojure.java.shell]
-            [clojure.string :as str])
-  (:import java.io.File))
+            [clojure.string :as str]))
 
 
 (defn str->edn [x]
@@ -204,30 +203,9 @@
 (defn build
   ([opts] (build (or (:pwd opts) (System/getProperty "user.dir")) opts))
   ([path opts] (build nil path opts))
-  ([_ztx path _opts]
-   (let [parent-dir (.getName (.getParentFile (io/file path)))
-         zip-write-path (str path \/ "zen-project.zip")]
-     (with-open [zip-stream
-                 ^java.util.zip.ZipOutputStream
-                 (->
-                   zip-write-path
-                   (io/output-stream)
-                   (java.util.zip.ZipOutputStream.))]
-       (doseq [^java.io.File f (file-seq (io/file path))
-               :when (and (not (.isDirectory f))
-                          (not (str/includes? (.getPath f) ".git"))
-                          (not= (.getName f) "zen-project.zip"))
-               :let [sep-regex (java.util.regex.Pattern/compile (str (File/separatorChar)))
-                     splitted-file-path (str/split (.getPath f) sep-regex)
-                     relative-to-wd-file-path (str/join (File/separatorChar) (rest (drop-while (complement #{parent-dir}) splitted-file-path)))
-
-                     zip-entry
-                     ^java.util.zip.ZipEntry
-                     (java.util.zip.ZipEntry. relative-to-wd-file-path)]]
-         (.putNextEntry zip-stream zip-entry)
-         (io/copy f zip-stream)
-         (.closeEntry zip-stream)))
-     {:status :ok, :code :builded, :resulting-zip-location zip-write-path})))
+  ([_ztx path opts]
+   (zen.package/zen-build! path opts)
+   {:status :ok :code :builded}))
 
 
 (def commands

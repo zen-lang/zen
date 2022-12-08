@@ -1,6 +1,7 @@
 (ns zen.utils
   (:require [clojure.string :as str]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io])
+  (:import java.io.File))
 
 (defn deep-merge
   "efficient deep merge"
@@ -181,3 +182,26 @@
           (let [file (clojure.java.io/file (str dest-dir "/" entry-name))]
             (input-stream->file zip-input-stream file :create-parents? true)))))
     dest-dir))
+
+
+(defn copy-file [src dest]
+  (java.nio.file.Files/copy (.toPath (io/file src))
+                            (.toPath (io/file dest))
+                            (into-array java.nio.file.CopyOption
+                                        [(java.nio.file.StandardCopyOption/REPLACE_EXISTING)])))
+
+
+(defn copy-directory [from to]
+  (let [from (File. from)
+        to (File. to)]
+    (when (not (.exists to)) (.mkdirs to))
+    (doseq [file (.listFiles from)]
+      (if (.isDirectory file)
+        (copy-directory (.getPath file) (str to "/" (.getName file)))
+        (copy-file (.getPath file) (str to "/" (.getName file)))))))
+
+
+(defn rmrf [path]
+  (let [file (io/file path)]
+    (when (.exists file)
+      (run! io/delete-file (reverse (file-seq file))))))
