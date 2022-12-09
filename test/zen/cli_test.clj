@@ -297,3 +297,39 @@
 
   #_"NOTE: this is safety stop if repl eval couldn't stop for some reason"
   (reset! stop-repl-atom true))
+
+
+(t/deftest build-zen-project-into-zip
+  (def test-dir-path "/tmp/zen-cli-build-cmd-test")
+  (def my-package-dir-path (str test-dir-path "/my-package/"))
+  (def build-dir "build-dir")
+  (zen.test-utils/rm-fixtures test-dir-path)
+
+  (t/testing "Initialize project"
+    (zen.test-utils/mkdir my-package-dir-path)
+    (matcho/match (sut-cmd "init" "my-package" {:pwd my-package-dir-path})
+                  {:code :initted-new :status :ok})
+
+    (matcho/match (zen.test-utils/fs-tree->tree-map my-package-dir-path)
+                  {"zen-package.edn" some?
+                   "zrc"             {"my-package.edn" some?}
+                   ".git"            {}
+                   ".gitignore"      some?}))
+
+  (t/testing "Building project archive"
+    (matcho/match (sut-cmd "build" {:pwd my-package-dir-path
+                                    :build-path build-dir})
+                  {:status :ok :code :builded})
+
+    (t/testing "Can see project-archive on fs-tree"
+      (matcho/match (zen.test-utils/fs-tree->tree-map my-package-dir-path)
+                    {"build-dir" {"zen-project.zip" some?}
+                     "zen-package.edn" some?
+                     "zrc"             {"my-package.edn" some?}
+                     ".git"            {}
+                     ".gitignore"      some?}))
+
+    (t/testing "Archive contains only zen-project files, .git is ommited"
+      (matcho/match
+        (zen.test-utils/zip-archive->fs-tree (str my-package-dir-path \/ build-dir \/ "zen-project.zip"))
+        {"zrc" {"my-package.edn" {}}}))))

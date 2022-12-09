@@ -4,7 +4,8 @@
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
             [clojure.string :as str]
-            [clojure.test :refer [is]]))
+            [clojure.test :refer [is]])
+  (:import java.io.File))
 
 (defmacro vmatch [tctx schemas subj res]
   `(let [res# (zen.core/validate ~tctx ~schemas ~subj)]
@@ -121,3 +122,22 @@
 
 (defn update-zen-file [file-path update-fn]
   (spit file-path (update-fn (read-string (slurp file-path)))))
+
+
+(defn zip-archive->fs-tree [path-to-zip]
+  (with-open [zip-stream
+              ^java.util.zip.ZipInputStream
+              (-> path-to-zip
+                  (io/input-stream)
+                  (java.util.zip.ZipInputStream.))]
+    (loop [entry
+           ^java.util.zip.ZipEntry
+           (.getNextEntry zip-stream)
+
+           fs-tree {}]
+      (if entry
+        (let [entry-name (.getName entry)
+              splitted-entry-name (str/split entry-name (java.util.regex.Pattern/compile (str (File/separatorChar))))]
+          (recur (.getNextEntry zip-stream)
+                 (assoc-in fs-tree splitted-entry-name {})))
+        fs-tree))))

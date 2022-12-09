@@ -6,6 +6,8 @@
 
 (defn make-ns-name [paths filename]
   (when-let [nm (->> paths
+                     (keep io/as-file)
+                     (map #(.getPath %)) #_"NOTE: path sanitization"
                      (map (fn [p]
                             (when (str/starts-with? filename p)
                               (subs filename (inc (count p)) (- (count filename) 4)))))
@@ -44,7 +46,8 @@
   htx)
 
 (defn watch [ztx]
-  (when-let [paths (:paths @ztx)]
+  (when-let [paths (concat (:paths @ztx)
+                           (map #(str % "/zrc") (:package-paths @ztx))) #_"TODO: refactor to unify paths collection with functions from zen.store/find-file"]
     (let [w (hawk/watch! [{:paths paths :handler (fn [htx e] (handle-updates ztx paths htx e))}])]
       (swap! ztx assoc-in [:zen/services :zen/watch] w)
       (println :zen.watch/started)

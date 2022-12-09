@@ -437,7 +437,9 @@
              :scale 2}
          :d {:type zen/number
              :precision 3
-             :scale 0}}}
+             :scale 0}
+         :e {:type zen/number
+             :scale 1}}}
 
 ;; TODO fails on v1 because it returns string not integer
  number-test
@@ -477,14 +479,25 @@
     :match
     {:errors zen.test/nil?}}
 
-   {:desc "scale constraint invalid"
-    :do {:type zen.test/validate :schema constraints-schema :data {:a 2}}
+   {:desc "scale constraint invalid (given more digits that specified)"
+    :do {:type zen.test/validate :schema constraints-schema :data {:a 2.111}}
     :match
     {:errors
-     [{:message "Expected scale = 2, got 0"
-       :path [:a]
-       :type "number.scale"
+     [{:message "Expected scale = 2, got 3",
+       :path [:a],
+       :type "number.scale",
        :schema [zen.tests.types-test/constraints-schema :a :scale]}]}}
+
+   {:desc "scale constraint valid (giving less digits as specified. Assume trailing zeroes can be omitted)"
+    :do {:type zen.test/validate :schema constraints-schema :data {:a 2}}
+    :match
+    {:errors zen.test/nil?}}
+
+   {:desc "scale constraint valid (Regression with scale:1 and removed trailing zeroes)"
+    :do {:type zen.test/validate :schema constraints-schema :data {:e 2}}
+    :match
+    {:errors zen.test/nil?}}
+
 
    {:desc "scale constraint valid"
     :do {:type zen.test/validate :schema constraints-schema :data {:a 2.28}}
@@ -522,7 +535,23 @@
     :match
     {:errors zen.test/empty?}}
 
-   {:desc "trailing zeroes are allowed when scale = 2 (4 zeroes)"
+   ;; TODO: Add composite checking precision+scale
+   ;; {:desc "invalid precision 3 and scale 2"
+   ;;  :do {:type zen.test/validate :schema constraints-schema :data {:c 22.2}}
+   ;;  :match
+   ;;  {:errors [{:message "Expected precision = 3 (with scale = 2), got 3 (with scale 1)"
+   ;;             :path [:c]
+   ;;             :type "number.precision"
+   ;;             :schema [zen.tests.types-test/constraints-schema :c :precision]}]}}
+   ;; {:desc "invalid precision 3 and scale 2"
+   ;;  :do {:type zen.test/validate :schema constraints-schema :data {:c 222}}
+   ;;  :match
+   ;;  {:errors [{:message "Expected precision = 3 (with scale = 2), got 3 (with scale 0)"
+   ;;             :path [:c]
+   ;;             :type "number.precision"
+   ;;             :schema [zen.tests.types-test/constraints-schema :c :precision]}]}}
+
+   {:desc "trailing zeroes are allowed scale = 2 (4 zeroes)"
     :do {:type zen.test/validate :schema constraints-schema :data {:c 22.0000}}
     :match
     {:errors zen.test/empty?}}

@@ -218,8 +218,8 @@
   (let [path-hash (zen.utils/string->md5 zip-path)
         unzip-dest (str unzip-cache-dir "/" path-hash)]
     (if (.exists (io/file unzip-dest))
-      unzip-dest
-      (zen.utils/unzip! zip-path unzip-dest))))
+      (str unzip-dest \/ "zrc")
+      (str (zen.utils/unzip! zip-path unzip-dest) \/ "zrc"))))
 
 ;; TODO: cache find file
 (defn find-file [ctx pth]

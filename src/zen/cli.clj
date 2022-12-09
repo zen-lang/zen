@@ -9,39 +9,33 @@
             [clojure.edn]
             [clojure.stacktrace]
             [clojure.java.shell]
-            [zen.cli-tools :as cli]))
+            [zen.cli-tools :as cli]
+            [clojure.string :as str]))
 
 
 (defn str->edn [x]
   (clojure.edn/read-string (str x)))
 
-
 (defn split-args-by-space [args-str]
   (map pr-str (clojure.edn/read-string (str \[ args-str \]))))
 
-
 (defn apply-with-opts [f args opts]
   (apply f (conj (vec args) opts)))
-
 
 (defn get-pwd [& [{:keys [pwd] :as opts}]]
   (or (some-> pwd (clojure.string/replace #"/+$" ""))
       (zen.package/pwd :silent true)))
 
-
 (defn get-return-fn [& [opts]]
   (or (:return-fn opts) clojure.pprint/pprint))
 
-
 (defn get-read-fn [& [opts]]
   (or (:read-fn opts) read-line))
-
 
 (defn get-prompt-fn [& [opts]]
   (or (:prompt-fn opts)
       #(do (print "zen> ")
            (flush))))
-
 
 (defn load-ztx [opts]
   (zen.core/new-context {:package-paths [(get-pwd opts)]}))
@@ -200,9 +194,18 @@
     (apply cmd-unsafe args)))
 
 
+(defn build
+  ([opts] (build (or (:pwd opts) (System/getProperty "user.dir")) opts))
+  ([path opts] (build nil path opts))
+  ([_ztx path opts]
+   (zen.package/zen-build! path opts)
+   {:status :ok :code :builded}))
+
+
 (def commands
   {"init"       init
    "pull-deps"  pull-deps
+   "build"      build
    "errors"     errors
    "changes"    changes
    "validate"   validate

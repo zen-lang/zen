@@ -131,10 +131,10 @@
 
       (t/testing "all namespaces from the fixture are present in zip"
         (t/is (= (into #{}
-                       (map #(str (name %) ".edn"))
+                       (map #(str "zrc" \/ (name %) ".edn"))
                        all-test-ns)
                  (into #{}
-                       (zen.test-utils/zip-entries build-zip-path))))))
+                       (zen.test-utils/zip-entries build-zip-path)) ))))
 
     (t/testing "zip archive read-ns"
       (def ztx (zen.core/new-context {:zip-paths [build-zip-path]}))
