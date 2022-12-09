@@ -8,7 +8,8 @@
             [clojure.string]
             [clojure.edn]
             [clojure.stacktrace]
-            [clojure.java.shell]))
+            [clojure.java.shell]
+            [zen.cli-tools :as cli]))
 
 
 (defn str->edn [x]
@@ -210,8 +211,53 @@
    "exit"       exit})
 
 
-(defn -main [& [cmd-name & args]]
+#_(defn -main [& [cmd-name & args]]
   (if (some? cmd-name)
     ((get-return-fn) (cmd commands cmd-name args))
     (repl commands))
-  (System/exit 0))
+    (System/exit 0))
+
+(defn -main [& args]
+  (let [ztx (zen.core/new-context)]
+    (zen.core/load-ns
+      ztx
+      '{:ns my-cli
+        :import #{zen.cli-tools}
+
+        identity
+        {:zen/tags #{zen.cli-tools/command}
+         :zen/desc "returns its arg"
+         :args-style :named
+         :args {:type zen/map
+                :require #{:value}
+                :keys {:value {:type zen/string
+                               :zen/desc "value that will be returned by this fn"}}}}
+
+        +
+        {:zen/tags #{zen.cli-tools/command}
+         :zen/desc "calculates sum of passed arguments"
+         :args-style :positional
+         :args {:type zen/vector
+                :zen/desc "numbers that will be summed together"
+                :every {:type zen/number}}}
+
+        no-implementation
+        {:zen/tags #{zen.cli-tools/command}
+         :zen/desc "no implementation should be defined. Needed for implementation missing error handling"
+         :args {:type zen/vector
+                :maxItems 0}}
+
+        throw-exception
+        {:zen/tags #{zen.cli-tools/command}
+         :zen/desc "Throws an exception. Needed for testing exception handling"
+         :args {:type zen/vector
+                :maxItems 0}}
+
+        my-config
+        {:zen/tags #{zen.cli-tools/config}
+         :commands {:identity  {:command identity}
+                    :+         {:command +}
+                    :undefined {:command undefined}
+                    :no-impl   {:command no-implementation}
+                    :fail      {:command throw-exception}}}})
+    (cli/cli-main ztx 'my-cli/my-config args)))
