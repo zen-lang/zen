@@ -155,11 +155,9 @@
   (zen-init-deps! root)
 
   (let [sep-char (File/separatorChar)
-        build-dir-name (if build-path
-                         (.getName (io/file build-path))
-                         (name (gensym)))
+        build-dir-name (.getName (io/file build-path))
         build-dir (if build-path (str root sep-char build-path) (str root sep-char build-dir-name))
-        zip-name (str (or package-name "zen-project") ".zip")
+        zip-name (str (or package-name "zen-package") ".zip")
         zip-write-path (str build-dir sep-char zip-name)
         zip-write-file (io/file zip-write-path)
         _ (when-not (.exists zip-write-file) (.mkdir zip-write-file))

@@ -24,7 +24,7 @@
 
 (defn get-pwd [& [{:keys [pwd] :as opts}]]
   (or (some-> pwd (clojure.string/replace #"/+$" ""))
-      (zen.package/pwd :silent true)))
+      (System/getProperty "user.dir")))
 
 (defn get-return-fn [& [opts]]
   (or (:return-fn opts) clojure.pprint/pprint))
@@ -195,10 +195,11 @@
 
 
 (defn build
-  ([opts] (build (or (:pwd opts) (System/getProperty "user.dir")) opts))
-  ([path opts] (build nil path opts))
-  ([_ztx path opts]
-   (zen.package/zen-build! path opts)
+  ([opts] (build "target" opts))
+  ([path opts] (build path "zen-package" opts))
+  ([path package-name opts] (build nil path package-name opts))
+  ([_ztx path package-name opts] #_"NOTE: currently this fn doesn't need ztx"
+   (zen.package/zen-build! (get-pwd opts) {:build-path path :package-name package-name})
    {:status :ok :code :builded}))
 
 

@@ -317,8 +317,7 @@
                    ".gitignore"      some?}))
 
   (t/testing "Building project archive"
-    (matcho/match (sut-cmd "build" {:pwd my-package-dir-path
-                                    :build-path build-dir})
+    (matcho/match (sut-cmd "build" build-dir "zen-project" {:pwd my-package-dir-path})
                   {:status :ok :code :builded})
 
     (t/testing "Can see project-archive on fs-tree"
