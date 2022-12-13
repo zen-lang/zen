@@ -39,10 +39,10 @@
    throws error if order param value is unknown"
   [ztx & {:keys [order]}]
   (let [binding-errs
-        (->> (vals (:bindings @ztx))
-             (remove :backref)
-             (map (fn [{:keys [diref] bn :zen/name}]
-                    {:message (format "No binding for '%s" bn)
+        (->> (:bindings @ztx)
+             (remove #(:backref (second %)))
+             (map (fn [[binding-name {:keys [diref]}]]
+                    {:message (format "No binding for '%s" binding-name)
                      :type :unbound-binding
                      :ns 'zen.store
                      :diref diref})))
