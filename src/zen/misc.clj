@@ -9,7 +9,9 @@
   ;; TODO add test somewhere?
   {:rule
    (fn [vtx data opts]
-     (if-not (and (seq refers) (some data [:resourceType :type]))
+     (if-not (and (seq refers)
+                  (map? data)
+                  (some data [:resourceType :type]))
        vtx
        (let [tp            (some data [:resourceType :type])
              refer-schemas (map (partial utils/get-symbol ztx) refers)
