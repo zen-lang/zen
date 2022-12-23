@@ -240,7 +240,7 @@
 
         start-repl! (fn []
                       #_(future (sut/repl sut/commands repl-opts))
-                      (future (sut/-main nil repl-opts)))]
+                      (future (sut/cli-main nil repl-opts)))]
     (start-repl!)
     eval-in-repl!))
 
@@ -276,6 +276,7 @@
                   {::cli-tools/status :ok, ::cli-tools/code :initted-new})
 
     (zen.test-utils/git-init-commit my-package-dir-path))
+  #_(throw (Exception. "HALT"))
 
   (zen.test-utils/update-zen-file (str my-package-dir-path "/zrc/my-package.edn")
                                   #(assoc %
@@ -285,45 +286,47 @@
 
   (t/testing "errors"
     (matcho/match (eval-in-repl! "errors")
-                  [{:missing-ns 'my-dep}
-                   {:unresolved-symbol 'my-dep/tag}
-                   nil]))
+                  {::cli-tools/result [{:missing-ns 'my-dep}
+                                       {:unresolved-symbol 'my-dep/tag}
+                                       nil]}))
 
   (zen.test-utils/update-zen-file (str my-package-dir-path "/zen-package.edn")
                                   #(assoc % :deps {'my-dep dependency-dir-path}))
 
   (t/testing "pull-deps"
     (matcho/match (eval-in-repl! "pull-deps")
-                  {::cli-tools/status :ok, ::cli-tools/code :pulled, :deps #{'my-dep}})
+                  {::cli-tools/status :ok
+                   ::cli-tools/result {:code :pulled, :deps #{'my-dep}}})
 
     (matcho/match (eval-in-repl! "errors")
-                  empty?))
+                  {::cli-tools/result empty?}))
 
   (t/testing "changes"
     (matcho/match (eval-in-repl! "changes")
-                  {:changes
-                   [{:type :namespace/new, :namespace 'my-dep}
-                    {:type :symbol/new, :symbol 'my-package/sym}
-                    nil]}))
+                  {::cli-tools/result
+                   {:changes
+                    [{:type :namespace/new, :namespace 'my-dep}
+                     {:type :symbol/new, :symbol 'my-package/sym}
+                     nil]}}))
 
   (t/testing "validate"
     (matcho/match (eval-in-repl! "validate #{my-dep/tag} {:a :wrong-type}")
-                  {:errors [{} nil]})
+                  {::cli-tools/result {:errors [{} nil]}})
 
     (matcho/match (eval-in-repl! "validate #{my-dep/tag} {:a \"correct-type\"}")
                   {:errors empty?}))
 
   (t/testing "get-symbol"
     (matcho/match (eval-in-repl! "get-symbol my-package/sym")
-                  {:zen/name 'my-package/sym}))
+                  {::cli-tools/result {:zen/name 'my-package/sym}}))
 
   (t/testing "get-tag"
     (matcho/match (eval-in-repl! "get-tag my-dep/tag")
-                  #{'my-package/sym}))
+                  {::cli-tools/result #{'my-package/sym}}))
 
   (t/testing "exit"
     (matcho/match (eval-in-repl! "exit")
-                  {::cli-tools/status :ok, ::cli-tools/code :exit})
+                  {::cli-tools/result {:status :ok, :code :exit}})
 
     (t/is (true? @stop-repl-atom)))
 
@@ -350,7 +353,8 @@
 
   (t/testing "Building project archive"
     (matcho/match (sut-cmd "build" build-dir "zen-project" {:pwd my-package-dir-path})
-                  {::cli-tools/status :ok ::cli-tools/code :builded})
+                  {::cli-tools/result {:status :ok :code :builded}
+                   ::cli-tools/status :ok})
 
     (t/testing "Can see project-archive on fs-tree"
       (matcho/match (zen.test-utils/fs-tree->tree-map my-package-dir-path)

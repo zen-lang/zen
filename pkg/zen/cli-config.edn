@@ -25,10 +25,11 @@
   :zen/desc "build"
   :args-style :positional
   :args {:type zen/vector
-         :minItems 1
-         :maxItems 3
-         ;;TODO zen/case
-         :nth {0 {:type zen/map}}}}
+         :minItems 0
+         :maxItems 2
+         :every {:type zen/case
+                 :case [{:when {:type zen/symbol}}
+                        {:when {:type zen/string}}]}}}
 
  errors
  {:zen/tags #{zen.cli-tools/command}
@@ -81,9 +82,7 @@
   :zen/desc "exit"
   :args-style :positional
   :args {:type zen/vector
-         :minItems 1
-         :maxItems 1
-         :nth {0 {:type zen/map}}}}
+         :maxItems 0}}
 
  config
  {:zen/tags #{zen.cli-tools/config}

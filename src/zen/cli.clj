@@ -212,9 +212,11 @@
 (defmethod cli/command 'zen.cli-config/pull-deps [_ _ opts]
   (pull-deps opts))
 
-;; TODO multi-arity
 (defmethod cli/command 'zen.cli-config/build [_ [path package-name] opts]
-  (build path package-name opts))
+  (let [path-str (str path)]
+    (if-not package-name
+      (build path-str opts)
+      (build path-str package-name opts))))
 
 (defmethod cli/command 'zen.cli-config/errors [_ _args opts]
   (errors opts))
