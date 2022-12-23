@@ -1,0 +1,119 @@
+{:ns zen.cli-config
+ :import #{zen.cli-tools}
+
+
+ init
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "init"
+  :args-style :positional
+  :args {:type     zen/vector
+         :maxItems 1
+         :nth      {0 {:zen/desc "Project name. Creates zen namespace with this name"
+                       :type zen/case
+                       :case [{:when {:type zen/symbol}}
+                              {:when {:type zen/string}}]}}}}
+
+ pull-depth
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "pull depth"
+  :args-style :positional
+  :args {:type zen/vector
+         :minItems 1
+         :maxItems 1
+         :nth {0 {:type zen/map}}}}
+
+ build
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "build"
+  :args-style :positional
+  :args {:type zen/vector
+         :minItems 1
+         :maxItems 3
+         ;;TODO zen/case
+         :nth {0 {:type zen/map}}}}
+
+ errors
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "errors"
+  :args-style :positional
+  :args {:type zen/vector
+         :maxItems 0}}
+
+ changes
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "changes"
+  :args-style :positional
+  :args {:type zen/vector
+         :maxItems 0}}
+
+ validate
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "validates data against a set of schemas"
+  :args-style :positional
+  :args {:type zen/vector
+         :minItems 2
+         :maxItems 2
+         :nth {0 {:zen/desc "Set of schema symbols to validate against"
+                  :type zen/set
+                  :every {:type zen/symbol}}
+               1 {:type zen/any}}}}
+
+ get-symbol
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "get symbol"
+  :args-style :positional
+  :args {:type zen/vector
+         :minItems 1
+         :maxItems 1
+         :nth {0 {:type zen/symbol
+                  :zen/desc "symbol to get"}}}}
+
+ get-tag
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "get tag"
+  :args-style :positional
+  :args {:type zen/vector
+         :minItems 1
+         :maxItems 1
+         :nth {0 {:type zen/symbol
+                  :zen/desc "tag symbol to search by"}}}}
+
+ exit
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "exit"
+  :args-style :positional
+  :args {:type zen/vector
+         :minItems 1
+         :maxItems 1
+         :nth {0 {:type zen/map}}}}
+
+ config
+ {:zen/tags #{zen.cli-tools/config}
+  :commands {:init       {:command init}
+             :pull-deps  {:command pull-deps}
+             :build      {:command build}
+             :errors     {:command errors}
+             :changes    {:command changes}
+             :validate   {:command validate}
+             :get-symbol {:command get-symbol}
+             :get-tag    {:command get-tag}
+             :exit       {:command exit}}}}
+ ;; +
+ ;; {:zen/tags #{zen.cli-tools/command}
+ ;;  :zen/desc "calculates sum of passed arguments"
+ ;;  :args-style :positional
+ ;;  :args {:type zen/vector
+ ;;         :zen/desc "numbers that will be summed together"
+ ;;         :every {:type zen/number}}}
+
+ ;; no-implementation
+ ;; {:zen/tags #{zen.cli-tools/command}
+ ;;  :zen/desc "no implementation should be defined. Needed for implementation missing error handling"
+ ;;  :args {:type zen/vector
+ ;;         :maxItems 0}}
+
+ ;; throw-exception
+ ;; {:zen/tags #{zen.cli-tools/command}
+ ;;  :zen/desc "Throws an exception. Needed for testing exception handling"
+ ;;  :args {:type zen/vector
+ ;;         :maxItems 0}}

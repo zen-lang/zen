@@ -74,12 +74,15 @@
 
 
 (defn init
+  ([opts] (init nil nil opts))
+
   ([package-name opts] (init nil package-name opts))
 
   ([_ztx package-name opts]
-   (if (zen.package/zen-init! (get-pwd opts) {:package-name (str->edn package-name)})
-     {:status :ok, :code :initted-new}
-     {:status :ok, :code :already-exists})))
+   (if (zen.package/zen-init! (get-pwd opts) (when package-name
+                                               {:package-name (str->edn package-name)}))
+     {::cli/status :ok, ::cli/code :initted-new}
+     {::cli/status :ok, ::cli/code :already-exists})))
 
 
 (defn pull-deps
@@ -203,7 +206,36 @@
    {:status :ok :code :builded}))
 
 
-(def commands
+;; TODO recieve ztx
+(defmethod cli/command 'zen.cli-config/init [_ [package-name] opts]
+  (apply init (remove nil? [package-name opts])))
+
+(defmethod cli/command 'zen.cli-config/pull-deps [_ & [opts]]
+  (pull-deps opts))
+
+;; TODO multi-arity
+(defmethod cli/command 'zen.cli-config/build [_ [path package-name] opts]
+  (build path package-name opts))
+
+(defmethod cli/command 'zen.cli-config/errors [_ _args opts]
+  (errors opts))
+
+(defmethod cli/command 'zen.cli-config/changes [_ _ opts]
+  (changes opts))
+
+(defmethod cli/command 'zen.cli-config/validate [_ [symbols-str data-str] opts]
+  (validate symbols-str data-str opts))
+
+(defmethod cli/command 'zen.cli-config/get-symbol [_ [sym-str] opts]
+  (get-symbol sym-str opts))
+
+(defmethod cli/command 'zen.cli-config/get-tag [_ [tag-str] opts]
+  (get-tag tag-str opts))
+
+(defmethod cli/command 'zen.cli-config/exit [_ _ opts]
+  (exit opts))
+
+#_(def commands
   {"init"       init
    "pull-deps"  pull-deps
    "build"      build
@@ -221,47 +253,13 @@
     (repl commands))
     (System/exit 0))
 
+
+(defn cli-main [args & [opts]]
+  (cli/cli-main (zen.core/new-context)
+                'zen.cli-config/config
+                args
+                opts))
+
+
 (defn -main [& args]
-  (let [ztx (zen.core/new-context)]
-    (zen.core/load-ns
-      ztx
-      '{:ns my-cli
-        :import #{zen.cli-tools}
-
-        identity
-        {:zen/tags #{zen.cli-tools/command}
-         :zen/desc "returns its arg"
-         :args-style :named
-         :args {:type zen/map
-                :require #{:value}
-                :keys {:value {:type zen/string
-                               :zen/desc "value that will be returned by this fn"}}}}
-
-        +
-        {:zen/tags #{zen.cli-tools/command}
-         :zen/desc "calculates sum of passed arguments"
-         :args-style :positional
-         :args {:type zen/vector
-                :zen/desc "numbers that will be summed together"
-                :every {:type zen/number}}}
-
-        no-implementation
-        {:zen/tags #{zen.cli-tools/command}
-         :zen/desc "no implementation should be defined. Needed for implementation missing error handling"
-         :args {:type zen/vector
-                :maxItems 0}}
-
-        throw-exception
-        {:zen/tags #{zen.cli-tools/command}
-         :zen/desc "Throws an exception. Needed for testing exception handling"
-         :args {:type zen/vector
-                :maxItems 0}}
-
-        my-config
-        {:zen/tags #{zen.cli-tools/config}
-         :commands {:identity  {:command identity}
-                    :+         {:command +}
-                    :undefined {:command undefined}
-                    :no-impl   {:command no-implementation}
-                    :fail      {:command throw-exception}}}})
-    (cli/cli-main ztx 'my-cli/my-config args)))
+  (cli-main args))
