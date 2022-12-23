@@ -205,12 +205,11 @@
    (zen.package/zen-build! (get-pwd opts) {:build-path path :package-name package-name})
    {:status :ok :code :builded}))
 
-
 ;; TODO recieve ztx
 (defmethod cli/command 'zen.cli-config/init [_ [package-name] opts]
   (apply init (remove nil? [package-name opts])))
 
-(defmethod cli/command 'zen.cli-config/pull-deps [_ & [opts]]
+(defmethod cli/command 'zen.cli-config/pull-deps [_ _ opts]
   (pull-deps opts))
 
 ;; TODO multi-arity

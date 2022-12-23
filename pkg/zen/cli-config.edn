@@ -13,14 +13,12 @@
                        :case [{:when {:type zen/symbol}}
                               {:when {:type zen/string}}]}}}}
 
- pull-depth
+ pull-deps
  {:zen/tags #{zen.cli-tools/command}
-  :zen/desc "pull depth"
+  :zen/desc "pull deps"
   :args-style :positional
   :args {:type zen/vector
-         :minItems 1
-         :maxItems 1
-         :nth {0 {:type zen/map}}}}
+         :maxItems 0}}
 
  build
  {:zen/tags #{zen.cli-tools/command}

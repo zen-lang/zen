@@ -151,10 +151,14 @@
 
     (t/testing "do pull-deps & check for errors, should be no errors"
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok, ::cli-tools/code :pulled, :deps #{'my-dep}})
+                    {::cli-tools/status :ok
+                     ::cli-tools/result {:status :ok
+                                         :code :pulled
+                                         :deps #{'my-dep}}})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    empty?))
+                    {::cli-tools/status :ok
+                     ::cli-tools/result nil?}))
 
     (t/testing "do pull-deps again should be no errors and no changes"
 
@@ -162,7 +166,8 @@
                     {::cli-tools/status :ok})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    empty?))
+                    {::cli-tools/status :ok
+                     ::cli-tools/result nil?}))
 
 
     (t/testing "change repo url, pull"
@@ -170,13 +175,17 @@
                                       #(assoc % :deps {'my-dep dependency-fork-dir-path}))
 
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok, ::cli-tools/code :pulled, :deps #{'my-dep}})
+                    {::cli-tools/status :ok
+                     ::cli-tools/result {:status :ok
+                                         :code :pulled
+                                         :deps #{'my-dep}}})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    empty?)
+                    {::cli-tools/status :ok
+                     ::cli-tools/result nil?})
 
       (matcho/match (sut-cmd "get-symbol" "my-dep/new-sym" {:pwd my-package-dir-path})
-                    {:i-am-forked :not-the-original-repo})))
+                    {::cli-tools/result {:i-am-forked :not-the-original-repo}})))
 
 
   (t/testing "commit update to the dependency"
@@ -187,18 +196,22 @@
 
     (t/testing "do pull-deps and see the update"
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok, ::cli-tools/code :pulled, :deps #{'my-dep}})
+                    {::cli-tools/status :ok
+                     ::cli-tools/result {:status :ok
+                                         :code :pulled
+                                         :deps #{'my-dep}}})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    empty?)
+                    {::cli-tools/status :ok
+                     ::cli-tools/result nil?})
 
       (matcho/match (sut-cmd "get-symbol" "my-dep/new-sym" {:pwd my-package-dir-path})
-                    {:i-am-forked :fork-updated})))
+                    {::cli-tools/result {:i-am-forked :fork-updated}})))
 
 
   (t/testing "use validate command to validate some data"
     (matcho/match (sut-cmd "validate" "#{my-dep/tag}" "{}" {:pwd my-package-dir-path})
-                  {:errors [{} nil]})))
+                  {::cli-tools/result {:errors [{} nil]}})))
 
 
 (defn sut-repl [opts]
@@ -227,7 +240,7 @@
 
         start-repl! (fn []
                       #_(future (sut/repl sut/commands repl-opts))
-                      (future (sut/-main)))]
+                      (future (sut/-main nil repl-opts)))]
     (start-repl!)
     eval-in-repl!))
 
