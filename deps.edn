@@ -7,7 +7,7 @@
         borkdude/edamame     {:mvn/version "1.0.0"}
         hawk/hawk            {:mvn/version "0.2.11"}
         zen-lang/cli         {:git/url "https://github.com/zen-lang/cli.git"
-                              :sha "b6848853ea66c509bf404e42312cabd81feba0c5"}
+                              :sha "9187cd266ee63b6c299a016aeca6184dc385e6c9"}
         healthsamurai/matcho {:mvn/version "0.3.9"}}
 
  :aliases

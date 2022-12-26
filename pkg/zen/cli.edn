@@ -1,4 +1,4 @@
-{:ns zen.cli-config
+{:ns zen.cli
  :import #{zen.cli-tools}
 
 
@@ -95,22 +95,3 @@
              :get-symbol {:command get-symbol}
              :get-tag    {:command get-tag}
              :exit       {:command exit}}}}
- ;; +
- ;; {:zen/tags #{zen.cli-tools/command}
- ;;  :zen/desc "calculates sum of passed arguments"
- ;;  :args-style :positional
- ;;  :args {:type zen/vector
- ;;         :zen/desc "numbers that will be summed together"
- ;;         :every {:type zen/number}}}
-
- ;; no-implementation
- ;; {:zen/tags #{zen.cli-tools/command}
- ;;  :zen/desc "no implementation should be defined. Needed for implementation missing error handling"
- ;;  :args {:type zen/vector
- ;;         :maxItems 0}}
-
- ;; throw-exception
- ;; {:zen/tags #{zen.cli-tools/command}
- ;;  :zen/desc "Throws an exception. Needed for testing exception handling"
- ;;  :args {:type zen/vector
- ;;         :maxItems 0}}

@@ -205,62 +205,43 @@
    (zen.package/zen-build! (get-pwd opts) {:build-path path :package-name package-name})
    {:status :ok :code :builded}))
 
-;; TODO recieve ztx
-(defmethod cli/command 'zen.cli-config/init [_ [package-name] opts]
+
+(defmethod cli/command 'zen.cli/init [_ [package-name] opts]
   (apply init (remove nil? [package-name opts])))
 
-(defmethod cli/command 'zen.cli-config/pull-deps [_ _ opts]
+(defmethod cli/command 'zen.cli/pull-deps [_ _ opts]
   (pull-deps opts))
 
-(defmethod cli/command 'zen.cli-config/build [_ [path package-name] opts]
+(defmethod cli/command 'zen.cli/build [_ [path package-name] opts]
   (let [path-str (str path)]
     (if-not package-name
       (build path-str opts)
       (build path-str package-name opts))))
 
-(defmethod cli/command 'zen.cli-config/errors [_ _args opts]
+(defmethod cli/command 'zen.cli/errors [_ _args opts]
   (errors opts))
 
-(defmethod cli/command 'zen.cli-config/changes [_ _ opts]
+(defmethod cli/command 'zen.cli/changes [_ _ opts]
   (changes opts))
 
-(defmethod cli/command 'zen.cli-config/validate [_ [symbols-str data-str] opts]
+(defmethod cli/command 'zen.cli/validate [_ [symbols-str data-str] opts]
   (validate symbols-str data-str opts))
 
-(defmethod cli/command 'zen.cli-config/get-symbol [_ [sym-str] opts]
+(defmethod cli/command 'zen.cli/get-symbol [_ [sym-str] opts]
   (get-symbol sym-str opts))
 
-(defmethod cli/command 'zen.cli-config/get-tag [_ [tag-str] opts]
+(defmethod cli/command 'zen.cli/get-tag [_ [tag-str] opts]
   (get-tag tag-str opts))
 
-(defmethod cli/command 'zen.cli-config/exit [_ _ opts]
+(defmethod cli/command 'zen.cli/exit [_ _ opts]
   (exit opts))
-
-#_(def commands
-  {"init"       init
-   "pull-deps"  pull-deps
-   "build"      build
-   "errors"     errors
-   "changes"    changes
-   "validate"   validate
-   "get-symbol" get-symbol
-   "get-tag"    get-tag
-   "exit"       exit})
-
-
-#_(defn -main [& [cmd-name & args]]
-  (if (some? cmd-name)
-    ((get-return-fn) (cmd commands cmd-name args))
-    (repl commands))
-    (System/exit 0))
 
 
 (defn cli-main [args & [opts]]
   (cli/cli-main (zen.core/new-context)
-                'zen.cli-config/config
+                'zen.cli/config
                 args
                 opts))
-
 
 (defn -main [& args]
   (cli-main args))
