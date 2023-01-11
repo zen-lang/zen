@@ -97,48 +97,56 @@
         (init-pre-commit-hook! root)))))
 
 
-(defn zen-pull-deps-recur! [root deps]
+(defn zen-pull-deps-recur! [root deps & [ssh-cmd]]
   (loop [[[dep-name dep-url] & deps-to-init] deps
-         pulled-deps #{}]
+         pulled-deps #{}
+         ssh-cmd ssh-cmd]
     (if (nil? dep-name)
       pulled-deps
       (let [dep-name-str (name dep-name)
             dep-dir-path (str root "/" dep-name-str)
-            dep-dir (io/file dep-dir-path)]
+            dep-dir (io/file dep-dir-path)
+            shell-env (and ssh-cmd {"GIT_SSH_COMMAND" ssh-cmd})
+            sh-with-env! (fn [& args]
+                           (apply sh! (concat args [:env shell-env])))]
         (cond
           (contains? pulled-deps dep-name)
           (recur deps-to-init
-                 pulled-deps)
+                 pulled-deps
+                 ssh-cmd)
 
           (and (.exists dep-dir)
                (= dep-url
-                  (->> (sh! "git" "remote" "get-url" "origin" :dir dep-dir-path)
+                  (->> (sh-with-env! "git" "remote" "get-url" "origin" :dir dep-dir-path)
                        :out
                        str/trim-newline)))
           (do
-            (sh! "git" "pull" :dir (str root "/" dep-name-str))
+            (sh-with-env! "git" "pull" :dir (str root "/" dep-name-str))
             (recur
               (concat (read-deps (str root "/" dep-name-str))
                       deps-to-init)
-              (conj pulled-deps dep-name)))
+              (conj pulled-deps dep-name)
+              ssh-cmd))
 
           :else
           (do
             (when (.exists dep-dir)
-              (sh! "rm" "-rf" dep-name-str :dir root))
-            (sh! "git" "clone" "--depth=1" (str dep-url) dep-name-str
-                 :dir root)
+              (sh-with-env! "rm" "-rf" dep-name-str :dir root))
+            (sh-with-env! "git" "clone" "--depth=1" (str dep-url) dep-name-str
+                          :dir root)
             (recur
               (concat (read-deps dep-dir-path)
                       deps-to-init)
-              (conj pulled-deps dep-name))))))))
+              (conj pulled-deps dep-name)
+              ssh-cmd)))))))
 
 
-(defn zen-init-deps! [root]
+(defn zen-init-deps! [root & [ssh-cmd]]
   (when-let [deps (read-deps root)]
     (mkdir! root "zen-packages")
     (zen-pull-deps-recur! (str root "/zen-packages")
-                          deps)))
+                          deps
+                          ssh-cmd)))
 
 
 (comment
