@@ -53,13 +53,24 @@
   (is (not (nil? (zen/get-symbol dctx 'dyns/model)))))
 
 (deftest node-modules
-  (def zctx* (zen/new-context {:paths ["test/fixtures/tmp-proj/"]}))
+  (def path "test/fixtures/tmp-proj")
+  (def zctx* (zen/new-context {:paths [path]}))
   (zen/read-ns zctx* 'project)
 
   (is (empty? (:errors @zctx*)))
 
   (is (contains? (:ns @zctx*) 'fhir.r4))
-  (is (contains? (:ns @zctx*) 'us-core.patient)))
+  (is (contains? (:ns @zctx*) 'us-core.patient))
+
+  (testing ":zen/file and :zen/zen-path point to file and path containing the file"
+    (def node-modules-us-core-path
+      "node_modules/@zen-lang/us-core")
+
+    (matcho/match (zen.core/get-symbol zctx* 'us-core.patient/patient)
+                  {:zen/file (str path
+                                  "/" node-modules-us-core-path
+                                  "/us-core/patient.edn")
+                   :zen/zen-path (str path "/" node-modules-us-core-path)})))
 
 (deftest recursive-import
   (def memory-store

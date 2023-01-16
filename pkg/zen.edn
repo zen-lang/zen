@@ -36,6 +36,11 @@
   :zen/desc "namespace filename"
   :type string}
 
+ zen-path
+ {:zen/tags #{property schema}
+  :zen/desc "path from :paths or from :package-paths or from cache of :zip-paths this file was loaded from"
+  :type string}
+
  name {:zen/tags #{property schema}
        :type symbol}
 
