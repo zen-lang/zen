@@ -21,15 +21,16 @@
 
 
 #_"NOTE: aliases for backwards-compatibility.
+Uncomment if something breaks.
 Probably safe to remove if no one relies on them"
-(def resolve-props zen.schema/resolve-props)
-(def compile-schema zen.schema/compile-schema)
-(def safe-compile-key zen.schema/safe-compile-key)
-(def validate-props zen.schema/navigate-props)
-(def rule-priority zen.schema/rule-priority)
-(def fhir-date-regex zen.validation.utils/fhir-date-regex)
-(def fhir-datetime-regex zen.validation.utils/fhir-datetime-regex)
-(def cur-keyset zen.validation.utils/cur-keyset)
+#_(def resolve-props zen.schema/resolve-props)
+#_(def compile-schema zen.schema/compile-schema)
+#_(def safe-compile-key zen.schema/safe-compile-key)
+#_(def validate-props zen.schema/navigate-props)
+#_(def rule-priority zen.schema/rule-priority)
+#_(def fhir-date-regex zen.validation.utils/fhir-date-regex)
+#_(def fhir-datetime-regex zen.validation.utils/fhir-datetime-regex)
+#_(def cur-keyset zen.validation.utils/cur-keyset)
 
 
 (defmulti compile-type-check (fn [tp ztx] tp))
