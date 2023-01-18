@@ -76,20 +76,19 @@
                         (= (:validation-type schema) :open)
                         (= (:type schema) 'zen/any))]
     (fn compiled-sch [vtx data opts]
-      (loop [rs rulesets
-             vtx* (navigate-props (assoc vtx :type (:type schema)) data props opts)]
-        (cond
-          (and (empty? rs) (map? data) (:type schema)) #_"NOTE: why not (= 'zen/map (:type schema)) ?"
+      (let [vtx* (loop [rs rulesets
+                        vtx* (navigate-props (assoc vtx :type (:type schema)) data props opts)]
+                   (if (empty? rs)
+                     vtx*
+                     (let [{when-fn :when rule-fn :rule} (first rs)
+                           when-fn (or when-fn (constantly true))]
+                       (if (when-fn data)
+                         (recur (rest rs) (rule-fn vtx* data opts))
+                         (recur (rest rs) vtx*)))))]
+        #_"NOTE: why not (= 'zen/map (:type schema)) ?"
+        (if (and (map? data) (:type schema))
           (valtype-rule vtx* data open-world?)
-
-          (empty? rs) vtx*
-
-          :else
-          (let [{when-fn :when rule-fn :rule} (first rs)
-                when-fn (or when-fn (constantly true))]
-            (if (when-fn data)
-              (recur (rest rs) (rule-fn vtx* data opts))
-              (recur (rest rs) vtx*))))))))
+          vtx*)))))
 
 
 (declare resolve-props)
