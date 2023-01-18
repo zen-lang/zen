@@ -81,14 +81,15 @@
 
         compiled-schema-fn
         (fn compiled-schema-fn [vtx data opts]
-          (loop [rs rulesets
-                 vtx* (navigate-props (assoc vtx :type (:type schema)) data props opts)]
-            (if (empty? rs)
-              vtx*
-              (let [{when-fn :when rule-fn :rule} (first rs)]
-                (if (or (nil? when-fn) (when-fn data))
-                  (recur (rest rs) (rule-fn vtx* data opts))
-                  (recur (rest rs) vtx*))))))]
+          (let [vtx* (assoc vtx :type (:type schema))
+                vtx* (navigate-props vtx* data props opts)]
+            (loop [rs rulesets, vtx* vtx*]
+              (if (empty? rs)
+                vtx*
+                (let [{when-fn :when rule-fn :rule} (first rs)]
+                  (if (or (nil? when-fn) (when-fn data))
+                    (recur (rest rs) (rule-fn vtx* data opts))
+                    (recur (rest rs) vtx*)))))))]
 
     (wrap-with-post-hooks
       compiled-schema-fn
