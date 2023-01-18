@@ -85,9 +85,8 @@
                  vtx* (navigate-props (assoc vtx :type (:type schema)) data props opts)]
             (if (empty? rs)
               vtx*
-              (let [{when-fn :when rule-fn :rule} (first rs)
-                    when-fn (or when-fn (constantly true))]
-                (if (when-fn data)
+              (let [{when-fn :when rule-fn :rule} (first rs)]
+                (if (or (nil? when-fn) (when-fn data))
                   (recur (rest rs) (rule-fn vtx* data opts))
                   (recur (rest rs) vtx*))))))]
 
