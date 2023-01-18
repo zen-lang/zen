@@ -1,23 +1,22 @@
 (ns zen.v2-validation
   (:require
    [zen.schema]
-   [zen.validation.utils :refer :all :exclude [add-err fhir-date-regex fhir-datetime-regex types-cfg cur-keyset]]
+   [zen.validation.utils
+    :refer :all
+    :exclude [add-err fhir-date-regex fhir-datetime-regex types-cfg]
+    :as validation.utils]
    [zen.effect]
    [zen.match]
+   [clojure.set :as set]
    [clojure.string :as str]
    [zen.utils :as utils]))
 
 
 ;; backwards-compatible aliases used in this ns
 (def get-cached       zen.schema/get-cached)
-(def *validate-schema zen.schema/apply-schema)
 (def compile-key      zen.schema/compile-key)
 (def add-err   zen.validation.utils/add-err)
 (def types-cfg zen.validation.utils/types-cfg)
-
-
-;; should be moved back to this ns
-(def valtype-rule zen.schema/valtype-rule)
 
 
 #_"NOTE: aliases for backwards-compatibility.
@@ -30,10 +29,59 @@ Probably safe to remove if no one relies on them"
 #_(def rule-priority zen.schema/rule-priority)
 #_(def fhir-date-regex zen.validation.utils/fhir-date-regex)
 #_(def fhir-datetime-regex zen.validation.utils/fhir-datetime-regex)
-#_(def cur-keyset zen.validation.utils/cur-keyset)
+
+
+(defn valtype-rule [vtx data open-world?] #_"NOTE: maybe refactor name to 'set-unknown-keys ?"
+  (let [filter-allowed
+        (fn [unknown]
+          (->> unknown
+               (remove #(= (vec (butlast %)) (:path vtx)))
+               set))
+
+        set-unknown
+        (fn [unknown]
+          (let [empty-unknown? (empty? unknown)
+                empty-visited? (empty? (:visited vtx))]
+            (cond (and empty-unknown? (not empty-visited?))
+                  (set/difference (cur-keyset vtx data)
+                                  (:visited vtx))
+
+                  (and empty-unknown? empty-visited?)
+                  (set (validation.utils/cur-keyset vtx data))
+
+                  (not empty-unknown?)
+                  (set/difference unknown (:visited vtx)))))]
+
+    (if open-world?
+      (-> vtx
+          (update :unknown-keys filter-allowed)
+          (update :visited into (validation.utils/cur-keyset vtx data)))
+      (update vtx :unknown-keys set-unknown))))
+
+
+(defn unknown-keys-post-process-hook [ztx schema]
+  (when (:type schema)
+    (let [open-world? (or (:key schema)
+                          (:values schema)
+                          (= (:validation-type schema) :open)
+                          (= (:type schema) 'zen/any))]
+      (fn [vtx data opts]
+        (when (map? data)
+          (valtype-rule vtx data open-world?))))))
+
+
+(zen.schema/register-schema-post-process-hook!
+  ::validate
+  unknown-keys-post-process-hook)
 
 
 (defmulti compile-type-check (fn [tp ztx] tp))
+
+
+(defn *validate-schema
+  "internal, use validate function"
+  [ztx vtx schema data {:keys [_sch-symbol] :as opts}]
+  (zen.schema/apply-schema ztx vtx schema data (assoc opts :interpreters [::validate])))
 
 
 (defn validate-schema [ztx schema data & [opts]]

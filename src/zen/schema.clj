@@ -12,34 +12,6 @@
     :else 100))
 
 
-(defn valtype-rule [vtx data open-world?] #_"NOTE: maybe refactor name to 'set-unknown-keys ?"
-  (let [filter-allowed
-        (fn [unknown]
-          (->> unknown
-               (remove #(= (vec (butlast %)) (:path vtx)))
-               set))
-
-        set-unknown
-        (fn [unknown]
-          (let [empty-unknown? (empty? unknown)
-                empty-visited? (empty? (:visited vtx))]
-            (cond (and empty-unknown? (not empty-visited?))
-                  (clojure.set/difference (validation.utils/cur-keyset vtx data)
-                                          (:visited vtx))
-
-                  (and empty-unknown? empty-visited?)
-                  (set (validation.utils/cur-keyset vtx data))
-
-                  (not empty-unknown?)
-                  (clojure.set/difference unknown (:visited vtx)))))]
-
-    (if open-world?
-      (-> vtx
-          (update :unknown-keys filter-allowed)
-          (update :visited into (validation.utils/cur-keyset vtx data)))
-      (update vtx :unknown-keys set-unknown))))
-
-
 (defmulti compile-key (fn [k ztx kfg] k))
 
 
@@ -64,6 +36,41 @@
           (keys props)))
 
 
+#_"TODO: maybe move to ztx?"
+(defonce schema-post-process-hooks-atom
+  (atom {}))
+
+
+#_"TODO: maybe support multiple hooks per interpreter?"
+(defn register-schema-post-process-hook! [interpreter hook-fn]
+  (swap! schema-post-process-hooks-atom assoc interpreter hook-fn))
+
+
+(defn get-all-schema-post-process-hooks [_ztx]
+  @schema-post-process-hooks-atom)
+
+
+(defn get-schema-post-process-hooks [ztx schema]
+  (into {}
+        (keep (fn [[interpreter schema-hook-fn]]
+                (when-let [hook-fn (schema-hook-fn ztx schema)]
+                  [interpreter hook-fn])))
+        (get-all-schema-post-process-hooks ztx)))
+
+
+(defn wrap-with-post-hooks [compiled-schema-fn post-hooks]
+  (if (seq post-hooks)
+    (fn compiled-with-post-hooks-fn [vtx data opts]
+      (let [vtx* (compiled-schema-fn vtx data opts)]
+        (if-let [post-hooks (seq (keep #(when-let [hook-fn (get post-hooks %)]
+                                          (fn [vtx] (or (hook-fn vtx data opts)
+                                                        vtx)))
+                                       (:interpreters opts)))]
+          (reduce #(%2 %1) vtx* post-hooks)
+          vtx*)))
+    compiled-schema-fn))
+
+
 (defn compile-schema [ztx schema props]
   (let [rulesets (->> (dissoc schema :validation-type)
                       (remove (fn [[k _]] (contains? props k)))
@@ -71,24 +78,22 @@
                              (assoc (safe-compile-key k ztx kfg) ::priority (rule-priority k))))
                       (sort-by ::priority)
                       doall)
-        open-world? (or (:key schema)
-                        (:values schema)
-                        (= (:validation-type schema) :open)
-                        (= (:type schema) 'zen/any))]
-    (fn compiled-sch [vtx data opts]
-      (let [vtx* (loop [rs rulesets
-                        vtx* (navigate-props (assoc vtx :type (:type schema)) data props opts)]
-                   (if (empty? rs)
-                     vtx*
-                     (let [{when-fn :when rule-fn :rule} (first rs)
-                           when-fn (or when-fn (constantly true))]
-                       (if (when-fn data)
-                         (recur (rest rs) (rule-fn vtx* data opts))
-                         (recur (rest rs) vtx*)))))]
-        #_"NOTE: why not (= 'zen/map (:type schema)) ?"
-        (if (and (map? data) (:type schema))
-          (valtype-rule vtx* data open-world?)
-          vtx*)))))
+
+        compiled-schema-fn
+        (fn compiled-schema-fn [vtx data opts]
+          (loop [rs rulesets
+                 vtx* (navigate-props (assoc vtx :type (:type schema)) data props opts)]
+            (if (empty? rs)
+              vtx*
+              (let [{when-fn :when rule-fn :rule} (first rs)
+                    when-fn (or when-fn (constantly true))]
+                (if (when-fn data)
+                  (recur (rest rs) (rule-fn vtx* data opts))
+                  (recur (rest rs) vtx*))))))]
+
+    (wrap-with-post-hooks
+      compiled-schema-fn
+      (get-schema-post-process-hooks ztx schema))))
 
 
 (declare resolve-props)
