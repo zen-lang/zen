@@ -1,222 +1,39 @@
 (ns zen.v2-validation
   (:require
-   [zen.validation.utils :refer :all]
+   [zen.schema]
+   [zen.validation.utils :refer :all :exclude [add-err fhir-date-regex fhir-datetime-regex types-cfg cur-keyset]]
    [zen.effect]
    [zen.match]
-   [clojure.set :as cljset]
    [clojure.string :as str]
    [zen.utils :as utils]))
 
-(def fhir-date-regex
-  (re-pattern
-   "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?"))
 
-(def fhir-datetime-regex
-  (re-pattern
-   "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?"))
+;; backwards-compatible aliases used in this ns
+(def get-cached       zen.schema/get-cached)
+(def *validate-schema zen.schema/apply-schema)
+(def compile-key      zen.schema/compile-key)
+(def add-err   zen.validation.utils/add-err)
+(def types-cfg zen.validation.utils/types-cfg)
 
-(def types-cfg
-  {'zen/string {:fn string?
-                :to-str "string"}
 
-   'zen/date
-   {:fn #(and (string? %) (re-matches fhir-date-regex %))
-    :to-str "date"}
+;; should be moved back to this ns
+(def valtype-rule zen.schema/valtype-rule)
 
-   'zen/datetime
-   {:fn #(and (string? %) (re-matches fhir-datetime-regex %))
-    :to-str "datetime"}
 
-   'zen/number {:fn number?
-                :to-str "number"}
+#_"NOTE: aliases for backwards-compatibility.
+Probably safe to remove if no one relies on them"
+(def resolve-props zen.schema/resolve-props)
+(def compile-schema zen.schema/compile-schema)
+(def safe-compile-key zen.schema/safe-compile-key)
+(def validate-props zen.schema/navigate-props)
+(def rule-priority zen.schema/rule-priority)
+(def fhir-date-regex zen.validation.utils/fhir-date-regex)
+(def fhir-datetime-regex zen.validation.utils/fhir-datetime-regex)
+(def cur-keyset zen.validation.utils/cur-keyset)
 
-   ;; TODO discuss sequential? predicate
-   'zen/set {:fn #(or (set? %) (sequential? %))
-             :to-str "set"}
-
-   'zen/map {:fn map?
-             :to-str "map"}
-
-   'zen/vector {:fn vector?
-                :to-str "vector"}
-
-   'zen/boolean {:fn boolean?
-                 :to-str "boolean"}
-
-   'zen/keyword {:fn keyword?
-                 :to-str "keyword"}
-
-   'zen/list {:fn list?
-              :to-str "list"}
-
-   'zen/integer {:fn integer?
-                 :to-str "integer"}
-
-   'zen/symbol {:fn symbol?
-                :to-str "symbol"}
-
-   'zen/qsymbol {:fn (fn [sym]
-                       (and
-                         (symbol? sym)
-                         (:zen/quote (meta sym))))
-                 :to-str "quoted-symbol"}
-
-   'zen/any (constantly true)
-   'zen/case (constantly true)
-
-   ;; fn is implemented as a separate multimethod
-   'zen/apply {:to-str "apply"}
-
-   'zen/regex
-   {:fn #(and (string? %) (re-pattern %))
-    :to-str "regex"}})
-
-(def add-err (partial add-err* types-cfg))
-
-(defmulti compile-key (fn [k ztx kfg] k))
 
 (defmulti compile-type-check (fn [tp ztx] tp))
 
-(defn validate-props [vtx data props opts]
-  (reduce (fn [vtx* prop]
-            (if-let [prop-value (get data prop)]
-              (-> (node-vtx&log vtx* [:property prop] [prop])
-                  ((get props prop) prop-value opts)
-                  (merge-vtx vtx*))
-              vtx*))
-          vtx
-          (keys props)))
-
-(defn cur-keyset [vtx data]
-  (->> (keys data)
-       (map #(conj (:path vtx) %))
-       set))
-
-(defn valtype-rule [vtx data open-world?] #_"NOTE: maybe refactor name to 'set-unknown-keys ?"
-  (let [filter-allowed
-        (fn [unknown]
-          (->> unknown
-               (remove #(= (vec (butlast %)) (:path vtx)))
-               set))
-
-        set-unknown
-        (fn [unknown]
-          (let [empty-unknown? (empty? unknown)
-                empty-visited? (empty? (:visited vtx))]
-            (cond (and empty-unknown? (not empty-visited?))
-                  (cljset/difference (cur-keyset vtx data)
-                                     (:visited vtx))
-
-                  (and empty-unknown? empty-visited?)
-                  (set (cur-keyset vtx data))
-
-                  (not empty-unknown?)
-                  (cljset/difference unknown (:visited vtx)))))]
-
-    (if open-world?
-      (-> vtx
-          (update :unknown-keys filter-allowed)
-          (update :visited into (cur-keyset vtx data)))
-      (update vtx :unknown-keys set-unknown))))
-
-(defn rule-priority [k]
-  (cond
-    (= k :keys) 0
-    (= k :key) 10
-    (= k :values) 1
-    :else 100))
-
-(defn safe-compile-key [k ztx kfg]
-  (try (compile-key k ztx kfg)
-       (catch Exception e
-         {:rule (fn [vtx _data _opts]
-                  (add-err vtx
-                           k
-                           {:type "compile-key-exception"
-                            :message (.getMessage e)}))})))
-
-(defn compile-schema [ztx schema props]
-  (let [rulesets (->> (dissoc schema :validation-type)
-                      (remove (fn [[k _]] (contains? props k)))
-                      (map (fn [[k kfg]]
-                             (assoc (safe-compile-key k ztx kfg) ::priority (rule-priority k))))
-                      (sort-by ::priority)
-                      doall)
-        open-world? (or (:key schema)
-                        (:values schema)
-                        (= (:validation-type schema) :open)
-                        (= (:type schema) 'zen/any))]
-    (fn compiled-sch [vtx data opts]
-      (loop [rs rulesets
-             vtx* (validate-props (assoc vtx :type (:type schema)) data props opts)]
-        (cond
-          (and (empty? rs) (map? data) (:type schema)) #_"NOTE: why not (= 'zen/map (:type schema)) ?"
-          (valtype-rule vtx* data open-world?)
-
-          (empty? rs) vtx*
-
-          :else
-          (let [{when-fn :when rule-fn :rule} (first rs)
-                when-fn (or when-fn (constantly true))]
-            (if (when-fn data)
-              (recur (rest rs) (rule-fn vtx* data opts))
-              (recur (rest rs) vtx*))))))))
-
-(declare resolve-props)
-
-
-(defn get-cached
-  [ztx schema init?]
-  (let [hash* (hash schema)
-        v-promise (get-in @ztx [::compiled-schemas hash*])]
-    (if (some? v-promise) #_"NOTE: race condition will result in double compilation, but this shouldn't crash anything"
-      (fn [vtx data opts]
-        ;; TODO add to vtx :warning
-        (let [v (deref v-promise
-                       (:compile-schema-timeout opts 60000)
-                       ::timeout)]
-          (if (= ::timeout v) ;; can't wait this long for the compilation to end, going to compile ourselves
-            (do (swap! ztx update ::compiled-schemas dissoc hash*)
-                ((get-cached ztx schema init?)
-                 vtx data opts))
-            (v vtx data opts))))
-
-      (let [v-promise (promise)
-            _ (swap! ztx assoc-in [::compiled-schemas hash*] v-promise)
-
-            props
-            (if init?
-              (resolve-props ztx)
-              (::prop-schemas @ztx))
-
-            v (compile-schema ztx schema props)]
-
-        (deliver v-promise v)
-        v))))
-
-(defn resolve-props [ztx]
-  (->> (utils/get-tag ztx 'zen/property)
-       (map (fn [prop]
-              (zen.utils/get-symbol ztx prop)))
-       (map (fn [sch]
-              [sch (get-cached ztx sch false)]))
-       (reduce (fn [acc [sch v]]
-                 (assoc acc (keyword (:zen/name sch)) v))
-               {})
-       (swap! ztx assoc ::prop-schemas)
-       ::prop-schemas))
-
-(defn *validate-schema
-  "internal, use validate function"
-  [ztx vtx schema data {:keys [sch-symbol] :as opts}]
-  (let [vtx (-> vtx
-                (assoc :schema [(or sch-symbol (:zen/name schema))])
-                (assoc :path [])
-                (assoc-in [::confirmed [] (:zen/name schema)] true))
-
-        compiled-schema-fn (get-cached ztx schema true)]
-
-    (compiled-schema-fn vtx data opts)))
 
 (defn validate-schema [ztx schema data & [opts]]
   (let [empty-vtx {:errors []

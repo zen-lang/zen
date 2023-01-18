@@ -79,3 +79,79 @@
   (-> global-vtx
       (update :errors into (:errors *node-vtx))
       (merge (dissoc *node-vtx :path :schema :errors))))
+
+
+(def fhir-date-regex
+  (re-pattern
+   "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?"))
+
+
+(def fhir-datetime-regex
+  (re-pattern
+   "([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?"))
+
+
+(def types-cfg
+  {'zen/string {:fn string?
+                :to-str "string"}
+
+   'zen/date
+   {:fn #(and (string? %) (re-matches fhir-date-regex %))
+    :to-str "date"}
+
+   'zen/datetime
+   {:fn #(and (string? %) (re-matches fhir-datetime-regex %))
+    :to-str "datetime"}
+
+   'zen/number {:fn number?
+                :to-str "number"}
+
+   ;; TODO discuss sequential? predicate
+   'zen/set {:fn #(or (set? %) (sequential? %))
+             :to-str "set"}
+
+   'zen/map {:fn map?
+             :to-str "map"}
+
+   'zen/vector {:fn vector?
+                :to-str "vector"}
+
+   'zen/boolean {:fn boolean?
+                 :to-str "boolean"}
+
+   'zen/keyword {:fn keyword?
+                 :to-str "keyword"}
+
+   'zen/list {:fn list?
+              :to-str "list"}
+
+   'zen/integer {:fn integer?
+                 :to-str "integer"}
+
+   'zen/symbol {:fn symbol?
+                :to-str "symbol"}
+
+   'zen/qsymbol {:fn (fn [sym]
+                       (and
+                         (symbol? sym)
+                         (:zen/quote (meta sym))))
+                 :to-str "quoted-symbol"}
+
+   'zen/any (constantly true)
+   'zen/case (constantly true)
+
+   ;; fn is implemented as a separate multimethod
+   'zen/apply {:to-str "apply"}
+
+   'zen/regex
+   {:fn #(and (string? %) (re-pattern %))
+    :to-str "regex"}})
+
+
+(def add-err (partial add-err* types-cfg))
+
+
+(defn cur-keyset [vtx data]
+  (->> (keys data)
+       (map #(conj (:path vtx) %))
+       set))
