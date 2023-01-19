@@ -26,19 +26,11 @@
                                              :message (.getMessage e)}))})))
 
 
-(defn navigate-props [vtx data props opts]
-  (reduce (fn [vtx* prop]
-            (if-let [prop-value (get data prop)]
-              (-> (validation.utils/node-vtx&log vtx* [:property prop] [prop])
-                  ((get props prop) prop-value opts)
-                  (validation.utils/merge-vtx vtx*))
-              vtx*))
-          vtx
-          (keys props)))
-
-
 #_"TODO: maybe move to ztx?"
 (defonce schema-post-process-hooks-atom
+  (atom {}))
+
+(defonce schema-pre-process-hooks-atom
   (atom {}))
 
 
@@ -47,43 +39,51 @@
   (swap! schema-post-process-hooks-atom assoc interpreter hook-fn))
 
 
-(defn get-all-schema-post-process-hooks [_ztx]
-  @schema-post-process-hooks-atom)
+(defn register-schema-pre-process-hook! [interpreter hook-fn]
+  (swap! schema-pre-process-hooks-atom assoc interpreter hook-fn))
 
 
-(defn get-schema-post-process-hooks [ztx schema]
+(defn get-schema-hooks [ztx hooks-map schema]
   (into {}
         (keep (fn [[interpreter schema-hook-fn]]
                 (when-let [hook-fn (schema-hook-fn ztx schema)]
                   [interpreter hook-fn])))
-        (get-all-schema-post-process-hooks ztx)))
+        hooks-map))
 
 
-(defn wrap-with-post-hooks [compiled-schema-fn post-hooks]
-  (if (seq post-hooks)
-    (fn compiled-with-post-hooks-fn [vtx data opts]
-      (let [vtx* (compiled-schema-fn vtx data opts)]
-        (if-let [post-hooks (seq (keep #(when-let [hook-fn (get post-hooks %)]
-                                          (fn [vtx] (or (hook-fn vtx data opts)
-                                                        vtx)))
-                                       (:interpreters opts)))]
-          (reduce #(%2 %1) vtx* post-hooks)
-          vtx*)))
-    compiled-schema-fn))
+(defn get-interpreter-hook-fn [hooks-map data opts interpreter]
+  (when-let [hook-fn (get hooks-map interpreter)]
+    (fn [vtx] (or (hook-fn vtx data opts)
+                  vtx))))
 
 
-(defn compile-schema [ztx schema props]
+(defn get-hooks [hooks-map data opts]
+  (not-empty (keep #(get-interpreter-hook-fn hooks-map data opts %)
+                   (:interpreters opts))))
+
+
+(defn wrap-with-hooks [compiled-schema-fn {:keys [pre post]}]
+  (if (and (empty? pre) (empty? post))
+    compiled-schema-fn
+    (fn compiled-with-hooks-fn [vtx data opts]
+      (let [pre-hooks  (get-hooks pre data opts)
+            post-hooks (get-hooks post data opts)]
+        (cond-> vtx
+          pre-hooks  (as-> $ (reduce #(%2 %1) $ pre-hooks))
+          :always    (compiled-schema-fn data opts)
+          post-hooks (as-> $ (reduce #(%2 %1) $ post-hooks)))))))
+
+
+(defn compile-schema [ztx schema]
   (let [rulesets (->> schema
-                      (remove (fn [[k _]] (contains? props k)))
-                      (map (fn [[k kfg]]
-                             (assoc (safe-compile-key k ztx kfg) ::priority (rule-priority k))))
-                      (sort-by ::priority)
-                      doall)
+                      (keep (fn [[k v]]
+                              (-> (safe-compile-key k ztx v)
+                                  (assoc ::priority (rule-priority k)))))
+                      (sort-by ::priority))
 
         compiled-schema-fn
         (fn compiled-schema-fn [vtx data opts]
-          (let [vtx* (assoc vtx :type (:type schema))
-                vtx* (navigate-props vtx* data props opts)]
+          (let [vtx* (assoc vtx :type (:type schema))]
             (loop [rs rulesets, vtx* vtx*]
               (if (empty? rs)
                 vtx*
@@ -92,12 +92,10 @@
                     (recur (rest rs) (rule-fn vtx* data opts))
                     (recur (rest rs) vtx*)))))))]
 
-    (wrap-with-post-hooks
+    (wrap-with-hooks
       compiled-schema-fn
-      (get-schema-post-process-hooks ztx schema))))
-
-
-(declare resolve-props)
+      {:pre (get-schema-hooks ztx @schema-pre-process-hooks-atom schema)
+       :post (get-schema-hooks ztx @schema-post-process-hooks-atom schema)})))
 
 
 (defn get-cached
@@ -118,29 +116,10 @@
 
       (let [v-promise (promise)
             _ (swap! ztx assoc-in [:zen.v2-validation/compiled-schemas hash*] v-promise)
-
-            props
-            (if init?
-              (resolve-props ztx)
-              (:zen.v2-validation/prop-schemas @ztx))
-
-            v (compile-schema ztx schema props)]
+            v (compile-schema ztx schema)]
 
         (deliver v-promise v)
         v))))
-
-
-(defn resolve-props [ztx]
-  (->> (utils/get-tag ztx 'zen/property)
-       (map (fn [prop]
-              (zen.utils/get-symbol ztx prop)))
-       (map (fn [sch]
-              [sch (get-cached ztx sch false)]))
-       (reduce (fn [acc [sch v]]
-                 (assoc acc (keyword (:zen/name sch)) v))
-               {})
-       (swap! ztx assoc :zen.v2-validation/prop-schemas)
-       :zen.v2-validation/prop-schemas))
 
 
 (defn apply-schema

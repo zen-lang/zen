@@ -31,6 +31,46 @@ Probably safe to remove if no one relies on them"
 #_(def fhir-datetime-regex zen.validation.utils/fhir-datetime-regex)
 
 
+(defn resolve-props [ztx]
+  (let [props-syms   (utils/get-tag ztx 'zen/property)
+        cached-props (::cached-props @ztx)]
+    (if (= cached-props props-syms)
+      (::prop-schemas @ztx)
+      (->> props-syms
+           (map (fn [prop]
+                  (zen.utils/get-symbol ztx prop)))
+           (map (fn [sch]
+                  [sch (get-cached ztx sch false)]))
+           (reduce (fn [acc [sch v]]
+                     (assoc acc (keyword (:zen/name sch)) v))
+                   {})
+           (swap! ztx assoc ::cached-pops props-syms, ::prop-schemas)
+           ::prop-schemas))))
+
+
+(defn validate-props [vtx data props opts]
+  (reduce (fn [vtx* prop]
+            (if-let [prop-value (get data prop)]
+              (-> (validation.utils/node-vtx&log vtx* [:property prop] [prop])
+                  ((get props prop) prop-value opts)
+                  (validation.utils/merge-vtx vtx*))
+              vtx*))
+          vtx
+          (keys props)))
+
+
+(defn props-pre-process-hook [ztx schema]
+  (let [#_"FIXME: won't reeval proprs if they change in run-time"
+        props (resolve-props ztx)]
+    (fn [vtx data opts]
+      (validate-props vtx data props opts))))
+
+
+(zen.schema/register-schema-pre-process-hook!
+  ::validate
+  props-pre-process-hook)
+
+
 (defn valtype-rule [vtx data open-world?] #_"NOTE: maybe refactor name to 'set-unknown-keys ?"
   (let [filter-allowed
         (fn [unknown]
