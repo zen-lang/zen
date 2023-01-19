@@ -60,7 +60,8 @@ Probably safe to remove if no one relies on them"
 
 
 (defn unknown-keys-post-process-hook [ztx schema]
-  (when (:type schema)
+  (when (and (some? (:type schema))
+             (nil? (:validation-type schema)))
     (let [open-world? (or (:key schema)
                           (:values schema)
                           (= (:validation-type schema) :open)
@@ -73,6 +74,13 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-schema-post-process-hook!
   ::validate
   unknown-keys-post-process-hook)
+
+
+(defmethod compile-key :validation-type
+  [_ ztx tp]
+  (let [open-world? (= :open tp)]
+    {:when map?
+     :rule (fn [vtx data opts] (valtype-rule vtx data open-world?))}))
 
 
 (defmulti compile-type-check (fn [tp ztx] tp))

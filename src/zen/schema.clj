@@ -9,6 +9,7 @@
     (= k :keys) 0
     (= k :key) 10
     (= k :values) 1
+    (= k :validation-type) 1000
     :else 100))
 
 
@@ -72,7 +73,7 @@
 
 
 (defn compile-schema [ztx schema props]
-  (let [rulesets (->> (dissoc schema :validation-type)
+  (let [rulesets (->> schema
                       (remove (fn [[k _]] (contains? props k)))
                       (map (fn [[k kfg]]
                              (assoc (safe-compile-key k ztx kfg) ::priority (rule-priority k))))
