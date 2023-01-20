@@ -177,6 +177,8 @@
 (defmethod compile-key :subset-of   [_ _ _] {:when set?})
 (defmethod compile-key :superset-of [_ _ _] {:when set?})
 
+(defmethod compile-key :tags [_ _ _] {:when #(or (symbol? %) (list? %) (string? %))})
+
 
 (register-compile-key-interpreter!
   [:keys ::navigate]

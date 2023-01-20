@@ -501,15 +501,12 @@ Probably safe to remove if no one relies on them"
 
     :else {:rule (fn [vtx data opts] vtx)}))
 
-(defmethod compile-key :tags
-  [_ ztx sch-tags]
-  ;; currently :tags implements three usecases:
-  ;; tags check where schema name is string or symbol
-  ;; and zen.apply tags check (list notation)
-  {:when #(or (symbol? %)
-              (list? %)
-              (string? %))
-   :rule
+(zen.schema/register-compile-key-interpreter!
+ [:tags ::validate]
+ (fn [_ ztx sch-tags]
+   ;; currently :tags implements three usecases:
+   ;; tags check where schema name is string or symbol
+   ;; and zen.apply tags check (list notation)
    (fn [vtx data opts]
      (let [[sym type-err]
            (cond
@@ -526,7 +523,7 @@ Probably safe to remove if no one relies on them"
                      (format "Expected symbol '%s tagged with '%s, but only %s"
                              (str sym) (str sch-tags) (or tags #{})))
                    :type type-err})
-         vtx)))})
+         vtx)))))
 
 
 (defmulti slice-fn (fn [ztx [_slice-name slice-schema]]
