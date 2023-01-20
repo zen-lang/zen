@@ -154,6 +154,7 @@
 (defmethod compile-key :require         [_ _ _] {:when map?})
 (defmethod compile-key :values          [_ _ _] {:when map?})
 (defmethod compile-key :schema-key      [_ _ _] {:when map?})
+(defmethod compile-key :keyname-schemas [_ _ _] {:when map?})
 
 (defmethod compile-key :scale     [_ _ _] {:when number?})
 (defmethod compile-key :precision [_ _ _] {:when number?})
@@ -347,3 +348,21 @@
                    vtx*))
                vtx
                schemas)))))
+
+
+(register-compile-key-interpreter!
+ [:keyname-schemas ::navigate]
+ (fn [_ ztx {:keys [tags]}]
+   (fn [vtx data opts]
+     (let [rule-fn
+           (fn [vtx* [schema-key data*]]
+             (if-let [sch (and (qualified-ident? schema-key) (utils/get-symbol ztx (symbol schema-key)))]
+               ;; TODO add test on nil case
+               (if (or (nil? tags)
+                       (clojure.set/subset? tags (:zen/tags sch)))
+                 (-> (validation.utils/node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key])
+                     ((get-cached ztx sch false) data* opts)
+                     (validation.utils/merge-vtx vtx*))
+                 vtx*)
+               vtx*))]
+       (reduce rule-fn vtx data)))))

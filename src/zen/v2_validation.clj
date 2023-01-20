@@ -450,24 +450,6 @@ Probably safe to remove if no one relies on them"
                 vtx
                 ks)))))
 
-(defmethod compile-key :keyname-schemas
-  [_ ztx {:keys [tags]}]
-  {:when map?
-   :rule
-   (fn [vtx data opts]
-     (let [rule-fn
-           (fn [vtx* [schema-key data*]]
-             (if-let [sch (and (qualified-ident? schema-key) (utils/get-symbol ztx (symbol schema-key)))]
-                ;; TODO add test on nil case
-               (if (or (nil? tags)
-                       (clojure.set/subset? tags (:zen/tags sch)))
-                 (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key])
-                     ((get-cached ztx sch false) data* opts)
-                     (merge-vtx vtx*))
-                 vtx*)
-               vtx*))]
-       (reduce rule-fn vtx data)))})
-
 (defmethod compile-key :default [schema-key ztx sch-params]
   (cond
     (qualified-ident? schema-key)
