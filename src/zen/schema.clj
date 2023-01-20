@@ -173,6 +173,7 @@
 
 (defmethod compile-key :nth          [_ _ _] {:when sequential?})
 (defmethod compile-key :schema-index [_ _ _] {:when sequential?})
+(defmethod compile-key :slicing      [_ _ _] {:when sequential?})
 
 (defmethod compile-key :subset-of   [_ _ _] {:when set?})
 (defmethod compile-key :superset-of [_ _ _] {:when set?})

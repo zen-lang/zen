@@ -571,28 +571,27 @@ Probably safe to remove if no one relies on them"
           (v (mapv #(nth % 1) slice) (assoc opts :indices (map #(nth % 0) slice)))
           (merge-vtx vtx)))))
 
-(defmethod compile-key :slicing
-  [_ ztx {slices :slices rest-schema :rest}]
-  (let [schemas
-        (->> slices
-             (map (fn [[slice-name {:keys [schema]}]]
-                    [slice-name (get-cached ztx schema false)]))
-             (into {}))
+#_"NOTE: Navigation and validation should be untied from each other."
+(zen.schema/register-compile-key-interpreter!
+ [:slicing ::validate]
+ (fn [_ ztx {slices :slices rest-schema :rest}]
+   (let [schemas
+         (->> slices
+              (map (fn [[slice-name {:keys [schema]}]]
+                     [slice-name (get-cached ztx schema false)]))
+              (into {}))
 
-        rest-fn
-        (when (not-empty rest-schema)
-          (get-cached ztx rest-schema false))
+         rest-fn
+         (when (not-empty rest-schema)
+           (get-cached ztx rest-schema false))
 
-        slice-fns (map (partial slice-fn ztx) slices)
+         slice-fns (map (partial slice-fn ztx) slices)
 
-        slices-templ
-        (->> slices
-             (map (fn [[slice-name _]]
-                    [slice-name []]))
-             (into {}))]
-
-    {:when sequential?
-     :rule
+         slices-templ
+         (->> slices
+              (map (fn [[slice-name _]]
+                     [slice-name []]))
+              (into {}))]
      (fn slicing-sch [vtx data opts]
        (->> data
             (map-indexed vector)
@@ -600,7 +599,7 @@ Probably safe to remove if no one relies on them"
                         (or (some #(apply % [vtx indexed-el opts]) slice-fns)
                             :slicing/rest)))
             (merge slices-templ)
-            (reduce (partial err-fn schemas rest-fn opts) vtx)))}))
+            (reduce (partial err-fn schemas rest-fn opts) vtx))))))
 
 (zen.schema/register-compile-key-interpreter!
   [:fail ::validate]
