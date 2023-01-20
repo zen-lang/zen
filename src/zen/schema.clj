@@ -150,6 +150,7 @@
 
 
 (defmethod compile-key :keys            [_ _ _] {:when map?})
+(defmethod compile-key :exclusive-keys  [_ _ _] {:when map?})
 (defmethod compile-key :validation-type [_ _ _] {:when map?})
 (defmethod compile-key :require         [_ _ _] {:when map?})
 (defmethod compile-key :values          [_ _ _] {:when map?})

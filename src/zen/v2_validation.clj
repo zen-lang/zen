@@ -450,6 +450,40 @@ Probably safe to remove if no one relies on them"
                 vtx
                 ks)))))
 
+(defn is-exclusive? [group data]
+  (->> group
+       (filter #(->> (if (set? %) % #{%})
+                     (select-keys data)
+                     seq))
+       (bounded-count 2)
+       (> 2)))
+
+(zen.schema/register-compile-key-interpreter!
+ [:exclusive-keys ::validate]
+ (fn [_ ztx groups]
+   (let [err-fn
+         (fn [group [vtx data]]
+           (if (is-exclusive? group data)
+             (list vtx data)
+             (let [err-msg
+                   (format "Expected only one of keyset %s, but present %s"
+                           (str/join " or " group)
+                           (keys data))
+                   vtx*
+                   (add-err vtx :exclusive-keys
+                            {:message err-msg
+                             :type    "map.exclusive-keys"})]
+               (list vtx* data))))
+
+         comp-fn
+         (->> groups
+              (map #(partial err-fn %))
+              (apply comp))]
+     (fn [vtx data opts]
+       (-> (list vtx data)
+           comp-fn
+           (nth 0))))))
+
 (defmethod compile-key :default [schema-key ztx sch-params]
   (cond
     (qualified-ident? schema-key)
@@ -466,41 +500,6 @@ Probably safe to remove if no one relies on them"
            :else vtx))})
 
     :else {:rule (fn [vtx data opts] vtx)}))
-
-(defn is-exclusive? [group data]
-  (->> group
-       (filter #(->> (if (set? %) % #{%})
-                     (select-keys data)
-                     seq))
-       (bounded-count 2)
-       (> 2)))
-
-(defmethod compile-key :exclusive-keys
-  [_ ztx groups]
-  (let [err-fn
-        (fn [group [vtx data]]
-          (if (is-exclusive? group data)
-            (list vtx data)
-            (let [err-msg
-                  (format "Expected only one of keyset %s, but present %s"
-                          (str/join " or " group)
-                          (keys data))
-                  vtx*
-                  (add-err vtx :exclusive-keys
-                           {:message err-msg
-                            :type "map.exclusive-keys"})]
-              (list vtx* data))))
-
-        comp-fn
-        (->> groups
-             (map #(partial err-fn %))
-             (apply comp))]
-
-    {:rule
-     (fn [vtx data opts]
-       (-> (list vtx data)
-           comp-fn
-           (nth 0)))}))
 
 (defmethod compile-key :key
   [_ ztx sch]
