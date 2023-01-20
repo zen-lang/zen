@@ -86,3 +86,47 @@
                         {:interpreters [::ts]}))
 
     (t/is (= ts-typedef-assert (str/join "" (distinct (::ts r)))))))
+
+
+(sut/register-compile-key-interpreter!
+  [:my/defaults ::default]
+  (fn [_ ztx defaults]
+    (fn [vtx data opts]
+      (update-in vtx
+                 (cons ::with-defaults (:path vtx))
+                 #(merge defaults %)))))
+
+
+(t/deftest default-value-test
+  (t/testing "set default value"
+    (def ztx (zen.core/new-context {}))
+
+    (def my-ns
+      '{:ns my
+
+        defaults
+        {:zen/tags #{zen/property zen/schema}
+         :type zen/boolean}
+
+        User
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :my/defaults {:active true}
+         :keys {:id {:type zen/string}
+                :active {:type zen/boolean}
+                :email {:type zen/string}}}})
+
+    (zen.core/load-ns ztx my-ns)
+
+    (def data
+      {:id "foo"
+       :email "bar@baz"})
+
+    (def r
+      (sut/apply-schema ztx
+                        {::with-defaults data}
+                        (zen.core/get-symbol ztx 'my/User)
+                        data
+                        {:interpreters [::default]}))
+
+    (t/is (:active (::with-defaults r)))))
