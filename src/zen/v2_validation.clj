@@ -430,40 +430,6 @@ Probably safe to remove if no one relies on them"
                  {:message (str "Expected match /" (str regex) "/, got \"" data "\"")})
         vtx))))
 
-(defmethod compile-key :confirms
-  [_ ztx ks]
-  (let [compile-confirms
-        (fn [sym]
-          (if-let [sch (utils/get-symbol ztx sym)]
-            [sym (:zen/name sch) (get-cached ztx sch false)]
-            [sym]))
-
-        comp-fns
-        (->> ks
-             (map compile-confirms)
-             doall)]
-    {:rule
-     (fn confirms-sch [vtx data opts]
-       (loop [comp-fns comp-fns
-              vtx* vtx]
-         (if (empty? comp-fns)
-           vtx*
-           (let [[sym sch-nm v] (first comp-fns)]
-             (cond
-               (true? (get-in vtx* [::confirmed (:path vtx*) sch-nm]))
-               (recur (rest comp-fns) vtx*)
-
-               (fn? v)
-               (recur (rest comp-fns)
-                      (-> (assoc-in vtx* [::confirmed (:path vtx*) sch-nm] true)
-                          (node-vtx [:confirms sch-nm])
-                          (v data opts)
-                          (merge-vtx vtx*)))
-
-               :else
-               (recur (rest comp-fns)
-                      (add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)})))))))}))
-
 (zen.schema/register-compile-key-interpreter!
   [:require ::validate]
   (fn [_ ztx ks] ;; TODO decide if require should add to :visited keys vector
