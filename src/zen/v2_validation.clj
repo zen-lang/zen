@@ -237,42 +237,45 @@ Probably safe to remove if no one relies on them"
   [:type ::validate]
   (fn [_ ztx tp] (compile-type-check tp ztx)))
 
-(defmethod compile-key :case
-  [_ ztx cases]
-  (let [vs (doall
-            (map (fn [{:keys [when then]}]
-                   (cond-> {:when (get-cached ztx when false)}
-                     (not-empty then) (assoc :then (get-cached ztx then false))))
-                 cases))]
-    {:rule
-     (fn [vtx data opts]
-       (loop [[{wh :when th :then :as v} & rest] vs
-              item-idx 0
-              vtx* vtx
-              passed []]
-         (cond
-           (and (nil? v) (not-empty passed))
-           vtx*
+(zen.schema/register-compile-key-interpreter!
+  [:case ::validate]
+  #_"NOTE: this is a conditional navigation.
+           Conditions are taken from ::validate interpreter
+           Can't split into independant :zen.schema/navigate and ::validate"
+  (fn [_ ztx cases]
+    (let [vs (doall
+               (map (fn [{:keys [when then]}]
+                      (cond-> {:when (get-cached ztx when false)}
+                        (not-empty then) (assoc :then (get-cached ztx then false))))
+                    cases))]
+      (fn [vtx data opts]
+        (loop [[{wh :when th :then :as v} & rest] vs
+               item-idx 0
+               vtx* vtx
+               passed []]
+          (cond
+            (and (nil? v) (not-empty passed))
+            vtx*
 
-           (nil? v)
-           (add-err vtx*
-                    :case
-                    {:message (format "Expected one of the cases to be true") :type "case"})
+            (nil? v)
+            (add-err vtx*
+                     :case
+                     {:message (format "Expected one of the cases to be true") :type "case"})
 
-           :else
-           (let [when-vtx (wh (node-vtx vtx* [:case item-idx :when]) data opts)]
-             (cond
-               (and (empty? (:errors when-vtx)) th)
-               (let [merged-vtx (merge-vtx when-vtx vtx*)]
-                 (-> merged-vtx
-                     (node-vtx [:case item-idx :then])
-                     (th data opts)
-                     (merge-vtx merged-vtx)))
+            :else
+            (let [when-vtx (wh (node-vtx vtx* [:case item-idx :when]) data opts)]
+              (cond
+                (and (empty? (:errors when-vtx)) th)
+                (let [merged-vtx (merge-vtx when-vtx vtx*)]
+                  (-> merged-vtx
+                      (node-vtx [:case item-idx :then])
+                      (th data opts)
+                      (merge-vtx merged-vtx)))
 
-               (empty? (:errors when-vtx))
-               (recur rest (inc item-idx) (merge-vtx when-vtx vtx*) (conj passed v))
+                (empty? (:errors when-vtx))
+                (recur rest (inc item-idx) (merge-vtx when-vtx vtx*) (conj passed v))
 
-               :else (recur rest (inc item-idx) vtx* passed))))))}))
+                :else (recur rest (inc item-idx) vtx* passed)))))))))
 
 (zen.schema/register-compile-key-interpreter!
   [:enum ::validate]
