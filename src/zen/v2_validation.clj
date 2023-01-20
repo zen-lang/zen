@@ -405,52 +405,6 @@ Probably safe to remove if no one relies on them"
                   (map #(conj (:path vtx) %))
                   unknown-keys))))))
 
-(defmethod compile-key :values
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
-    {:when map?
-     :rule
-     (fn [vtx data opts]
-       (reduce (fn [vtx* [key value]]
-                 (let [node-visited?
-                       (when-let [pth (get (:visited vtx*) (cur-path vtx* [key]))]
-                         (:keys (get (:visited-by vtx*) pth)))
-
-                       strict?
-                       (= (:valmode opts) :strict)]
-                   (if (and (not strict?) node-visited?)
-                     vtx*
-                     (-> (node-vtx&log vtx* [:values] [key])
-                         (v value opts)
-                         (merge-vtx vtx*)))))
-               vtx
-               data))}))
-
-(defmethod compile-key :every
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
-    {:when #(or (sequential? %) (set? %))
-     :rule
-     (fn [vtx data opts]
-       (let [err-fn
-             (fn [vtx [idx item]]
-               (-> (node-vtx vtx [:every idx] [idx])
-                   (v item (dissoc opts :indices))
-                   (merge-vtx vtx)))
-
-             data*
-             (cond
-               (seq (:indices opts))
-               (map vector (:indices opts) data)
-
-               (set? data)
-               (map (fn [set-el] [set-el set-el]) data)
-
-               :else
-               (map-indexed vector data))]
-
-         (reduce err-fn vtx data*)))}))
-
 (zen.schema/register-compile-key-interpreter!
   [:subset-of ::validate]
   (fn [_ ztx superset]
@@ -476,40 +430,6 @@ Probably safe to remove if no one relies on them"
                  {:message (str "Expected match /" (str regex) "/, got \"" data "\"")})
         vtx))))
 
-(defmethod compile-key :confirms
-  [_ ztx ks]
-  (let [compile-confirms
-        (fn [sym]
-          (if-let [sch (utils/get-symbol ztx sym)]
-            [sym (:zen/name sch) (get-cached ztx sch false)]
-            [sym]))
-
-        comp-fns
-        (->> ks
-             (map compile-confirms)
-             doall)]
-    {:rule
-     (fn confirms-sch [vtx data opts]
-       (loop [comp-fns comp-fns
-              vtx* vtx]
-         (if (empty? comp-fns)
-           vtx*
-           (let [[sym sch-nm v] (first comp-fns)]
-             (cond
-               (true? (get-in vtx* [::confirmed (:path vtx*) sch-nm]))
-               (recur (rest comp-fns) vtx*)
-
-               (fn? v)
-               (recur (rest comp-fns)
-                      (-> (assoc-in vtx* [::confirmed (:path vtx*) sch-nm] true)
-                          (node-vtx [:confirms sch-nm])
-                          (v data opts)
-                          (merge-vtx vtx*)))
-
-               :else
-               (recur (rest comp-fns)
-                      (add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)})))))))}))
-
 (zen.schema/register-compile-key-interpreter!
   [:require ::validate]
   (fn [_ ztx ks] ;; TODO decide if require should add to :visited keys vector
@@ -530,94 +450,39 @@ Probably safe to remove if no one relies on them"
                 vtx
                 ks)))))
 
-(defmethod compile-key :schema-key
-  [_ ztx {sk :key sk-ns :ns sk-tags :tags}]
-  {:when map?
-   :rule
-   (fn [vtx data opts]
-     (if-let [sch-nm (get data sk)]
-       (let [sch-symbol (if sk-ns (symbol sk-ns (name sch-nm)) (symbol sch-nm))
-             {tags :zen/tags :as sch} (utils/get-symbol ztx sch-symbol)]
-         (cond
-           (nil? sch)
-           (add-err vtx :schema-key
-                    {:message (str "Could not find schema " sch-symbol)
-                     :type "schema"})
+(defn is-exclusive? [group data]
+  (->> group
+       (filter #(->> (if (set? %) % #{%})
+                     (select-keys data)
+                     seq))
+       (bounded-count 2)
+       (> 2)))
 
-           (not (contains? tags 'zen/schema))
-           (add-err vtx :schema-key
-                    {:message (str "'" sch-symbol " should be tagged with zen/schema, but " tags)
-                     :type "schema"})
+(zen.schema/register-compile-key-interpreter!
+ [:exclusive-keys ::validate]
+ (fn [_ ztx groups]
+   (let [err-fn
+         (fn [group [vtx data]]
+           (if (is-exclusive? group data)
+             (list vtx data)
+             (let [err-msg
+                   (format "Expected only one of keyset %s, but present %s"
+                           (str/join " or " group)
+                           (keys data))
+                   vtx*
+                   (add-err vtx :exclusive-keys
+                            {:message err-msg
+                             :type    "map.exclusive-keys"})]
+               (list vtx* data))))
 
-           (and sk-tags (not (clojure.set/subset? sk-tags tags)))
-           (add-err vtx :schema-key
-                    {:message (str "'" sch-symbol " should be tagged with " sk-tags ", but " tags)
-                     :type "schema"})
-
-           :else
-           (let [v (get-cached ztx sch false)]
-             (-> (node-vtx vtx [:schema-key sch-symbol])
-                 (v data opts)
-                 (merge-vtx vtx)))))
-       vtx))})
-
-(defmethod compile-key :schema-index
-  [_ ztx {si :index si-ns :ns}]
-  {:when sequential?
-   :rule
-   (fn [vtx data opts]
-     (if-let [sch-nm (or (get data si) (nth data si))]
-       (let [sch-symbol (if si-ns (symbol si-ns (name sch-nm)) sch-nm)
-             sch (utils/get-symbol ztx sch-symbol)]
-         (cond
-           (nil? sch)
-           (add-err vtx
-                    :schema-index
-                    {:message (format "Could not find schema %s" sch-symbol)
-                     :type "schema"})
-
-           :else
-           (let [v (get-cached ztx sch false)]
-             (-> (node-vtx vtx [:schema-index sch-symbol])
-                 (v data opts)
-                 (merge-vtx vtx)))))
-       vtx))})
-
-(defmethod compile-key :nth
-  [_ ztx cfg]
-  (let [schemas (doall
-                 (map (fn [[index v]] [index (get-cached ztx v false)])
-                      cfg))]
-    {:when sequential?
-     :rule
+         comp-fn
+         (->> groups
+              (map #(partial err-fn %))
+              (apply comp))]
      (fn [vtx data opts]
-       (reduce (fn [vtx* [index v]]
-                 (if-let [nth-el (and (< index (count data))
-                                      (nth data index))]
-                   (-> (node-vtx vtx* [:nth index] [index])
-                       (v nth-el opts)
-                       (merge-vtx vtx*))
-                   vtx*))
-               vtx
-               schemas))}))
-
-(defmethod compile-key :keyname-schemas
-  [_ ztx {:keys [tags]}]
-  {:when map?
-   :rule
-   (fn [vtx data opts]
-     (let [rule-fn
-           (fn [vtx* [schema-key data*]]
-             (if-let [sch (and (qualified-ident? schema-key) (utils/get-symbol ztx (symbol schema-key)))]
-                ;; TODO add test on nil case
-               (if (or (nil? tags)
-                       (clojure.set/subset? tags (:zen/tags sch)))
-                 (-> (node-vtx&log vtx* [:keyname-schemas schema-key] [schema-key])
-                     ((get-cached ztx sch false) data* opts)
-                     (merge-vtx vtx*))
-                 vtx*)
-               vtx*))]
-       (reduce rule-fn vtx data)))})
+       (-> (list vtx data)
+           comp-fn
+           (nth 0))))))
 
 (defmethod compile-key :default [schema-key ztx sch-params]
   (cond
@@ -636,71 +501,12 @@ Probably safe to remove if no one relies on them"
 
     :else {:rule (fn [vtx data opts] vtx)}))
 
-(defn is-exclusive? [group data]
-  (->> group
-       (filter #(->> (if (set? %) % #{%})
-                     (select-keys data)
-                     seq))
-       (bounded-count 2)
-       (> 2)))
-
-(defmethod compile-key :exclusive-keys
-  [_ ztx groups]
-  (let [err-fn
-        (fn [group [vtx data]]
-          (if (is-exclusive? group data)
-            (list vtx data)
-            (let [err-msg
-                  (format "Expected only one of keyset %s, but present %s"
-                          (str/join " or " group)
-                          (keys data))
-                  vtx*
-                  (add-err vtx :exclusive-keys
-                           {:message err-msg
-                            :type "map.exclusive-keys"})]
-              (list vtx* data))))
-
-        comp-fn
-        (->> groups
-             (map #(partial err-fn %))
-             (apply comp))]
-
-    {:rule
-     (fn [vtx data opts]
-       (-> (list vtx data)
-           comp-fn
-           (nth 0)))}))
-
-(defmethod compile-key :key
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
-    {:when map?
-     :rule
-     (fn [vtx data opts]
-       (reduce (fn [vtx* [k _]]
-                 (let [node-visited?
-                       (when-let [pth (get (:visited vtx*) (cur-path vtx* [k]))]
-                         (:keys (get (:visited-by vtx*) pth)))
-
-                       strict?
-                       (= (:valmode opts) :strict)]
-                   (if (and (not strict?) node-visited?)
-                     vtx*
-                     (-> (node-vtx&log vtx* [:key] [k])
-                         (v k opts)
-                         (merge-vtx vtx*)))))
-               vtx
-               data))}))
-
-(defmethod compile-key :tags
-  [_ ztx sch-tags]
-  ;; currently :tags implements three usecases:
-  ;; tags check where schema name is string or symbol
-  ;; and zen.apply tags check (list notation)
-  {:when #(or (symbol? %)
-              (list? %)
-              (string? %))
-   :rule
+(zen.schema/register-compile-key-interpreter!
+ [:tags ::validate]
+ (fn [_ ztx sch-tags]
+   ;; currently :tags implements three usecases:
+   ;; tags check where schema name is string or symbol
+   ;; and zen.apply tags check (list notation)
    (fn [vtx data opts]
      (let [[sym type-err]
            (cond
@@ -717,7 +523,7 @@ Probably safe to remove if no one relies on them"
                      (format "Expected symbol '%s tagged with '%s, but only %s"
                              (str sym) (str sch-tags) (or tags #{})))
                    :type type-err})
-         vtx)))})
+         vtx)))))
 
 
 (defmulti slice-fn (fn [ztx [_slice-name slice-schema]]
@@ -765,28 +571,27 @@ Probably safe to remove if no one relies on them"
           (v (mapv #(nth % 1) slice) (assoc opts :indices (map #(nth % 0) slice)))
           (merge-vtx vtx)))))
 
-(defmethod compile-key :slicing
-  [_ ztx {slices :slices rest-schema :rest}]
-  (let [schemas
-        (->> slices
-             (map (fn [[slice-name {:keys [schema]}]]
-                    [slice-name (get-cached ztx schema false)]))
-             (into {}))
+#_"NOTE: Navigation and validation should be untied from each other."
+(zen.schema/register-compile-key-interpreter!
+ [:slicing ::validate]
+ (fn [_ ztx {slices :slices rest-schema :rest}]
+   (let [schemas
+         (->> slices
+              (map (fn [[slice-name {:keys [schema]}]]
+                     [slice-name (get-cached ztx schema false)]))
+              (into {}))
 
-        rest-fn
-        (when (not-empty rest-schema)
-          (get-cached ztx rest-schema false))
+         rest-fn
+         (when (not-empty rest-schema)
+           (get-cached ztx rest-schema false))
 
-        slice-fns (map (partial slice-fn ztx) slices)
+         slice-fns (map (partial slice-fn ztx) slices)
 
-        slices-templ
-        (->> slices
-             (map (fn [[slice-name _]]
-                    [slice-name []]))
-             (into {}))]
-
-    {:when sequential?
-     :rule
+         slices-templ
+         (->> slices
+              (map (fn [[slice-name _]]
+                     [slice-name []]))
+              (into {}))]
      (fn slicing-sch [vtx data opts]
        (->> data
             (map-indexed vector)
@@ -794,7 +599,7 @@ Probably safe to remove if no one relies on them"
                         (or (some #(apply % [vtx indexed-el opts]) slice-fns)
                             :slicing/rest)))
             (merge slices-templ)
-            (reduce (partial err-fn schemas rest-fn opts) vtx)))}))
+            (reduce (partial err-fn schemas rest-fn opts) vtx))))))
 
 (zen.schema/register-compile-key-interpreter!
   [:fail ::validate]
