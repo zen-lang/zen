@@ -17,7 +17,12 @@
          :type zen/map
          :keys {:id {:type zen/string}
                 :email {:type zen/string
-                        #_#_:regex "@"}}}})
+                        #_#_:regex "@"}
+                #_#_:name {:type zen/vector
+                           :every {:type zen/map
+                                   :keys {:given {:type zen/vector
+                                                  :every {:type zen/string}}
+                                          :family {:type zen/string}}}}}}})
 
     (zen.core/load-ns ztx my-structs-ns)
 
