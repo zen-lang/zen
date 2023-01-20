@@ -607,40 +607,34 @@ Probably safe to remove if no one relies on them"
     (fn fail-fn [vtx data opts]
       (add-err vtx :fail {:message err-msg}))))
 
-(defmethod compile-key :key-schema
-  [_ ztx {:keys [tags key]}]
-  {:when map?
-   :rule
-   (fn key-schema-fn [vtx data opts]
-     (let [keys-schemas
-           (->> tags
-                (mapcat #(utils/get-tag ztx %))
-                (mapv (fn [sch-name]
-                        (let [sch (utils/get-symbol ztx sch-name)] ;; TODO get rid of type coercion
-                          {:sch-key (if (= "zen" (namespace sch-name))
-                                      (keyword (name sch-name))
-                                      (keyword sch-name))
-                           :for?    (:for sch)
-                           :v       (get-cached ztx sch false)}))))
+(zen.schema/register-compile-key-interpreter!
+ [:key-schema ::validate]
+ (fn [_ ztx {:keys [tags key]}]
+   (let [keys-schemas
+         (->> tags
+              (mapcat #(utils/get-tag ztx %))
+              (mapv (fn [sch-name]
+                      (let [sch (utils/get-symbol ztx sch-name)] ;; TODO get rid of type coercion
+                        [(if (= "zen" (namespace sch-name))
+                           (keyword (name sch-name))
+                           (keyword sch-name))
+                         (:for sch)]))))]
+    (fn key-schema-fn [vtx data opts]
+      (let [correct-keys
+            (into #{}
+                  (keep (fn [[sch-key for]]
+                          (when (or (nil? for)
+                                    (contains? for (get data key)))
+                            sch-key)))
+                  keys-schemas)
 
-           key-rules
-           (into {}
-                 (keep (fn [{:keys [sch-key for? v]}]
-                         (when (or (nil? for?)
-                                   (contains? for? (get data key)))
-                           [sch-key v])))
-                 keys-schemas)]
+            all-keys
+            (-> data keys set)
 
-       (loop [data (seq data)
-              unknown (transient [])
-              vtx* vtx]
-         (if (empty? data)
-           (update vtx* :unknown-keys into (persistent! unknown))
-           (let [[k v] (first data)]
-             (if (not (contains? key-rules k))
-               (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
-               (recur (rest data)
-                      unknown
-                      (-> (node-vtx&log vtx* [k] [k])
-                          ((get key-rules k) v opts)
-                          (merge-vtx vtx*)))))))))})
+            incorrect-keys
+            (set/difference all-keys correct-keys)]
+       (update vtx
+               :unknown-keys
+               into
+               (map #(conj (:path vtx) %))
+               incorrect-keys))))))
