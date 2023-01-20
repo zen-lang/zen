@@ -163,6 +163,7 @@
 (defmethod compile-key :maxLength [_ _ _] {:when string?})
 (defmethod compile-key :regex     [_ _ _] {:when string?})
 
+(defmethod compile-key :every    [_ _ _] {:when #(or (sequential? %) (set? %))})
 (defmethod compile-key :minItems [_ _ _] {:when #(or (sequential? %) (set? %))})
 (defmethod compile-key :maxItems [_ _ _] {:when #(or (sequential? %) (set? %))})
 
@@ -210,3 +211,26 @@
                             (validation.utils/merge-vtx vtx*)))))
                   vtx
                   data)))))
+
+
+(register-compile-key-interpreter!
+ [:every ::navigate]
+ (fn [_ ztx sch]
+   (let [v (get-cached ztx sch false)]
+     (fn [vtx data opts]
+       (let [data*
+             (cond
+               (seq (:indices opts))
+               (map vector (:indices opts) data)
+
+               (set? data)
+               (map (fn [set-el] [set-el set-el]) data)
+
+               :else
+               (map-indexed vector data))]
+         (reduce (fn [vtx [idx item]]
+                   (-> (validation.utils/node-vtx vtx [:every idx] [idx])
+                       (v item (dissoc opts :indices))
+                       (validation.utils/merge-vtx vtx)))
+                 vtx
+                 data*))))))

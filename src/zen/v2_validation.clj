@@ -405,31 +405,6 @@ Probably safe to remove if no one relies on them"
                   (map #(conj (:path vtx) %))
                   unknown-keys))))))
 
-(defmethod compile-key :every
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
-    {:when #(or (sequential? %) (set? %))
-     :rule
-     (fn [vtx data opts]
-       (let [err-fn
-             (fn [vtx [idx item]]
-               (-> (node-vtx vtx [:every idx] [idx])
-                   (v item (dissoc opts :indices))
-                   (merge-vtx vtx)))
-
-             data*
-             (cond
-               (seq (:indices opts))
-               (map vector (:indices opts) data)
-
-               (set? data)
-               (map (fn [set-el] [set-el set-el]) data)
-
-               :else
-               (map-indexed vector data))]
-
-         (reduce err-fn vtx data*)))}))
-
 (zen.schema/register-compile-key-interpreter!
   [:subset-of ::validate]
   (fn [_ ztx superset]
