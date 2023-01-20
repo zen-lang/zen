@@ -501,27 +501,6 @@ Probably safe to remove if no one relies on them"
 
     :else {:rule (fn [vtx data opts] vtx)}))
 
-(defmethod compile-key :key
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
-    {:when map?
-     :rule
-     (fn [vtx data opts]
-       (reduce (fn [vtx* [k _]]
-                 (let [node-visited?
-                       (when-let [pth (get (:visited vtx*) (cur-path vtx* [k]))]
-                         (:keys (get (:visited-by vtx*) pth)))
-
-                       strict?
-                       (= (:valmode opts) :strict)]
-                   (if (and (not strict?) node-visited?)
-                     vtx*
-                     (-> (node-vtx&log vtx* [:key] [k])
-                         (v k opts)
-                         (merge-vtx vtx*)))))
-               vtx
-               data))}))
-
 (defmethod compile-key :tags
   [_ ztx sch-tags]
   ;; currently :tags implements three usecases:

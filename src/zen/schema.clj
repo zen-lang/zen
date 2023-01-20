@@ -150,6 +150,7 @@
 
 
 (defmethod compile-key :keys            [_ _ _] {:when map?})
+(defmethod compile-key :key             [_ _ _] {:when map?})
 (defmethod compile-key :exclusive-keys  [_ _ _] {:when map?})
 (defmethod compile-key :validation-type [_ _ _] {:when map?})
 (defmethod compile-key :require         [_ _ _] {:when map?})
@@ -367,3 +368,25 @@
                  vtx*)
                vtx*))]
        (reduce rule-fn vtx data)))))
+
+
+(register-compile-key-interpreter!
+ [:key ::navigate]
+ (fn [_ ztx sch]
+   (let [v (get-cached ztx sch false)]
+     (fn [vtx data opts]
+       (reduce (fn [vtx* [k _]]
+                 (let [node-visited?
+                       (when-let [pth (get (:visited vtx*)
+                                           (validation.utils/cur-path vtx* [k]))]
+                         (:keys (get (:visited-by vtx*) pth)))
+
+                       strict?
+                       (= (:valmode opts) :strict)]
+                   (if (and (not strict?) node-visited?)
+                     vtx*
+                     (-> (validation.utils/node-vtx&log vtx* [:key] [k])
+                         (v k opts)
+                         (validation.utils/merge-vtx vtx*)))))
+               vtx
+               data)))))
