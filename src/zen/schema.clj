@@ -168,6 +168,8 @@
 (defmethod compile-key :minItems [_ _ _] {:when #(or (sequential? %) (set? %))})
 (defmethod compile-key :maxItems [_ _ _] {:when #(or (sequential? %) (set? %))})
 
+(defmethod compile-key :schema-index [_ _ _] {:when sequential?})
+
 (defmethod compile-key :subset-of   [_ _ _] {:when set?})
 (defmethod compile-key :superset-of [_ _ _] {:when set?})
 
@@ -300,6 +302,29 @@
            :else
            (let [v (get-cached ztx sch false)]
              (-> (validation.utils/node-vtx vtx [:schema-key sch-symbol])
+                 (v data opts)
+                 (validation.utils/merge-vtx vtx)))))
+       vtx))))
+
+
+#_"NOTE: Errors mechanism used here comes from ::validate interpreter. Maybe we should untie it from here."
+(register-compile-key-interpreter!
+ [:schema-index ::navigate]
+ (fn [_ ztx {si :index si-ns :ns}]
+   (fn [vtx data opts]
+     (if-let [sch-nm (or (get data si) (nth data si))]
+       (let [sch-symbol (if si-ns (symbol si-ns (name sch-nm)) sch-nm)
+             sch        (utils/get-symbol ztx sch-symbol)]
+         (cond
+           (nil? sch)
+           (validation.utils/add-err vtx
+                    :schema-index
+                    {:message (format "Could not find schema %s" sch-symbol)
+                     :type    "schema"})
+
+           :else
+           (let [v (get-cached ztx sch false)]
+             (-> (validation.utils/node-vtx vtx [:schema-index sch-symbol])
                  (v data opts)
                  (validation.utils/merge-vtx vtx)))))
        vtx))))

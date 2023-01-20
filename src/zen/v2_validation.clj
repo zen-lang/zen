@@ -450,28 +450,6 @@ Probably safe to remove if no one relies on them"
                 vtx
                 ks)))))
 
-(defmethod compile-key :schema-index
-  [_ ztx {si :index si-ns :ns}]
-  {:when sequential?
-   :rule
-   (fn [vtx data opts]
-     (if-let [sch-nm (or (get data si) (nth data si))]
-       (let [sch-symbol (if si-ns (symbol si-ns (name sch-nm)) sch-nm)
-             sch (utils/get-symbol ztx sch-symbol)]
-         (cond
-           (nil? sch)
-           (add-err vtx
-                    :schema-index
-                    {:message (format "Could not find schema %s" sch-symbol)
-                     :type "schema"})
-
-           :else
-           (let [v (get-cached ztx sch false)]
-             (-> (node-vtx vtx [:schema-index sch-symbol])
-                 (v data opts)
-                 (merge-vtx vtx)))))
-       vtx))})
-
 (defmethod compile-key :nth
   [_ ztx cfg]
   (let [schemas (doall
