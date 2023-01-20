@@ -5,6 +5,43 @@
             [zen.core]))
 
 
+(sut/register-compile-key-interpreter!
+  [:keys ::ts]
+  (fn [_ ztx ks]
+    (fn [vtx data opts]
+      (if-let [s (or (when-let [nm (:zen/name data)]
+                       (str "type " (name nm) " = {"))
+                     (when-let [tp (:type data)]
+                       (str (name (last (:path vtx))) ": "
+                            (get {'zen/string "string"}
+                                 tp)
+                            ";")))]
+        (update vtx ::ts conj s)
+        vtx))))
+
+(sut/register-compile-key-interpreter!
+  [:type ::ts]
+  (fn [_ ztx ks]
+    (fn [vtx data opts]
+      (-> vtx
+          #_(update ::ts conj [:type (:schema vtx) (:path vtx) data])))))
+
+(sut/register-schema-pre-process-hook!
+  ::ts
+  (fn [ztx schema]
+    (fn [vtx data opts]
+      (-> vtx
+          #_(update ::ts conj [:pre (:schema vtx) (:path vtx) data])))))
+
+(sut/register-schema-post-process-hook!
+  ::ts
+  (fn [ztx schema]
+    (fn [vtx data opts]
+      (if-let [nm (:zen/name data)]
+        (update vtx ::ts conj "}")
+        vtx))))
+
+
 (t/deftest custom-interpreter-test
   (t/testing "typescript type generation"
     (def ztx (zen.core/new-context {}))
@@ -31,42 +68,6 @@
            "id: string;"
            "email: string;"
            "}"))
-
-    (sut/register-compile-key-interpreter!
-      [:keys ::ts]
-      (fn [_ ztx ks]
-        (fn [vtx data opts]
-          (if-let [s (or (when-let [nm (:zen/name data)]
-                           (str "type " (name nm) " = {"))
-                         (when-let [tp (:type data)]
-                           (str (name (last (:path vtx))) ": "
-                                (get {'zen/string "string"}
-                                     tp)
-                                ";")))]
-            (update vtx ::ts conj s)
-            vtx))))
-
-    (sut/register-compile-key-interpreter!
-      [:type ::ts]
-      (fn [_ ztx ks]
-        (fn [vtx data opts]
-          (-> vtx
-              #_(update ::ts conj [:type (:schema vtx) (:path vtx) data])))))
-
-    (sut/register-schema-pre-process-hook!
-      ::ts
-      (fn [ztx schema]
-        (fn [vtx data opts]
-          (-> vtx
-              #_(update ::ts conj [:pre (:schema vtx) (:path vtx) data])))))
-
-    (sut/register-schema-post-process-hook!
-      ::ts
-      (fn [ztx schema]
-        (fn [vtx data opts]
-          (if-let [nm (:zen/name data)]
-            (update vtx ::ts conj "}")
-            vtx))))
 
     (def r
       (sut/apply-schema ztx
