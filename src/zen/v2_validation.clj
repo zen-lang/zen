@@ -116,11 +116,11 @@ Probably safe to remove if no one relies on them"
   unknown-keys-post-process-hook)
 
 
-(defmethod compile-key :validation-type
-  [_ ztx tp]
-  (let [open-world? (= :open tp)]
-    {:when map?
-     :rule (fn [vtx data opts] (valtype-rule vtx data open-world?))}))
+(zen.schema/register-compile-key-interpreter!
+  [:validation-type ::validate]
+  (fn [_ ztx tp]
+    (let [open-world? (= :open tp)]
+      (fn [vtx data opts] (valtype-rule vtx data open-world?)))))
 
 
 (defmulti compile-type-check (fn [tp ztx] tp))
@@ -233,9 +233,9 @@ Probably safe to remove if no one relies on them"
                 (v (vec (rest data)) opts)
                 (merge-vtx vtx))))))))
 
-(defmethod compile-key :type
-  [_ ztx tp]
-  {:rule (compile-type-check tp ztx)})
+(zen.schema/register-compile-key-interpreter!
+  [:type ::validate]
+  (fn [_ ztx tp] (compile-type-check tp ztx)))
 
 (defmethod compile-key :case
   [_ ztx cases]
@@ -274,14 +274,14 @@ Probably safe to remove if no one relies on them"
 
                :else (recur rest (inc item-idx) vtx* passed))))))}))
 
-(defmethod compile-key :enum
-  [_ ztx values]
-  (let [values* (set (map :value values))]
-    {:rule
-     (fn [vtx data opts]
-       (if-not (contains? values* data)
-         (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
-         vtx))}))
+(zen.schema/register-compile-key-interpreter!
+  [:enum ::validate]
+  (fn [_ ztx values]
+    (let [values* (set (map :value values))]
+      (fn [vtx data opts]
+        (if-not (contains? values* data)
+          (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
+          vtx)))))
 
 (defmethod compile-key :match
   [_ ztx pattern]
@@ -299,104 +299,95 @@ Probably safe to remove if no one relies on them"
                       vtx))
          vtx)))})
 
-(defmethod compile-key :scale
-  [_ ztx scale]
-  {:when number?
-   :rule
-   (fn [vtx num opts]
-     (let [dc (bigdec num)
-           num-scale (.scale dc)]
-       (if (<= num-scale scale)
-         vtx
-         (add-err vtx :scale
-                  {:message (str "Expected scale = " scale ", got " (.scale dc))}))))})
+(zen.schema/register-compile-key-interpreter!
+  [:scale ::validate]
+  (fn [_ ztx scale]
+    (fn [vtx num opts]
+      (let [dc (bigdec num)
+            num-scale (.scale dc)]
+        (if (<= num-scale scale)
+          vtx
+          (add-err vtx :scale
+                   {:message (str "Expected scale = " scale ", got " (.scale dc))}))))))
 
-(defmethod compile-key :precision
-  [_ ztx precision]
-  {:when number?
-   :rule
-   (fn [vtx num opts]
-     (let [dc (bigdec num)
-           num-precision (.precision dc)
-           ;; NOTE: fraction will be used when we add composite checking scale + precision
-           #_#_fraction (.remainder dc BigDecimal/ONE)]
-       (if (<= num-precision precision)
-         vtx
-         (add-err vtx :precision
-                  {:message (str "Expected precision = " precision ", got " num-precision)}))))})
+(zen.schema/register-compile-key-interpreter!
+  [:precision ::validate]
+  (fn [_ ztx precision]
+    (fn [vtx num opts]
+      (let [dc (bigdec num)
+            num-precision (.precision dc)
+            ;; NOTE: fraction will be used when we add composite checking scale + precision
+            #_#_fraction (.remainder dc BigDecimal/ONE)]
+        (if (<= num-precision precision)
+          vtx
+          (add-err vtx :precision
+                   {:message (str "Expected precision = " precision ", got " num-precision)}))))))
 
-(defmethod compile-key :min
-  [_ ztx min]
-  {:when number?
-   :rule
-   (fn [vtx data opts]
-     (if (< data min)
-       (add-err vtx :min {:message (str "Expected >= " min ", got " data)})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:min ::validate]
+  (fn [_ ztx min]
+    (fn [vtx data opts]
+      (if (< data min)
+        (add-err vtx :min {:message (str "Expected >= " min ", got " data)})
+        vtx))))
 
-(defmethod compile-key :max
-  [_ ztx max]
-  {:when number?
-   :rule
-   (fn [vtx data opts]
-     (if (> data max)
-       (add-err vtx :max {:message (str "Expected <= " max ", got " data)})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:max ::validate]
+  (fn [_ ztx max]
+    (fn [vtx data opts]
+      (if (> data max)
+        (add-err vtx :max {:message (str "Expected <= " max ", got " data)})
+        vtx))))
 
-(defmethod compile-key :minLength
-  [_ ztx min-len]
-  {:when string?
-   :rule
-   (fn [vtx data opts]
-     (if (< (count data) min-len)
-       (add-err vtx
-                :minLength
-                {:message (str "Expected length >= " min-len ", got " (count data))})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:minLength ::validate]
+  (fn [_ ztx min-len]
+    (fn [vtx data opts]
+      (if (< (count data) min-len)
+        (add-err vtx
+                 :minLength
+                 {:message (str "Expected length >= " min-len ", got " (count data))})
+        vtx))))
 
-(defmethod compile-key :maxLength
-  [_ ztx max-len]
-  {:when string?
-   :rule
-   (fn [vtx data opts]
-     (if (> (count data) max-len)
-       (add-err vtx
-                :maxLength
-                {:message (str "Expected length <= " max-len ", got " (count data))})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:maxLength ::validate]
+  (fn [_ ztx max-len]
+    (fn [vtx data opts]
+      (if (> (count data) max-len)
+        (add-err vtx
+                 :maxLength
+                 {:message (str "Expected length <= " max-len ", got " (count data))})
+        vtx))))
 
-(defmethod compile-key :minItems
-  [_ ztx items-count]
-  {:when #(or (sequential? %) (set? %))
-   :rule
-   (fn [vtx data opts]
-     (if (< (count data) items-count)
-       (add-err vtx
-                :minItems
-                {:message (str "Expected >= " items-count ", got " (count data))})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:minItems ::validate]
+  (fn [_ ztx items-count]
+    (fn [vtx data opts]
+      (if (< (count data) items-count)
+        (add-err vtx
+                 :minItems
+                 {:message (str "Expected >= " items-count ", got " (count data))})
+        vtx))))
 
-(defmethod compile-key :maxItems
-  [_ ztx items-count]
-  {:when #(or (sequential? %) (set? %))
-   :rule
-   (fn [vtx data opts]
-     (if (> (count data) items-count)
-       (add-err vtx
-                :maxItems
-                {:message (str "Expected <= " items-count ", got " (count data))})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:maxItems ::validate]
+  (fn [_ ztx items-count]
+    (fn [vtx data opts]
+      (if (> (count data) items-count)
+        (add-err vtx
+                 :maxItems
+                 {:message (str "Expected <= " items-count ", got " (count data))})
+        vtx))))
 
-(defmethod compile-key :const
-  [_ ztx {:keys [value]}]
-  {:rule
-   (fn [vtx data opts]
-     (if (not= value data)
-       (add-err vtx :const
-                {:message (str "Expected '" value "', got '" data "'")
-                 :type "schema"})
-       vtx))})
-
+(zen.schema/register-compile-key-interpreter!
+  [:const ::validate]
+  (fn [_ ztx {:keys [value]}]
+    (fn [vtx data opts]
+      (if (not= value data)
+        (add-err vtx :const
+                 {:message (str "Expected '" value "', got '" data "'")
+                  :type "schema"})
+        vtx))))
 
 (zen.schema/register-compile-key-interpreter!
   [:keys ::validate]
@@ -410,7 +401,6 @@ Probably safe to remove if no one relies on them"
                   into
                   (map #(conj (:path vtx) %))
                   unknown-keys))))))
-
 
 (defmethod compile-key :values
   [_ ztx sch]
@@ -458,33 +448,30 @@ Probably safe to remove if no one relies on them"
 
          (reduce err-fn vtx data*)))}))
 
-(defmethod compile-key :subset-of
-  [_ ztx superset]
-  {:when set?
-   :rule
-   (fn [vtx data opts]
-     (if-not (clojure.set/subset? data superset)
-       (add-err vtx :subset-of {:type "set"})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:subset-of ::validate]
+  (fn [_ ztx superset]
+    (fn [vtx data opts]
+      (if-not (clojure.set/subset? data superset)
+        (add-err vtx :subset-of {:type "set"})
+        vtx))))
 
-(defmethod compile-key :superset-of
-  [_ ztx subset]
-  {:when set?
-   :rule
-   (fn [vtx data opts]
-     (if-not (clojure.set/subset? subset data)
-       (add-err vtx :superset-of {:type "set"})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:superset-of ::validate]
+  (fn [_ ztx subset]
+    (fn [vtx data opts]
+      (if-not (clojure.set/subset? subset data)
+        (add-err vtx :superset-of {:type "set"})
+        vtx))))
 
-(defmethod compile-key :regex
-  [_ ztx regex]
-  {:when string?
-   :rule
-   (fn [vtx data opts]
-     (if (not (re-find (re-pattern regex) data))
-       (add-err vtx :regex
-                {:message (str "Expected match /" (str regex) "/, got \"" data "\"")})
-       vtx))})
+(zen.schema/register-compile-key-interpreter!
+  [:regex ::validate]
+  (fn [_ ztx regex]
+    (fn [vtx data opts]
+      (if (not (re-find (re-pattern regex) data))
+        (add-err vtx :regex
+                 {:message (str "Expected match /" (str regex) "/, got \"" data "\"")})
+        vtx))))
 
 (defmethod compile-key :confirms
   [_ ztx ks]

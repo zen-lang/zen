@@ -149,9 +149,23 @@
     (compiled-schema-fn vtx data opts)))
 
 
-(defmethod compile-key :keys
-  [_ ztx _]
-  {:when map?})
+(defmethod compile-key :keys            [_ _ _] {:when map?})
+(defmethod compile-key :validation-type [_ _ _] {:when map?})
+
+(defmethod compile-key :scale     [_ _ _] {:when number?})
+(defmethod compile-key :precision [_ _ _] {:when number?})
+(defmethod compile-key :min       [_ _ _] {:when number?})
+(defmethod compile-key :max       [_ _ _] {:when number?})
+
+(defmethod compile-key :minLength [_ _ _] {:when string?})
+(defmethod compile-key :maxLength [_ _ _] {:when string?})
+(defmethod compile-key :regex     [_ _ _] {:when string?})
+
+(defmethod compile-key :minItems [_ _ _] {:when #(or (sequential? %) (set? %))})
+(defmethod compile-key :maxItems [_ _ _] {:when #(or (sequential? %) (set? %))})
+
+(defmethod compile-key :subset-of   [_ _ _] {:when set?})
+(defmethod compile-key :superset-of [_ _ _] {:when set?})
 
 
 (register-compile-key-interpreter!
