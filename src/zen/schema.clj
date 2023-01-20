@@ -16,22 +16,17 @@
 (defmulti compile-key (fn [k ztx kfg] k))
 
 
-(defn safe-compile-key [k ztx kfg]
-  (try (compile-key k ztx kfg)
-       (catch Exception e
-         {:rule (fn [vtx _data _opts]
-                  (validation.utils/add-err vtx
-                                            k
-                                            {:type "compile-key-exception"
-                                             :message (.getMessage e)}))})))
+(defonce schema-key-interpreters-atom (atom {}))
 
 
-#_"TODO: maybe move to ztx?"
-(defonce schema-post-process-hooks-atom
-  (atom {}))
+(defonce schema-post-process-hooks-atom (atom {}))
 
-(defonce schema-pre-process-hooks-atom
-  (atom {}))
+
+(defonce schema-pre-process-hooks-atom (atom {}))
+
+
+(defn register-compile-key-interpreter! [[k interpreter] f]
+  (swap! schema-key-interpreters-atom assoc-in [k interpreter] f))
 
 
 #_"TODO: maybe support multiple hooks per interpreter?"
@@ -74,6 +69,20 @@
           post-hooks (as-> $ (reduce #(%2 %1) $ post-hooks)))))))
 
 
+(defn safe-compile-key [k ztx kfg]
+  (try (merge (some-> (get @schema-key-interpreters-atom k)
+                      (update-vals
+                        (fn [interpreter-compile-key-fn]
+                          (interpreter-compile-key-fn k ztx kfg))))
+              (compile-key k ztx kfg))
+       (catch Exception e
+         {:rule (fn [vtx _data _opts]
+                  (validation.utils/add-err vtx
+                                            k
+                                            {:type "compile-key-exception"
+                                             :message (.getMessage e)}))})))
+
+
 (defn compile-schema [ztx schema]
   (let [rulesets (->> schema
                       (keep (fn [[k v]]
@@ -83,14 +92,17 @@
 
         compiled-schema-fn
         (fn compiled-schema-fn [vtx data opts]
-          (let [vtx* (assoc vtx :type (:type schema))]
-            (loop [rs rulesets, vtx* vtx*]
-              (if (empty? rs)
-                vtx*
-                (let [{when-fn :when rule-fn :rule} (first rs)]
-                  (if (or (nil? when-fn) (when-fn data))
-                    (recur (rest rs) (rule-fn vtx* data opts))
-                    (recur (rest rs) vtx*)))))))]
+          (loop [rs rulesets
+                 vtx* (assoc vtx :type (:type schema))]
+            (if (empty? rs)
+              vtx*
+              (let [{:as r, when-fn :when} (first rs)]
+                (if (or (nil? when-fn) (when-fn data))
+                  (recur (rest rs)
+                         (->> (:interpreters opts)
+                              (keep #(get r %))
+                              (reduce #(%2 %1 data opts) vtx*)))
+                  (recur (rest rs) vtx*))))))]
 
     (wrap-with-hooks
       compiled-schema-fn
@@ -130,6 +142,34 @@
                 (assoc :path [])
                 (assoc-in [:zen.v2-validation/confirmed [] (:zen/name schema)] true))
 
-        compiled-schema-fn (get-cached ztx schema true)]
+        compiled-schema-fn (get-cached ztx schema true)
+
+        opts (update opts :interpreters #(into [:rule ::navigate] %))]
 
     (compiled-schema-fn vtx data opts)))
+
+
+(defmethod compile-key :keys
+  [_ ztx _]
+  {:when map?})
+
+
+(register-compile-key-interpreter!
+  [:keys ::navigate]
+  (fn [_ ztx ks]
+    (let [key-rules (->> ks
+                         (map (fn [[k sch]]
+                                [k (get-cached ztx sch false)]))
+                         (into {}))]
+      (fn [vtx data opts]
+        (loop [data (seq data)
+               vtx* vtx]
+          (if (empty? data)
+            vtx*
+            (let [[k v] (first data)]
+              (if-let [key-rule (get key-rules k)]
+                (recur (rest data)
+                       (-> (validation.utils/node-vtx&log vtx* [k] [k] :keys)
+                           (key-rule v opts)
+                           (validation.utils/merge-vtx vtx*)))
+                (recur (rest data) vtx*)))))))))

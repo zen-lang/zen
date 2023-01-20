@@ -397,30 +397,20 @@ Probably safe to remove if no one relies on them"
                  :type "schema"})
        vtx))})
 
-(defmethod compile-key :keys
-  [_ ztx ks]
-  (let [key-rules
-        (->> ks
-             (map (fn [[k sch]]
-                    [k (get-cached ztx sch false)]))
-             (into {}))]
-    {:when map?
-     :rule
 
-     (fn keys-sch [vtx data opts]
-       (loop [data (seq data)
-              unknown (transient [])
-              vtx* vtx]
-         (if (empty? data)
-           (update vtx* :unknown-keys into (persistent! unknown))
-           (let [[k v] (first data)]
-             (if (not (contains? key-rules k))
-               (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
-               (recur (rest data)
-                      unknown
-                      (-> (node-vtx&log vtx* [k] [k] :keys)
-                          ((get key-rules k) v opts)
-                          (merge-vtx vtx*))))))))}))
+(zen.schema/register-compile-key-interpreter!
+  [:keys ::validate]
+  (fn [_ ztx ks]
+    (let [known-keys (set (keys ks))]
+      (fn keys-sch [vtx data opts]
+        (let [data-keys    (set (keys data))
+              unknown-keys (set/difference data-keys known-keys)]
+          (update vtx
+                  :unknown-keys
+                  into
+                  (map #(conj (:path vtx) %))
+                  unknown-keys))))))
+
 
 (defmethod compile-key :values
   [_ ztx sch]
