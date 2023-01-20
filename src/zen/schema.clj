@@ -168,6 +168,7 @@
 (defmethod compile-key :minItems [_ _ _] {:when #(or (sequential? %) (set? %))})
 (defmethod compile-key :maxItems [_ _ _] {:when #(or (sequential? %) (set? %))})
 
+(defmethod compile-key :nth          [_ _ _] {:when sequential?})
 (defmethod compile-key :schema-index [_ _ _] {:when sequential?})
 
 (defmethod compile-key :subset-of   [_ _ _] {:when set?})
@@ -328,3 +329,21 @@
                  (v data opts)
                  (validation.utils/merge-vtx vtx)))))
        vtx))))
+
+
+(register-compile-key-interpreter!
+ [:nth ::navigate]
+ (fn [_ ztx cfg]
+   (let [schemas (doall
+                  (map (fn [[index v]] [index (get-cached ztx v false)])
+                       cfg))]
+     (fn [vtx data opts]
+       (reduce (fn [vtx* [index v]]
+                 (if-let [nth-el (and (< index (count data))
+                                      (nth data index))]
+                   (-> (validation.utils/node-vtx vtx* [:nth index] [index])
+                       (v nth-el opts)
+                       (validation.utils/merge-vtx vtx*))
+                   vtx*))
+               vtx
+               schemas)))))

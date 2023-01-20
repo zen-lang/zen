@@ -450,24 +450,6 @@ Probably safe to remove if no one relies on them"
                 vtx
                 ks)))))
 
-(defmethod compile-key :nth
-  [_ ztx cfg]
-  (let [schemas (doall
-                 (map (fn [[index v]] [index (get-cached ztx v false)])
-                      cfg))]
-    {:when sequential?
-     :rule
-     (fn [vtx data opts]
-       (reduce (fn [vtx* [index v]]
-                 (if-let [nth-el (and (< index (count data))
-                                      (nth data index))]
-                   (-> (node-vtx vtx* [:nth index] [index])
-                       (v nth-el opts)
-                       (merge-vtx vtx*))
-                   vtx*))
-               vtx
-               schemas))}))
-
 (defmethod compile-key :keyname-schemas
   [_ ztx {:keys [tags]}]
   {:when map?
