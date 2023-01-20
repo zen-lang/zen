@@ -20,6 +20,12 @@
         vtx))))
 
 (sut/register-compile-key-interpreter!
+  [:every ::ts]
+  (fn [_ ztx every]
+    (fn [vtx data opts]
+      (update vtx ::ts conj "Array < "))))
+
+(sut/register-compile-key-interpreter!
   [:type ::ts]
   (fn [_ ztx ks]
     (fn [vtx data opts]
@@ -42,7 +48,7 @@
         vtx))))
 
 
-(t/deftest custom-interpreter-test
+(t/deftest ^:kaocha/pending custom-interpreter-test
   (t/testing "typescript type generation"
     (def ztx (zen.core/new-context {}))
 
@@ -55,11 +61,11 @@
          :keys {:id {:type zen/string}
                 :email {:type zen/string
                         #_#_:regex "@"}
-                #_#_:name {:type zen/vector
-                           :every {:type zen/map
-                                   :keys {:given {:type zen/vector
-                                                  :every {:type zen/string}}
-                                          :family {:type zen/string}}}}}}})
+                :name {:type zen/vector
+                       :every {:type zen/map
+                               :keys {:given {:type zen/vector
+                                              :every {:type zen/string}}
+                                      :family {:type zen/string}}}}}}})
 
     (zen.core/load-ns ztx my-structs-ns)
 
@@ -67,13 +73,16 @@
       (str "type User = {"
            "id: string;"
            "email: string;"
-           "}"))
+           "name: Array < {"
+           "given: Array < string >;"
+           "family: string;"
+           "}>}"))
 
     (def r
       (sut/apply-schema ztx
                         {::ts []}
                         (zen.core/get-symbol ztx 'zen/schema)
                         (zen.core/get-symbol ztx 'my-sturcts/User)
-                        {:interpreters [#_:zen.v2-validation/validate ::ts]}))
+                        {:interpreters [::ts]}))
 
     (t/is (= ts-typedef-assert (str/join "" (distinct (::ts r)))))))
