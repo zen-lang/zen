@@ -405,27 +405,6 @@ Probably safe to remove if no one relies on them"
                   (map #(conj (:path vtx) %))
                   unknown-keys))))))
 
-(defmethod compile-key :values
-  [_ ztx sch]
-  (let [v (get-cached ztx sch false)]
-    {:when map?
-     :rule
-     (fn [vtx data opts]
-       (reduce (fn [vtx* [key value]]
-                 (let [node-visited?
-                       (when-let [pth (get (:visited vtx*) (cur-path vtx* [key]))]
-                         (:keys (get (:visited-by vtx*) pth)))
-
-                       strict?
-                       (= (:valmode opts) :strict)]
-                   (if (and (not strict?) node-visited?)
-                     vtx*
-                     (-> (node-vtx&log vtx* [:values] [key])
-                         (v value opts)
-                         (merge-vtx vtx*)))))
-               vtx
-               data))}))
-
 (defmethod compile-key :every
   [_ ztx sch]
   (let [v (get-cached ztx sch false)]

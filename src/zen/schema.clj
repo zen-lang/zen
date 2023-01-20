@@ -152,6 +152,7 @@
 (defmethod compile-key :keys            [_ _ _] {:when map?})
 (defmethod compile-key :validation-type [_ _ _] {:when map?})
 (defmethod compile-key :require         [_ _ _] {:when map?})
+(defmethod compile-key :values          [_ _ _] {:when map?})
 
 (defmethod compile-key :scale     [_ _ _] {:when number?})
 (defmethod compile-key :precision [_ _ _] {:when number?})
@@ -188,3 +189,24 @@
                            (key-rule v opts)
                            (validation.utils/merge-vtx vtx*)))
                 (recur (rest data) vtx*)))))))))
+
+
+(register-compile-key-interpreter!
+ [:values ::navigate]
+ (fn [_ ztx sch]
+   (let [v (get-cached ztx sch false)]
+     (fn [vtx data opts]
+       (reduce-kv (fn [vtx* key value]
+                    (let [node-visited?
+                          (when-let [pth (get (:visited vtx*) (validation.utils/cur-path vtx* [key]))]
+                            (:keys (get (:visited-by vtx*) pth)))
+
+                          strict?
+                          (= (:valmode opts) :strict)]
+                      (if (and (not strict?) node-visited?)
+                        vtx*
+                        (-> (validation.utils/node-vtx&log vtx* [:values] [key])
+                            (v value opts)
+                            (validation.utils/merge-vtx vtx*)))))
+                  vtx
+                  data)))))
