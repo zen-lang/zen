@@ -151,6 +151,7 @@
 
 (defmethod compile-key :keys            [_ _ _] {:when map?})
 (defmethod compile-key :validation-type [_ _ _] {:when map?})
+(defmethod compile-key :require         [_ _ _] {:when map?})
 
 (defmethod compile-key :scale     [_ _ _] {:when number?})
 (defmethod compile-key :precision [_ _ _] {:when number?})

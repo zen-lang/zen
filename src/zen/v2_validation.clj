@@ -283,21 +283,21 @@ Probably safe to remove if no one relies on them"
           (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
           vtx)))))
 
-(defmethod compile-key :match
-  [_ ztx pattern]
-  {:rule
-   (fn match-fn [vtx data opts]
-     (let [errs (zen.match/match data pattern)]
-       (if-not (empty? errs)
-         (->> errs
-              (reduce (fn [acc err]
-                        (let [err-msg
-                              (or (:message err)
-                                  (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))]
-                          (apply add-err (into [acc :match {:message err-msg :type "match"}]
-                                               (:path err)))))
-                      vtx))
-         vtx)))})
+(zen.schema/register-compile-key-interpreter!
+  [:match ::validate]
+  (fn [_ ztx pattern]
+    (fn match-fn [vtx data opts]
+      (let [errs (zen.match/match data pattern)]
+        (if-not (empty? errs)
+          (->> errs
+               (reduce (fn [acc err]
+                         (let [err-msg
+                               (or (:message err)
+                                   (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))]
+                           (apply add-err (into [acc :match {:message err-msg :type "match"}]
+                                                (:path err)))))
+                       vtx))
+          vtx)))))
 
 (zen.schema/register-compile-key-interpreter!
   [:scale ::validate]
@@ -507,27 +507,25 @@ Probably safe to remove if no one relies on them"
                (recur (rest comp-fns)
                       (add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)})))))))}))
 
-(defmethod compile-key :require
-  [_ ztx ks]
-  ;; TODO decide if require should add to :visited keys vector
-  (let [one-of-fn
-        (fn [vtx data s]
-          (let [reqs (->> (select-keys data s) (remove nil?))]
-            (if (empty? reqs)
-              (add-err vtx :require {:type "map.require"
-                                     :message (str "one of keys " s " is required")})
-              vtx)))]
-    {:when map?
-     :rule
-     (fn [vtx data opts]
-       (reduce (fn [vtx* k]
-                 (cond
-                   (set? k) (one-of-fn vtx* data k)
-                   (contains? data k) vtx*
-                   :else
-                   (add-err vtx* :require {:type "require" :message (str k " is required")} k)))
-               vtx
-               ks))}))
+(zen.schema/register-compile-key-interpreter!
+  [:require ::validate]
+  (fn [_ ztx ks] ;; TODO decide if require should add to :visited keys vector
+    (let [one-of-fn
+          (fn [vtx data s]
+            (let [reqs (->> (select-keys data s) (remove nil?))]
+              (if (empty? reqs)
+                (add-err vtx :require {:type "map.require"
+                                       :message (str "one of keys " s " is required")})
+                vtx)))]
+      (fn [vtx data opts]
+        (reduce (fn [vtx* k]
+                  (cond
+                    (set? k) (one-of-fn vtx* data k)
+                    (contains? data k) vtx*
+                    :else
+                    (add-err vtx* :require {:type "require" :message (str k " is required")} k)))
+                vtx
+                ks)))))
 
 (defmethod compile-key :schema-key
   [_ ztx {sk :key sk-ns :ns sk-tags :tags}]
@@ -795,11 +793,11 @@ Probably safe to remove if no one relies on them"
             (merge slices-templ)
             (reduce (partial err-fn schemas rest-fn opts) vtx)))}))
 
-(defmethod compile-key :fail
-  [_ ztx err-msg]
-  {:rule
-   (fn fail-fn [vtx data opts]
-     (add-err vtx :fail {:message err-msg}))})
+(zen.schema/register-compile-key-interpreter!
+  [:fail ::validate]
+  (fn [_ ztx err-msg]
+    (fn fail-fn [vtx data opts]
+      (add-err vtx :fail {:message err-msg}))))
 
 (defmethod compile-key :key-schema
   [_ ztx {:keys [tags key]}]
