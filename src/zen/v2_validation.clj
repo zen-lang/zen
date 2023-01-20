@@ -450,37 +450,6 @@ Probably safe to remove if no one relies on them"
                 vtx
                 ks)))))
 
-(defmethod compile-key :schema-key
-  [_ ztx {sk :key sk-ns :ns sk-tags :tags}]
-  {:when map?
-   :rule
-   (fn [vtx data opts]
-     (if-let [sch-nm (get data sk)]
-       (let [sch-symbol (if sk-ns (symbol sk-ns (name sch-nm)) (symbol sch-nm))
-             {tags :zen/tags :as sch} (utils/get-symbol ztx sch-symbol)]
-         (cond
-           (nil? sch)
-           (add-err vtx :schema-key
-                    {:message (str "Could not find schema " sch-symbol)
-                     :type "schema"})
-
-           (not (contains? tags 'zen/schema))
-           (add-err vtx :schema-key
-                    {:message (str "'" sch-symbol " should be tagged with zen/schema, but " tags)
-                     :type "schema"})
-
-           (and sk-tags (not (clojure.set/subset? sk-tags tags)))
-           (add-err vtx :schema-key
-                    {:message (str "'" sch-symbol " should be tagged with " sk-tags ", but " tags)
-                     :type "schema"})
-
-           :else
-           (let [v (get-cached ztx sch false)]
-             (-> (node-vtx vtx [:schema-key sch-symbol])
-                 (v data opts)
-                 (merge-vtx vtx)))))
-       vtx))})
-
 (defmethod compile-key :schema-index
   [_ ztx {si :index si-ns :ns}]
   {:when sequential?

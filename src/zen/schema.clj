@@ -153,6 +153,7 @@
 (defmethod compile-key :validation-type [_ _ _] {:when map?})
 (defmethod compile-key :require         [_ _ _] {:when map?})
 (defmethod compile-key :values          [_ _ _] {:when map?})
+(defmethod compile-key :schema-key      [_ _ _] {:when map?})
 
 (defmethod compile-key :scale     [_ _ _] {:when number?})
 (defmethod compile-key :precision [_ _ _] {:when number?})
@@ -270,3 +271,35 @@
               (recur (rest comp-fns)
                      #_"NOTE: This errors mechanism comes from ::validate interpreter. Maybe we should untie it from here."
                      (validation.utils/add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)}))))))))))
+
+
+#_"NOTE: Errors mechanism used here comes from ::validate interpreter. Maybe we should untie it from here."
+(register-compile-key-interpreter!
+ [:schema-key ::navigate]
+ (fn [_ ztx {sk :key sk-ns :ns sk-tags :tags}]
+  (fn [vtx data opts]
+    (if-let [sch-nm (get data sk)]
+      (let [sch-symbol               (if sk-ns (symbol sk-ns (name sch-nm)) (symbol sch-nm))
+            {tags :zen/tags :as sch} (utils/get-symbol ztx sch-symbol)]
+         (cond
+           (nil? sch)
+           (validation.utils/add-err vtx :schema-key
+                    {:message (str "Could not find schema " sch-symbol)
+                     :type    "schema"})
+
+           (not (contains? tags 'zen/schema))
+           (validation.utils/add-err vtx :schema-key
+                    {:message (str "'" sch-symbol " should be tagged with zen/schema, but " tags)
+                     :type    "schema"})
+
+           (and sk-tags (not (clojure.set/subset? sk-tags tags)))
+           (validation.utils/add-err vtx :schema-key
+                    {:message (str "'" sch-symbol " should be tagged with " sk-tags ", but " tags)
+                     :type    "schema"})
+
+           :else
+           (let [v (get-cached ztx sch false)]
+             (-> (validation.utils/node-vtx vtx [:schema-key sch-symbol])
+                 (v data opts)
+                 (validation.utils/merge-vtx vtx)))))
+       vtx))))
