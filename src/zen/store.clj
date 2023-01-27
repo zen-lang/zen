@@ -185,11 +185,11 @@
   (let [modules (io/file (str path "/node_modules"))]
     (when (and (.exists modules) (.isDirectory modules))
       (->> (.listFiles modules)
-           (mapcat (fn [x]
+           (mapcat (fn [^java.io.File x]
                      (if (and (.isDirectory x) (str/starts-with? (.getName x) "@"))
                        (.listFiles x)
                        [x])))
-           (filter #(.isDirectory %))))))
+           (filter (fn [^java.io.File x] (.isDirectory x)))))))
 
 (defn mk-full-path [zen-path file-path]
   (str zen-path "/" file-path))
@@ -278,7 +278,7 @@
 
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
-    (if-let [{:keys [file zen-path]} (find-file&path ctx pth)]
+    (if-let [{:keys [^java.io.File file zen-path]} (find-file&path ctx pth)]
       (try
         (let [content (slurp file)
               env (:env @ctx)
