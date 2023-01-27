@@ -33,11 +33,11 @@
      (:errors res#)))
 
 
-(defn zip-entries [filename]
+(defn zip-entries [^String filename]
   (let [zf (java.util.zip.ZipFile. filename)]
     (try (->> (.entries zf)
               enumeration-seq
-              (mapv #(.getName %)))
+              (mapv (fn [^java.util.zip.ZipEntry e] (.getName e))))
          (finally (.close zf)))))
 
 
