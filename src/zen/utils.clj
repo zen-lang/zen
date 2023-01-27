@@ -161,7 +161,7 @@
       (name name-part))
     (merge (meta ns-part) (meta name-part))))
 
-(defn string->md5 [s]
+(defn string->md5 [^String s]
   (let [md5-digest (doto (java.security.MessageDigest/getInstance "MD5")
                      (.update (.getBytes s)))]
     (format "%032x" (BigInteger. 1 (.digest md5-digest)))))
@@ -187,15 +187,16 @@
 (defn copy-file [src dest]
   (java.nio.file.Files/copy (.toPath (io/file src))
                             (.toPath (io/file dest))
+                            ^"[Ljava.nio.file.CopyOption;"
                             (into-array java.nio.file.CopyOption
                                         [(java.nio.file.StandardCopyOption/REPLACE_EXISTING)])))
 
 
 (defn copy-directory [from to]
-  (let [from (File. from)
-        to (File. to)]
+  (let [from (io/file from)
+        to (io/file to)]
     (when (not (.exists to)) (.mkdirs to))
-    (doseq [file (.listFiles from)]
+    (doseq [^java.io.File file (.listFiles from)]
       (if (.isDirectory file)
         (copy-directory (.getPath file) (str to "/" (.getName file)))
         (copy-file (.getPath file) (str to "/" (.getName file)))))))
