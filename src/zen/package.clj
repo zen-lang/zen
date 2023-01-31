@@ -131,7 +131,7 @@
           :else
           (do
             (when (.exists dep-dir)
-              (sh-with-env! "rm" "-rf" dep-name-str :dir root))
+              (throw (Exception. (format "Directory %s already exists" dep-dir-path))))
             (sh-with-env! "git" "clone" "--depth=1" (str dep-url) dep-name-str
                           :dir root)
             (recur
