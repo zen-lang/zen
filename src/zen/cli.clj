@@ -49,7 +49,7 @@
                       clojure.java.io/file
                       file-seq
                       (filter #(clojure.string/ends-with? % ".edn"))
-                      (map #(relativize (.getAbsolutePath %)))
+                      (map (fn [^java.io.File f] (relativize (.getAbsolutePath f))))
                       (remove clojure.string/blank?)
                       (map #(subs % 1)))
         namespaces (map #(-> %
