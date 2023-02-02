@@ -7,7 +7,8 @@
    [clj-async-profiler.core :as prof]
    [criterium.core :as c]
    [zen.core :as zen]
-   [zen.v2-validation :as v]))
+   [zen.v2-validation :as v]
+   [zen.new-validation :as new-v]))
 
 (defn bench [pth]
   (doall
@@ -26,27 +27,27 @@
 
        (println)
        (println)
-       (println (str k " OLD VERSION BENCH"))
-       (c/with-progress-reporting
-         (c/bench (zen.core/validate ztx schema-names data) #_:verbose))
-
-       (println)
-       (println)
-       (println (str k " OLD VERSION ERRORS"))
-       (clojure.pprint/pprint (zen.core/validate ztx schema-names data))
-
-       (println)
-       (println)
-       (println (str k " NEW VERSION BENCH"))
+       (println (str k " CURRENT VERSION BENCH"))
        (c/with-progress-reporting
          (c/bench (v/validate ztx schema-names data) #_:verbose))
 
        (println)
        (println)
-       (println (str k " NEW VERSION ERRORS"))
+       (println (str k " CURRENT VERSION ERRORS"))
        (clojure.pprint/pprint (v/validate ztx schema-names data))
 
-       [(zen.core/validate ztx schema-names data) (v/validate ztx schema-names data)]))))
+       (println)
+       (println)
+       (println (str k " UPDATED VERSION BENCH"))
+       (c/with-progress-reporting
+         (c/bench (new-v/validate ztx schema-names data) #_:verbose))
+
+       (println)
+       (println)
+       (println (str k " UPDATED VERSION ERRORS"))
+       (clojure.pprint/pprint (new-v/validate ztx schema-names data))
+
+       [(v/validate ztx schema-names data) (new-v/validate ztx schema-names data)]))))
 
 (comment
 
