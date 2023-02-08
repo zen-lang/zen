@@ -7,50 +7,59 @@
    [clj-async-profiler.core :as prof]
    [criterium.core :as c]
    [zen.core :as zen]
-   [zen.v2-validation :as v]))
+   [zen.v2-validation :as v]
+   [zen.package]))
 
-(defn bench [pth]
-  (doall
-   (for [[k {:keys [schema-sym data]}] (read-string (slurp (io/resource pth)))]
-     (let [schema-sym* (if (vector? schema-sym)
-                         schema-sym
-                         [schema-sym])
+(defn bench [zen-pkg-res bench-data-res]
+  "`res` means Java classpath resource"
+  (let [zen-pkg-path (.getPath (io/resource zen-pkg-res))
+        deps-pulled? (.exists (io/file zen-pkg-path "zen-packages"))]
+    (if (not deps-pulled?)
+      (zen.package/zen-init-deps! zen-pkg-path))
 
-           schema-names (set (map #(symbol (name %) "schema")
-                                  schema-sym*))
+    (doall
+     (for [[k {:keys [schema-sym data]}] (read-string (slurp (io/resource bench-data-res)))]
+       (let [schema-sym* (if (vector? schema-sym)
+                           schema-sym
+                           [schema-sym])
 
-           ztx (zen/new-context {:unsafe true})]
+             schema-names (set (map #(symbol (name %) "schema")
+                                    schema-sym*))
 
-       (doseq [sch schema-sym*]
-         (assert (= :zen/loaded (zen.core/read-ns ztx (symbol sch)))))
+             ztx (zen/new-context {:package-paths [zen-pkg-path]
+                                   :unsafe true})]
 
-       (println)
-       (println)
-       (println (str k " OLD VERSION BENCH"))
-       (c/with-progress-reporting
-         (c/bench (zen.core/validate ztx schema-names data) #_:verbose))
+         (doseq [sch schema-sym*]
+           (assert (= :zen/loaded (zen.core/read-ns ztx (symbol sch)))))
 
-       (println)
-       (println)
-       (println (str k " OLD VERSION ERRORS"))
-       (clojure.pprint/pprint (zen.core/validate ztx schema-names data))
+         (println)
+         (println)
+         (println (str k " OLD VERSION BENCH"))
+         (c/with-progress-reporting
+           (c/bench (zen.core/validate ztx schema-names data) #_:verbose))
 
-       (println)
-       (println)
-       (println (str k " NEW VERSION BENCH"))
-       (c/with-progress-reporting
-         (c/bench (v/validate ztx schema-names data) #_:verbose))
+         (println)
+         (println)
+         (println (str k " OLD VERSION ERRORS"))
+         (clojure.pprint/pprint (zen.core/validate ztx schema-names data))
 
-       (println)
-       (println)
-       (println (str k " NEW VERSION ERRORS"))
-       (clojure.pprint/pprint (v/validate ztx schema-names data))
+         (println)
+         (println)
+         (println (str k " NEW VERSION BENCH"))
+         (c/with-progress-reporting
+           (c/bench (v/validate ztx schema-names data) #_:verbose))
 
-       [(zen.core/validate ztx schema-names data) (v/validate ztx schema-names data)]))))
+         (println)
+         (println)
+         (println (str k " NEW VERSION ERRORS"))
+         (clojure.pprint/pprint (v/validate ztx schema-names data))
+
+         [(zen.core/validate ztx schema-names data) (v/validate ztx schema-names data)])))))
 
 (comment
 
-  ;; in order for bench to work extract zen fhir definitions to /pkg
+  ;; FHIR IG dependencies are contained in zen-package located
+  ;; at `pkg/zen-pkg`
 
   (do
 
@@ -94,4 +103,4 @@
 
   (def srv (prof/serve-files 8080))
 
-  (def res (bench "zen/bench_data.edn")))
+  (def res (bench "zen-pkg" "zen/bench_data.edn")))
