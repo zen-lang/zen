@@ -417,11 +417,14 @@
                                     (contains? for? (get data key)))
                             [sch-key v])))
                   keys-schemas)]
-        (reduce (fn [vtx* [k v]]
-                  (if (not (contains? key-rules k))
-                    vtx*
-                    (-> (validation.utils/node-vtx&log vtx* [k] [k])
-                        ((get key-rules k) v opts)
-                        (validation.utils/merge-vtx vtx*))))
-                vtx
-                (seq data)))))))
+        (loop [data (seq data)
+               vtx* vtx]
+          (if (empty? data)
+            vtx*
+            (let [[k v] (first data)]
+              (recur (rest data)
+                     (if (contains? key-rules k)
+                       (-> (validation.utils/node-vtx&log vtx* [k] [k])
+                           ((get key-rules k) v opts)
+                           (validation.utils/merge-vtx vtx*))
+                       vtx*))))))))))
