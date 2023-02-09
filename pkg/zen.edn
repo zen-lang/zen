@@ -44,6 +44,12 @@
  name {:zen/tags #{property schema}
        :type symbol}
 
+ index
+ {:zen/tags #{tag schema}
+  :zen/desc "Index models by specific fields"
+  :type map
+  :keys {:index-key {:type keyword}}}
+
  tag {:zen/tags #{tag}
       :zen/desc "tag for tag"}
 
@@ -439,6 +445,18 @@
  event
  {:zen/tags #{zen/tag}
   :zen/desc "zen event"}
+
+ all-events
+ {:zen/tags #{zen/event}
+  :zen/desc "subsribe to all events"}
+
+ sub
+ {:zen/tags #{zen/tag zen/schema zen/index}
+  :zen/desc "zen subscription"
+  :index-key :events
+  :type zen/map
+  :keys {:events {:type zen/set :every {:type zen/symbol :tags #{event}}}
+         :op {:type zen/symbol :tags #{op}}}}
 
  op
  {:zen/tags #{zen/tag zen/schema}

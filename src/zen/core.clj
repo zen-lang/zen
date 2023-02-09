@@ -21,6 +21,9 @@
 (defn get-symbol [ztx sym]
   (zen.utils/get-symbol ztx sym))
 
+(defn get-index [ztx idx-name k]
+  (zen.utils/get-index ztx idx-name k))
+
 (defn get-tag [ztx sym]
   (zen.store/get-tag ztx sym))
 
@@ -91,11 +94,18 @@
   [_ztx config req & [session]]
   (println :no-op-impl (engine-or-name config)))
 
+(declare op-call)
+
 (defn pub
   "publish event"
-  [_ztx event-name params & [_session]]
-  (println :event event-name params))
+  [ztx event-name params & [session]]
+  (when-let [subs-names (seq (into (or (get-index ztx 'zen/sub event-name) #{}) (get-index ztx 'zen/sub 'zen/all-events)))]
+    (let [ev {:ev event-name :params params}]
+      (doseq [sub-n subs-names]
+        (let [sub (get-symbol ztx sub-n)]
+          (op-call ztx (or (:op sub) sub-n) ev session))))))
 
+;; TODO: see cognitec lib for errors tags
 (defn error
   "publish error"
   [ztx error-name params & [session]]
