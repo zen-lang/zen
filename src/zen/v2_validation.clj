@@ -49,14 +49,16 @@ Probably safe to remove if no one relies on them"
 
 
 (defn validate-props [vtx data props opts]
-  (reduce (fn [vtx* prop]
-            (if-let [prop-value (get data prop)]
-              (-> (validation.utils/node-vtx&log vtx* [:property prop] [prop])
-                  ((get props prop) prop-value opts)
-                  (validation.utils/merge-vtx vtx*))
-              vtx*))
-          vtx
-          (keys props)))
+  ;; props is clojure map
+  (utils/iter-reduce (fn [vtx* prop-entry]
+                       (let [prop (nth prop-entry 0)]
+                         (if-let [prop-value (get data prop)]
+                           (-> (validation.utils/node-vtx&log vtx* [:property prop] [prop])
+                               ((get props prop) prop-value opts)
+                               (validation.utils/merge-vtx vtx*))
+                           vtx*)))
+                     vtx
+                     props))
 
 
 (defn props-pre-process-hook [ztx schema]
