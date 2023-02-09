@@ -16,9 +16,9 @@
        (if
         (keyword? item)
          (conj acc
-               (clojure.string/replace (name item) #"hl7-fhir-r4-core." ""))
+               (str/replace (name item) #"hl7-fhir-r4-core." ""))
          (conj acc
-               (clojure.string/replace (namespace item) #"hl7-fhir-r4-core." "")))))
+               (str/replace (namespace item) #"hl7-fhir-r4-core." "")))))
    [] value))
 
 (sut/register-compile-key-interpreter!
@@ -36,21 +36,23 @@
     ;;  (pp/pprint data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
-     (if-let [s (or (when-let [nm (:zen.fhir/type data)]
+      (if-let [s (or (when-let [nm (:zen.fhir/type data)]
                       (str "type " (name nm) " = ")) 
                     (when (:confirms data)
                       (str
                       (get {'zen/string "string"} (:type data))
                        (cond
                          (= (first (set-to-string (:confirms data))) "Reference")
-                         (str "Reference<" (str/join " | " (set-to-string (:refers (:zen.fhir/reference data)))) ">")
+                         (str "Reference<" (str/join " | " (map (fn [item] (str "'" item "'")) (set-to-string (:refers (:zen.fhir/reference data))))) ">;")
                          (= (first (set-to-string (:confirms data))) "BackboneElement") ""
                          :else (str
                                 (first (set-to-string (:confirms data)))
                                 (if (= (last (:path vtx)) :every) "" "; ")))))
 
                     (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
-                      (str (name tp) "; "))
+                      (str  (if (= (get {'zen/string "string"} tp) nil)
+                             ""
+                             (str (get {'zen/string "string"} tp)  "; "))))
                     (when (and (= (last (:path vtx)) :every) (= (last (:schema vtx)) 'zen/string))
                       "string; ") 
                     )]
@@ -119,8 +121,7 @@
          "Demographics and other administrative information about an individual or animal receiving care or other health-related services.",
          :zen/name hl7-fhir-r4-core.Patient/schema,
          :keys
-         {
-          :address
+         {:address
           {:type zen/vector,
            :every
            {:confirms #{hl7-fhir-r4-core.Address/schema}, :fhir/flags #{:SU}, :zen/desc "An address for the individual"}},
@@ -180,7 +181,7 @@
              :_type {:confirms #{hl7-fhir-r4-core.Element/schema}}},
             :require #{:other :type},
             :fhir/flags #{:SU :?!},
-            :zen/desc "Link to another patient resource that concerns the same actual person"}} 
+            :zen/desc "Link to another patient resource that concerns the same actual person"}}
           :generalPractitioner
           {:type zen/vector,
            :every
@@ -189,9 +190,9 @@
             {:refers
              #{hl7-fhir-r4-core.PractitionerRole/schema
                hl7-fhir-r4-core.Organization/schema
-               hl7-fhir-r4-core.Practitioner/schema}} 
-            :zen/desc "Patient's nominated primary care provider"}} 
-         :zen.fhir/type "Patient"}}})
+               hl7-fhir-r4-core.Practitioner/schema}}
+            :zen/desc "Patient's nominated primary care provider"}}}
+         :zen.fhir/type "Patient"}})
 
     (zen.core/load-ns ztx my-structs-ns)
 
@@ -215,6 +216,10 @@
 
     (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
 
+(defn remove-prac [st]
+  (str/replace 
+   st #"generalPractitioner:Array<Reference<'PractitionerRole' | 'Organization' | 'Practitioner'>;>;" ""))
+
 (comment
   ;; CLASSPATH
   ;; :paths (path to zrc/)
@@ -227,9 +232,9 @@
       {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]}))
   (zen.core/read-ns ztx 'hl7-fhir-r4-core)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema) 
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas) 
+  (zen.core/read-ns ztx 'hl7-fhir-r4-core.code)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.code/schema) 
     (def r
       (sut/apply-schema ztx
                         {::ts []}
@@ -237,6 +242,31 @@
                         (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
                         {:interpreters [::ts]}))
   (str/join "" (::ts r))
+  
+  (def resources [
+                  "Period" 
+                  "Address"
+                  "Patient"
+                  "HumanName"
+                  "Identifier"
+                  "Organization"
+                  "CodeableConcept"
+                  "Coding"
+                  "RelatedPerson"
+                  "ContactPoint"
+                  "Attachment"
+                  "Endpoint"
+                  ])
+  
+  
+  (map (fn [k] (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
+         (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+         (def r (sut/apply-schema ztx
+                                  {::ts []}
+                                  (zen.core/get-symbol ztx 'zen/schema)
+                                  (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+                                  {:interpreters [::ts]}))
+         (spit "./result.ts" (remove-prac (str/join "" (conj (::ts r) ";\n"))) :append true)) resources)
   )
 
 (t/deftest ^:kaocha/pending custom-interpreter-test
