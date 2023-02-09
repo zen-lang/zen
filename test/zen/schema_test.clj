@@ -29,24 +29,32 @@
       ;; (pp/pprint (:path vtx))
       ;; (pp/pprint (:type vtx))
       ;; (pp/pprint (:schema vtx))
-     (pp/pprint data)
+      ;;  (pp/pprint data)
       ;; (pp/pprint (:zen.schema-test/ts vtx))
      (if-let [s (or (when-let [nm (:zen/name data)]
-                      (str "type " (name nm) " = "))
-                    (when (:confirms (:every data)) (str (name (last (:path vtx))) ": "
-                                                         (get {'zen/string "string"} (:type data))
-                                                         "Array<"
-                                                         (if
-                                                          (= (first (set-to-string (:confirms (:every data)))) "Reference")
-                                                           (str "Reference<" (str/join " | " (set-to-string (:refers (:zen.fhir/reference (:every data))))))
-                                                           (first (set-to-string (:confirms (:every data)))))
-                                                         ">"
-                                                         ";"))
+                      (str "type " (name nm) " = ")) 
+                    (when (:confirms data)
+                      (str
+                       (cond
+                         (= (last (:path vtx)) :every) ""
+                         :else (str (name (last (:path vtx))) ": "))
+                       (get {'zen/string "string"} (:type data))
+                       (cond
+                         (= (first (set-to-string (:confirms data))) "Reference")
+                         (str "Reference<" (str/join " | " (set-to-string (:refers (:zen.fhir/reference data)))) ">")
+                         (= (first (set-to-string (:confirms data))) "BackboneElement") ""
+                         :else (str
+                                (first (set-to-string (:confirms data)))
+                                (if (= (last (:path vtx)) :every) "" "; ")))))
+
                     (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
                       (str (name (last (:path vtx))) ": "
-                           (if (:exclusive-keys data) (str/join " | " (set-to-string (:exclusive-keys data))) (get {'zen/string "string"} tp)) ";"))
+                           (if (= (get {'zen/string "string"} tp) nil)
+                             ""
+                             (str (get {'zen/string "string"} tp)  "; "))))
                     (when (and (= (last (:path vtx)) :every) (= (last (:schema vtx)) 'zen/string))
-                      "string"))]
+                      "string; ") 
+                    )]
        (update vtx ::ts conj s)
        vtx))))
 
@@ -55,19 +63,16 @@
  (fn [ztx schema]
    (fn [vtx data opts] 
      (cond 
-       (:confirms data) vtx
        (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
-       (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array< ")))))
+       (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array<")))))
 
 (zen.schema/register-schema-post-process-hook!
  ::ts
  (fn [ztx schema]
-   (fn [vtx data opts]
-     
+   (fn [vtx data opts] 
      (cond
-       (:confirms data) vtx
-       (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
-       (= (last (:schema vtx)) :every) (update vtx ::ts conj " >;")))))
+       (= (last (:path vtx)) :keys) (update vtx ::ts conj "}")
+       (= (last (:schema vtx)) :every) (update vtx ::ts conj ">;")))))
 
 (sut/register-compile-key-interpreter!
   [:my/defaults ::default]
@@ -134,7 +139,6 @@
           :deceased
           {:fhir/polymorphic true,
            :type zen/map,
-           :exclusive-keys #{#{:dateTime :boolean}},
            :keys
            {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
             :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
@@ -267,8 +271,6 @@
 
     (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
 
-
-
 (comment
   ;; CLASSPATH
   ;; :paths (path to zrc/)
@@ -293,24 +295,6 @@
   (str/join "" (::ts r))
   )
 
-"type schema = { 
- address: Array<Address>;
- name: Array<HumanName>
- multipleBirth: integer | boolean;
- {  }
- deceased: dateTime | boolean;
- {  }
- photo: Array<Attachment>;
- link: Array<BackboneElement>;
- {  }
- communication: Array<BackboneElement>; 
- {  }
- identifier: Array<Identifier>;
- telecom: Array<ContactPoint>;
- generalPractitioner: Array<Reference<PractitionerRole | Organization | Practitioner>; ???
- contact: Array<BackboneElement>;
- { relationship: Array<CodeableConcept>;
- telecom: Array<ContactPoint>; } }"
 
 (t/deftest ^:kaocha/pending custom-interpreter-test
   (t/testing "typescript type generation"
@@ -351,87 +335,10 @@
 
     (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
 
-;;  (:keys v) (assoc acc k (clojure.string/replace (clojure.string/join " | " (filter (fn [item] (not (clojure.string/starts-with? (str item) ":_"))) (keys (:keys v)))) ":" ""))
-
-;;               (:every v) (assoc acc k (str "Array<"
-;;                                            (if (= (first (set-to-string (:confirms (fill (:every v) name)))) "Reference") 
-;;                                              (clojure.string/join " | " (set-to-string (:refers (:zen.fhir/reference (:every v)))))
-;;                                              (first (set-to-string (:confirms (fill (:every v) name)))))
-;;                                            ">"))
-
-;;               (:confirms v) (assoc acc k (if (= (first (set-to-string (:confirms (fill v name)))) "Reference")
-;;                                            (clojure.string/join " | " (set-to-string (:refers (:zen.fhir/reference v))))
-;;                                            (first (set-to-string (:confirms (fill v name))))))
-
-;;               :else (assoc acc k (fill v name)))) {} element))
 
 
-;; (zen.schema/register-compile-key-interpreter!
-;;   [:keys ::ts]
-;;   (fn [_ ztx ks]
-;;     (fn [vtx data opts]
-;;       ;; (println "COMPILE") 
-;;       ;; (pp/pprint (:path vtx))
-;;       ;; (pp/pprint (:type vtx))
-;;       ;; (pp/pprint (:zen.schema-test/ts vtx))
-;;       (if-let [s (or (when-let [nm (:zen/name data)]
-;;                        (str "type " (name nm) " = "))
-;;                     ;;  (when-let [vctr (and (= (:type data) 'zen/vector) ": Array<")]
-;;                     ;;    (str (name (last (:path vtx))) vctr))
-;;                      (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
-;;                        (str (name (last (:path vtx))) ": "
-;;                             (get {'zen/string "string"} tp) "; "))
-;;                      (when (and (= (last (:path vtx)) :every) (= (:type vtx) 'zen/map)) 
-;;                        "string"))]
-;;         (update vtx ::ts conj s)
-;;         vtx))))
-
-;; (zen.schema/register-schema-pre-process-hook!
-;;  ::ts
-;;  (fn [ztx schema]
-;;    (fn [vtx data opts]
-;;     ;; (println "PRE") 
-;;     ;; (pp/pprint (:path vtx))
-;;     ;; (pp/pprint (:type vtx))
-;;     ;; (pp/pprint (:zen.schema-test/ts vtx))
-;;      (if (= (type  (:type vtx)) nil) (println vtx))
-;;      #_(println "PRE" data) #_#_#_(:path vtx) (:type vtx) data
-;;      (cond (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
-;;            (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array< ")))))
-
-;; (zen.schema/register-schema-post-process-hook!
-;;  :type
-;;  (fn [ztx schema]
-;;    (fn [vtx data opts]
-;;      (println "POST") 
-;;     (pp/pprint (:path vtx))
-;;     (pp/pprint (:type vtx))
-;;     (pp/pprint (:zen.schema-test/ts vtx))
-;;      (cond (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
-;;            (= (last (:schema vtx)) :every) (update vtx ::ts conj "> ")))))
-
-
-
-
-
-"type User = {id: stringemail: stringname: Array < {given: Array < string >family: string}>}"
-"type User = {id: string email: string name: Array< {given: Array< string >family: string}>}"
-
-
-(defmethod sut/compile-key :my/defaults [_ _ _] {:priority -1})
-
-
-(sut/register-compile-key-interpreter!
-  [:my/defaults ::default]
-  (fn [_ ztx defaults]
-    (fn [vtx data opts]
-      (update-in vtx
-                 (cons ::with-defaults (:path vtx))
-                 #(merge defaults %)))))
-
-
-(t/deftest default-value-test
-  (t/testing "set default value"
+(t/deftest ^:kaocha/pending custom-interpreter-test
+  (t/testing "should correctly generate premitives"
     (def ztx (zen.core/new-context {}))
     (zen.core/get-tag ztx 'zen/type)
 
@@ -474,14 +381,13 @@
         User
         {:zen/tags #{zen/schema}
          :type zen/map
-         :my/defaults {:active true}
          :keys {:id {:type zen/string}
                 :name {:type zen/vector
                        :every {:confirms #{HumanName DefaultHumanName}}}
                 :active {:type zen/boolean}
-                :email {:type zen/string}}}})
+                :number {:type zen/number}}}})
 
-    (zen.core/load-ns ztx my-ns)
+    (zen.core/load-ns ztx my-structs-ns)
 
     #_(matcho/match (zen.core/errors ztx) #_"NOTE: FIXME: keys that use get-cached during compile time won't be recompiled when these schemas used in get-cached updated. E.g. adding new is-key for zen/schema won't cause zen/schema recompile and the key won't be recognized by zen/schema validation"
                     empty?)
@@ -493,10 +399,13 @@
 
     (def r
       (sut/apply-schema ztx
-                        {::with-defaults data}
-                        (zen.core/get-symbol ztx 'my/User)
-                        data
-                        {:interpreters [::default]}))
+                        {::ts []}
+                        (zen.core/get-symbol ztx 'zen/schema)
+                        (zen.core/get-symbol ztx 'my-sturcts/User)
+                        {:interpreters [::ts]}))
+
+    (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
+
 
     (matcho/match (::with-defaults r)
                   {:id "foo"
