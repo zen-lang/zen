@@ -36,7 +36,7 @@
     ;;  (pp/pprint data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
-     (if-let [s (or (when-let [nm (:zen.fhir/type (:keys data))]
+     (if-let [s (or (when-let [nm (:zen.fhir/type data)]
                       (str "type " (name nm) " = ")) 
                     (when (:confirms data)
                       (str
@@ -50,9 +50,7 @@
                                 (if (= (last (:path vtx)) :every) "" "; ")))))
 
                     (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
-                      (str  (if (= (get {'zen/string "string"} tp) nil)
-                             ""
-                             (str (get {'zen/string "string"} tp)  "; "))))
+                      (str (name tp) "; "))
                     (when (and (= (last (:path vtx)) :every) (= (last (:schema vtx)) 'zen/string))
                       "string; ") 
                     )]
@@ -183,16 +181,16 @@
             :require #{:other :type},
             :fhir/flags #{:SU :?!},
             :zen/desc "Link to another patient resource that concerns the same actual person"}} 
-          ;; :generalPractitioner
-          ;; {:type zen/vector,
-          ;;  :every
-          ;;  {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
-          ;;   :zen.fhir/reference
-          ;;   {:refers
-          ;;    #{hl7-fhir-r4-core.PractitionerRole/schema
-          ;;      hl7-fhir-r4-core.Organization/schema
-          ;;      hl7-fhir-r4-core.Practitioner/schema}} 
-          ;;   :zen/desc "Patient's nominated primary care provider"}} 
+          :generalPractitioner
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
+            :zen.fhir/reference
+            {:refers
+             #{hl7-fhir-r4-core.PractitionerRole/schema
+               hl7-fhir-r4-core.Organization/schema
+               hl7-fhir-r4-core.Practitioner/schema}} 
+            :zen/desc "Patient's nominated primary care provider"}} 
          :zen.fhir/type "Patient"}}})
 
     (zen.core/load-ns ztx my-structs-ns)
@@ -330,7 +328,8 @@
                 :name {:type zen/vector
                        :every {:confirms #{HumanName DefaultHumanName}}}
                 :active {:type zen/boolean}
-                :number {:type zen/number}}}})
+                :count {:type zen/number}}
+         :zen.fhir/type "Patient"}})
 
     (zen.core/load-ns ztx my-structs-ns)
 
