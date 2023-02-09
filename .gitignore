@@ -8,3 +8,6 @@ target
 
 # pulled dependencies for zen-package used for benchmark fixtures
 /pkg/zen-pkg/zen-packages/
+
+.DS_Store
+zen-packages/

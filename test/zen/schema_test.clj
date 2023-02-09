@@ -3,51 +3,314 @@
             [matcho.core :as matcho]
             [clojure.test :as t]
             [clojure.string :as str]
-            [zen.core]))
+            [zen.core]
+            [zen.package]
+            [clojure.pprint :as pp]))
 
-
-(sut/register-compile-key-interpreter!
-  [:keys ::ts]
-  (fn [_ ztx ks]
-    (fn [vtx data opts]
-      (if-let [s (or (when-let [nm (:zen/name data)]
-                       (str "type " (name nm) " = {"))
-                     (when-let [tp (:type data)]
-                       (str (name (last (:path vtx))) ": "
-                            (get {'zen/string "string"}
-                                 tp)
-                            ";")))]
-        (update vtx ::ts conj s)
-        vtx))))
-
-(sut/register-compile-key-interpreter!
-  [:every ::ts]
-  (fn [_ ztx every]
-    (fn [vtx data opts]
-      (update vtx ::ts conj "Array < "))))
+(defn set-to-string [value]
+  (reduce
+   (fn [acc item]
+     (println item)
+     (if (set? item)
+       (set-to-string item)
+       (if
+        (keyword? item)
+         (conj acc
+               (clojure.string/replace (name item) #"hl7-fhir-r4-core." ""))
+         (conj acc
+               (clojure.string/replace (namespace item) #"hl7-fhir-r4-core." "")))))
+   [] value))
 
 (sut/register-compile-key-interpreter!
-  [:type ::ts]
-  (fn [_ ztx ks]
-    (fn [vtx data opts]
-      (-> vtx
-          #_(update ::ts conj [:type (:schema vtx) (:path vtx) data])))))
+ [:keys ::ts]
+ (fn [_ ztx ks]
+   (fn [vtx data opts]
+     (println "COMPILE")
+      ;; (pp/pprint (:path vtx))
+      ;; (pp/pprint (:type vtx))
+      ;; (pp/pprint (:schema vtx))
+     (pp/pprint data)
+      ;; (pp/pprint (:zen.schema-test/ts vtx))
+     (if-let [s (or (when-let [nm (:zen/name data)]
+                      (str "type " (name nm) " = "))
+                    (when (:confirms (:every data)) (str (name (last (:path vtx))) ": "
+                                                         (get {'zen/string "string"} (:type data))
+                                                         "Array<"
+                                                         (if
+                                                          (= (first (set-to-string (:confirms (:every data)))) "Reference")
+                                                           (str "Reference<" (str/join " | " (set-to-string (:refers (:zen.fhir/reference (:every data))))))
+                                                           (first (set-to-string (:confirms (:every data)))))
+                                                         ">"
+                                                         ";"))
+                    (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
+                      (str (name (last (:path vtx))) ": "
+                           (if (:exclusive-keys data) (str/join " | " (set-to-string (:exclusive-keys data))) (get {'zen/string "string"} tp)) ";"))
+                    (when (and (= (last (:path vtx)) :every) (= (last (:schema vtx)) 'zen/string))
+                      "string"))]
+       (update vtx ::ts conj s)
+       vtx))))
 
-(sut/register-schema-pre-process-hook!
-  ::ts
-  (fn [ztx schema]
-    (fn [vtx data opts]
-      (-> vtx
-          #_(update ::ts conj [:pre (:schema vtx) (:path vtx) data])))))
+(zen.schema/register-schema-pre-process-hook!
+ ::ts 
+ (fn [ztx schema]
+   (fn [vtx data opts] 
+     (cond 
+       (:confirms data) vtx
+       (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
+       (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array< ")))))
 
-(sut/register-schema-post-process-hook!
-  ::ts
-  (fn [ztx schema]
-    (fn [vtx data opts]
-      (if-let [nm (:zen/name data)]
-        (update vtx ::ts conj "}")
-        vtx))))
+(zen.schema/register-schema-post-process-hook!
+ ::ts
+ (fn [ztx schema]
+   (fn [vtx data opts]
+     
+     (cond
+       (:confirms data) vtx
+       (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
+       (= (last (:schema vtx)) :every) (update vtx ::ts conj " >;")))))
 
+(sut/register-compile-key-interpreter!
+  [:my/defaults ::default]
+  (fn [_ ztx defaults]
+    (fn [vtx data opts]
+      (update-in vtx
+                 (cons ::with-defaults (:path vtx))
+                 #(merge defaults %)))))
+
+
+(t/deftest patient-test
+  (t/testing "patient test"
+    (def ztx (zen.core/new-context {}))
+
+    (def my-structs-ns
+      '{:ns my-sturcts
+
+        defaults
+        {:zen/tags #{zen/property zen/schema}
+         :type zen/boolean}
+
+        User
+        {:zen.fhir/version "0.6.12-1",
+         :confirms #{hl7-fhir-r4-core.DomainResource/schema zen.fhir/Resource},
+         :zen/tags #{zen/schema zen.fhir/base-schema},
+         :zen.fhir/profileUri "http://hl7.org/fhir/StructureDefinition/Patient",
+         :zen/file
+         "/Users/ross/Desktop/HS/zen/test/test_project/zen-packages/hl7-fhir-r4-core/zrc/hl7-fhir-r4-core/Patient.edn",
+         :type zen/map,
+         :zen/desc
+         "Demographics and other administrative information about an individual or animal receiving care or other health-related services.",
+         :zen/name hl7-fhir-r4-core.Patient/schema,
+         :keys
+         {:_active {:confirms #{hl7-fhir-r4-core.Element/schema}},
+          :address
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.Address/schema}, :fhir/flags #{:SU}, :zen/desc "An address for the individual"}},
+          :managingOrganization
+          {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
+           :fhir/flags #{:SU},
+           :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Organization/schema}},
+           :zen/desc "Organization that is the custodian of the patient record"},
+          :name
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.HumanName/schema},
+            :fhir/flags #{:SU},
+            :zen/desc "A name associated with the patient"}},
+          :_gender {:confirms #{hl7-fhir-r4-core.Element/schema}},
+          :birthDate
+          {:confirms #{hl7-fhir-r4-core.date/schema}, :fhir/flags #{:SU}, :zen/desc "The date of birth for the individual"},
+          :_birthDate {:confirms #{hl7-fhir-r4-core.Element/schema}},
+          :multipleBirth
+          {:fhir/polymorphic true,
+           :type zen/map,
+           :exclusive-keys #{#{:integer :boolean}},
+           :keys
+           {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
+            :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
+            :integer {:confirms #{hl7-fhir-r4-core.integer/schema}},
+            :_integer {:confirms #{hl7-fhir-r4-core.Element/schema}}},
+           :zen/desc "Whether patient is part of a multiple birth"},
+          :deceased
+          {:fhir/polymorphic true,
+           :type zen/map,
+           :exclusive-keys #{#{:dateTime :boolean}},
+           :keys
+           {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
+            :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
+            :dateTime {:confirms #{hl7-fhir-r4-core.dateTime/schema}},
+            :_dateTime {:confirms #{hl7-fhir-r4-core.Element/schema}}},
+           :fhir/flags #{:SU :?!},
+           :zen/desc "Indicates if the individual is deceased or not"},
+          :photo
+          {:type zen/vector, :every {:confirms #{hl7-fhir-r4-core.Attachment/schema}, :zen/desc "Image of the patient"}},
+          :link
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
+            :type zen/map,
+            :keys
+            {:other
+             {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
+              :fhir/flags #{:SU},
+              :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Patient/schema hl7-fhir-r4-core.RelatedPerson/schema}},
+              :zen/desc "The other patient or related person resource that the link refers to"},
+             :type
+             {:confirms #{hl7-fhir-r4-core.code/schema},
+              :fhir/flags #{:SU},
+              :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.link-type/value-set, :strength :required},
+              :zen/desc "replaced-by | replaces | refer | seealso"},
+             :_type {:confirms #{hl7-fhir-r4-core.Element/schema}}},
+            :require #{:other :type},
+            :fhir/flags #{:SU :?!},
+            :zen/desc "Link to another patient resource that concerns the same actual person"}},
+          :active
+          {:confirms #{hl7-fhir-r4-core.boolean/schema},
+           :fhir/flags #{:SU :?!},
+           :zen/desc "Whether this patient's record is in active use"},
+          :communication
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
+            :type zen/map,
+            :keys
+            {:language
+             {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
+              :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.languages/value-set, :strength :preferred},
+              :zen/desc "The language which can be used to communicate with the patient about his or her health"},
+             :preferred {:confirms #{hl7-fhir-r4-core.boolean/schema}, :zen/desc "Language preference indicator"},
+             :_preferred {:confirms #{hl7-fhir-r4-core.Element/schema}}},
+            :require #{:language},
+            :zen/desc "A language which may be used to communicate with the patient about his or her health"}},
+          :identifier
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.Identifier/schema}, :fhir/flags #{:SU}, :zen/desc "An identifier for this patient"}},
+          :telecom
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.ContactPoint/schema},
+            :fhir/flags #{:SU},
+            :zen/desc "A contact detail for the individual"}},
+          :generalPractitioner
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
+            :zen.fhir/reference
+            {:refers
+             #{hl7-fhir-r4-core.PractitionerRole/schema
+               hl7-fhir-r4-core.Organization/schema
+               hl7-fhir-r4-core.Practitioner/schema}},
+            :zen/desc "Patient's nominated primary care provider"}},
+          :gender
+          {:confirms #{hl7-fhir-r4-core.code/schema},
+           :fhir/flags #{:SU},
+           :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.administrative-gender/value-set, :strength :required},
+           :zen/desc "male | female | other | unknown"},
+          :maritalStatus
+          {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
+           :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.marital-status/value-set, :strength :extensible},
+           :zen/desc "Marital (civil) status of a patient"},
+          :contact
+          {:type zen/vector,
+           :every
+           {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
+            :type zen/map,
+            :keys
+            {:relationship
+             {:type zen/vector,
+              :every
+              {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
+               :zen.fhir/value-set
+               {:symbol hl7-fhir-r4-core.value-set.patient-contactrelationship/value-set, :strength :extensible},
+               :zen/desc "The kind of relationship"}},
+             :name {:confirms #{hl7-fhir-r4-core.HumanName/schema}, :zen/desc "A name associated with the contact person"},
+             :telecom
+             {:type zen/vector,
+              :every {:confirms #{hl7-fhir-r4-core.ContactPoint/schema}, :zen/desc "A contact detail for the person"}},
+             :address {:confirms #{hl7-fhir-r4-core.Address/schema}, :zen/desc "Address for the contact person"},
+             :gender
+             {:confirms #{hl7-fhir-r4-core.code/schema},
+              :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.administrative-gender/value-set, :strength :required},
+              :zen/desc "male | female | other | unknown"},
+             :_gender {:confirms #{hl7-fhir-r4-core.Element/schema}},
+             :organization
+             {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
+              :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Organization/schema}},
+              :zen/desc "Organization that is associated with the contact"},
+             :period
+             {:confirms #{hl7-fhir-r4-core.Period/schema},
+              :zen/desc
+              "The period during which this contact person or organization is valid to be contacted relating to this patient"}},
+            :zen/desc "A contact party (e.g. guardian, partner, friend) for the patient"}}},
+         :zen.fhir/type "Patient"}})
+
+    (zen.core/load-ns ztx my-structs-ns)
+
+    (def ts-typedef-assert
+      (str "type User = {"
+           "id: string;"
+           "email: string;"
+           "name: Array < {"
+           "given: Array < string >;"
+           "family: string;"
+           "}>;}"))
+
+    (def r
+      (sut/apply-schema ztx
+                        {::ts []}
+                        (zen.core/get-symbol ztx 'zen/schema)
+                        (zen.core/get-symbol ztx 'my-sturcts/User)
+                        {:interpreters [::ts]}))
+    
+    (str/join "" (::ts r))
+
+    (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
+
+
+
+(comment
+  ;; CLASSPATH
+  ;; :paths (path to zrc/)
+  ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)
+
+  (zen.package/zen-init-deps! "/Users/ross/Desktop/HS/zen/test/test_project")
+
+  (def ztx
+    (zen.core/new-context
+      {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]}))
+  (zen.core/read-ns ztx 'hl7-fhir-r4-core)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)
+  (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema) 
+    (def r
+      (sut/apply-schema ztx
+                        {::ts []}
+                        (zen.core/get-symbol ztx 'zen/schema)
+                        (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
+                        {:interpreters [::ts]}))
+  (str/join "" (::ts r))
+  )
+
+"type schema = { 
+ address: Array<Address>;
+ name: Array<HumanName>
+ multipleBirth: integer | boolean;
+ {  }
+ deceased: dateTime | boolean;
+ {  }
+ photo: Array<Attachment>;
+ link: Array<BackboneElement>;
+ {  }
+ communication: Array<BackboneElement>; 
+ {  }
+ identifier: Array<Identifier>;
+ telecom: Array<ContactPoint>;
+ generalPractitioner: Array<Reference<PractitionerRole | Organization | Practitioner>; ???
+ contact: Array<BackboneElement>;
+ { relationship: Array<CodeableConcept>;
+ telecom: Array<ContactPoint>; } }"
 
 (t/deftest ^:kaocha/pending custom-interpreter-test
   (t/testing "typescript type generation"
@@ -77,7 +340,7 @@
            "name: Array < {"
            "given: Array < string >;"
            "family: string;"
-           "}>}"))
+           "}>;}"))
 
     (def r
       (sut/apply-schema ztx
@@ -86,7 +349,73 @@
                         (zen.core/get-symbol ztx 'my-sturcts/User)
                         {:interpreters [::ts]}))
 
-    (t/is (= ts-typedef-assert (str/join "" (distinct (::ts r)))))))
+    (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
+
+;;  (:keys v) (assoc acc k (clojure.string/replace (clojure.string/join " | " (filter (fn [item] (not (clojure.string/starts-with? (str item) ":_"))) (keys (:keys v)))) ":" ""))
+
+;;               (:every v) (assoc acc k (str "Array<"
+;;                                            (if (= (first (set-to-string (:confirms (fill (:every v) name)))) "Reference") 
+;;                                              (clojure.string/join " | " (set-to-string (:refers (:zen.fhir/reference (:every v)))))
+;;                                              (first (set-to-string (:confirms (fill (:every v) name)))))
+;;                                            ">"))
+
+;;               (:confirms v) (assoc acc k (if (= (first (set-to-string (:confirms (fill v name)))) "Reference")
+;;                                            (clojure.string/join " | " (set-to-string (:refers (:zen.fhir/reference v))))
+;;                                            (first (set-to-string (:confirms (fill v name))))))
+
+;;               :else (assoc acc k (fill v name)))) {} element))
+
+
+;; (zen.schema/register-compile-key-interpreter!
+;;   [:keys ::ts]
+;;   (fn [_ ztx ks]
+;;     (fn [vtx data opts]
+;;       ;; (println "COMPILE") 
+;;       ;; (pp/pprint (:path vtx))
+;;       ;; (pp/pprint (:type vtx))
+;;       ;; (pp/pprint (:zen.schema-test/ts vtx))
+;;       (if-let [s (or (when-let [nm (:zen/name data)]
+;;                        (str "type " (name nm) " = "))
+;;                     ;;  (when-let [vctr (and (= (:type data) 'zen/vector) ": Array<")]
+;;                     ;;    (str (name (last (:path vtx))) vctr))
+;;                      (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
+;;                        (str (name (last (:path vtx))) ": "
+;;                             (get {'zen/string "string"} tp) "; "))
+;;                      (when (and (= (last (:path vtx)) :every) (= (:type vtx) 'zen/map)) 
+;;                        "string"))]
+;;         (update vtx ::ts conj s)
+;;         vtx))))
+
+;; (zen.schema/register-schema-pre-process-hook!
+;;  ::ts
+;;  (fn [ztx schema]
+;;    (fn [vtx data opts]
+;;     ;; (println "PRE") 
+;;     ;; (pp/pprint (:path vtx))
+;;     ;; (pp/pprint (:type vtx))
+;;     ;; (pp/pprint (:zen.schema-test/ts vtx))
+;;      (if (= (type  (:type vtx)) nil) (println vtx))
+;;      #_(println "PRE" data) #_#_#_(:path vtx) (:type vtx) data
+;;      (cond (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
+;;            (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array< ")))))
+
+;; (zen.schema/register-schema-post-process-hook!
+;;  :type
+;;  (fn [ztx schema]
+;;    (fn [vtx data opts]
+;;      (println "POST") 
+;;     (pp/pprint (:path vtx))
+;;     (pp/pprint (:type vtx))
+;;     (pp/pprint (:zen.schema-test/ts vtx))
+;;      (cond (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
+;;            (= (last (:schema vtx)) :every) (update vtx ::ts conj "> ")))))
+
+
+
+
+
+"type User = {id: stringemail: stringname: Array < {given: Array < string >family: string}>}"
+"type User = {id: string email: string name: Array< {given: Array< string >family: string}>}"
 
 
 (defmethod sut/compile-key :my/defaults [_ _ _] {:priority -1})
