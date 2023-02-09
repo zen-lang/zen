@@ -171,7 +171,7 @@ Probably safe to remove if no one relies on them"
   (let [type-cfg (get types-cfg sym)
         type-pred (if (fn? type-cfg) type-cfg (:fn type-cfg))]
     (fn validate-type-sym [vtx data _]
-      (let [pth-key (last (:path vtx))]
+      (let [pth-key (peek (:path vtx))]
         (cond
           ;; TODO fix this when compile-opts are implemented
           (get #{:zen/tags :zen/file :zen/desc :zen/name} pth-key) vtx

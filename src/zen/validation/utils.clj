@@ -5,7 +5,7 @@
 
 (defn pretty-type [x]
   (if-let [tp (type x)]
-    (str/lower-case (last (str/split (str tp) #"\.")))
+    (str/lower-case (peek (str/split (str tp) #"\.")))
     "nil"))
 
 (defn unknown-errs [vtx]
