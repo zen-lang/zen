@@ -320,7 +320,7 @@ Probably safe to remove if no one relies on them"
   [:precision ::validate]
   (fn [_ ztx precision]
     (fn validate-precision [vtx num opts]
-      (let [dc (bigdec num)
+      (let [dc ^BigDecimal (bigdec num)
             num-precision (.precision dc)
             ;; NOTE: fraction will be used when we add composite checking scale + precision
             #_#_fraction (.remainder dc BigDecimal/ONE)]
@@ -331,43 +331,43 @@ Probably safe to remove if no one relies on them"
 
 (zen.schema/register-compile-key-interpreter!
   [:min ::validate]
-  (fn [_ ztx min]
-    (fn validate-min [vtx data opts]
+  (fn [_ ztx ^Long min]
+    (fn validate-min [vtx ^Long data opts]
       (if (< data min)
         (add-err vtx :min {:message (str "Expected >= " min ", got " data)})
         vtx))))
 
 (zen.schema/register-compile-key-interpreter!
   [:max ::validate]
-  (fn [_ ztx max]
-    (fn validate-max [vtx data opts]
+  (fn [_ ztx ^Long max]
+    (fn validate-max [vtx ^Long data opts]
       (if (> data max)
         (add-err vtx :max {:message (str "Expected <= " max ", got " data)})
         vtx))))
 
 (zen.schema/register-compile-key-interpreter!
   [:minLength ::validate]
-  (fn [_ ztx min-len]
-    (fn validate-minLength [vtx data opts]
-      (if (< (count data) min-len)
+  (fn [_ ztx ^Long min-len]
+    (fn validate-minLength [vtx ^String data opts]
+      (if (< (.length data) min-len)
         (add-err vtx
                  :minLength
-                 {:message (str "Expected length >= " min-len ", got " (count data))})
+                 {:message (str "Expected length >= " min-len ", got " (.length data))})
         vtx))))
 
 (zen.schema/register-compile-key-interpreter!
   [:maxLength ::validate]
-  (fn [_ ztx max-len]
-    (fn validate-maxLength [vtx data opts]
-      (if (> (count data) max-len)
+  (fn [_ ztx ^Long max-len]
+    (fn validate-maxLength [vtx ^String data opts]
+      (if (> (.length data) max-len)
         (add-err vtx
                  :maxLength
-                 {:message (str "Expected length <= " max-len ", got " (count data))})
+                 {:message (str "Expected length <= " max-len ", got " (.length data))})
         vtx))))
 
 (zen.schema/register-compile-key-interpreter!
   [:minItems ::validate]
-  (fn [_ ztx items-count]
+  (fn [_ ztx ^Long items-count]
     (fn validate-minItems [vtx data opts]
       (if (< (count data) items-count)
         (add-err vtx
@@ -377,7 +377,7 @@ Probably safe to remove if no one relies on them"
 
 (zen.schema/register-compile-key-interpreter!
   [:maxItems ::validate]
-  (fn [_ ztx items-count]
+  (fn [_ ztx ^Long items-count]
     (fn validate-maxItems [vtx data opts]
       (if (> (count data) items-count)
         (add-err vtx
