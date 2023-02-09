@@ -202,7 +202,7 @@
     (let [key-rules (->> ks
                          (map (fn [[k sch]]
                                 [k (get-cached ztx sch false)]))
-                         (into {}))]
+                         (utils/iter-into {}))]
       (fn navigate-keys [vtx data opts]
         (loop [data (seq data)
                vtx* vtx]

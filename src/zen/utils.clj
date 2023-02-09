@@ -175,6 +175,19 @@
              (recur (do ~@fn-body)))
            ~acc-arg)))))
 
+;; NOTE: `clojure.core/into` uses transients when possible. Here they
+;; are not used because `bench.clj` performance benchmarking showed
+;; noticeable improvements (≈10%) when they were omitted. That
+;; performance was done on FHIR resources schemas and data. For other
+;; usecases this implementation may not be as efficient.
+(defn iter-into
+  "Efficient implementation of monadic and dyadic arities of clojure.core/into."
+  ([to] to)
+  ([to from]
+   (if from
+     (iter-reduce conj to from)
+     to)))
+
 (defn set-diff [set1 set2]
   (let [set1-transient
         (transient set1)

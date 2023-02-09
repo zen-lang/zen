@@ -16,7 +16,7 @@
                         {:path path
                          :type "unknown-key"
                          :message (str "unknown key " (peek path))}))
-                 (into errs)
+                 (utils/iter-into errs)
                  vec))))
 
 (defn add-err* [types-cfg vtx sch-key err & data-path]
@@ -29,7 +29,7 @@
 
         err*
         (-> err
-            (assoc :path (into (:path vtx) data-path))
+            (assoc :path (utils/iter-into (:path vtx) data-path))
             (assoc :type err-type)
             (assoc :schema (conj (:schema vtx) sch-key)))]
     (update vtx :errors conj err*)))
@@ -51,7 +51,7 @@
   ([vtx sch-path]
    (-> (transient vtx)
        (assoc! :errors [])
-       (assoc! :schema (into (:schema vtx) sch-path))))
+       (assoc! :schema (utils/iter-into (:schema vtx) sch-path))))
   ([vtx sch-path vtx-path]
    (-> vtx
        (node-vtx-transient sch-path)
@@ -64,7 +64,7 @@
        (persistent!)))
   ([vtx sch-path path]
    (-> vtx
-       (node-vtx-transient sch-path (into (:path vtx) path))
+       (node-vtx-transient sch-path (utils/iter-into (:path vtx) path))
        (persistent!))))
 
 (defn node-vtx&log-transient
@@ -76,25 +76,25 @@
 (defn node-vtx&log
   ([vtx sch-path path]
    (-> vtx
-       (node-vtx&log-transient sch-path (into (:path vtx) path))
+       (node-vtx&log-transient sch-path (utils/iter-into (:path vtx) path))
        (persistent!)))
 
   ([vtx sch-path path rule-name]
-   (let [new-vtx-path (into (:path vtx) path)]
+   (let [new-vtx-path (utils/iter-into (:path vtx) path)]
      (-> vtx
          (node-vtx&log-transient sch-path new-vtx-path)
          (persistent!)
          (update-in [:visited-by new-vtx-path] (fnil conj #{}) rule-name)))))
 
 (defn cur-path [vtx path]
-  (into (:path vtx) path))
+  (utils/iter-into (:path vtx) path))
 
 (defn merge-vtx [node-vtx global-vtx]
   (utils/iter-reduce (fn [merged-vtx node-vtx-entry]
                        (assoc merged-vtx
                               (nth node-vtx-entry 0)
                               (nth node-vtx-entry 1)))
-                     (update global-vtx :errors into (:errors node-vtx))
+                     (update global-vtx :errors utils/iter-into (:errors node-vtx))
                      (dissoc node-vtx :path :schema :errors)))
 
 

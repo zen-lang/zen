@@ -297,8 +297,8 @@ Probably safe to remove if no one relies on them"
                          (let [err-msg
                                (or (:message err)
                                    (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))]
-                           (apply add-err (into [acc :match {:message err-msg :type "match"}]
-                                                (:path err)))))
+                           (apply add-err (utils/iter-into [acc :match {:message err-msg :type "match"}]
+                                                           (:path err)))))
                        vtx))
           vtx)))))
 
@@ -587,7 +587,7 @@ Probably safe to remove if no one relies on them"
          (->> slices
               (map (fn [[slice-name {:keys [schema]}]]
                      [slice-name (get-cached ztx schema false)]))
-              (into {}))
+              (utils/iter-into {}))
 
          rest-fn
          (when (not-empty rest-schema)
@@ -599,7 +599,7 @@ Probably safe to remove if no one relies on them"
          (->> slices
               (map (fn [[slice-name _]]
                      [slice-name []]))
-              (into {}))]
+              (utils/iter-into {}))]
      (fn validate-slicing [vtx data opts]
        (->> data
             (map-indexed vector)
