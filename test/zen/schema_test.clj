@@ -43,16 +43,15 @@
                       (get {'zen/string "string"} (:type data))
                        (cond
                          (= (first (set-to-string (:confirms data))) "Reference")
-                         (str "Reference<" (str/join " | " (map (fn [item] (str "'" item "'")) (set-to-string (:refers (:zen.fhir/reference data))))) ">;")
+                         (str "Reference<" (str/join " | " (map (fn [item] (str "'" item "'")) (set-to-string (:refers (:zen.fhir/reference data))))) ">")
                          (= (first (set-to-string (:confirms data))) "BackboneElement") ""
                          :else (str
-                                (first (set-to-string (:confirms data)))
-                                (if (= (last (:path vtx)) :every) "" "; ")))))
+                                (first (set-to-string (:confirms data)))))))
 
                     (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
                       (str  (if (= (get {'zen/string "string"} tp) nil)
                              ""
-                             (str (get {'zen/string "string"} tp)  "; "))))
+                             (get {'zen/string "string"} tp))))
                     (when (and (= (last (:path vtx)) :every) (= (last (:schema vtx)) 'zen/string))
                       "string; ") 
                     )]
@@ -71,7 +70,7 @@
     ;;  (println "schema:")
     ;;  (pp/pprint (:schema vtx))
     ;;  (println "data:")
-    ;;  (pp/pprint data)
+    ;;  (println data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
      (cond 
@@ -85,17 +84,21 @@
  ::ts
  (fn [ztx schema]
    (fn [vtx data opts] 
+      (println "POST")
+     (println "path:")
+     (pp/pprint (:path vtx)) 
+     (println "type:")
+     (pp/pprint (:type vtx)) 
+     (println "schema:")
+     (pp/pprint (:schema vtx))
+     (println "data:")
+     (pp/pprint data)
+     (println "ts:")
+     (pp/pprint (:zen.schema-test/ts vtx))
      (cond
        (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
-       (= (last (:schema vtx)) :every) (update vtx ::ts conj ">;")))))
-
-(sut/register-compile-key-interpreter!
-  [:my/defaults ::default]
-  (fn [_ ztx defaults]
-    (fn [vtx data opts]
-      (update-in vtx
-                 (cons ::with-defaults (:path vtx))
-                 #(merge defaults %)))))
+       (= (last (:schema vtx)) :every) (update vtx ::ts conj ">")
+       (= (last (:schema vtx)) :values) (update vtx ::ts conj ";")))))
 
 
 (t/deftest patient-test
@@ -218,7 +221,7 @@
 
 (defn remove-prac [st]
   (str/replace 
-   st #"generalPractitioner:Array<Reference<'PractitionerRole' | 'Organization' | 'Practitioner'>;>;" ""))
+   st #"generalPractitioner:Array<Reference<'PractitionerRole' \| 'Organization' \| 'Practitioner'>>;" ""))
 
 (comment
   ;; CLASSPATH
