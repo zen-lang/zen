@@ -75,6 +75,7 @@ Probably safe to remove if no one relies on them"
 
 (defn valtype-rule [vtx data open-world?] #_"NOTE: maybe refactor name to 'set-unknown-keys ?"
   (let [filter-allowed
+        #_"TODO: Revise the performance of this function on appropriate benchmarking fixtures"
         (fn [unknown]
           (->> unknown
                (remove #(= (vec (butlast %)) (:path vtx)))
@@ -85,14 +86,14 @@ Probably safe to remove if no one relies on them"
           (let [empty-unknown? (empty? unknown)
                 empty-visited? (empty? (:visited vtx))]
             (cond (and empty-unknown? (not empty-visited?))
-                  (set/difference (cur-keyset vtx data)
+                  (utils/set-diff (validation.utils/cur-keyset vtx data)
                                   (:visited vtx))
 
                   (and empty-unknown? empty-visited?)
                   (set (validation.utils/cur-keyset vtx data))
 
                   (not empty-unknown?)
-                  (set/difference unknown (:visited vtx)))))]
+                  (utils/set-diff unknown (:visited vtx)))))]
 
     (if open-world?
       (-> vtx
@@ -642,7 +643,7 @@ Probably safe to remove if no one relies on them"
             (-> data keys set)
 
             incorrect-keys
-            (set/difference all-keys correct-keys)]
+            (utils/set-diff all-keys correct-keys)]
        (update vtx
                :unknown-keys
                into

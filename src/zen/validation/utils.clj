@@ -169,6 +169,10 @@
 
 
 (defn cur-keyset [vtx data]
-  (->> (keys data)
-       (map #(conj (:path vtx) %))
-       set))
+  (let [path (:path vtx)]
+    (persistent!
+     (utils/iter-reduce (fn [keyset data-entry]
+                    (conj! keyset
+                           (conj path (nth data-entry 0))))
+                  (transient #{})
+                  data))))
