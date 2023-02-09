@@ -53,8 +53,16 @@
 
 
 (defn get-hooks [hooks-map data opts]
-  (not-empty (keep #(get-interpreter-hook-fn hooks-map data opts %)
-                   (:interpreters opts))))
+  (let [hooks (utils/iter-reduce
+               (fn [hooks-acc interpreter]
+                 (if-let [hook-fn
+                          (get-interpreter-hook-fn hooks-map data opts interpreter)]
+                   (conj hooks-acc hook-fn)
+                   hooks-acc))
+               []
+               (:interpreters opts))]
+    (when (< 0 (.length ^clojure.lang.IPersistentVector hooks))
+      hooks)))
 
 
 (defn wrap-with-hooks [compiled-schema-fn {:keys [pre post]}]
@@ -64,9 +72,13 @@
       (let [pre-hooks  (get-hooks pre data opts)
             post-hooks (get-hooks post data opts)]
         (cond-> vtx
-          pre-hooks  (as-> $ (reduce #(%2 %1) $ pre-hooks))
+          pre-hooks  (as-> $ (utils/iter-reduce (fn [vtx* hook-fn] (hook-fn vtx*))
+                                                $
+                                                pre-hooks))
           :always    (compiled-schema-fn data opts)
-          post-hooks (as-> $ (reduce #(%2 %1) $ post-hooks)))))))
+          post-hooks (as-> $ (utils/iter-reduce (fn [vtx* hook-fn] (hook-fn vtx*))
+                                                $
+                                                post-hooks)))))))
 
 
 (defn safe-compile-key [k ztx kfg]
@@ -92,17 +104,19 @@
 
         compiled-schema-fn
         (fn compiled-schema-fn [vtx data opts]
-          (loop [rs rulesets
-                 vtx* (assoc vtx :type (:type schema))]
-            (if (empty? rs)
-              vtx*
-              (let [{:as r, when-fn :when} (first rs)]
-                (if (or (nil? when-fn) (when-fn data))
-                  (recur (rest rs)
-                         (->> (:interpreters opts)
-                              (keep #(get r %))
-                              (reduce #(%2 %1 data opts) vtx*)))
-                  (recur (rest rs) vtx*))))))]
+          ;; Efficiently apply interpreters for each rule
+          (utils/iter-reduce (fn [vtx* rule]
+                               (let [when-fn (:when rule)
+                                     apply-rule? (or (nil? when-fn) (when-fn data))]
+                                 (if apply-rule?
+                                   (utils/iter-reduce (fn [vtx** interpreter-key]
+                                                        (if-let [interpreter (get rule interpreter-key)]
+                                                          (interpreter vtx** data opts)
+                                                          vtx**))
+                                                      vtx* (:interpreters opts))
+                                   vtx*)))
+                             (assoc vtx :type (:type schema))
+                             rulesets))]
 
     (wrap-with-hooks
       compiled-schema-fn

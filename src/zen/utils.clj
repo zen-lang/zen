@@ -161,6 +161,20 @@
       (name name-part))
     (merge (meta ns-part) (meta name-part))))
 
+(defmacro iter-reduce
+  [fn val iterable]
+  (let [[params & fn-body] (if (list? fn)
+                             (drop-while symbol? fn)
+                             [['acc 'val] (list fn 'acc 'val)])
+        [acc-arg el-arg] params
+        tagged-iter (vary-meta iterable assoc :tag `Iterable)]
+    `(let [iter# (.iterator ~tagged-iter)]
+       (loop [~acc-arg ~val]
+         (if (.hasNext iter#)
+           (let [~el-arg (.next iter#)]
+             (recur (do ~@fn-body)))
+           ~acc-arg)))))
+
 (defn string->md5 [s]
   (let [md5-digest (doto (java.security.MessageDigest/getInstance "MD5")
                      (.update (.getBytes s)))]
