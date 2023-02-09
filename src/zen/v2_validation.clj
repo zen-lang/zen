@@ -462,12 +462,27 @@ Probably safe to remove if no one relies on them"
                 ks)))))
 
 (defn is-exclusive? [group data]
-  (->> group
-       (filter #(->> (if (set? %) % #{%})
-                     (select-keys data)
-                     seq))
-       (bounded-count 2)
-       (> 2)))
+  (let [group-iter (.iterator ^Iterable group)]
+    (loop [count 0]
+      (if (> count 1)
+        false
+        (if (.hasNext group-iter)
+          (let [el (.next group-iter)]
+            (if (set? el)
+              (let [el-iter
+                    (.iterator ^Iterable el)
+
+                    any-from-set?
+                    (loop []
+                      (if (.hasNext el-iter)
+                        (let [v (.next el-iter)]
+                          (if (contains? data v)
+                            true
+                            (recur)))
+                        false))]
+                (recur (if any-from-set? (inc count) count)))
+              (recur (if (contains? data el) (inc count) count))))
+          true)))))
 
 (zen.schema/register-compile-key-interpreter!
  [:exclusive-keys ::validate]
