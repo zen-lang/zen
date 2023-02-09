@@ -175,6 +175,28 @@
              (recur (do ~@fn-body)))
            ~acc-arg)))))
 
+(defn set-diff [set1 set2]
+  (let [set1-transient
+        (transient set1)
+
+        set1-diffed-transient
+        (if (< (count set2) (count set1))
+          (iter-reduce (fn [set1* set2-el]
+                         (if (get set1* set2-el)
+                           (disj! set1* set2-el)
+                           set1*))
+                       set1-transient
+                       set2)
+          ;; We iterate over persistent set1 because transients are not
+          ;; ^java.lang.Iterable
+          (iter-reduce (fn [set1* set1-el]
+                         (if (get set2 set1-el)
+                           (disj! set1* set1-el)
+                           set1*))
+                       set1-transient
+                       set1))]
+    (persistent! set1-diffed-transient)))
+
 (defn string->md5 [s]
   (let [md5-digest (doto (java.security.MessageDigest/getInstance "MD5")
                      (.update (.getBytes s)))]

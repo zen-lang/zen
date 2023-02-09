@@ -397,13 +397,21 @@ Probably safe to remove if no one relies on them"
   (fn [_ ztx ks]
     (let [known-keys (set (keys ks))]
       (fn validate-keys [vtx data opts]
-        (let [data-keys    (set (keys data))
-              unknown-keys (set/difference data-keys known-keys)]
+        (let [data-keys (->> data
+                             (utils/iter-reduce (fn [keys-set data-entry]
+                                                  (conj! keys-set (nth data-entry 0)))
+                                                (transient #{}))
+                             (persistent!))
+              unknown-keys (utils/set-diff data-keys known-keys)]
           (update vtx
                   :unknown-keys
-                  into
-                  (map #(conj (:path vtx) %))
-                  unknown-keys))))))
+                  (fn [vtx-unk-keys]
+                    (let [path (:path vtx)]
+                      (->> unknown-keys
+                           (utils/iter-reduce (fn [vtx-unk-keys* unk-key]
+                                                (conj! vtx-unk-keys* (conj path unk-key)))
+                                              (transient vtx-unk-keys))
+                           (persistent!))))))))))
 
 (zen.schema/register-compile-key-interpreter!
   [:subset-of ::validate]
