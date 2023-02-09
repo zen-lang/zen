@@ -25,20 +25,22 @@
  [:keys ::ts]
  (fn [_ ztx ks]
    (fn [vtx data opts]
-     (println "COMPILE")
-      ;; (pp/pprint (:path vtx))
-      ;; (pp/pprint (:type vtx))
-      ;; (pp/pprint (:schema vtx))
-      ;;  (pp/pprint data)
-      ;; (pp/pprint (:zen.schema-test/ts vtx))
-     (if-let [s (or (when-let [nm (:zen/name data)]
+    ;; (println "COMPILE")
+    ;;  (println "path:")
+    ;;  (pp/pprint (:path vtx)) 
+    ;;  (println "type:")
+    ;;  (pp/pprint (:type vtx)) 
+    ;;  (println "schema:")
+    ;;  (pp/pprint (:schema vtx))
+    ;;  (println "data:")
+    ;;  (pp/pprint data)
+    ;;  (println "ts:")
+    ;;  (pp/pprint (:zen.schema-test/ts vtx))
+     (if-let [s (or (when-let [nm (:zen.fhir/type (:keys data))]
                       (str "type " (name nm) " = ")) 
                     (when (:confirms data)
                       (str
-                       (cond
-                         (= (last (:path vtx)) :every) ""
-                         :else (str (name (last (:path vtx))) ": "))
-                       (get {'zen/string "string"} (:type data))
+                      (get {'zen/string "string"} (:type data))
                        (cond
                          (= (first (set-to-string (:confirms data))) "Reference")
                          (str "Reference<" (str/join " | " (set-to-string (:refers (:zen.fhir/reference data)))) ">")
@@ -48,8 +50,7 @@
                                 (if (= (last (:path vtx)) :every) "" "; ")))))
 
                     (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
-                      (str (name (last (:path vtx))) ": "
-                           (if (= (get {'zen/string "string"} tp) nil)
+                      (str  (if (= (get {'zen/string "string"} tp) nil)
                              ""
                              (str (get {'zen/string "string"} tp)  "; "))))
                     (when (and (= (last (:path vtx)) :every) (= (last (:schema vtx)) 'zen/string))
@@ -62,16 +63,30 @@
  ::ts 
  (fn [ztx schema]
    (fn [vtx data opts] 
+    ;;  (println "PRE")
+    ;;  (println "path:")
+    ;;  (pp/pprint (:path vtx)) 
+    ;;  (println "type:")
+    ;;  (pp/pprint (:type vtx)) 
+    ;;  (println "schema:")
+    ;;  (pp/pprint (:schema vtx))
+    ;;  (println "data:")
+    ;;  (pp/pprint data)
+    ;;  (println "ts:")
+    ;;  (pp/pprint (:zen.schema-test/ts vtx))
      (cond 
+       (= (last (:path vtx)) :zen.fhir/type) vtx
+       (= (last (:schema vtx)) :values) (update vtx ::ts conj (str (name (last (:path vtx))) ":")) 
        (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
-       (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array<")))))
+       (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array<")
+       ))))
 
 (zen.schema/register-schema-post-process-hook!
  ::ts
  (fn [ztx schema]
    (fn [vtx data opts] 
      (cond
-       (= (last (:path vtx)) :keys) (update vtx ::ts conj "}")
+       (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
        (= (last (:schema vtx)) :every) (update vtx ::ts conj ">;")))))
 
 (sut/register-compile-key-interpreter!
@@ -106,7 +121,7 @@
          "Demographics and other administrative information about an individual or animal receiving care or other health-related services.",
          :zen/name hl7-fhir-r4-core.Patient/schema,
          :keys
-         {:_active {:confirms #{hl7-fhir-r4-core.Element/schema}},
+         {
           :address
           {:type zen/vector,
            :every
@@ -167,87 +182,18 @@
              :_type {:confirms #{hl7-fhir-r4-core.Element/schema}}},
             :require #{:other :type},
             :fhir/flags #{:SU :?!},
-            :zen/desc "Link to another patient resource that concerns the same actual person"}},
-          :active
-          {:confirms #{hl7-fhir-r4-core.boolean/schema},
-           :fhir/flags #{:SU :?!},
-           :zen/desc "Whether this patient's record is in active use"},
-          :communication
-          {:type zen/vector,
-           :every
-           {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
-            :type zen/map,
-            :keys
-            {:language
-             {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
-              :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.languages/value-set, :strength :preferred},
-              :zen/desc "The language which can be used to communicate with the patient about his or her health"},
-             :preferred {:confirms #{hl7-fhir-r4-core.boolean/schema}, :zen/desc "Language preference indicator"},
-             :_preferred {:confirms #{hl7-fhir-r4-core.Element/schema}}},
-            :require #{:language},
-            :zen/desc "A language which may be used to communicate with the patient about his or her health"}},
-          :identifier
-          {:type zen/vector,
-           :every
-           {:confirms #{hl7-fhir-r4-core.Identifier/schema}, :fhir/flags #{:SU}, :zen/desc "An identifier for this patient"}},
-          :telecom
-          {:type zen/vector,
-           :every
-           {:confirms #{hl7-fhir-r4-core.ContactPoint/schema},
-            :fhir/flags #{:SU},
-            :zen/desc "A contact detail for the individual"}},
-          :generalPractitioner
-          {:type zen/vector,
-           :every
-           {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
-            :zen.fhir/reference
-            {:refers
-             #{hl7-fhir-r4-core.PractitionerRole/schema
-               hl7-fhir-r4-core.Organization/schema
-               hl7-fhir-r4-core.Practitioner/schema}},
-            :zen/desc "Patient's nominated primary care provider"}},
-          :gender
-          {:confirms #{hl7-fhir-r4-core.code/schema},
-           :fhir/flags #{:SU},
-           :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.administrative-gender/value-set, :strength :required},
-           :zen/desc "male | female | other | unknown"},
-          :maritalStatus
-          {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
-           :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.marital-status/value-set, :strength :extensible},
-           :zen/desc "Marital (civil) status of a patient"},
-          :contact
-          {:type zen/vector,
-           :every
-           {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
-            :type zen/map,
-            :keys
-            {:relationship
-             {:type zen/vector,
-              :every
-              {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
-               :zen.fhir/value-set
-               {:symbol hl7-fhir-r4-core.value-set.patient-contactrelationship/value-set, :strength :extensible},
-               :zen/desc "The kind of relationship"}},
-             :name {:confirms #{hl7-fhir-r4-core.HumanName/schema}, :zen/desc "A name associated with the contact person"},
-             :telecom
-             {:type zen/vector,
-              :every {:confirms #{hl7-fhir-r4-core.ContactPoint/schema}, :zen/desc "A contact detail for the person"}},
-             :address {:confirms #{hl7-fhir-r4-core.Address/schema}, :zen/desc "Address for the contact person"},
-             :gender
-             {:confirms #{hl7-fhir-r4-core.code/schema},
-              :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.administrative-gender/value-set, :strength :required},
-              :zen/desc "male | female | other | unknown"},
-             :_gender {:confirms #{hl7-fhir-r4-core.Element/schema}},
-             :organization
-             {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
-              :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Organization/schema}},
-              :zen/desc "Organization that is associated with the contact"},
-             :period
-             {:confirms #{hl7-fhir-r4-core.Period/schema},
-              :zen/desc
-              "The period during which this contact person or organization is valid to be contacted relating to this patient"}},
-            :zen/desc "A contact party (e.g. guardian, partner, friend) for the patient"}}},
-         :zen.fhir/type "Patient"}})
+            :zen/desc "Link to another patient resource that concerns the same actual person"}} 
+          ;; :generalPractitioner
+          ;; {:type zen/vector,
+          ;;  :every
+          ;;  {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
+          ;;   :zen.fhir/reference
+          ;;   {:refers
+          ;;    #{hl7-fhir-r4-core.PractitionerRole/schema
+          ;;      hl7-fhir-r4-core.Organization/schema
+          ;;      hl7-fhir-r4-core.Practitioner/schema}} 
+          ;;   :zen/desc "Patient's nominated primary care provider"}} 
+         :zen.fhir/type "Patient"}}})
 
     (zen.core/load-ns ztx my-structs-ns)
 
@@ -294,7 +240,6 @@
                         {:interpreters [::ts]}))
   (str/join "" (::ts r))
   )
-
 
 (t/deftest ^:kaocha/pending custom-interpreter-test
   (t/testing "typescript type generation"
