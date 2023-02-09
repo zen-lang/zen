@@ -62,7 +62,7 @@ Probably safe to remove if no one relies on them"
 (defn props-pre-process-hook [ztx schema]
   (let [#_"FIXME: won't reeval proprs if they change in run-time"
         props (resolve-props ztx)]
-    (fn [vtx data opts]
+    (fn pre-process-props [vtx data opts]
       (validate-props vtx data props opts))))
 
 
@@ -106,7 +106,7 @@ Probably safe to remove if no one relies on them"
                           (:values schema)
                           (= (:validation-type schema) :open)
                           (= (:type schema) 'zen/any))]
-      (fn [vtx data opts]
+      (fn post-process-unknown-keys [vtx data opts]
         (when (map? data)
           (valtype-rule vtx data open-world?))))))
 
@@ -120,7 +120,7 @@ Probably safe to remove if no one relies on them"
   [:validation-type ::validate]
   (fn [_ ztx tp]
     (let [open-world? (= :open tp)]
-      (fn [vtx data opts] (valtype-rule vtx data open-world?)))))
+      (fn validate-validation-type [vtx data opts] (valtype-rule vtx data open-world?)))))
 
 
 (defmulti compile-type-check (fn [tp ztx] tp))
@@ -167,7 +167,7 @@ Probably safe to remove if no one relies on them"
 (defn type-fn [sym]
   (let [type-cfg (get types-cfg sym)
         type-pred (if (fn? type-cfg) type-cfg (:fn type-cfg))]
-    (fn [vtx data _]
+    (fn validate-type-sym [vtx data _]
       (let [pth-key (last (:path vtx))]
         (cond
           ;; TODO fix this when compile-opts are implemented
@@ -200,12 +200,12 @@ Probably safe to remove if no one relies on them"
 
 (defmethod compile-type-check :default
   [tp ztx]
-  (fn [vtx data opts]
+  (fn validate-type-default [vtx data opts]
     (add-err vtx :type {:message (format "No validate-type multimethod for '%s" tp)})))
 
 (defmethod compile-type-check 'zen/apply
   [tp ztx]
-  (fn [vtx data opts]
+  (fn validate-type-zen.apply [vtx data opts]
     (cond
       (not (list? data))
       (add-err vtx :type {:message (str "Expected fn call '(fn-name args-1 arg-2), got '"
@@ -248,7 +248,7 @@ Probably safe to remove if no one relies on them"
                       (cond-> {:when (get-cached ztx when false)}
                         (not-empty then) (assoc :then (get-cached ztx then false))))
                     cases))]
-      (fn [vtx data opts]
+      (fn validate-case [vtx data opts]
         (loop [[{wh :when th :then :as v} & rest] vs
                item-idx 0
                vtx* vtx
@@ -281,7 +281,7 @@ Probably safe to remove if no one relies on them"
   [:enum ::validate]
   (fn [_ ztx values]
     (let [values* (set (map :value values))]
-      (fn [vtx data opts]
+      (fn validate-enum [vtx data opts]
         (if-not (contains? values* data)
           (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
           vtx)))))
@@ -289,7 +289,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:match ::validate]
   (fn [_ ztx pattern]
-    (fn match-fn [vtx data opts]
+    (fn validate-match [vtx data opts]
       (let [errs (zen.match/match data pattern)]
         (if-not (empty? errs)
           (->> errs
@@ -305,7 +305,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:scale ::validate]
   (fn [_ ztx scale]
-    (fn [vtx num opts]
+    (fn validate-scale [vtx num opts]
       (let [dc (bigdec num)
             num-scale (.scale dc)]
         (if (<= num-scale scale)
@@ -316,7 +316,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:precision ::validate]
   (fn [_ ztx precision]
-    (fn [vtx num opts]
+    (fn validate-precision [vtx num opts]
       (let [dc (bigdec num)
             num-precision (.precision dc)
             ;; NOTE: fraction will be used when we add composite checking scale + precision
@@ -329,7 +329,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:min ::validate]
   (fn [_ ztx min]
-    (fn [vtx data opts]
+    (fn validate-min [vtx data opts]
       (if (< data min)
         (add-err vtx :min {:message (str "Expected >= " min ", got " data)})
         vtx))))
@@ -337,7 +337,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:max ::validate]
   (fn [_ ztx max]
-    (fn [vtx data opts]
+    (fn validate-max [vtx data opts]
       (if (> data max)
         (add-err vtx :max {:message (str "Expected <= " max ", got " data)})
         vtx))))
@@ -345,7 +345,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:minLength ::validate]
   (fn [_ ztx min-len]
-    (fn [vtx data opts]
+    (fn validate-minLength [vtx data opts]
       (if (< (count data) min-len)
         (add-err vtx
                  :minLength
@@ -355,7 +355,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:maxLength ::validate]
   (fn [_ ztx max-len]
-    (fn [vtx data opts]
+    (fn validate-maxLength [vtx data opts]
       (if (> (count data) max-len)
         (add-err vtx
                  :maxLength
@@ -365,7 +365,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:minItems ::validate]
   (fn [_ ztx items-count]
-    (fn [vtx data opts]
+    (fn validate-minItems [vtx data opts]
       (if (< (count data) items-count)
         (add-err vtx
                  :minItems
@@ -375,7 +375,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:maxItems ::validate]
   (fn [_ ztx items-count]
-    (fn [vtx data opts]
+    (fn validate-maxItems [vtx data opts]
       (if (> (count data) items-count)
         (add-err vtx
                  :maxItems
@@ -385,7 +385,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:const ::validate]
   (fn [_ ztx {:keys [value]}]
-    (fn [vtx data opts]
+    (fn validate-const [vtx data opts]
       (if (not= value data)
         (add-err vtx :const
                  {:message (str "Expected '" value "', got '" data "'")
@@ -396,7 +396,7 @@ Probably safe to remove if no one relies on them"
   [:keys ::validate]
   (fn [_ ztx ks]
     (let [known-keys (set (keys ks))]
-      (fn keys-sch [vtx data opts]
+      (fn validate-keys [vtx data opts]
         (let [data-keys    (set (keys data))
               unknown-keys (set/difference data-keys known-keys)]
           (update vtx
@@ -408,7 +408,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:subset-of ::validate]
   (fn [_ ztx superset]
-    (fn [vtx data opts]
+    (fn validate-subset-of [vtx data opts]
       (if-not (clojure.set/subset? data superset)
         (add-err vtx :subset-of {:type "set"})
         vtx))))
@@ -416,7 +416,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:superset-of ::validate]
   (fn [_ ztx subset]
-    (fn [vtx data opts]
+    (fn validate-superset-of [vtx data opts]
       (if-not (clojure.set/subset? subset data)
         (add-err vtx :superset-of {:type "set"})
         vtx))))
@@ -424,7 +424,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:regex ::validate]
   (fn [_ ztx regex]
-    (fn [vtx data opts]
+    (fn validate-regex [vtx data opts]
       (if (not (re-find (re-pattern regex) data))
         (add-err vtx :regex
                  {:message (str "Expected match /" (str regex) "/, got \"" data "\"")})
@@ -440,7 +440,7 @@ Probably safe to remove if no one relies on them"
                 (add-err vtx :require {:type "map.require"
                                        :message (str "one of keys " s " is required")})
                 vtx)))]
-      (fn [vtx data opts]
+      (fn validate-require [vtx data opts]
         (reduce (fn [vtx* k]
                   (cond
                     (set? k) (one-of-fn vtx* data k)
@@ -479,7 +479,7 @@ Probably safe to remove if no one relies on them"
          (->> groups
               (map #(partial err-fn %))
               (apply comp))]
-     (fn [vtx data opts]
+     (fn validate-exclusive-keys [vtx data opts]
        (-> (list vtx data)
            comp-fn
            (nth 0))))))
@@ -489,7 +489,7 @@ Probably safe to remove if no one relies on them"
     (qualified-ident? schema-key)
     (let [{:keys [zen/tags] :as sch} (utils/get-symbol ztx (symbol schema-key))] #_"NOTE: `:keys [zen/tags]` does it work? Is it used?"
       {:rule
-       (fn [vtx data opts]
+       (fn default-sch [vtx data opts]
          (cond
            (contains? tags 'zen/schema-fx)
            (add-fx vtx (:zen/name sch)
@@ -499,7 +499,7 @@ Probably safe to remove if no one relies on them"
 
            :else vtx))})
 
-    :else {:rule (fn [vtx data opts] vtx)}))
+    :else {:rule (fn default-sch [vtx data opts] vtx)}))
 
 (zen.schema/register-compile-key-interpreter!
  [:tags ::validate]
@@ -507,7 +507,7 @@ Probably safe to remove if no one relies on them"
    ;; currently :tags implements three usecases:
    ;; tags check where schema name is string or symbol
    ;; and zen.apply tags check (list notation)
-   (fn [vtx data opts]
+   (fn validate-tags [vtx data opts]
      (let [[sym type-err]
            (cond
              (list? data) [(nth data 0) "apply.fn-tag"]
@@ -592,7 +592,7 @@ Probably safe to remove if no one relies on them"
               (map (fn [[slice-name _]]
                      [slice-name []]))
               (into {}))]
-     (fn slicing-sch [vtx data opts]
+     (fn validate-slicing [vtx data opts]
        (->> data
             (map-indexed vector)
             (group-by (fn [indexed-el]
@@ -604,7 +604,7 @@ Probably safe to remove if no one relies on them"
 (zen.schema/register-compile-key-interpreter!
   [:fail ::validate]
   (fn [_ ztx err-msg]
-    (fn fail-fn [vtx data opts]
+    (fn validate-fail [vtx data opts]
       (add-err vtx :fail {:message err-msg}))))
 
 (zen.schema/register-compile-key-interpreter!
@@ -619,7 +619,7 @@ Probably safe to remove if no one relies on them"
                            (keyword (name sch-name))
                            (keyword sch-name))
                          (:for sch)]))))]
-    (fn key-schema-fn [vtx data opts]
+     (fn validate-key-schema [vtx data opts]
       (let [correct-keys
             (into #{}
                   (keep (fn [[sch-key for]]

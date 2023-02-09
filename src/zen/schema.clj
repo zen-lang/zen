@@ -48,8 +48,8 @@
 
 (defn get-interpreter-hook-fn [hooks-map data opts interpreter]
   (when-let [hook-fn (get hooks-map interpreter)]
-    (fn [vtx] (or (hook-fn vtx data opts)
-                  vtx))))
+    (fn interpreter-hook [vtx] (or (hook-fn vtx data opts)
+                                   vtx))))
 
 
 (defn get-hooks [hooks-map data opts]
@@ -129,7 +129,7 @@
   (let [hash* (hash schema)
         v-promise (get-in @ztx [:zen.v2-validation/compiled-schemas hash*])]
     (if (some? v-promise) #_"NOTE: race condition will result in double compilation, but this shouldn't crash anything"
-      (fn [vtx data opts]
+      (fn cached-schema-fn [vtx data opts]
         ;; TODO add to vtx :warning
         (let [v (deref v-promise
                        (:compile-schema-timeout opts 60000)
@@ -203,7 +203,7 @@
                          (map (fn [[k sch]]
                                 [k (get-cached ztx sch false)]))
                          (into {}))]
-      (fn [vtx data opts]
+      (fn navigate-keys [vtx data opts]
         (loop [data (seq data)
                vtx* vtx]
           (if (empty? data)
@@ -221,7 +221,7 @@
  [:values ::navigate]
  (fn [_ ztx sch]
    (let [v (get-cached ztx sch false)]
-     (fn [vtx data opts]
+     (fn navigate-values [vtx data opts]
        (reduce-kv (fn [vtx* key value]
                     (let [node-visited?
                           (when-let [pth (get (:visited vtx*) (validation.utils/cur-path vtx* [key]))]
@@ -242,7 +242,7 @@
  [:every ::navigate]
  (fn [_ ztx sch]
    (let [v (get-cached ztx sch false)]
-     (fn [vtx data opts]
+     (fn navigate-every [vtx data opts]
        (let [data*
              (cond
                (seq (:indices opts))
@@ -274,7 +274,7 @@
           (->> ks
                (map compile-confirms)
                doall)]
-    (fn confirms-sch [vtx data opts]
+    (fn navigate-confirms [vtx data opts]
       (loop [comp-fns comp-fns
              vtx*     vtx]
         (if (empty? comp-fns)
@@ -301,7 +301,7 @@
 (register-compile-key-interpreter!
  [:schema-key ::navigate]
  (fn [_ ztx {sk :key sk-ns :ns sk-tags :tags}]
-  (fn [vtx data opts]
+   (fn navigate-schema-key [vtx data opts]
     (if-let [sch-nm (get data sk)]
       (let [sch-symbol               (if sk-ns (symbol sk-ns (name sch-nm)) (symbol sch-nm))
             {tags :zen/tags :as sch} (utils/get-symbol ztx sch-symbol)]
@@ -333,7 +333,7 @@
 (register-compile-key-interpreter!
  [:schema-index ::navigate]
  (fn [_ ztx {si :index si-ns :ns}]
-   (fn [vtx data opts]
+   (fn navigate-schema-index [vtx data opts]
      (if-let [sch-nm (or (get data si) (nth data si))]
        (let [sch-symbol (if si-ns (symbol si-ns (name sch-nm)) sch-nm)
              sch        (utils/get-symbol ztx sch-symbol)]
@@ -358,7 +358,7 @@
    (let [schemas (doall
                   (map (fn [[index v]] [index (get-cached ztx v false)])
                        cfg))]
-     (fn [vtx data opts]
+     (fn navigate-nth [vtx data opts]
        (reduce (fn [vtx* [index v]]
                  (if-let [nth-el (and (< index (count data))
                                       (nth data index))]
@@ -373,7 +373,7 @@
 (register-compile-key-interpreter!
  [:keyname-schemas ::navigate]
  (fn [_ ztx {:keys [tags]}]
-   (fn [vtx data opts]
+   (fn navigate-keyname-schemas [vtx data opts]
      (let [rule-fn
            (fn [vtx* [schema-key data*]]
              (if-let [sch (and (qualified-ident? schema-key) (utils/get-symbol ztx (symbol schema-key)))]
@@ -392,7 +392,7 @@
  [:key ::navigate]
  (fn [_ ztx sch]
    (let [v (get-cached ztx sch false)]
-     (fn [vtx data opts]
+     (fn navigate-key [vtx data opts]
        (reduce (fn [vtx* [k _]]
                  (let [node-visited?
                        (when-let [pth (get (:visited vtx*)
@@ -423,7 +423,7 @@
                                     (keyword sch-name))
                          :for?    (:for sch)
                          :v       (get-cached ztx sch false)}))))]
-    (fn key-schema-fn [vtx data opts]
+    (fn navigate-key-schema [vtx data opts]
       (let [key-rules
             (into {}
                   (keep (fn [{:keys [sch-key for? v]}]
