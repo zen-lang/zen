@@ -7,6 +7,7 @@
 
 (defmethod zen/op 'my/log
   [ztx cfg {ev :ev params :params} & [session]]
+  (zen/set-state ztx :test/log params)
   (println :log ev params))
 
 (defmethod zen/op
@@ -29,6 +30,9 @@
          event
          {:zen/tags #{zen/event}}
 
+         ivent
+         {:zen/tags #{zen/event}}
+
          react
          {:zen/tags #{zen/op}}
 
@@ -39,13 +43,12 @@
 
          inline-sub
          {:zen/tags #{zen/sub}
-          :events #{event}}
+          :events #{event ivent}}
 
          log
          {:zen/tags #{zen/sub}
-          :events #{zen/all-events}}
-
-         })
+          :events #{zen/all-events}
+          :ignore-events #{ivent}}})
 
   (t/is (empty? (zen/errors ztx)))
 
@@ -60,6 +63,13 @@
   (zen/pub ztx 'annonimous {})
 
   (t/is (= {:hello 1} (zen/get-state ztx :test/inline-res)))
+  (t/is (= {:hello 1} (zen/get-state ztx :test/react-res)))
+
+  (zen/pub ztx 'annonimous nil)
+
+  (zen/pub ztx 'my/ivent {:ups 1})
+  (t/is (nil? (zen/get-state ztx :test/log)))
+  (t/is (= {:ups 1} (zen/get-state ztx :test/inline-res)))
   (t/is (= {:hello 1} (zen/get-state ztx :test/react-res)))
 
   )

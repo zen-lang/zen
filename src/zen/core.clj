@@ -102,8 +102,12 @@
   (when-let [subs-names (seq (into (or (get-index ztx 'zen/sub event-name) #{}) (get-index ztx 'zen/sub 'zen/all-events)))]
     (let [ev {:ev event-name :params params}]
       (doseq [sub-n subs-names]
-        (let [sub (get-symbol ztx sub-n)]
-          (op-call ztx (or (:op sub) sub-n) ev session))))))
+        (let [sub (get-symbol ztx sub-n)
+              op (if-let [op-name (:op sub)]
+                   (get-symbol ztx op-name)
+                   sub)]
+          (when-not (contains? (:ignore-events op) event-name)
+            (op-call ztx (or (:op sub) sub-n) ev session)))))))
 
 ;; TODO: see cognitec lib for errors tags
 (defn error

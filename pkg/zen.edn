@@ -456,6 +456,7 @@
   :index-key :events
   :type zen/map
   :keys {:events {:type zen/set :every {:type zen/symbol :tags #{event}}}
+         :ignore-events {:type zen/set :every {:type zen/symbol :tags #{event}}}
          :op {:type zen/symbol :tags #{op}}}}
 
  op
