@@ -278,7 +278,7 @@
 
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
-    (if-let [{:keys [^java.io.File file zen-path]} (find-file&path ctx pth)]
+    (if-let [{:keys [file zen-path]} (find-file&path ctx pth)]
       (try
         (let [content (slurp file)
               env (:env @ctx)
