@@ -116,7 +116,7 @@
     (if open-world?
       (-> vtx
           (update :unknown-keys filter-allowed)
-          (update :visited into (cur-keyset vtx data)))
+          (update :visited utils/iter-into (cur-keyset vtx data)))
       (update vtx :unknown-keys set-unknown))))
 
 (defn rule-priority [k]
@@ -380,8 +380,8 @@
                         (let [err-msg
                               (or (:message err)
                                   (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))]
-                          (apply add-err (into [acc :match {:message err-msg :type "match"}]
-                                               (:path err)))))
+                          (apply add-err (utils/iter-into [acc :match {:message err-msg :type "match"}]
+                                                          (:path err)))))
                       vtx))
          vtx)))})
 
@@ -489,7 +489,7 @@
         (->> ks
              (map (fn [[k sch]]
                     [k (get-cached ztx sch false)]))
-             (into {}))]
+             (utils/iter-into {}))]
     {:when map?
      :rule
 
@@ -498,7 +498,7 @@
               unknown (transient [])
               vtx* vtx]
          (if (empty? data)
-           (update vtx* :unknown-keys into (persistent! unknown))
+           (update vtx* :unknown-keys utils/iter-into (persistent! unknown))
            (let [[k v] (first data)]
              (if (not (contains? key-rules k))
                (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
@@ -879,7 +879,7 @@
         (->> slices
              (map (fn [[slice-name {:keys [schema]}]]
                     [slice-name (get-cached ztx schema false)]))
-             (into {}))
+             (utils/iter-into {}))
 
         rest-fn
         (when (not-empty rest-schema)
@@ -891,7 +891,7 @@
         (->> slices
              (map (fn [[slice-name _]]
                     [slice-name []]))
-             (into {}))]
+             (utils/iter-into {}))]
 
     {:when sequential?
      :rule
@@ -938,7 +938,7 @@
               unknown (transient [])
               vtx* vtx]
          (if (empty? data)
-           (update vtx* :unknown-keys into (persistent! unknown))
+           (update vtx* :unknown-keys utils/iter-into (persistent! unknown))
            (let [[k v] (first data)]
              (if (not (contains? key-rules k))
                (recur (rest data) (conj! unknown (conj (:path vtx) k)) vtx*)
