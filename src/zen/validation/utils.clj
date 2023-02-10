@@ -1,6 +1,7 @@
 (ns zen.validation.utils
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [zen.utils :as utils]))
 
 (defn pretty-type [x]
   (if-let [tp (type x)]
@@ -46,36 +47,52 @@
    :unknown-keys #{}
    :effects []})
 
-(defn node-vtx
+(defn node-vtx-transient
   ([vtx sch-path]
    (-> (transient vtx)
        (assoc! :errors [])
-       (assoc! :schema (into (:schema vtx) sch-path))
+       (assoc! :schema (into (:schema vtx) sch-path))))
+  ([vtx sch-path vtx-path]
+   (-> vtx
+       (node-vtx-transient sch-path)
+       (assoc! :path vtx-path))))
+
+(defn node-vtx
+  ([vtx sch-path]
+   (-> vtx
+       (node-vtx-transient sch-path)
        (persistent!)))
   ([vtx sch-path path]
-   (-> (transient vtx)
-       (assoc! :errors [])
-       (assoc! :path (into (:path vtx) path))
-       (assoc! :schema (into (:schema vtx) sch-path))
+   (-> vtx
+       (node-vtx-transient sch-path (into (:path vtx) path))
        (persistent!))))
 
-(defn node-vtx&log [vtx sch-path path & [rule-name]]
-  (let [vtx*
-        (-> (transient vtx)
-            (assoc! :errors [])
-            (assoc! :path (into (:path vtx) path))
-            (assoc! :unknown-keys (:unknown-keys vtx))
-            (assoc! :schema (into (:schema vtx) sch-path))
-            (assoc! :visited (conj (:visited vtx) (into (:path vtx) path)))
-            (persistent!))]
-    (cond-> vtx*
-      rule-name
-      (update-in [:visited-by (into (:path vtx) path)] (fnil conj #{}) rule-name))))
+(defn node-vtx&log-transient
+  [vtx sch-path vtx-path]
+  (-> vtx
+      (node-vtx-transient sch-path vtx-path)
+      (assoc! :visited (conj (:visited vtx) vtx-path))))
+
+(defn node-vtx&log
+  ([vtx sch-path path]
+   (-> vtx
+       (node-vtx&log-transient sch-path (into (:path vtx) path))
+       (persistent!)))
+
+  ([vtx sch-path path rule-name]
+   (let [new-vtx-path (into (:path vtx) path)]
+     (-> vtx
+         (node-vtx&log-transient sch-path new-vtx-path)
+         (persistent!)
+         (update-in [:visited-by new-vtx-path] (fnil conj #{}) rule-name)))))
 
 (defn cur-path [vtx path]
   (into (:path vtx) path))
 
-(defn merge-vtx [*node-vtx global-vtx]
-  (-> global-vtx
-      (update :errors into (:errors *node-vtx))
-      (merge (dissoc *node-vtx :path :schema :errors))))
+(defn merge-vtx [node-vtx global-vtx]
+  (utils/iter-reduce (fn [merged-vtx node-vtx-entry]
+                       (assoc merged-vtx
+                              (nth node-vtx-entry 0)
+                              (nth node-vtx-entry 1)))
+                     (update global-vtx :errors into (:errors node-vtx))
+                     (dissoc node-vtx :path :schema :errors)))

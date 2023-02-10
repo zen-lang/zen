@@ -152,6 +152,20 @@
             aliases)
       tagged-symbols)))
 
+(defmacro iter-reduce
+  [fn val iterable]
+  (let [[params & fn-body] (if (list? fn)
+                             (drop-while symbol? fn)
+                             [['acc 'val] (list fn 'acc 'val)])
+        [acc-arg el-arg] params
+        tagged-iter (vary-meta iterable assoc :tag `Iterable)]
+    `(let [iter# (.iterator ~tagged-iter)]
+       (loop [~acc-arg ~val]
+         (if (.hasNext iter#)
+           (let [~el-arg (.next iter#)]
+             (recur (do ~@fn-body)))
+           ~acc-arg)))))
+
 (defn mk-symbol [ns-part name-part]
   (with-meta
     (symbol
