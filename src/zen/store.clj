@@ -237,7 +237,7 @@
 
 (defn find-file&path [ctx pth]
   (or (when-let [resource-file (io/resource pth)]
-        {:file (io/file resource-file)})
+        {:file resource-file})
       (when-let [zen-path (find-path (concat (mapcat expand-package-path (:package-paths @ctx))
                                              (:paths @ctx)
                                              (map unzip-to-cache-dir (:zip-paths @ctx)))
