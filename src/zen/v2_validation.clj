@@ -78,14 +78,17 @@
 (defmulti compile-type-check (fn [tp ztx] tp))
 
 (defn validate-props [vtx data props opts]
-  (reduce (fn [vtx* prop]
-            (if-let [prop-value (get data prop)]
-              (-> (node-vtx&log vtx* [:property prop] [prop])
-                  ((get props prop) prop-value opts)
-                  (merge-vtx vtx*))
-              vtx*))
-          vtx
-          (keys props)))
+  (if props ;; props is clojure map
+    (utils/iter-reduce (fn [vtx* prop-entry]
+                         (let [prop (nth prop-entry 0)]
+                           (if-let [prop-value (get data prop)]
+                             (-> (node-vtx&log vtx* [:property prop] [prop])
+                                 ((get props prop) prop-value opts)
+                                 (merge-vtx vtx*))
+                             vtx*)))
+                       vtx
+                       props)
+    vtx))
 
 (defn cur-keyset [vtx data]
   (->> (keys data)
