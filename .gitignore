@@ -5,3 +5,6 @@ target
 .env
 /.clj-kondo
 /.calva
+
+# pulled dependencies for zen-package used for benchmark fixtures
+/pkg/zen-pkg/zen-packages/
