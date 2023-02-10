@@ -436,22 +436,22 @@
   [_ ztx min-len]
   {:when string?
    :rule
-   (fn [vtx data opts]
-     (if (< (count data) min-len)
+   (fn [vtx ^String data opts]
+     (if (< (.length data) min-len)
        (add-err vtx
                 :minLength
-                {:message (str "Expected length >= " min-len ", got " (count data))})
+                {:message (str "Expected length >= " min-len ", got " (.length data))})
        vtx))})
 
 (defmethod compile-key :maxLength
   [_ ztx max-len]
   {:when string?
    :rule
-   (fn [vtx data opts]
-     (if (> (count data) max-len)
+   (fn [vtx ^String data opts]
+     (if (> (.length data) max-len)
        (add-err vtx
                 :maxLength
-                {:message (str "Expected length <= " max-len ", got " (count data))})
+                {:message (str "Expected length <= " max-len ", got " (.length data))})
        vtx))})
 
 (defmethod compile-key :minItems
