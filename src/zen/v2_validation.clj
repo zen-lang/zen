@@ -750,7 +750,8 @@
 (defn is-exclusive? [group data]
   (let [group-iter (.iterator ^Iterable group)]
     (loop [count 0]
-      (if (> count 1)
+      ;; `(= 2 count)` is slightly more performant than `(> count 1)`
+      (if (= 2 count)
         false
         (if (.hasNext group-iter)
           (let [el (.next group-iter)]
@@ -791,7 +792,8 @@
              (map #(partial err-fn %))
              (apply comp))]
 
-    {:rule
+    {:when map?
+     :rule
      (fn [vtx data opts]
        (-> (list vtx data)
            comp-fn
