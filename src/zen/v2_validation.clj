@@ -260,7 +260,7 @@
       (let [pth-key (peek (:path vtx))]
         (cond
           ;; TODO fix this when compile-opts are implemented
-          (get #{:zen/tags :zen/file :zen/desc :zen/name} pth-key) vtx
+          (get #{:zen/tags :zen/file :zen/desc :zen/name :zen/zen-path} pth-key) vtx
 
           (type-pred data) vtx
 
