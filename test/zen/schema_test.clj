@@ -21,6 +21,9 @@
                (str/replace (namespace item) #"hl7-fhir-r4-core." "")))))
    [] value))
 
+(defn get-desc [data]
+  (if (:zen/desc data) (str " /* " (:zen/desc data) " */ ") ""))
+
 (sut/register-compile-key-interpreter!
  [:keys ::ts]
  (fn [_ ztx ks]
@@ -37,7 +40,7 @@
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
       (if-let [s (or (when-let [nm (:zen.fhir/type data)]
-                      (str "type " (name nm) " = ")) 
+                      (str (get-desc data) "type " (name nm) " = ")) 
                     (when (:confirms data)
                       (str
                       (get {'zen/string "string"} (:type data))
@@ -75,7 +78,7 @@
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
      (cond 
        (= (last (:path vtx)) :zen.fhir/type) vtx
-       (= (last (:schema vtx)) :values) (update vtx ::ts conj (str (name (last (:path vtx))) ":")) 
+       (= (last (:schema vtx)) :values) (update vtx ::ts conj (get-desc data) (str (name (last (:path vtx))) ":")) 
        (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
        (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array<")
        ))))
@@ -84,17 +87,17 @@
  ::ts
  (fn [ztx schema]
    (fn [vtx data opts] 
-      (println "POST")
-     (println "path:")
-     (pp/pprint (:path vtx)) 
-     (println "type:")
-     (pp/pprint (:type vtx)) 
-     (println "schema:")
-     (pp/pprint (:schema vtx))
-     (println "data:")
-     (pp/pprint data)
-     (println "ts:")
-     (pp/pprint (:zen.schema-test/ts vtx))
+    ;;   (println "POST")
+    ;;  (println "path:")
+    ;;  (pp/pprint (:path vtx)) 
+    ;;  (println "type:")
+    ;;  (pp/pprint (:type vtx)) 
+    ;;  (println "schema:")
+    ;;  (pp/pprint (:schema vtx))
+    ;;  (println "data:")
+    ;;  (pp/pprint data)
+    ;;  (println "ts:")
+    ;;  (pp/pprint (:zen.schema-test/ts vtx))
      (cond
        (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
        (= (last (:schema vtx)) :every) (update vtx ::ts conj ">")
@@ -194,7 +197,8 @@
              #{hl7-fhir-r4-core.PractitionerRole/schema
                hl7-fhir-r4-core.Organization/schema
                hl7-fhir-r4-core.Practitioner/schema}}
-            :zen/desc "Patient's nominated primary care provider"}}}
+            :zen/desc "Patient's nominated primary care provider"}}
+          }
          :zen.fhir/type "Patient"}})
 
     (zen.core/load-ns ztx my-structs-ns)
