@@ -59,7 +59,7 @@
                                        (= (:type data) 'zen/number)
                                        (= (:type data) 'zen/boolean))
                                    (:type data))]
-                      (str (name tp)))
+                      (name tp))
                     (when (and (= (last (:path vtx)) :every) (= (last (:schema vtx)) 'zen/string))
                       "string; "))]
        (update vtx ::ts conj s)
@@ -71,21 +71,25 @@
    (fn [vtx data opts]
     ;;  (println "PRE")
     ;;  (println "path:")
-    ;;  (pp/pprint (:path vtx)) 
+    ;;  (pp/pprint (:path vtx))
     ;;  (println "type:")
-    ;;  (pp/pprint (:type vtx)) 
+    ;;  (pp/pprint (:type vtx))
     ;;  (println "schema:")
     ;;  (pp/pprint (:schema vtx))
     ;;  (println "data:")
     ;;  (println data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
+
+     (println (::require vtx))
+
      (cond
+       (= (last (:path vtx)) :require) (update vtx ::require conj data)
        (= (last (:path vtx)) :zen.fhir/type) vtx
        (= (last (:schema vtx)) :enum)
        (update vtx ::ts conj (str  (str/join " | " (map (fn [item] (str "'" (:value item) "'")) data))))
        (= (last (:schema vtx)) :values)
-       (update vtx ::ts conj (get-desc data) (str (name (last (:path vtx))) ":"))
+       (update vtx ::ts conj (get-desc data)  (str (name (last (:path vtx))) (when-not (contains? (first (::require vtx)) (last (:path vtx))) "?") ":"))
        (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
        (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array<")))))
 
@@ -93,17 +97,18 @@
  ::ts
  (fn [ztx schema]
    (fn [vtx data opts]
-     (println "POST")
-     (println "path:")
-     (pp/pprint (:path vtx))
-     (println "type:")
-     (pp/pprint (:type vtx))
-     (println "schema:")
-     (pp/pprint (:schema vtx))
-     (println "data:")
-     (pp/pprint data)
-     (println "ts:")
-     (pp/pprint (:zen.schema-test/ts vtx))
+    ;;  (println "POST")
+    ;;  (println "path:")
+    ;;  (pp/pprint (:path vtx))
+    ;;  (println "type:")
+    ;;  (pp/pprint (:type vtx))
+    ;;  (println "schema:")
+    ;;  (pp/pprint (:schema vtx))
+    ;;  (println "data:")
+    ;;  (pp/pprint data)
+    ;;  (println "ts:")
+    ;;  (pp/pprint (:zen.schema-test/ts vtx))
+
 
      (cond
        (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
@@ -220,7 +225,8 @@
 
     (def r
       (sut/apply-schema ztx
-                        {::ts []}
+                        {::ts []
+                         ::require []}
                         (zen.core/get-symbol ztx 'zen/schema)
                         (zen.core/get-symbol ztx 'my-sturcts/User)
                         {:interpreters [::ts]}))
@@ -281,6 +287,7 @@
                   "Endpoint"
                   "Location"
                   "Narrative"
+                  "Appointment"
                   "Meta"
                   "Extension"
                   "HealthcareService"])
@@ -412,7 +419,7 @@
                    :email "bar@baz"
                    :active true
                    :name   [{:family "None"
-                             :given  ["foo"]}]})))
+                             :given  ["foo"]}]})
 
 
 (t/deftest ^:kaocha/pending dynamic-confirms-cache-reset-test
