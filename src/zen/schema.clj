@@ -4,15 +4,6 @@
             [clojure.set]))
 
 
-(defn rule-priority [k]
-  (cond
-    (= k :keys) 0
-    (= k :key) 10
-    (= k :values) 1
-    (= k :validation-type) 1000
-    :else 100))
-
-
 (defmulti compile-key (fn [k ztx kfg] k))
 
 
@@ -97,10 +88,8 @@
 
 (defn compile-schema [ztx schema]
   (let [rulesets (->> schema
-                      (keep (fn [[k v]]
-                              (-> (safe-compile-key k ztx v)
-                                  (assoc ::priority (rule-priority k)))))
-                      (sort-by ::priority))
+                      (keep (fn [[k v]] (safe-compile-key k ztx v)))
+                      (sort-by #(:priority % 100)))
 
         compiled-schema-fn
         (fn compiled-schema-fn [vtx data opts]
@@ -163,12 +152,12 @@
     (compiled-schema-fn vtx data opts)))
 
 
-(defmethod compile-key :keys            [_ _ _] {:when map?})
-(defmethod compile-key :key             [_ _ _] {:when map?})
+(defmethod compile-key :keys            [_ _ _] {:when map? :priority 0})
+(defmethod compile-key :key             [_ _ _] {:when map? :priority 10})
 (defmethod compile-key :exclusive-keys  [_ _ _] {:when map?})
-(defmethod compile-key :validation-type [_ _ _] {:when map?})
+(defmethod compile-key :validation-type [_ _ _] {:when map? :priority 1000})
 (defmethod compile-key :require         [_ _ _] {:when map?})
-(defmethod compile-key :values          [_ _ _] {:when map?})
+(defmethod compile-key :values          [_ _ _] {:when map? :priority 1})
 (defmethod compile-key :schema-key      [_ _ _] {:when map?})
 (defmethod compile-key :keyname-schemas [_ _ _] {:when map?})
 (defmethod compile-key :key-schema      [_ _ _] {:when map?})
