@@ -7,22 +7,45 @@
             [zen.package]
             [clojure.pprint :as pp]))
 
-(defn set-to-string [value]
-  (reduce
-   (fn [acc item]
-     (println item)
-     (if (set? item)
-       (set-to-string item)
-       (if
-        (keyword? item)
-         (conj acc
-               (str/replace (name item) #"hl7-fhir-r4-core." ""))
-         (conj acc
-               (str/replace (namespace item) #"hl7-fhir-r4-core." "")))))
-   [] value))
+;; (defn set-to-string [value]
+;;   (reduce
+;;    (fn [acc item]
+;;      (println item)
+;;      (if (set? item)
+;;        (set-to-string item)
+;;        (if
+;;         (keyword? item)
+;;          (conj acc
+;;                (str/replace (name item) #"hl7-fhir-r4-core." ""))
+;;          (conj acc
+;;                (str/replace (namespace item) #"hl7-fhir-r4-core." "")))))
+;;    [] value))
 
-(defn get-desc [data]
-  (if (:zen/desc data) (str " /* " (:zen/desc data) " */ ") ""))
+(defn set-to-string [value]
+  (reduce (fn [acc item]
+            (cond
+              (set? item) (set-to-string item)
+              (keyword? item) (conj acc
+                                    (str/replace (name item) #"hl7-fhir-r4-core." ""))
+              :else (conj acc
+                          (str/replace (namespace item) #"hl7-fhir-r4-core." ""))))
+          [] value))
+
+(defn get-desc [{desc :zen/desc}]
+  (when desc
+    (str "/* " desc " */\n")))
+
+(defn get-not-required-filed-sign [vtx]
+  (when-not (contains? (get
+                        (::require vtx)
+                        (if (= (count (pop  (pop (:path vtx)))) 0)
+                          "root"
+                          (str/join "." (pop (pop (:path vtx)))))) (last (:path vtx))) "?"))
+
+(defn exclusive-keys-child? [vtx]
+  (and (> (count (::exclusive-keys vtx)) 0) (> (count (:path vtx)) 1) 
+              (or (contains? (::exclusive-keys vtx) (str/join "." (pop (pop (:path vtx))))) 
+                  (contains? (::exclusive-keys vtx) (str/join "." (pop (:path vtx)))))))
 
 (sut/register-compile-key-interpreter!
  [:keys ::ts]
@@ -41,10 +64,11 @@
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
      (if-let [s (or (when-let [nm (:zen.fhir/type data)]
                       (str (get-desc data) "interface " (name nm) " "))
+                    (when (:exclusive-keys data) (str/join " | " (set-to-string (:exclusive-keys data))))
+                    (when (exclusive-keys-child? vtx) "")
                     (when (:confirms data)
-                      (str
-                       (get {'zen/string "string"} (:type data))
-                       (cond
+                      (str 
+                       (cond 
                          (= (first (set-to-string (:confirms data))) "Reference")
                          (str "Reference<" (str/join " | " (map (fn [item] (str "'" item "'")) (set-to-string (:refers (:zen.fhir/reference data))))) ">")
                          (= (first (set-to-string (:confirms data))) "BackboneElement") ""
@@ -80,29 +104,26 @@
     ;;  (println data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
-     (let [newVTX (if (:require data)
-                    (update vtx ::require conj {(if (= (count (:path vtx)) 0) "root" (clojure.string/join "." (:path vtx))) (:require data)}) vtx)]
-
+     (let [new-vtx (cond
+                     (:exclusive-keys data) 
+                     (update vtx ::exclusive-keys conj {(str/join "." (:path vtx)) (:exclusive-keys data)})
+                     (:require data)
+                     (update vtx ::require conj {(if (= (count (:path vtx)) 0) "root" (str/join "." (:path vtx))) (:require data)})
+                     :else vtx)] 
+    
        (cond
-         (= (last (:path newVTX)) :zen.fhir/type) newVTX
-         (= (last (:schema newVTX)) :enum)
-         (update newVTX ::ts conj (str  (str/join " | " (map (fn [item] (str "'" (:value item) "'")) data))))
-         (= (last (:schema newVTX)) :values)
-         (update newVTX ::ts conj
-
-                 (get-desc data)
-                 (str (name (last (:path newVTX)))
-                      (println (:path newVTX))
-
-                      (when-not (contains? (get
-                                            (::require newVTX)
-                                            (if (= (count (pop  (pop (:path newVTX)))) 0)
-                                              "root"
-                                              (clojure.string/join "." (pop (pop (:path newVTX)))))) (last (:path newVTX))) "?")
+         (= (last (:path new-vtx)) :zen.fhir/type) new-vtx
+         (exclusive-keys-child? new-vtx) new-vtx
+         (= (last (:schema new-vtx)) :enum)
+         (update new-vtx ::ts conj (str  (str/join " | " (map (fn [item] (str "'" (:value item) "'")) data))))
+         (= (last (:schema new-vtx)) :values)
+         (update new-vtx ::ts conj (get-desc data)
+                 (str (name (last (:path new-vtx)))
+                      (get-not-required-filed-sign new-vtx)
                       ":"))
-         (= (last (:path newVTX)) :keys) (update newVTX ::ts conj "{ ")
-         (= (last (:schema newVTX)) :every) (update newVTX ::ts conj "Array<")
-         :else newVTX)))))
+         (= (last (:path new-vtx)) :keys) (update new-vtx ::ts conj "{ ")
+         (= (last (:schema new-vtx)) :every) (update new-vtx ::ts conj "Array<")
+         :else new-vtx)))))
 
 (zen.schema/register-schema-post-process-hook!
  ::ts
@@ -122,6 +143,7 @@
 
 
      (cond
+       (exclusive-keys-child? vtx) vtx
        (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
        (= (last (:schema vtx)) :every) (update vtx ::ts conj ">")
        (= (last (:schema vtx)) :values) (update vtx ::ts conj ";")))))
@@ -182,6 +204,7 @@
           :deceased
           {:fhir/polymorphic true,
            :type zen/map,
+           :exclusive-keys #{#{:dateTime :boolean}},
            :keys
            {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
             :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
@@ -237,10 +260,11 @@
     (def r
       (sut/apply-schema ztx
                         {::ts []
-                         ::require []}
+                         ::require {}
+                         ::exclusive-keys {}}
                         (zen.core/get-symbol ztx 'zen/schema)
                         (zen.core/get-symbol ztx 'my-sturcts/User)
-                        {:interpreters [::ts]}))
+                        {:interpreters [::ts]})) 
 
     (str/join "" (::ts r))
 
@@ -307,7 +331,9 @@
   (map (fn [k] (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
          (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
          (def r (sut/apply-schema ztx
-                                  {::ts []}
+                                  {::ts []
+                                   ::require {}
+                                    ::exclusive-keys {}}
                                   (zen.core/get-symbol ztx 'zen/schema)
                                   (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
                                   {:interpreters [::ts]}))
