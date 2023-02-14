@@ -80,18 +80,29 @@
     ;;  (println data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
+     (let [newVTX (if (:require data)
+                    (update vtx ::require conj {(if (= (count (:path vtx)) 0) "root" (clojure.string/join "." (:path vtx))) (:require data)}) vtx)]
 
-     (println (::require vtx))
+       (cond
+         (= (last (:path newVTX)) :zen.fhir/type) newVTX
+         (= (last (:schema newVTX)) :enum)
+         (update newVTX ::ts conj (str  (str/join " | " (map (fn [item] (str "'" (:value item) "'")) data))))
+         (= (last (:schema newVTX)) :values)
+         (update newVTX ::ts conj
 
-     (cond
-       (= (last (:path vtx)) :require) (update vtx ::require conj data)
-       (= (last (:path vtx)) :zen.fhir/type) vtx
-       (= (last (:schema vtx)) :enum)
-       (update vtx ::ts conj (str  (str/join " | " (map (fn [item] (str "'" (:value item) "'")) data))))
-       (= (last (:schema vtx)) :values)
-       (update vtx ::ts conj (get-desc data)  (str (name (last (:path vtx))) (when-not (contains? (first (::require vtx)) (last (:path vtx))) "?") ":"))
-       (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
-       (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array<")))))
+                 (get-desc data)
+                 (str (name (last (:path newVTX)))
+                      (println (:path newVTX))
+
+                      (when-not (contains? (get
+                                            (::require newVTX)
+                                            (if (= (count (pop  (pop (:path newVTX)))) 0)
+                                              "root"
+                                              (clojure.string/join "." (pop (pop (:path newVTX)))))) (last (:path newVTX))) "?")
+                      ":"))
+         (= (last (:path newVTX)) :keys) (update newVTX ::ts conj "{ ")
+         (= (last (:schema newVTX)) :every) (update newVTX ::ts conj "Array<")
+         :else newVTX)))))
 
 (zen.schema/register-schema-post-process-hook!
  ::ts
