@@ -26,6 +26,10 @@ export interface ResourceTypeMap {
   HumanName: HumanName;
   RelatedPerson: RelatedPerson;
   Endpoint: Endpoint;
+  PractitionerRole: PractitionerRole;
+  Practitioner: Practitioner;
+  Location: Location;
+  HealthcareService: HealthcareService;
 }
 
 export type ResourceType = keyof ResourceTypeMap;

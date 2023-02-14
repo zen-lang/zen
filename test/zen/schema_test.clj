@@ -39,11 +39,11 @@
     ;;  (pp/pprint data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
-      (if-let [s (or (when-let [nm (:zen.fhir/type data)]
-                      (str (get-desc data) "type " (name nm) " = ")) 
+     (if-let [s (or (when-let [nm (:zen.fhir/type data)]
+                      (str (get-desc data) "interface " (name nm) " "))
                     (when (:confirms data)
                       (str
-                      (get {'zen/string "string"} (:type data))
+                       (get {'zen/string "string"} (:type data))
                        (cond
                          (= (first (set-to-string (:confirms data))) "Reference")
                          (str "Reference<" (str/join " | " (map (fn [item] (str "'" item "'")) (set-to-string (:refers (:zen.fhir/reference data))))) ">")
@@ -51,20 +51,24 @@
                          :else (str
                                 (first (set-to-string (:confirms data)))))))
 
-                    (when-let [tp (and (= (:type vtx) 'zen/symbol) (not (= (last (:path vtx)) :every)) (:type data))]
-                      (str  (if (= (get {'zen/string "string"} tp) nil)
-                             ""
-                             (get {'zen/string "string"} tp))))
+                    (when-let [tp (and
+                                   (= (:type vtx) 'zen/symbol)
+                                   (not (= (last (:path vtx)) :every))
+                                   (not (:enum data))
+                                   (or (= (:type data) 'zen/string)
+                                       (= (:type data) 'zen/number)
+                                       (= (:type data) 'zen/boolean))
+                                   (:type data))]
+                      (str (name tp)))
                     (when (and (= (last (:path vtx)) :every) (= (last (:schema vtx)) 'zen/string))
-                      "string; ") 
-                    )]
+                      "string; "))]
        (update vtx ::ts conj s)
        vtx))))
 
 (zen.schema/register-schema-pre-process-hook!
- ::ts 
+ ::ts
  (fn [ztx schema]
-   (fn [vtx data opts] 
+   (fn [vtx data opts]
     ;;  (println "PRE")
     ;;  (println "path:")
     ;;  (pp/pprint (:path vtx)) 
@@ -76,28 +80,31 @@
     ;;  (println data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
-     (cond 
+     (cond
        (= (last (:path vtx)) :zen.fhir/type) vtx
-       (= (last (:schema vtx)) :values) (update vtx ::ts conj (get-desc data) (str (name (last (:path vtx))) ":")) 
+       (= (last (:schema vtx)) :enum)
+       (update vtx ::ts conj (str  (str/join " | " (map (fn [item] (str "'" (:value item) "'")) data))))
+       (= (last (:schema vtx)) :values)
+       (update vtx ::ts conj (get-desc data) (str (name (last (:path vtx))) ":"))
        (= (last (:path vtx)) :keys) (update vtx ::ts conj "{ ")
-       (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array<")
-       ))))
+       (= (last (:schema vtx)) :every) (update vtx ::ts conj "Array<")))))
 
 (zen.schema/register-schema-post-process-hook!
  ::ts
  (fn [ztx schema]
-   (fn [vtx data opts] 
-    ;;   (println "POST")
-    ;;  (println "path:")
-    ;;  (pp/pprint (:path vtx)) 
-    ;;  (println "type:")
-    ;;  (pp/pprint (:type vtx)) 
-    ;;  (println "schema:")
-    ;;  (pp/pprint (:schema vtx))
-    ;;  (println "data:")
-    ;;  (pp/pprint data)
-    ;;  (println "ts:")
-    ;;  (pp/pprint (:zen.schema-test/ts vtx))
+   (fn [vtx data opts]
+     (println "POST")
+     (println "path:")
+     (pp/pprint (:path vtx))
+     (println "type:")
+     (pp/pprint (:type vtx))
+     (println "schema:")
+     (pp/pprint (:schema vtx))
+     (println "data:")
+     (pp/pprint data)
+     (println "ts:")
+     (pp/pprint (:zen.schema-test/ts vtx))
+
      (cond
        (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
        (= (last (:schema vtx)) :every) (update vtx ::ts conj ">")
@@ -137,10 +144,10 @@
            :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Organization/schema}},
            :zen/desc "Organization that is the custodian of the patient record"},
           :name
-          {:type zen/vector,
+          {:type zen/vector
            :every
            {:confirms #{hl7-fhir-r4-core.HumanName/schema},
-            :fhir/flags #{:SU},
+            :fhir/flags #{:SU}
             :zen/desc "A name associated with the patient"}},
           :_gender {:confirms #{hl7-fhir-r4-core.Element/schema}},
           :birthDate
@@ -197,8 +204,7 @@
              #{hl7-fhir-r4-core.PractitionerRole/schema
                hl7-fhir-r4-core.Organization/schema
                hl7-fhir-r4-core.Practitioner/schema}}
-            :zen/desc "Patient's nominated primary care provider"}}
-          }
+            :zen/desc "Patient's nominated primary care provider"}}}
          :zen.fhir/type "Patient"}})
 
     (zen.core/load-ns ztx my-structs-ns)
@@ -218,13 +224,13 @@
                         (zen.core/get-symbol ztx 'zen/schema)
                         (zen.core/get-symbol ztx 'my-sturcts/User)
                         {:interpreters [::ts]}))
-    
+
     (str/join "" (::ts r))
 
     (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
 
 (defn remove-prac [st]
-  (str/replace 
+  (str/replace
    st #"generalPractitioner:Array<Reference<'PractitionerRole' \| 'Organization' \| 'Practitioner'>>;" ""))
 
 (comment
@@ -232,40 +238,54 @@
   ;; :paths (path to zrc/)
   ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)
 
-  (zen.package/zen-init-deps! "/Users/ross/Desktop/HS/zen/test/test_project")
+  (zen.package/zen-init-deps! "/Users/pavel/Desktop/zen/test/test_project")
 
   (def ztx
     (zen.core/new-context
-      {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]}))
+     {:package-paths ["/Users/pavel/Desktop/zen/test/test_project"]}))
   (zen.core/read-ns ztx 'hl7-fhir-r4-core)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas) 
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.code)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.code/schema) 
-    (def r
-      (sut/apply-schema ztx
-                        {::ts []}
-                        (zen.core/get-symbol ztx 'zen/schema)
-                        (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
-                        {:interpreters [::ts]}))
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.code/schema)
+
+
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.CodeableConcept/schema)
+
+
+  (def r
+    (sut/apply-schema ztx
+                      {::ts []}
+                      (zen.core/get-symbol ztx 'zen/schema)
+                      (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
+                      {:interpreters [::ts]}))
+
+
   (str/join "" (::ts r))
-  
-  (def resources [
-                  "Period" 
+
+  (def resources ["Period"
                   "Address"
                   "Patient"
                   "HumanName"
                   "Identifier"
                   "Organization"
                   "CodeableConcept"
+                  "PractitionerRole"
+                  "Practitioner"
                   "Coding"
                   "RelatedPerson"
                   "ContactPoint"
+                  "DomainResource"
+                  "Resource"
                   "Attachment"
                   "Endpoint"
-                  ])
-  
-  
+                  "Location"
+                  "Narrative"
+                  "Meta"
+                  "Extension"
+                  "HealthcareService"])
+
+
   (map (fn [k] (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
          (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
          (def r (sut/apply-schema ztx
@@ -273,8 +293,7 @@
                                   (zen.core/get-symbol ztx 'zen/schema)
                                   (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
                                   {:interpreters [::ts]}))
-         (spit "./result.ts" (remove-prac (str/join "" (conj (::ts r) ";\n"))) :append true)) resources)
-  )
+         (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true)) resources))
 
 (t/deftest ^:kaocha/pending custom-interpreter-test
   (t/testing "typescript type generation"
@@ -318,7 +337,7 @@
 
 
 (t/deftest ^:kaocha/pending custom-interpreter-test
-  (t/testing "should correctly generate premitives"
+  (t/testing "should correctly generate"
     (def ztx (zen.core/new-context {}))
     (zen.core/get-tag ztx 'zen/type)
 
