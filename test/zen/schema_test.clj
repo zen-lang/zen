@@ -7,20 +7,6 @@
             [zen.package]
             [clojure.pprint :as pp]))
 
-;; (defn set-to-string [value]
-;;   (reduce
-;;    (fn [acc item]
-;;      (println item)
-;;      (if (set? item)
-;;        (set-to-string item)
-;;        (if
-;;         (keyword? item)
-;;          (conj acc
-;;                (str/replace (name item) #"hl7-fhir-r4-core." ""))
-;;          (conj acc
-;;                (str/replace (namespace item) #"hl7-fhir-r4-core." "")))))
-;;    [] value))
-
 (defn set-to-string [value]
   (reduce (fn [acc item]
             (cond
@@ -31,13 +17,9 @@
                           (str/replace (namespace item) #"hl7-fhir-r4-core." ""))))
           [] value))
 
-;; (defn get-desc [{desc :zen/desc}]
-;;   (when desc
-;;     (str "/* " desc " */\n")))
-
 (defn get-desc [{desc :zen/desc}]
   (when desc
-    ""))
+    (str "/* " desc " */\n")))
 
 (defn get-not-required-filed-sign [vtx]
   (when-not (contains? (get
@@ -391,6 +373,17 @@
 
   (def schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)))
   (def structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures)))
+  
+  (defn generate-resource-type-map []
+    (let [resource-type-map-interface "export interface ResourceTypeMap {\n"
+          resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
+          key-value-resources (mapv (fn [[k _v]]
+                                      (format "%s: %s;" k k))
+                                    schema)
+          result (conj (into [resource-type-map-interface] key-value-resources) resourcetype-type)]
+      (spit "./result.ts" (str/join "" result) :append true)))
+  
+  ;; (generate-resource-type-map)
 
   (mapv (fn [[k _v]]
           (println k)
