@@ -42,7 +42,8 @@
 
 (defn get-reference-union-type [references]
   (str "Reference<"
-       (str/join " | " (map (fn [item] (str "'" item "'")) references)) ">"))
+       (if (empty? references) "ResourceType" (str/join " | " (map (fn [item] (str "'" item "'")) references)))
+       ">"))
 
 (defn get-exlusive-keys-type [data]
   (let [union-type (str/join " | " (set-to-string (:exclusive-keys data)))]
