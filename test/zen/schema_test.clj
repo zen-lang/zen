@@ -52,18 +52,28 @@
                        (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference (:Reference (:keys data)))))))
           :else union-type)))
 
+(defn type-value
+  [data]
+  (if (:confirms data)
+    (str/join " | " (set-to-string (:confirms data)))
+    (if
+     ((keyword (name (:type data))) premitives)
+      ((keyword (name (:type data))) premitives)
+      (name (:type data)))))
+
+(defn generate-name
+  [vtx data]
+  (str (get-desc data)
+       (if (::is-type vtx)
+         (when (empty? (::ts vtx))
+           (str "type " (::interface-name vtx)  " = " (type-value data)))
+         (str "interface " (::interface-name vtx) " "))))
+
 (sut/register-compile-key-interpreter!
  [:keys ::ts]
  (fn [_ ztx ks]
    (fn [vtx data opts]
-     (if-let [s (or (when-let [nm (:zen.fhir/type data)]
-                      (str (get-desc data)
-                           (if (::is-type vtx)
-                             (when (empty? (::ts vtx))
-                               (str "type " (::interface-name vtx)  " = " (if ((keyword (name (:type data))) premitives)
-                                                                            ((keyword (name (:type data))) premitives)
-                                                                            (name (:type data)))))
-                             (str "interface " (::interface-name vtx) " "))))
+     (if-let [s (or (when (:zen.fhir/type data) (generate-name vtx data))
                     (when (:exclusive-keys data) (get-exlusive-keys-type data))
                     (when (exclusive-keys-child? vtx) "")
                     (when (keys-in-array-child? vtx) "")
@@ -357,16 +367,17 @@
           (println k)
           (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
           (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-          (def r (sut/apply-schema ztx
-                                   {::ts []
-                                    ::require {}
-                                    ::interface-name k
-                                    ::is-type false
-                                    ::keys-in-array {}
-                                    ::exclusive-keys {}}
-                                   (zen.core/get-symbol ztx 'zen/schema)
-                                   (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-                                   {:interpreters [::ts]}))
+          (when (not (re-find #"-" k))
+            (def r (sut/apply-schema ztx
+                                     {::ts []
+                                      ::require {}
+                                      ::interface-name k
+                                      ::is-type false
+                                      ::keys-in-array {}
+                                      ::exclusive-keys {}}
+                                     (zen.core/get-symbol ztx 'zen/schema)
+                                     (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+                                     {:interpreters [::ts]})))
           (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true)) schema)
 
   (do (mapv (fn [[_k v]]
@@ -374,16 +385,17 @@
                     ns  (zen.core/read-ns ztx (symbol (namespace v)))
                     schema (zen.core/get-symbol ztx (symbol v))]
 
-                (when (or (:type schema) (:keys schema)) ((def r (sut/apply-schema ztx
-                                                                                   {::ts []
-                                                                                    ::require {}
-                                                                                    ::exclusive-keys {}
-                                                                                    ::interface-name n
-                                                                                    ::keys-in-array {}}
-                                                                                   (zen.core/get-symbol ztx 'zen/schema)
-                                                                                   (zen.core/get-symbol ztx (symbol v))
-                                                                                   {:interpreters [::ts]}))
-                                                          (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true))))) structures) :ok))
+                (when (and (or (:type schema) (:confirms schema) (:keys schema)) (not (re-find #"-" n)))
+                  ((def r (sut/apply-schema ztx
+                                            {::ts []
+                                             ::require {}
+                                             ::exclusive-keys {}
+                                             ::interface-name n
+                                             ::keys-in-array {}}
+                                            (zen.core/get-symbol ztx 'zen/schema)
+                                            (zen.core/get-symbol ztx (symbol v))
+                                            {:interpreters [::ts]}))
+                   (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true))))) structures) :ok))
 
 
 
