@@ -7,6 +7,9 @@
             [zen.package]
             [clojure.pprint :as pp]))
 
+(def premitives
+  {:integer "number"})
+
 (defn set-to-string [value]
   (reduce (fn [acc item]
             (cond
@@ -52,19 +55,14 @@
  [:keys ::ts]
  (fn [_ ztx ks]
    (fn [vtx data opts]
-    ;; (println "COMPILE")
-    ;;  (println "path:")
-    ;;  (pp/pprint (:path vtx)) 
-    ;;  (println "type:")
-    ;;  (pp/pprint (:type vtx)) 
-    ;;  (println "schema:")
-    ;;  (pp/pprint (:schema vtx))
-    ;;  (println "data:")
-    ;;  (pp/pprint data)
-    ;;  (println "ts:")
-    ;;  (pp/pprint (:zen.schema-test/ts vtx)) 
      (if-let [s (or (when-let [nm (:zen.fhir/type data)]
-                      (str (get-desc data) "interface " (::interface-name vtx) " "))
+                      (str (get-desc data)
+                           (if (::is-type vtx)
+                             (when (empty? (::ts vtx))
+                               (str "type " (::interface-name vtx)  " = " (if ((keyword (name (:type data))) premitives)
+                                                                            ((keyword (name (:type data))) premitives)
+                                                                            (name (:type data)))))
+                             (str "interface " (::interface-name vtx) " "))))
                     (when (:exclusive-keys data) (get-exlusive-keys-type data))
                     (when (exclusive-keys-child? vtx) "")
                     (when (keys-in-array-child? vtx) "")
@@ -76,7 +74,6 @@
                          (= (first (set-to-string (:confirms data))) "BackboneElement") ""
                          :else (str
                                 (first (set-to-string (:confirms data)))))))
-
                     (when-let [tp (and
                                    (= (:type vtx) 'zen/symbol)
                                    (not (= (last (:path vtx)) :every))
@@ -95,18 +92,9 @@
  ::ts
  (fn [ztx schema]
    (fn [vtx data opts]
-    ;;  (println "PRE")
-    ;;  (println "path:")
-    ;;  (pp/pprint (:path vtx))
-    ;;  (println "type:")
-    ;;  (pp/pprint (:type vtx))
-    ;;  (println "schema:")
-    ;;  (pp/pprint (:schema vtx))
-    ;;  (println "data:")
-    ;;  (println data)
-    ;;  (println "ts:")
-    ;;  (pp/pprint (:zen.schema-test/ts vtx))
      (let [new-vtx (cond
+                     (and (not (:keys data)) (empty? (:path vtx)))
+                     (assoc vtx ::is-type true)
                      (and (:confirms data) (:keys data))
                      (update vtx ::keys-in-array conj {(if (empty? (:path vtx))
                                                          "root"
@@ -135,18 +123,6 @@
  ::ts
  (fn [ztx schema]
    (fn [vtx data opts]
-    ;;  (println "POST")
-    ;;  (println "path:")
-    ;;  (pp/pprint (:path vtx))
-    ;;  (println "type:")
-    ;;  (pp/pprint (:type vtx))
-    ;;  (println "schema:")
-    ;;  (pp/pprint (:schema vtx))
-    ;;  (println "data:")
-    ;;  (pp/pprint data)
-    ;;  (println "ts:")
-    ;;  (pp/pprint (:zen.schema-test/ts vtx))
-
      (cond
        (exclusive-keys-child? vtx) vtx
        (= (last (:path vtx)) :keys) (update vtx ::ts conj " }")
@@ -345,7 +321,7 @@
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures)
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.code)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.code/schema)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.decimal/schema)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.CodeableConcept/schema)
 
 
@@ -359,31 +335,12 @@
 
   (str/join "" (::ts r))
 
-  (def ignored-resources ["base64Binary"
-                          "canonical"
-                          "code"
-                          "date"
-                          "dateTime"
-                          "decimal"
-                          "email"
-                          "id"
-                          "instant"
-                          "integer"
-                          "keyword"
-                          "markdown"
-                          "oid"
-                          "password"
-                          "positiveInt"
-                          "time"
-                          "unsignedInt"
-                          "uri"
-                          "url"
-                          "uuid"
-                          "xhtml"])
+
+  (def ignored-resources [])
 
   (def schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)))
   (def structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures)))
-  
+
   (defn generate-resource-type-map []
     (let [resource-type-map-interface "export interface ResourceTypeMap {\n"
           resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
@@ -392,7 +349,7 @@
                                     schema)
           result (conj (into [resource-type-map-interface] key-value-resources) resourcetype-type)]
       (spit "./result.ts" (str/join "" result) :append true)))
-  
+
   ;; (generate-resource-type-map)
 
   (mapv (fn [[k _v]]
@@ -403,8 +360,9 @@
                                    {::ts []
                                     ::require {}
                                     ::interface-name k
-                                    ::exclusive-keys {}
-                                    ::keys-in-array {}}
+                                    ::is-type false
+                                    ::keys-in-array {}
+                                    ::exclusive-keys {}}
                                    (zen.core/get-symbol ztx 'zen/schema)
                                    (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
                                    {:interpreters [::ts]}))
@@ -415,16 +373,16 @@
                     ns  (zen.core/read-ns ztx (symbol (namespace v)))
                     schema (zen.core/get-symbol ztx (symbol v))]
 
-                (when (:keys schema) ((def r (sut/apply-schema ztx
-                                                               {::ts []
-                                                                ::require {}
-                                                                ::exclusive-keys {}
-                                                                ::interface-name n
-                                                                ::keys-in-array {}}
-                                                               (zen.core/get-symbol ztx 'zen/schema)
-                                                               (zen.core/get-symbol ztx (symbol v))
-                                                               {:interpreters [::ts]}))
-                                      (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true))))) structures) :ok))
+                (when (or (:type schema) (:keys schema)) ((def r (sut/apply-schema ztx
+                                                                                   {::ts []
+                                                                                    ::require {}
+                                                                                    ::exclusive-keys {}
+                                                                                    ::interface-name n
+                                                                                    ::keys-in-array {}}
+                                                                                   (zen.core/get-symbol ztx 'zen/schema)
+                                                                                   (zen.core/get-symbol ztx (symbol v))
+                                                                                   {:interpreters [::ts]}))
+                                                          (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true))))) structures) :ok))
 
 
 
@@ -547,24 +505,8 @@
            :zen.v2-validation/prop-schemas
            :zen.v2-validation/cached-pops)
 
-<<<<<<< HEAD
   (def my-ns
     '{:ns my-ns
-=======
-        User
-        {:zen/tags #{zen/schema}
-         :type zen/map
-         :keys {:constraint {:type zen/vector,
-                             :every {:confirms #{hl7-fhir-r4-core.Element/schema},
-                                     :type zen/map,
-                                     :keys {:requirements {:confirms #{hl7-fhir-r4-core.string/schema},
-                                                           :fhir/flags #{:SU},
-                                                           :zen/desc "Why this constraint is necessary or appropriate"}}
-                                     :require #{:key :human :severity},
-                                     :fhir/flags #{:SU},
-                                     :zen/desc "Condition that must evaluate to true"}}}
-         :zen.fhir/type "Patient"}})
->>>>>>> 6e16e6c (feat: exclude confirm type if keys exist)
 
       b {:zen/tags #{zen/schema}
          :type zen/string
@@ -574,21 +516,7 @@
          :my-ns/test-key "should be no errorors, this key is registred via my-ns/test-key"
          :confirms #{b}}})
 
-<<<<<<< HEAD
   (zen.core/load-ns ztx my-ns)
-=======
-    (def r
-      (sut/apply-schema ztx
-                        {::ts []
-                         ::require {}
-                         ::exclusive-keys {}
-                         ::interface-name "Patient"
-                         ::keys-in-array {}}
-                        (zen.core/get-symbol ztx 'zen/schema)
-                        (zen.core/get-symbol ztx 'my-sturcts/User)
-                        {:interpreters [::ts]}))
-
->>>>>>> 6e16e6c (feat: exclude confirm type if keys exist)
 
   (matcho/match
     (zen.core/validate ztx #{'my-ns/a} "foo")
