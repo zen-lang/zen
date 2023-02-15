@@ -47,9 +47,13 @@
                           (str/join "." (pop (pop (:path vtx)))))) (last (:path vtx))) "?"))
 
 (defn exclusive-keys-child? [vtx]
-  (and (> (count (::exclusive-keys vtx)) 0) (> (count (:path vtx)) 1) 
-              (or (contains? (::exclusive-keys vtx) (str/join "." (pop (pop (:path vtx))))) 
-                  (contains? (::exclusive-keys vtx) (str/join "." (pop (:path vtx)))))))
+  (and (> (count (::exclusive-keys vtx)) 0) (> (count (:path vtx)) 1)
+       (or (contains? (::exclusive-keys vtx) (str/join "." (pop (pop (:path vtx)))))
+           (contains? (::exclusive-keys vtx) (str/join "." (pop (:path vtx)))))))
+
+(defn keys-in-array-child? [vtx]
+  (and (> (count (::keys-in-array vtx)) 0) (> (count (:path vtx)) 1)
+       (contains? (::keys-in-array vtx) (str/join "." (:path vtx)))))
 
 (sut/register-compile-key-interpreter!
  [:keys ::ts]
@@ -70,9 +74,10 @@
                       (str (get-desc data) "interface " (::interface-name vtx) " "))
                     (when (:exclusive-keys data) (str/join " | " (set-to-string (:exclusive-keys data))))
                     (when (exclusive-keys-child? vtx) "")
+                    (when (keys-in-array-child? vtx) "")
                     (when (:confirms data)
-                      (str 
-                       (cond 
+                      (str
+                       (cond
                          (= (first (set-to-string (:confirms data))) "Reference")
                          (str "Reference<" (str/join " | " (map (fn [item] (str "'" item "'")) (set-to-string (:refers (:zen.fhir/reference data))))) ">")
                          (= (first (set-to-string (:confirms data))) "BackboneElement") ""
@@ -109,12 +114,16 @@
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
      (let [new-vtx (cond
-                     (:exclusive-keys data) 
+                     (and (:confirms data) (:keys data))
+                     (update vtx ::keys-in-array conj {(if (empty? (:path vtx))
+                                                         "root"
+                                                         (str/join "." (:path vtx))) (:keys data)})
+                     (:exclusive-keys data)
                      (update vtx ::exclusive-keys conj {(str/join "." (:path vtx)) (:exclusive-keys data)})
                      (:require data)
-                     (update vtx ::require conj {(if (= (count (:path vtx)) 0) "root" (str/join "." (:path vtx))) (:require data)})
-                     :else vtx)] 
-    
+                     (update vtx ::require conj {(if (empty? (:path vtx)) "root" (str/join "." (:path vtx))) (:require data)})
+                     :else vtx)]
+
        (cond
          (= (last (:path new-vtx)) :zen.fhir/type) new-vtx
          (exclusive-keys-child? new-vtx) new-vtx
@@ -313,10 +322,12 @@
       (sut/apply-schema ztx
                         {::ts []
                          ::require {}
-                         ::exclusive-keys {}}
+                         ::exclusive-keys {}
+                         ::interface-name "User"
+                         ::keys-in-array {}}
                         (zen.core/get-symbol ztx 'zen/schema)
                         (zen.core/get-symbol ztx 'my-sturcts/User)
-                        {:interpreters [::ts]})) 
+                        {:interpreters [::ts]}))
 
     (str/join "" (::ts r))
 
@@ -335,7 +346,8 @@
 
   (def ztx
     (zen.core/new-context
-     {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]}))
+     {:package-paths ["/Users/pavel/Desktop/zen/test/test_project"]}))
+
   (zen.core/read-ns ztx 'hl7-fhir-r4-core)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)
@@ -393,63 +405,21 @@
                                    {:interpreters [::ts]}))
           (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true)) schema)
 
-  (mapv (fn [[_k v]]
-          (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
-                ns  (zen.core/read-ns ztx (symbol (namespace v)))
-                schema (zen.core/get-symbol ztx (symbol v))]
-           
-            (when (:keys schema) ((def r (sut/apply-schema ztx
-                                                                                   {::ts []
-                                                                                    ::require {}
-                                                                                    ::exclusive-keys {}
-                                                                                    ::interface-name n}
-                                                                                   (zen.core/get-symbol ztx 'zen/schema)
-                                                                                   (zen.core/get-symbol ztx (symbol v))
-                                                                                   {:interpreters [::ts]})) 
-                                                          (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true)))
-            )
-          
-         ) structures)
-  )
+  (do (mapv (fn [[_k v]]
+              (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
+                    ns  (zen.core/read-ns ztx (symbol (namespace v)))
+                    schema (zen.core/get-symbol ztx (symbol v))]
 
-(t/deftest ^:kaocha/pending custom-interpreter-test
-  (t/testing "typescript type generation"
-    (def ztx (zen.core/new-context {}))
-
-    (def my-structs-ns
-      '{:ns my-sturcts
-
-        User
-        {:zen/tags #{zen/schema}
-         :type zen/map
-         :keys {:id {:type zen/string}
-                :email {:type zen/string
-                        #_#_:regex "@"}
-                :name {:type zen/vector
-                       :every {:type zen/map
-                               :keys {:given {:type zen/vector
-                                              :every {:type zen/string}}
-                                      :family {:type zen/string}}}}}}})
-
-    (zen.core/load-ns ztx my-structs-ns)
-
-    (def ts-typedef-assert
-      (str "type User = {"
-           "id: string;"
-           "email: string;"
-           "name: Array < {"
-           "given: Array < string >;"
-           "family: string;"
-           "}>;}"))
-
-    (def r
-      (sut/apply-schema ztx
-                        {::ts []}
-                        (zen.core/get-symbol ztx 'zen/schema)
-                        (zen.core/get-symbol ztx 'my-sturcts/User)
-                        {:interpreters [::ts]}))
-
-    (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
+                (when (:keys schema) ((def r (sut/apply-schema ztx
+                                                               {::ts []
+                                                                ::require {}
+                                                                ::exclusive-keys {}
+                                                                ::interface-name n
+                                                                ::keys-in-array {}}
+                                                               (zen.core/get-symbol ztx 'zen/schema)
+                                                               (zen.core/get-symbol ztx (symbol v))
+                                                               {:interpreters [::ts]}))
+                                      (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true))))) structures) :ok))
 
 
 
@@ -531,6 +501,35 @@
                    :name   [{:family "None"
                              :given  ["foo"]}]})
 
+    User
+    {:zen/tags #{zen/schema}
+     :type zen/map
+     :require #{:string :boolean},
+     :keys {:string {:type zen/string}
+            :object {:type zen/map
+                     :keys {:string {:type zen/boolean}
+                            :booalen {:type zen/boolean}
+                            :object-2 {:type zen/map
+                                       :keys {:string {:type zen/boolean}
+                                              :booalen {:type zen/boolean}}
+                                       :require #{:booalen}}}
+                     :require #{:string}}
+            :boolean {:type zen/boolean}
+            :number {:type zen/number}}
+     :zen.fhir/type "Patient"}})
+
+(zen.core/load-ns ztx my-structs-ns)
+
+(def ts-typedef-assert
+  (str "interface Patient { string:string;boolean?:boolean;number?:number;enumV?:'phone' | 'email';arrayConfirms?:Array<HumanName>;confirms?:HumanName; }"))
+
+(def r
+  (sut/apply-schema ztx
+                    {::ts []
+                     ::require {}}
+                    (zen.core/get-symbol ztx 'zen/schema)
+                    (zen.core/get-symbol ztx 'my-sturcts/User)
+                    {:interpreters [::ts ::require]}))
 
 (t/deftest ^:kaocha/pending dynamic-confirms-cache-reset-test
   (def ztx (zen.core/new-context {}))
@@ -543,8 +542,24 @@
            :zen.v2-validation/prop-schemas
            :zen.v2-validation/cached-pops)
 
+<<<<<<< HEAD
   (def my-ns
     '{:ns my-ns
+=======
+        User
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:constraint {:type zen/vector,
+                             :every {:confirms #{hl7-fhir-r4-core.Element/schema},
+                                     :type zen/map,
+                                     :keys {:requirements {:confirms #{hl7-fhir-r4-core.string/schema},
+                                                           :fhir/flags #{:SU},
+                                                           :zen/desc "Why this constraint is necessary or appropriate"}}
+                                     :require #{:key :human :severity},
+                                     :fhir/flags #{:SU},
+                                     :zen/desc "Condition that must evaluate to true"}}}
+         :zen.fhir/type "Patient"}})
+>>>>>>> 6e16e6c (feat: exclude confirm type if keys exist)
 
       b {:zen/tags #{zen/schema}
          :type zen/string
@@ -554,7 +569,21 @@
          :my-ns/test-key "should be no errorors, this key is registred via my-ns/test-key"
          :confirms #{b}}})
 
+<<<<<<< HEAD
   (zen.core/load-ns ztx my-ns)
+=======
+    (def r
+      (sut/apply-schema ztx
+                        {::ts []
+                         ::require {}
+                         ::exclusive-keys {}
+                         ::interface-name "Patient"
+                         ::keys-in-array {}}
+                        (zen.core/get-symbol ztx 'zen/schema)
+                        (zen.core/get-symbol ztx 'my-sturcts/User)
+                        {:interpreters [::ts]}))
+
+>>>>>>> 6e16e6c (feat: exclude confirm type if keys exist)
 
   (matcho/match
     (zen.core/validate ztx #{'my-ns/a} "foo")
