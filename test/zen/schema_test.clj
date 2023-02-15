@@ -37,6 +37,17 @@
   (and (> (count (::keys-in-array vtx)) 0) (> (count (:path vtx)) 1)
        (contains? (::keys-in-array vtx) (str/join "." (:path vtx)))))
 
+(defn get-reference-union-type [references]
+  (str "Reference<"
+       (str/join " | " (map (fn [item] (str "'" item "'")) references)) ">"))
+
+(defn get-exlusive-keys-type [data]
+  (let [union-type (str/join " | " (set-to-string (:exclusive-keys data)))]
+    (cond (:Reference (:keys data))
+          (str/replace union-type #"Reference"
+                       (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference (:Reference (:keys data)))))))
+          :else union-type)))
+
 (sut/register-compile-key-interpreter!
  [:keys ::ts]
  (fn [_ ztx ks]
@@ -51,17 +62,17 @@
     ;;  (println "data:")
     ;;  (pp/pprint data)
     ;;  (println "ts:")
-    ;;  (pp/pprint (:zen.schema-test/ts vtx))
+    ;;  (pp/pprint (:zen.schema-test/ts vtx)) 
      (if-let [s (or (when-let [nm (:zen.fhir/type data)]
                       (str (get-desc data) "interface " (::interface-name vtx) " "))
-                    (when (:exclusive-keys data) (str/join " | " (set-to-string (:exclusive-keys data))))
+                    (when (:exclusive-keys data) (get-exlusive-keys-type data))
                     (when (exclusive-keys-child? vtx) "")
                     (when (keys-in-array-child? vtx) "")
                     (when (:confirms data)
                       (str
                        (cond
                          (= (first (set-to-string (:confirms data))) "Reference")
-                         (str "Reference<" (str/join " | " (map (fn [item] (str "'" item "'")) (set-to-string (:refers (:zen.fhir/reference data))))) ">")
+                         (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference data))))
                          (= (first (set-to-string (:confirms data))) "BackboneElement") ""
                          :else (str
                                 (first (set-to-string (:confirms data)))))))
@@ -135,7 +146,6 @@
     ;;  (pp/pprint data)
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
-
 
      (cond
        (exclusive-keys-child? vtx) vtx
@@ -392,7 +402,9 @@
           (def r (sut/apply-schema ztx
                                    {::ts []
                                     ::require {}
-                                    ::exclusive-keys {}}
+                                    ::interface-name k
+                                    ::exclusive-keys {}
+                                    ::keys-in-array {}}
                                    (zen.core/get-symbol ztx 'zen/schema)
                                    (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
                                    {:interpreters [::ts]}))
