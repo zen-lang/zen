@@ -58,7 +58,7 @@
                        (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference (:Reference (:keys data)))))))
           :else union-type)))
 
-(defn type-value
+(defn generate-type-value
   [data]
   (if (:confirms data)
     (str/join " | " (if
@@ -70,14 +70,28 @@
       ((keyword (name (:type data))) premitives-map)
       (name (:type data)))))
 
+(defn generate-type [vtx data]
+  (when (and (empty? (::ts vtx))
+             (not ((keyword (::interface-name vtx)) non-parsable-premitives)))
+    (str "type " (::interface-name vtx)  " = " (generate-type-value data))))
+
+(defn generate-interface [vtx]
+  (str "interface " (::interface-name vtx) " "))
+
 (defn generate-name
   [vtx data]
   (str (get-desc data)
        (if (::is-type vtx)
-         (when (and (empty? (::ts vtx))
-                    (not ((keyword (::interface-name vtx)) non-parsable-premitives)))
-           (str "type " (::interface-name vtx)  " = " (type-value data)))
-         (str "interface " (::interface-name vtx) " "))))
+         (generate-type vtx data)
+         (generate-interface vtx))))
+
+(defn generate-confirms [data]
+  (str
+   (cond
+     (= (first (set-to-string (:confirms data))) "Reference")
+     (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference data))))
+     (= (first (set-to-string (:confirms data))) "BackboneElement") ""
+     :else (str (first (set-to-string (:confirms data)))))))
 
 (sut/register-compile-key-interpreter!
  [:keys ::ts]
@@ -87,14 +101,7 @@
                     (when (:exclusive-keys data) (get-exlusive-keys-type data))
                     (when (exclusive-keys-child? vtx) "")
                     (when (keys-in-array-child? vtx) "")
-                    (when (:confirms data)
-                      (str
-                       (cond
-                         (= (first (set-to-string (:confirms data))) "Reference")
-                         (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference data))))
-                         (= (first (set-to-string (:confirms data))) "BackboneElement") ""
-                         :else (str
-                                (first (set-to-string (:confirms data)))))))
+                    (when (:confirms data) (generate-confirms data))
                     (when-let [tp (and
                                    (= (:type vtx) 'zen/symbol)
                                    (not (= (last (:path vtx)) :every))
@@ -109,6 +116,25 @@
        (update vtx ::ts conj s)
        vtx))))
 
+(defn generate-map-keys-in-array [vtx data]
+  {(if (empty? (:path vtx))
+     "root"
+     (str/join "." (:path vtx))) (:keys data)})
+
+(defn generate-exclusive-keys [vtx data]
+  {(str/join "." (:path vtx)) (:exclusive-keys data)})
+
+(defn generate-require [vtx data]
+  {(if (empty? (:path vtx)) "root" (str/join "." (:path vtx))) (:require data)})
+
+(defn generate-enum [data]
+  (str  (str/join " | " (map (fn [item] (str "'" (:value item) "'")) data))))
+
+(defn generate-values [vtx]
+  (str (name (last (:path vtx)))
+       (get-not-required-filed-sign vtx)
+       ":"))
+
 (zen.schema/register-schema-pre-process-hook!
  ::ts
  (fn [ztx schema]
@@ -117,25 +143,20 @@
                      (and (not (:keys data)) (empty? (:path vtx)))
                      (assoc vtx ::is-type true)
                      (and (:confirms data) (:keys data))
-                     (update vtx ::keys-in-array conj {(if (empty? (:path vtx))
-                                                         "root"
-                                                         (str/join "." (:path vtx))) (:keys data)})
+                     (update vtx ::keys-in-array conj (generate-map-keys-in-array vtx data))
                      (:exclusive-keys data)
-                     (update vtx ::exclusive-keys conj {(str/join "." (:path vtx)) (:exclusive-keys data)})
+                     (update vtx ::exclusive-keys conj (generate-exclusive-keys vtx data))
                      (:require data)
-                     (update vtx ::require conj {(if (empty? (:path vtx)) "root" (str/join "." (:path vtx))) (:require data)})
+                     (update vtx ::require conj (generate-require vtx data))
                      :else vtx)]
 
        (cond
          (= (last (:path new-vtx)) :zen.fhir/type) new-vtx
          (exclusive-keys-child? new-vtx) new-vtx
          (= (last (:schema new-vtx)) :enum)
-         (update new-vtx ::ts conj (str  (str/join " | " (map (fn [item] (str "'" (:value item) "'")) data))))
+         (update new-vtx ::ts conj (generate-enum data))
          (= (last (:schema new-vtx)) :values)
-         (update new-vtx ::ts conj (get-desc data)
-                 (str (name (last (:path new-vtx)))
-                      (get-not-required-filed-sign new-vtx)
-                      ":"))
+         (update new-vtx ::ts conj (get-desc data) (generate-values new-vtx))
          (= (last (:path new-vtx)) :keys) (update new-vtx ::ts conj "{ ")
          (= (last (:schema new-vtx)) :every) (update new-vtx ::ts conj "Array<")
          :else new-vtx)))))
