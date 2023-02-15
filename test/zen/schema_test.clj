@@ -31,9 +31,13 @@
                           (str/replace (namespace item) #"hl7-fhir-r4-core." ""))))
           [] value))
 
+;; (defn get-desc [{desc :zen/desc}]
+;;   (when desc
+;;     (str "/* " desc " */\n")))
+
 (defn get-desc [{desc :zen/desc}]
   (when desc
-    (str "/* " desc " */\n")))
+    ""))
 
 (defn get-not-required-filed-sign [vtx]
   (when-not (contains? (get
@@ -63,7 +67,7 @@
     ;;  (println "ts:")
     ;;  (pp/pprint (:zen.schema-test/ts vtx))
      (if-let [s (or (when-let [nm (:zen.fhir/type data)]
-                      (str (get-desc data) "interface " (name nm) " "))
+                      (str (get-desc data) "interface " (::interface-name vtx) " "))
                     (when (:exclusive-keys data) (str/join " | " (set-to-string (:exclusive-keys data))))
                     (when (exclusive-keys-child? vtx) "")
                     (when (:confirms data)
@@ -162,89 +166,137 @@
 
         User
         {:zen.fhir/version "0.6.12-1",
-         :confirms #{hl7-fhir-r4-core.DomainResource/schema zen.fhir/Resource},
+         :confirms #{hl7-fhir-r4-core.DomainResource/schema
+                     zen.fhir/Resource},
          :zen/tags #{zen/schema zen.fhir/base-schema},
-         :zen.fhir/profileUri "http://hl7.org/fhir/StructureDefinition/Patient",
-         :zen/file
-         "/Users/ross/Desktop/HS/zen/test/test_project/zen-packages/hl7-fhir-r4-core/zrc/hl7-fhir-r4-core/Patient.edn",
+         :zen.fhir/profileUri "http://hl7.org/fhir/StructureDefinition/Composition",
+         :require #{:date :type :title :author :status},
          :type zen/map,
-         :zen/desc
-         "Demographics and other administrative information about an individual or animal receiving care or other health-related services.",
-         :zen/name hl7-fhir-r4-core.Patient/schema,
-         :keys
-         {:address
-          {:type zen/vector,
-           :every
-           {:confirms #{hl7-fhir-r4-core.Address/schema}, :fhir/flags #{:SU}, :zen/desc "An address for the individual"}},
-          :managingOrganization
-          {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
-           :fhir/flags #{:SU},
-           :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Organization/schema}},
-           :zen/desc "Organization that is the custodian of the patient record"},
-          :name
-          {:type zen/vector
-           :every
-           {:confirms #{hl7-fhir-r4-core.HumanName/schema},
-            :fhir/flags #{:SU}
-            :zen/desc "A name associated with the patient"}},
-          :_gender {:confirms #{hl7-fhir-r4-core.Element/schema}},
-          :birthDate
-          {:confirms #{hl7-fhir-r4-core.date/schema}, :fhir/flags #{:SU}, :zen/desc "The date of birth for the individual"},
-          :_birthDate {:confirms #{hl7-fhir-r4-core.Element/schema}},
-          :multipleBirth
-          {:fhir/polymorphic true,
-           :type zen/map,
-           :exclusive-keys #{#{:integer :boolean}},
-           :keys
-           {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
-            :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
-            :integer {:confirms #{hl7-fhir-r4-core.integer/schema}},
-            :_integer {:confirms #{hl7-fhir-r4-core.Element/schema}}},
-           :zen/desc "Whether patient is part of a multiple birth"},
-          :deceased
-          {:fhir/polymorphic true,
-           :type zen/map,
-           :exclusive-keys #{#{:dateTime :boolean}},
-           :keys
-           {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
-            :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
-            :dateTime {:confirms #{hl7-fhir-r4-core.dateTime/schema}},
-            :_dateTime {:confirms #{hl7-fhir-r4-core.Element/schema}}},
-           :fhir/flags #{:SU :?!},
-           :zen/desc "Indicates if the individual is deceased or not"},
-          :photo
-          {:type zen/vector, :every {:confirms #{hl7-fhir-r4-core.Attachment/schema}, :zen/desc "Image of the patient"}},
-          :link
-          {:type zen/vector,
-           :every
-           {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
-            :type zen/map,
-            :keys
-            {:other
-             {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
-              :fhir/flags #{:SU},
-              :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Patient/schema hl7-fhir-r4-core.RelatedPerson/schema}},
-              :zen/desc "The other patient or related person resource that the link refers to"},
-             :type
-             {:confirms #{hl7-fhir-r4-core.code/schema},
-              :fhir/flags #{:SU},
-              :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.link-type/value-set, :strength :required},
-              :zen/desc "replaced-by | replaces | refer | seealso"},
-             :_type {:confirms #{hl7-fhir-r4-core.Element/schema}}},
-            :require #{:other :type},
-            :fhir/flags #{:SU :?!},
-            :zen/desc "Link to another patient resource that concerns the same actual person"}}
-          :generalPractitioner
-          {:type zen/vector,
-           :every
-           {:confirms #{hl7-fhir-r4-core.Reference/schema zen.fhir/Reference},
-            :zen.fhir/reference
-            {:refers
-             #{hl7-fhir-r4-core.PractitionerRole/schema
-               hl7-fhir-r4-core.Organization/schema
-               hl7-fhir-r4-core.Practitioner/schema}}
-            :zen/desc "Patient's nominated primary care provider"}}}
-         :zen.fhir/type "Patient"}})
+         :zen/desc "A set of healthcare-related information that is assembled together into a single logical package that provides a single coherent statement of meaning, establishes its own context and that has clinical attestation with regard to who is making the statement. A Composition defines the structure and narrative content necessary for a document. However, a Composition alone does not constitute a document. Rather, the Composition must be the first entry in a Bundle where Bundle.type=document, and any other resources referenced from Composition must be included as subsequent entries in the Bundle (for example Patient, Practitioner, Encounter, etc.).",
+         :keys {:category {:type zen/vector,
+                           :every {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
+                                   :fhir/flags #{:SU},
+                                   :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.document-classcodes/value-set,
+                                                        :strength :example},
+                                   :zen/desc "Categorization of Composition"}},
+                :date {:confirms #{hl7-fhir-r4-core.dateTime/schema},
+                       :fhir/flags #{:SU},
+                       :zen/desc "Composition editing time"},
+                :encounter {:confirms #{hl7-fhir-r4-core.Reference/schema
+                                        zen.fhir/Reference},
+                            :fhir/flags #{:SU},
+                            :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Encounter/schema}},
+                            :zen/desc "Context of the Composition"},
+                :_date {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                :section {:type zen/vector,
+                          :every {:confirms #{hl7-fhir-r4-core.Composition/section-schema}}},
+                :_status {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                :attester {:type zen/vector,
+                           :every {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
+                                   :type zen/map,
+                                   :keys {:mode {:confirms #{hl7-fhir-r4-core.code/schema},
+                                                 :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.composition-attestation-mode/value-set,
+                                                                      :strength :required},
+                                                 :zen/desc "personal | professional | legal | official"},
+                                          :_mode {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                                          :time {:confirms #{hl7-fhir-r4-core.dateTime/schema},
+                                                 :zen/desc "When the composition was attested"},
+                                          :_time {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                                          :party {:confirms #{hl7-fhir-r4-core.Reference/schema
+                                                              zen.fhir/Reference},
+                                                  :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Patient/schema
+                                                                                 hl7-fhir-r4-core.PractitionerRole/schema
+                                                                                 hl7-fhir-r4-core.Organization/schema
+                                                                                 hl7-fhir-r4-core.Practitioner/schema
+                                                                                 hl7-fhir-r4-core.RelatedPerson/schema}},
+                                                  :zen/desc "Who attested the composition"}},
+                                   :require #{:mode},
+                                   :zen/desc "Attests to accuracy of composition"}},
+                :type {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
+                       :fhir/flags #{:SU},
+                       :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.doc-typecodes/value-set,
+                                            :strength :preferred},
+                       :zen/desc "Kind of composition (LOINC if possible)"},
+                :title {:confirms #{hl7-fhir-r4-core.string/schema},
+                        :fhir/flags #{:SU},
+                        :zen/desc "Human Readable name/title"},
+                :author {:type zen/vector,
+                         :every {:confirms #{hl7-fhir-r4-core.Reference/schema
+                                             zen.fhir/Reference},
+                                 :fhir/flags #{:SU},
+                                 :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Patient/schema
+                                                                hl7-fhir-r4-core.PractitionerRole/schema
+                                                                hl7-fhir-r4-core.Organization/schema
+                                                                hl7-fhir-r4-core.Device/schema
+                                                                hl7-fhir-r4-core.Practitioner/schema
+                                                                hl7-fhir-r4-core.RelatedPerson/schema}},
+                                 :zen/desc "Who and/or what authored the composition"},
+                         :minItems 1},
+                :_confidentiality {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                :event {:type zen/vector,
+                        :every {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
+                                :type zen/map,
+                                :keys {:code {:type zen/vector,
+                                              :every {:confirms #{hl7-fhir-r4-core.CodeableConcept/schema},
+                                                      :fhir/flags #{:SU},
+                                                      :zen.fhir/value-set {:symbol hl7-terminology-r4.value-set.v3-ActCode/value-set,
+                                                                           :strength :example},
+                                                      :zen/desc "Code(s) that apply to the event being documented"}},
+                                       :period {:confirms #{hl7-fhir-r4-core.Period/schema},
+                                                :fhir/flags #{:SU},
+                                                :zen/desc "The period covered by the documentation"},
+                                       :detail {:type zen/vector,
+                                                :every {:confirms #{hl7-fhir-r4-core.Reference/schema
+                                                                    zen.fhir/Reference},
+                                                        :fhir/flags #{:SU},
+                                                        :zen.fhir/reference {:refers #{}},
+                                                        :zen/desc "The event(s) being documented"}}},
+                                :fhir/flags #{:SU},
+                                :zen/desc "The clinical service(s) being documented"}},
+                :custodian {:confirms #{hl7-fhir-r4-core.Reference/schema
+                                        zen.fhir/Reference},
+                            :fhir/flags #{:SU},
+                            :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Organization/schema}},
+                            :zen/desc "Organization which maintains the composition"},
+                :status {:confirms #{hl7-fhir-r4-core.code/schema},
+                         :fhir/flags #{:SU :?!},
+                         :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.composition-status/value-set,
+                                              :strength :required},
+                         :zen/desc "preliminary | final | amended | entered-in-error"},
+                :identifier {:confirms #{hl7-fhir-r4-core.Identifier/schema},
+                             :fhir/flags #{:SU},
+                             :zen/desc "Version-independent identifier for the Composition"},
+                :relatesTo {:type zen/vector,
+                            :every {:confirms #{hl7-fhir-r4-core.BackboneElement/schema},
+                                    :type zen/map,
+                                    :keys {:code {:confirms #{hl7-fhir-r4-core.code/schema},
+                                                  :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.document-relationship-type/value-set,
+                                                                       :strength :required},
+                                                  :zen/desc "replaces | transforms | signs | appends"},
+                                           :_code {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                                           :target {:fhir/polymorphic true,
+                                                    :type zen/map,
+                                                    :exclusive-keys #{#{:Identifier
+                                                                        :Reference}},
+                                                    :keys {:Identifier {:confirms #{hl7-fhir-r4-core.Identifier/schema}},
+                                                           :Reference {:confirms #{hl7-fhir-r4-core.Reference/schema
+                                                                                   zen.fhir/Reference},
+                                                                       :zen.fhir/reference {:refers #{hl7-fhir-r4-core.Composition/schema}}}},
+                                                    :zen/desc "Target of the relationship"}},
+                                    :require #{:code :target},
+                                    :zen/desc "Relationships to other compositions/documents"}},
+                :_title {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                :subject {:confirms #{hl7-fhir-r4-core.Reference/schema
+                                      zen.fhir/Reference},
+                          :fhir/flags #{:SU},
+                          :zen.fhir/reference {:refers #{}},
+                          :zen/desc "Who and/or what the composition is about"},
+                :confidentiality {:confirms #{hl7-fhir-r4-core.code/schema},
+                                  :fhir/flags #{:SU},
+                                  :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.v3-ConfidentialityClassification/value-set,
+                                                       :strength :required},
+                                  :zen/desc "As defined by affinity domain"}},
+         :zen.fhir/type "Composition"}})
 
     (zen.core/load-ns ztx my-structs-ns)
 
@@ -283,14 +335,13 @@
 
   (def ztx
     (zen.core/new-context
-     {:package-paths ["/Users/pavel/Desktop/zen/test/test_project"]}))
+     {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]}))
   (zen.core/read-ns ztx 'hl7-fhir-r4-core)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures)
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.code)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.code/schema)
-
-
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.CodeableConcept/schema)
 
 
@@ -304,40 +355,62 @@
 
   (str/join "" (::ts r))
 
-  (def resources ["Period"
-                  "Address"
-                  "Patient"
-                  "HumanName"
-                  "Identifier"
-                  "Organization"
-                  "CodeableConcept"
-                  "PractitionerRole"
-                  "Practitioner"
-                  "Coding"
-                  "RelatedPerson"
-                  "ContactPoint"
-                  "DomainResource"
-                  "Resource"
-                  "Attachment"
-                  "Endpoint"
-                  "Location"
-                  "Narrative"
-                  "Appointment"
-                  "Meta"
-                  "Extension"
-                  "HealthcareService"])
+  (def ignored-resources ["base64Binary"
+                          "canonical"
+                          "code"
+                          "date"
+                          "dateTime"
+                          "decimal"
+                          "email"
+                          "id"
+                          "instant"
+                          "integer"
+                          "keyword"
+                          "markdown"
+                          "oid"
+                          "password"
+                          "positiveInt"
+                          "time"
+                          "unsignedInt"
+                          "uri"
+                          "url"
+                          "uuid"
+                          "xhtml"])
 
+  (def schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)))
+  (def structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures)))
 
-  (map (fn [k] (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
-         (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-         (def r (sut/apply-schema ztx
-                                  {::ts []
-                                   ::require {}
+  (mapv (fn [[k _v]]
+          (println k)
+          (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
+          (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+          (def r (sut/apply-schema ztx
+                                   {::ts []
+                                    ::require {}
                                     ::exclusive-keys {}}
-                                  (zen.core/get-symbol ztx 'zen/schema)
-                                  (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-                                  {:interpreters [::ts]}))
-         (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true)) resources))
+                                   (zen.core/get-symbol ztx 'zen/schema)
+                                   (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+                                   {:interpreters [::ts]}))
+          (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true)) schema)
+
+  (mapv (fn [[_k v]]
+          (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
+                ns  (zen.core/read-ns ztx (symbol (namespace v)))
+                schema (zen.core/get-symbol ztx (symbol v))]
+           
+            (when (:keys schema) ((def r (sut/apply-schema ztx
+                                                                                   {::ts []
+                                                                                    ::require {}
+                                                                                    ::exclusive-keys {}
+                                                                                    ::interface-name n}
+                                                                                   (zen.core/get-symbol ztx 'zen/schema)
+                                                                                   (zen.core/get-symbol ztx (symbol v))
+                                                                                   {:interpreters [::ts]})) 
+                                                          (spit "./result.ts" (str/join "" (conj (::ts r) ";\n")) :append true)))
+            )
+          
+         ) structures)
+  )
 
 (t/deftest ^:kaocha/pending custom-interpreter-test
   (t/testing "typescript type generation"
