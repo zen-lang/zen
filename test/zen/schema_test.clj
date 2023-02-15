@@ -7,18 +7,24 @@
             [zen.package]
             [clojure.pprint :as pp]))
 
-(def premitives
+(def premitives-map
   {:integer "number"})
 
+(def non-parsable-premitives
+  {:string "string"
+   :number "number"
+   :boolean "boolean"})
+
 (defn set-to-string [value]
-  (reduce (fn [acc item]
-            (cond
-              (set? item) (set-to-string item)
-              (keyword? item) (conj acc
-                                    (str/replace (name item) #"hl7-fhir-r4-core." ""))
-              :else (conj acc
-                          (str/replace (namespace item) #"hl7-fhir-r4-core." ""))))
-          [] value))
+  (reduce
+   (fn [acc item]
+     (cond
+       (set? item) (set-to-string item)
+       (keyword? item) (conj acc
+                             (str/replace (name item) #"hl7-fhir-r4-core." ""))
+       :else (conj acc
+                   (str/replace (namespace item) #"hl7-fhir-r4-core." ""))))
+   [] value))
 
 (defn get-desc [{desc :zen/desc}]
   (when desc
@@ -55,17 +61,21 @@
 (defn type-value
   [data]
   (if (:confirms data)
-    (str/join " | " (set-to-string (:confirms data)))
+    (str/join " | " (if
+                     (get-in data [:zen.fhir/reference :refers])
+                      (set-to-string (get-in data [:zen.fhir/reference :refers]))
+                      (set-to-string (:confirms data))))
     (if
-     ((keyword (name (:type data))) premitives)
-      ((keyword (name (:type data))) premitives)
+     ((keyword (name (:type data))) premitives-map)
+      ((keyword (name (:type data))) premitives-map)
       (name (:type data)))))
 
 (defn generate-name
   [vtx data]
   (str (get-desc data)
        (if (::is-type vtx)
-         (when (empty? (::ts vtx))
+         (when (and (empty? (::ts vtx))
+                    (not ((keyword (::interface-name vtx)) non-parsable-premitives)))
            (str "type " (::interface-name vtx)  " = " (type-value data)))
          (str "interface " (::interface-name vtx) " "))))
 
@@ -361,7 +371,7 @@
           result (conj (into [resource-type-map-interface] key-value-resources) resourcetype-type)]
       (spit "./result.ts" (str/join "" result) :append true)))
 
-  ;; (generate-resource-type-map)
+  (generate-resource-type-map)
 
   (mapv (fn [[k _v]]
           (println k)
