@@ -1,11 +1,12 @@
 import axios, { AxiosBasicCredentials, AxiosInstance } from 'axios';
 
-interface Patient {}
 export interface SearchParams {
   id?: string;
 }
 
-export type BaseResponse<R extends keyof Resources> = Resources[R];
+export type BaseResponseResources<R extends keyof Resources> = { entry: Resources[R][] };
+
+export type BaseResponseResource<R extends keyof Resources> = Resources[R];
 
 export type Resources = {
   Patient: Patient;
@@ -18,18 +19,46 @@ export class Client {
     this.client = axios.create({ baseURL, auth: credentials });
   }
 
-  async getResource<T extends keyof Resources>(resourceName: T, id: string): Promise<BaseResponse<T> | Error> {
-    try {
-      const response = await this.client.get<BaseResponse<T>>(resourceName + '/' + id);
-      return response.data;
-    } catch (e) {
-      throw e;
-    }
+  async getResources<T extends keyof Resources>(resourceName: T): Promise<BaseResponseResources<T> | Error> {
+    const response = await this.client.get<BaseResponseResources<T>>(resourceName);
+    return response.data;
   }
 
-  async findResources() {}
+  async getResource<T extends keyof Resources>(resourceName: T, id: string): Promise<BaseResponseResource<T> | Error> {
+    const response = await this.client.get<BaseResponseResource<T>>(resourceName + '/' + id);
+    return response.data;
+  }
 
-  async deleteResource() {}
+  async findResources<T extends keyof Resources>(
+    resourceName: T,
+    params: Record<string, unknown>,
+  ): Promise<BaseResponseResources<T> | Error> {
+    const response = await this.client.post<BaseResponseResources<T>>(resourceName, { params });
+    return response.data;
+  }
 
-  async updateResource() {}
+  async deleteResource<T extends keyof Resources>(
+    resourceName: T,
+    id: string,
+  ): Promise<BaseResponseResource<T> | Error> {
+    const response = await this.client.delete<BaseResponseResource<T>>(resourceName + '/' + id);
+    return response.data;
+  }
+
+  async patchResource<T extends keyof Resources>(
+    resourceName: T,
+    id: string,
+    body: Partial<Resources[T]>,
+  ): Promise<BaseResponseResource<T> | Error> {
+    const response = await this.client.patch<BaseResponseResource<T>>(resourceName + '/' + id, { body });
+    return response.data;
+  }
+
+  async createResource<T extends keyof Resources>(
+    resourceName: T,
+    body: Partial<Resources[T]>,
+  ): Promise<BaseResponseResource<T> | Error> {
+    const response = await this.client.post<BaseResponseResource<T>>(resourceName, { body });
+    return response.data;
+  }
 }
