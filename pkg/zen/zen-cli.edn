@@ -109,6 +109,13 @@
          :nth {0 {:type zen/symbol
                   :zen/desc "tag"}}}}
 
+ get-sdk
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "sdk generation"
+  :args-style :positional
+  :args {:type zen/vector
+         :maxItems 0}}
+
  exit
  {:zen/tags #{command}
   :zen/desc "exit"
@@ -175,4 +182,5 @@
              :validate   {:command validate}
              :get-symbol {:command get-symbol}
              :get-tag    {:command get-tag}
+             :get-sdk    {:command get-sdk}
              :exit       {:command exit}}}}
