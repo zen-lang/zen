@@ -11,3 +11,4 @@ target
 
 .DS_Store
 zen-packages/
+node_modules
