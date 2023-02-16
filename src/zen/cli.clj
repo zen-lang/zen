@@ -221,8 +221,6 @@
         :message   (.getMessage e#)
         :exception (Throwable->map e#)})))
 
-
-
 (defn cmd-unsafe [commands cmd-name args & [opts]]
   (if-let [cmd-fn (get commands cmd-name)]
     (apply-with-opts cmd-fn args opts)
@@ -231,7 +229,7 @@
 
 (defn cmd [& args]
   (exception->error-result
-    (apply cmd-unsafe args)))
+   (apply cmd-unsafe args)))
 
 
 (defn build
