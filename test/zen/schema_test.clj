@@ -5,7 +5,8 @@
             [clojure.string :as str]
             [zen.core]
             [zen.package]
-            [clojure.pprint :as pp]))
+            [clojure.pprint :as pp]
+            [clojure.string :as s]))
 
 (def premitives-map
   {:integer "number"})
@@ -61,10 +62,10 @@
 (defn generate-type-value
   [data]
   (if (:confirms data)
-    (str/join " | " (if
-                     (get-in data [:zen.fhir/reference :refers])
-                      (set-to-string (get-in data [:zen.fhir/reference :refers]))
-                      (set-to-string (:confirms data))))
+    (if
+     (get-in data [:zen.fhir/reference :refers])
+      (get-reference-union-type (set-to-string (get-in data [:zen.fhir/reference :refers])))
+      (s/join " | " (set-to-string (:confirms data))))
     (if
      ((keyword (name (:type data))) premitives-map)
       ((keyword (name (:type data))) premitives-map)
