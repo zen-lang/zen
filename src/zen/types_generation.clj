@@ -133,19 +133,21 @@
        (get-not-required-filed-sign vtx)
        ":"))
 
+(defn update-require-and-keys-in-array [vtx data]
+  (let [new-vtx (update vtx ::keys-in-array conj (generate-map-keys-in-array vtx data))]
+    (update new-vtx ::require conj (generate-require vtx data))))
+
 (zen.schema/register-schema-pre-process-hook!
  ::ts
  (fn [ztx schema]
    (fn [vtx data opts]
      (let [new-vtx (cond
                      (and (not (:keys data)) (empty? (:path vtx)))
-                     (assoc vtx ::is-type true)
-                     (and (:confirms data) (:keys data))
-                     (update vtx ::keys-in-array conj (generate-map-keys-in-array vtx data))
+                     (assoc vtx ::is-type true) 
+                     (or (and (:confirms data) (:keys data)) (:require data))
+                     (update-require-and-keys-in-array vtx data)
                      (:exclusive-keys data)
-                     (update vtx ::exclusive-keys conj (generate-exclusive-keys vtx data))
-                     (:require data)
-                     (update vtx ::require conj (generate-require vtx data))
+                     (update vtx ::exclusive-keys conj (generate-exclusive-keys vtx data)) 
                      :else vtx)]
 
        (cond
