@@ -53,7 +53,7 @@ export class Client {
 
   async createResource<T extends keyof ResourceTypeMap>(
     resourceName: T,
-    body: Partial<ResourceTypeMap[T]>,
+    body: ResourceTypeMap[T],
   ): Promise<BaseResponseResource<T> | Error> {
     const response = await this.client.post<BaseResponseResource<T>>(resourceName, { body });
     return response.data;
