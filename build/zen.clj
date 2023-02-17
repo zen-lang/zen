@@ -14,6 +14,11 @@
   (clean nil)
   (b/copy-dir {:src-dirs ["src" "resources" "pkg"]
                :target-dir class-dir})
+  (b/copy-dir {:src-dirs ["javascript-vendor/lib"]
+               :target-dir class-dir})
+  (b/copy-file {:src "javascript-vendor/lib/index.js" :target (str class-dir "/index.js")})
+  (b/copy-file {:src "javascript-vendor/lib/index.d.ts" :target (str class-dir "/index.d.ts")})
+  (b/copy-file {:src "javascript-vendor/package.json" :target (str class-dir "/package.json")})
   (b/compile-clj {:basis basis
                   :src-dirs ["src"]
                   :class-dir class-dir})

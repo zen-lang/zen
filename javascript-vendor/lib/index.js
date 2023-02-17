@@ -37,44 +37,89 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Client = void 0;
+// @ts-nocheck
 var axios_1 = require("axios");
 var Client = /** @class */ (function () {
     function Client(baseURL, credentials) {
         this.client = axios_1.default.create({ baseURL: baseURL, auth: credentials });
     }
-    Client.prototype.getResource = function (resourceName, id) {
+    Client.prototype.getResources = function (resourceName) {
         return __awaiter(this, void 0, void 0, function () {
-            var response, e_1;
+            var response;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4 /*yield*/, this.client.get(resourceName + '/' + id)];
+                    case 0: return [4 /*yield*/, this.client.get(resourceName)];
                     case 1:
                         response = _a.sent();
                         return [2 /*return*/, response.data];
-                    case 2:
-                        e_1 = _a.sent();
-                        throw e_1;
-                    case 3: return [2 /*return*/];
                 }
             });
         });
     };
-    Client.prototype.findResources = function () {
-        return __awaiter(this, void 0, void 0, function () { return __generator(this, function (_a) {
-            return [2 /*return*/];
-        }); });
+    Client.prototype.getResource = function (resourceName, id) {
+        return __awaiter(this, void 0, void 0, function () {
+            var response;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.client.get(resourceName + '/' + id)];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
     };
-    Client.prototype.deleteResource = function () {
-        return __awaiter(this, void 0, void 0, function () { return __generator(this, function (_a) {
-            return [2 /*return*/];
-        }); });
+    Client.prototype.findResources = function (resourceName, params) {
+        return __awaiter(this, void 0, void 0, function () {
+            var response;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.client.post(resourceName, { params: params })];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
     };
-    Client.prototype.updateResource = function () {
-        return __awaiter(this, void 0, void 0, function () { return __generator(this, function (_a) {
-            return [2 /*return*/];
-        }); });
+    Client.prototype.deleteResource = function (resourceName, id) {
+        return __awaiter(this, void 0, void 0, function () {
+            var response;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.client.delete(resourceName + '/' + id)];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
+    };
+    Client.prototype.patchResource = function (resourceName, id, body) {
+        return __awaiter(this, void 0, void 0, function () {
+            var response;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.client.patch(resourceName + '/' + id, { body: body })];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
+    };
+    Client.prototype.createResource = function (resourceName, body) {
+        return __awaiter(this, void 0, void 0, function () {
+            var response;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.client.post(resourceName, { body: body })];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
     };
     return Client;
 }());

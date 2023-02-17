@@ -10,5 +10,6 @@ target
 /pkg/zen-pkg/zen-packages/
 
 .DS_Store
+.idea
 zen-packages/
 node_modules

@@ -23,7 +23,7 @@
 (defn pretty-path [pth]
   (->> pth
        (mapv (fn [x] (if (keyword? x) (subs (str x) 1) (str x))))
-       (str/join "->" )))
+       (str/join "->")))
 
 (defn walk-resource [walk-fn resource]
   ;; disables sym expansion in zen/list (expr types)
