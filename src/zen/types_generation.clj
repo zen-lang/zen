@@ -179,63 +179,55 @@
     (io/copy in (clojure.java.io/file (str path "/package/index.d.ts"))))
   (with-open [in (io/input-stream (clojure.java.io/resource "package.json"))]
     (io/copy in (clojure.java.io/file (str path "/package/package.json"))))
+  
+  (let [result-file-path "./package/aidbox-types.d.ts"
+        ztx  (zen.core/new-context {:package-paths [path]})
+        _ (zen.core/read-ns ztx 'hl7-fhir-r4-core)
+        schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
+        structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
+        reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
+        resource-type-map-interface "export interface ResourceTypeMap {\n"
+        resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
+        key-value-resources (mapv (fn [[k _v]]
+                                    (format "%s: %s;" k k))
+                                  schema)
+        resource-map-result (conj (into [reference-type resource-type-map-interface] key-value-resources) resourcetype-type)]
 
+    (spit result-file-path (str/join ""  resource-map-result) :append true)
 
-  (def ztx
-    (zen.core/new-context
-     {:package-paths [path]}))
+    (mapv (fn [[k _v]]
+            (println k)
+            (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
+            (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+            (let [schemas-result (when (not (re-find #"-" k))
+                                   (zen.schema/apply-schema ztx
+                                                     {::ts []
+                                                      ::require {}
+                                                      ::interface-name k
+                                                      ::is-type false
+                                                      ::keys-in-array {}
+                                                      ::exclusive-keys {}}
+                                                     (zen.core/get-symbol ztx 'zen/schema)
+                                                     (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+                                                     {:interpreters [::ts]}))]
+              (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) schema)
 
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core)
+    (mapv (fn [[_k v]]
+            (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
+                  schema (zen.core/get-symbol ztx (symbol v))
+                  structures-result (when (and (or (:type schema) (:confirms schema) (:keys schema)) (not (re-find #"-" n)) (not= n "Reference"))
+                                      (zen.schema/apply-schema ztx
+                                                        {::ts []
+                                                         ::require {}
+                                                         ::exclusive-keys {}
+                                                         ::interface-name n
+                                                         ::keys-in-array {}}
+                                                        (zen.core/get-symbol ztx 'zen/schema)
+                                                        (zen.core/get-symbol ztx (symbol v))
+                                                        {:interpreters [::ts]}))]
 
-  (def schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)))
-  (def structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures)))
-
-  (defn generate-resource-type-map []
-    (let [reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
-          resource-type-map-interface "export interface ResourceTypeMap {\n"
-          resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
-          key-value-resources (mapv (fn [[k _v]]
-                                      (format "%s: %s;" k k))
-                                    schema)
-          result (conj (into [reference-type resource-type-map-interface] key-value-resources) resourcetype-type)]
-      (spit "./package/aidbox-types.d.ts" (str/join "" result) :append true)))
-
-  (generate-resource-type-map)
-
-  (mapv (fn [[k _v]]
-          (println k)
-          (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
-          (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-          (when (not (re-find #"-" k))
-            (def r (zen.schema/apply-schema ztx
-                                            {::ts []
-                                             ::require {}
-                                             ::interface-name k
-                                             ::is-type false
-                                             ::keys-in-array {}
-                                             ::exclusive-keys {}}
-                                            (zen.core/get-symbol ztx 'zen/schema)
-                                            (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-                                            {:interpreters [::ts]})))
-          (spit "./package/aidbox-types.d.ts" (str/join "" (conj (::ts r) "\n")) :append true)) schema)
-
-  (do (mapv (fn [[_k v]]
-              (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
-                    ns  (zen.core/read-ns ztx (symbol (namespace v)))
-                    schema (zen.core/get-symbol ztx (symbol v))]
-
-                (when (and (or (:type schema) (:confirms schema) (:keys schema)) (not (re-find #"-" n)) (not= n "Reference"))
-                  ((def r (zen.schema/apply-schema ztx
-                                                   {::ts []
-                                                    ::require {}
-                                                    ::exclusive-keys {}
-                                                    ::interface-name n
-                                                    ::keys-in-array {}}
-                                                   (zen.core/get-symbol ztx 'zen/schema)
-                                                   (zen.core/get-symbol ztx (symbol v))
-                                                   {:interpreters [::ts]}))
-                   (spit "./package/aidbox-types.d.ts" (str/join "" (conj (::ts r) "\n")) :append true))))) structures) :ok)
-
-  (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
-                             " && rm -rf package"))
-  (System/exit 0))
+              (spit result-file-path (str/join "" (conj (::ts structures-result) "\n")) :append true))) structures)
+    (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
+                               " && rm -rf package"))
+    (System/exit 0)
+    :ok))
