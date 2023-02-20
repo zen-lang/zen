@@ -211,6 +211,15 @@
     dest-dir))
 
 
+;; GZIP files don't have entries. They have single payloads. Thus, we
+;; don’t iterate over entries here.
+(defn gunzip! [^String input ^String output]
+  (with-open [rdr (-> input
+                      (java.io.FileInputStream.)
+                      (java.util.zip.GZIPInputStream.))]
+    (spit output (slurp rdr))))
+
+
 (defn copy-file [src dest]
   (java.nio.file.Files/copy (.toPath (io/file src))
                             (.toPath (io/file dest))
