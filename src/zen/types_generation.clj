@@ -166,11 +166,11 @@
    (fn [vtx data opts]
      (let [new-vtx (cond
                      (and (not (:keys data)) (empty? (:path vtx)))
-                     (assoc vtx ::is-type true) 
+                     (assoc vtx ::is-type true)
                      (or (and (:confirms data) (:keys data)) (:require data))
                      (update-require-and-keys-in-array vtx data)
                      (:exclusive-keys data)
-                     (update vtx ::exclusive-keys conj (generate-exclusive-keys vtx data)) 
+                     (update vtx ::exclusive-keys conj (generate-exclusive-keys vtx data))
                      :else vtx)]
 
        (cond
@@ -202,19 +202,43 @@
     (io/copy in (clojure.java.io/file (str path "/package/index.d.ts"))))
   (with-open [in (io/input-stream (clojure.java.io/resource "package.json"))]
     (io/copy in (clojure.java.io/file (str path "/package/package.json"))))
-  
+
   (let [result-file-path "./package/aidbox-types.d.ts"
         ztx  (zen.core/new-context {:package-paths [path]})
         _ (zen.core/read-ns ztx 'hl7-fhir-r4-core)
         schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
         structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
+        searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))
         reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
         resource-type-map-interface "export interface ResourceTypeMap {\n"
         resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
         key-value-resources (mapv (fn [[k _v]]
                                     (format "%s: %s;" k k))
                                   schema)
-        resource-map-result (conj (into [reference-type resource-type-map-interface] key-value-resources) resourcetype-type)]
+        search-params-start-interface "export interface SearchParams {\n"
+        search-params-end-interface "\n}"
+        search-params-content (mapv (fn [[k v]]
+                                      (println k v)
+                                      (str (name k) ": {\n"
+                                           (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
+                                    (reduce (fn [acc [_ v]]
+                                              (reduce (fn [third-acc item]
+                                                        (zen.core/read-ns ztx (symbol (namespace (last item))))
+                                                        (let [sym (last item)
+                                                              schema (zen.core/get-symbol ztx (symbol sym))
+                                                              schema-keys (keys (:expr schema))
+                                                              type (:fhir/type schema)
+                                                              attribute-name (:name schema)]
+
+                                                          (reduce (fn [second-acc item]
+                                                                    (update-in second-acc [item] assoc (keyword attribute-name) (if (= type "reference") "`${ResourceType}/${string}`" "string")))
+                                                                  third-acc
+                                                                  schema-keys))) acc v))
+                                            {} searches))
+        resource-map-result (conj (into [reference-type resource-type-map-interface] key-value-resources) resourcetype-type)
+        search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
+
+
 
     (spit result-file-path (str/join ""  resource-map-result) :append true)
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
@@ -251,6 +275,7 @@
                                                                {:interpreters [::ts]}))]
 
               (spit result-file-path (str/join "" (conj (::ts structures-result) "\n")) :append true))) structures)
+    (spit result-file-path (str/join "" search-params-result) :append true)
     (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
                                " && rm -rf package"))
     (System/exit 0)

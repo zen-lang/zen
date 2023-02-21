@@ -75,6 +75,7 @@
 
   (zen.core/read-ns ztx 'hl7-fhir-r4-core)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
+<<<<<<< HEAD
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
@@ -82,11 +83,19 @@
   (zen.ftr/build-complete-ftr-index ztx)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   ;; (get-valueset-values ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
+=======
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches)
+  (zen.core/read-ns ztx 'hl7-fhir-r4-core.search.Patient-name)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.search.Patient-name/search)
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.CodeableConcept/schema)
+
+>>>>>>> 1aac7dd (feat: search params generator)
   (defn generate-types []
     (let [result-file-path "./result.ts"
           schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
-          structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
           searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))
+          structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
           reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
           resource-type-map-interface "export interface ResourceTypeMap {\n"
           resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
@@ -98,14 +107,27 @@
           search-params-end-interface "\n}"
           search-params-content (mapv (fn [[k v]]
                                         (println k v)
-                                        (str (name k) ": {\n" (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n")) (get-search-params))
+                                        (str (name k) ": {\n"
+                                             (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
+                                      (reduce (fn [acc [_ v]]
+                                                (reduce (fn [third-acc item]
+                                                          (zen.core/read-ns ztx (symbol (namespace (last item))))
+                                                          (let [sym (last item)
+                                                                schema (zen.core/get-symbol ztx (symbol sym))
+                                                                schema-keys (keys (:expr schema))
+                                                                type (:fhir/type schema)
+                                                                attribute-name (:name schema)]
+
+                                                            (reduce (fn [second-acc item]
+                                                                      (update-in second-acc [item] assoc (keyword attribute-name) (if (= type "reference") "`${ResourceType}/${string}`" "string")))
+                                                                    third-acc
+                                                                    schema-keys))) acc v))
+                                              {} searches))
           search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
 
       (spit result-file-path (str/join "" resource-map-result) :append true)
       (mapv (fn [[k _v]]
-              (println k)
               (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
-              (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
               (let [schemas-result (when (not (re-find #"-" k))
                                      (sut/apply-schema ztx
                                                        {::ts []
@@ -134,23 +156,6 @@
                                                           {:interpreters [::ts]}))]
 
                 (spit result-file-path (str/join "" (conj (::ts structures-result) "\n")) :append true))) structures)
-
-
-      (defn  get-search-params []
-        (reduce (fn [acc [k v]]
-                  (reduce (fn [third-acc item]
-                            (let [abc (last item)
-                                  schema (zen.core/get-symbol ztx (symbol abc))
-                                  schema-keys (keys (:expr schema))
-                                  attribute-name (:name schema)]
-
-                              (reduce (fn [second-acc item]
-                                        (update-in second-acc [item] assoc (keyword attribute-name) "string"))
-                                      third-acc
-                                      schema-keys))) acc v))
-                {} searches))
-
-
 
       (spit result-file-path (str/join "" search-params-result) :append true)
       :ok))
