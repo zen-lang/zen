@@ -1,5 +1,5 @@
 (ns zen.types-generation
-  (:require [zen.schema]
+  (:require [zen.schema :as sut]
             [zen.core]
             [zen.package]
             [zen.utils]
@@ -76,15 +76,19 @@
              (not ((keyword (::interface-name vtx)) non-parsable-premitives)))
     (str "type " (::interface-name vtx)  " = " (generate-type-value data))))
 
-(defn generate-interface [vtx]
-  (str "interface " (::interface-name vtx) " "))
+(defn generate-interface [vtx {confirms :confirms}]
+  (let [extand (cond 
+                 (= (::interface-name vtx) "DomainResource") " extends Resource "
+                 (some #(= "DomainResource" %) (set-to-string confirms)) " extends DomainResource "
+                 :else " ")]
+    (str "interface " (::interface-name vtx) extand)))
 
 (defn generate-name
   [vtx data]
   (str (get-desc data)
        (if (::is-type vtx)
          (generate-type vtx data)
-         (generate-interface vtx))))
+         (generate-interface vtx data))))
 
 (defn get-valueset-values [ztx value-set]
   (let [{uri :uri} (zen.core/get-symbol ztx value-set)
@@ -113,7 +117,7 @@
      (= (first (set-to-string (:confirms schema))) "BackboneElement") ""
      :else (str (first (set-to-string (:confirms schema)))))))
 
-(zen.schema/register-compile-key-interpreter!
+(zen.schema/register-compile-key-interpreter! 
  [:keys ::ts]
  (fn [_ ztx ks]
    (fn [vtx data opts]

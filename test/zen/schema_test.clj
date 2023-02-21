@@ -6,7 +6,8 @@
             [zen.core]
             [zen.package]
             [clojure.pprint :as pp]
-            [zen.ftr]))
+            [zen.ftr]
+            [zen.types-generation]))
 
 (t/deftest patient-test
   (t/testing "patient test"
