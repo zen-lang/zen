@@ -5,13 +5,16 @@
             [zen.utils]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.java.shell :as shell]))
+            [clojure.java.shell :as shell]
+            [zen.ftr]))
 
 (def premitives-map
   {:integer "number"})
 
 (def non-parsable-premitives
-  {:string "string" :number "number" :boolean "boolean"})
+  {:string "string"
+   :number "number"
+   :boolean "boolean"})
 
 (defn set-to-string [value]
   (reduce
@@ -83,13 +86,32 @@
          (generate-type vtx data)
          (generate-interface vtx))))
 
-(defn generate-confirms [data]
+(defn get-valueset-values [ztx value-set]
+  (let [{uri :uri} (zen.core/get-symbol ztx value-set)
+        ftr-index (get-in @ztx [:zen.fhir/ftr-index :result "init"])
+        result (->>  (get-in ftr-index [:valuesets uri])
+                     (filter #(not= "http://snomed.info/sct" %))
+                     (map (fn [item]
+                            (->> (get-in ftr-index [:codesystems item])
+                                 (filter (fn [[_ value]] (contains? (:valueset value) uri)))
+                                 keys)))
+                     flatten
+                     (remove nil?)
+                     seq)] 
+    result))
+
+(defn generate-valueset-union-type [ztx schema]
+  (let [valueset-values (get-valueset-values ztx (get-in schema [:zen.fhir/value-set :symbol]))]
+    (if (or (> (count valueset-values) 20) (= (count valueset-values) 0)) 
+      "string" (str/join " | " (map #(format "'%s'" %) valueset-values)))))
+
+(defn generate-confirms [schema]
   (str
    (cond
-     (= (first (set-to-string (:confirms data))) "Reference")
-     (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference data))))
-     (= (first (set-to-string (:confirms data))) "BackboneElement") ""
-     :else (str (first (set-to-string (:confirms data)))))))
+     (= (first (set-to-string (:confirms schema))) "Reference")
+     (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference schema))))
+     (= (first (set-to-string (:confirms schema))) "BackboneElement") ""
+     :else (str (first (set-to-string (:confirms schema)))))))
 
 (zen.schema/register-compile-key-interpreter!
  [:keys ::ts]
@@ -99,7 +121,8 @@
                     (when (:exclusive-keys data) (get-exlusive-keys-type data))
                     (when (exclusive-keys-child? vtx) "")
                     (when (keys-in-array-child? vtx) "")
-                    (when (:confirms data) (generate-confirms data))
+                    (when (:confirms data) 
+                      (if (:zen.fhir/value-set data) (generate-valueset-union-type ztx data) (generate-confirms data)))
                     (when-let [tp (and
                                    (= (:type vtx) 'zen/symbol)
                                    (not (= (last (:path vtx)) :every))
@@ -194,22 +217,23 @@
         resource-map-result (conj (into [reference-type resource-type-map-interface] key-value-resources) resourcetype-type)]
 
     (spit result-file-path (str/join ""  resource-map-result) :append true)
-
+    (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
+    (zen.ftr/build-complete-ftr-index ztx)
     (mapv (fn [[k _v]]
             (println k)
             (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
             (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
             (let [schemas-result (when (not (re-find #"-" k))
                                    (zen.schema/apply-schema ztx
-                                                     {::ts []
-                                                      ::require {}
-                                                      ::interface-name k
-                                                      ::is-type false
-                                                      ::keys-in-array {}
-                                                      ::exclusive-keys {}}
-                                                     (zen.core/get-symbol ztx 'zen/schema)
-                                                     (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-                                                     {:interpreters [::ts]}))]
+                                                            {::ts []
+                                                             ::require {}
+                                                             ::interface-name k
+                                                             ::is-type false
+                                                             ::keys-in-array {}
+                                                             ::exclusive-keys {}}
+                                                            (zen.core/get-symbol ztx 'zen/schema)
+                                                            (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+                                                            {:interpreters [::ts]}))]
               (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) schema)
 
     (mapv (fn [[_k v]]
@@ -217,14 +241,14 @@
                   schema (zen.core/get-symbol ztx (symbol v))
                   structures-result (when (and (or (:type schema) (:confirms schema) (:keys schema)) (not (re-find #"-" n)) (not= n "Reference"))
                                       (zen.schema/apply-schema ztx
-                                                        {::ts []
-                                                         ::require {}
-                                                         ::exclusive-keys {}
-                                                         ::interface-name n
-                                                         ::keys-in-array {}}
-                                                        (zen.core/get-symbol ztx 'zen/schema)
-                                                        (zen.core/get-symbol ztx (symbol v))
-                                                        {:interpreters [::ts]}))]
+                                                               {::ts []
+                                                                ::require {}
+                                                                ::exclusive-keys {}
+                                                                ::interface-name n
+                                                                ::keys-in-array {}}
+                                                               (zen.core/get-symbol ztx 'zen/schema)
+                                                               (zen.core/get-symbol ztx (symbol v))
+                                                               {:interpreters [::ts]}))]
 
               (spit result-file-path (str/join "" (conj (::ts structures-result) "\n")) :append true))) structures)
     (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
