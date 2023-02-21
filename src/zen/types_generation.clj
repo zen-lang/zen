@@ -99,12 +99,12 @@
                                  keys)))
                      flatten
                      (remove nil?)
-                     seq)] 
+                     seq)]
     result))
 
 (defn generate-valueset-union-type [ztx schema]
   (let [valueset-values (get-valueset-values ztx (get-in schema [:zen.fhir/value-set :symbol]))]
-    (if (or (> (count valueset-values) 20) (= (count valueset-values) 0)) 
+    (if (or (> (count valueset-values) 20) (= (count valueset-values) 0))
       "string" (str/join " | " (map #(format "'%s'" %) valueset-values)))))
 
 (defn generate-confirms [schema]
@@ -123,7 +123,7 @@
                     (when (:exclusive-keys data) (get-exlusive-keys-type data))
                     (when (exclusive-keys-child? vtx) "")
                     (when (keys-in-array-child? vtx) "")
-                    (when (:confirms data) 
+                    (when (:confirms data)
                       (if (:zen.fhir/value-set data) (generate-valueset-union-type ztx data) (generate-confirms data)))
                     (when-let [tp (and
                                    (= (:type vtx) 'zen/symbol)
@@ -217,7 +217,7 @@
         key-value-resources (mapv (fn [[k _v]]
                                     (format "%s: %s;" k k))
                                   schema)
-        search-params-start-interface "export interface SearchParams {\n"
+        search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
         search-params-end-interface "\n}"
         search-params-content (mapv (fn [[k v]]
                                       (println k v)
@@ -233,7 +233,15 @@
                                                               attribute-name (:name schema)]
 
                                                           (reduce (fn [second-acc item]
-                                                                    (update-in second-acc [item] assoc (keyword attribute-name) (if (= type "reference") "`${ResourceType}/${string}`" "string")))
+                                                                    (update-in second-acc [item] assoc (keyword attribute-name) (cond (= type "reference")
+                                                                                                                                      "`${ResourceType}/${string}`"
+                                                                                                                                      (= type "token")
+                                                                                                                                      (if (some #(:type %) (:data-types ((keyword item) (:expr schema))))
+                                                                                                                                        (some #(:type %) (:data-types ((keyword item) (:expr schema))))
+                                                                                                                                        "string")
+                                                                                                                                      (or (= type "special") (= type "quantity"))
+                                                                                                                                      "string"
+                                                                                                                                      :else type)))
                                                                   third-acc
                                                                   schema-keys))) acc v))
                                             {} searches))

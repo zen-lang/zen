@@ -95,7 +95,7 @@
                                       (format "%s: %s;" k k))
                                     schema)
           resource-map-result (conj (into [reference-type resource-type-map-interface] key-value-resources) resourcetype-type)
-          search-params-start-interface "export interface SearchParams {\n"
+          search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
           search-params-end-interface "\n}"
           search-params-content (mapv (fn [[k v]]
                                         (println k v)
@@ -111,7 +111,17 @@
                                                                 attribute-name (:name schema)]
 
                                                             (reduce (fn [second-acc item]
-                                                                      (update-in second-acc [item] assoc (keyword attribute-name) (if (= type "reference") "`${ResourceType}/${string}`" "string")))
+                                                                      (update-in second-acc [item] assoc
+                                                                                 (keyword attribute-name)
+                                                                                 (cond (= type "reference")
+                                                                                       "`${ResourceType}/${string}`"
+                                                                                       (= type "token")
+                                                                                       (if (some #(:type %) (:data-types ((keyword item) (:expr schema))))
+                                                                                         (some #(:type %) (:data-types ((keyword item) (:expr schema))))
+                                                                                         "string")
+                                                                                       (or (= type "special") (= type "quantity"))
+                                                                                       "string"
+                                                                                       :else type)))
                                                                     third-acc
                                                                     schema-keys))) acc v))
                                               {} searches))
