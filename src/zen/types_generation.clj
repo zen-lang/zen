@@ -77,10 +77,8 @@
     (str "type " (::interface-name vtx)  " = " (generate-type-value data))))
 
 (defn generate-interface [vtx {confirms :confirms}]
-  (let [extand (cond 
-                 (= (::interface-name vtx) "DomainResource") " extends Resource "
-                 (some #(= "DomainResource" %) (set-to-string confirms)) " extends DomainResource "
-                 :else " ")]
+  (let [extended-resource (first (set-to-string confirms))
+        extand (if (and extended-resource (not= extended-resource "zen.fhir")) (format " extends %s " extended-resource) " ")]
     (str "interface " (::interface-name vtx) extand)))
 
 (defn generate-name
