@@ -75,7 +75,6 @@
 
   (zen.core/read-ns ztx 'hl7-fhir-r4-core)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
-<<<<<<< HEAD
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
@@ -83,14 +82,6 @@
   (zen.ftr/build-complete-ftr-index ztx)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   ;; (get-valueset-values ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
-=======
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches)
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core.search.Patient-name)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.search.Patient-name/search)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.CodeableConcept/schema)
-
->>>>>>> 1aac7dd (feat: search params generator)
   (defn generate-types []
     (let [result-file-path "./result.ts"
           schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
