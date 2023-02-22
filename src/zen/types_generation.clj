@@ -5,6 +5,7 @@
             [zen.utils]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.java.shell :as shell]
             [zen.ftr]))
 
@@ -51,13 +52,6 @@
   (str "Reference<"
        (if (empty? references) "ResourceType" (str/join " | " (map (fn [item] (str "'" item "'")) references)))
        ">"))
-
-(defn get-exlusive-keys-type [data]
-  (let [union-type (str/join " | " (set-to-string (:exclusive-keys data)))]
-    (cond (:Reference (:keys data))
-          (str/replace union-type #"Reference"
-                       (get-reference-union-type (set-to-string (:refers (:zen.fhir/reference (:Reference (:keys data)))))))
-          :else union-type)))
 
 (defn generate-type-value
   [data]
@@ -115,12 +109,29 @@
      (= (first (set-to-string (:confirms schema))) "BackboneElement") ""
      :else (str (first (set-to-string (:confirms schema)))))))
 
+(defn get-exclusive-keys-values [ztx exclusive-keys ks]
+  (str/join "\n" (map (fn [k]
+                        (let [value (if (:zen.fhir/value-set (k ks)) (generate-valueset-union-type ztx (k ks)) (generate-confirms (k ks)))]
+                          (format "%s?: %s;" (name k) value))) exclusive-keys)))
+
+(defn get-exclusive-keys-type [ztx schema]
+  (let [ks (:keys schema)
+        exclusive-keys (first (:exclusive-keys schema))
+        non-exclusive-keys (set/difference (set (keys ks)) exclusive-keys)
+        non-exclusive-keys-type (if (= (count non-exclusive-keys) 0) ""
+                                    (format "{ %s } & "
+                                             (get-exclusive-keys-values ztx non-exclusive-keys ks)))
+        exclusive-keys-type (get-exclusive-keys-values ztx exclusive-keys ks) 
+        ]
+
+    (format "RequireAtLeastOne<%sOneKey<{ %s }>>" non-exclusive-keys-type exclusive-keys-type)))
+
 (zen.schema/register-compile-key-interpreter! 
  [:keys ::ts]
  (fn [_ ztx ks]
    (fn [vtx data opts]
      (if-let [s (or (when (:zen.fhir/type data) (generate-name vtx data))
-                    (when (:exclusive-keys data) (get-exlusive-keys-type data))
+                    (when (:exclusive-keys data) (get-exclusive-keys-type ztx data))
                     (when (exclusive-keys-child? vtx) "")
                     (when (keys-in-array-child? vtx) "")
                     (when (:confirms data)
@@ -212,6 +223,10 @@
         structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
         searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))
         reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
+        onekey-type "type OneKey<T extends Record<string, unknown>> = { [K in keyof T]:\n
+                          ({ [P in K]: T[K] } & { [P in Exclude<keyof T, K>]?: never }) extends infer O ? { [P in keyof O]: O[P] } : never\n
+                       }[keyof T];\n"
+        require-at-least-one-type "type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>; }[keyof T];\n" 
         resource-type-map-interface "export interface ResourceTypeMap {\n"
         resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
         key-value-resources (mapv (fn [[k _v]]
@@ -245,7 +260,7 @@
                                                                   third-acc
                                                                   schema-keys))) acc v))
                                             {} searches))
-        resource-map-result (conj (into [reference-type resource-type-map-interface] key-value-resources) resourcetype-type)
+        resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type)
         search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
 
 
@@ -292,6 +307,53 @@
     :ok))
 
 (comment
+  (def ztx (zen.core/new-context {}))
+
+  (def my-structs-ns
+    '{:ns my-sturcts
+
+      defaults
+      {:zen/tags #{zen/property zen/schema}
+       :type zen/boolean}
+
+      User
+      {:zen.fhir/version "0.6.12-1",
+       :confirms #{hl7-fhir-r4-core.DomainResource/schema
+                   zen.fhir/Resource},
+       :zen/tags #{zen/schema zen.fhir/base-schema},
+       :zen.fhir/profileUri "http://hl7.org/fhir/StructureDefinition/Composition",
+       :require #{:date :type :title :author :status},
+       :type zen/map,
+       :zen/desc "A set of healthcare-related information that is assembled together into a single logical package that provides a single coherent statement of meaning, establishes its own context and that has clinical attestation with regard to who is making the statement. A Composition defines the structure and narrative content necessary for a document. However, a Composition alone does not constitute a document. Rather, the Composition must be the first entry in a Bundle where Bundle.type=document, and any other resources referenced from Composition must be included as subsequent entries in the Bundle (for example Patient, Practitioner, Encounter, etc.).",
+       :keys {:deceased {:fhir/polymorphic true,
+                         :type zen/map,
+                         :exclusive-keys #{#{:dateTime :boolean}},
+                         :keys {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
+                                :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                                :dateTime {:confirms #{hl7-fhir-r4-core.dateTime/schema}},
+                                :_dateTime {:confirms #{hl7-fhir-r4-core.Element/schema}}},
+                         :fhir/flags #{:SU :?!},
+                         :zen/desc "Indicates if the individual is deceased or not"}},
+       :zen.fhir/type "Composition"}})
+
+  (zen.core/load-ns ztx my-structs-ns)
+
+  (def r
+    (sut/apply-schema ztx
+                      {::ts []
+                       ::require {}
+                       ::exclusive-keys {}
+                       ::interface-name "User"
+                       ::keys-in-array {}}
+                      (zen.core/get-symbol ztx 'zen/schema)
+                      (zen.core/get-symbol ztx 'my-sturcts/User)
+                      {:interpreters [::ts]}))
+
+  (str/join "" (::ts r))
+
+  )
+
+(comment
   ;; CLASSPATH
   ;; :paths (path to zrc/)
   ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)
@@ -318,9 +380,10 @@
           structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
           searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))
           reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
-          onekey-type "type OneKey<T extends object> = { [K in keyof T]-?:\n
+          onekey-type "type OneKey<T extends Record<string, unknown>> = { [K in keyof T]:\n
                           ({ [P in K]: T[K] } & { [P in Exclude<keyof T, K>]?: never }) extends infer O ? { [P in keyof O]: O[P] } : never\n
                        }[keyof T];\n"
+          require-at-least-one-type "type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>; }[keyof T];\n"
           resource-type-map-interface "export interface ResourceTypeMap {\n"
           resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
           key-value-resources (mapv (fn [[k _v]]
@@ -354,7 +417,7 @@
                                                                     third-acc
                                                                     schema-keys))) acc v))
                                               {} searches))
-          resource-map-result (conj (into [reference-type onekey-type resource-type-map-interface] key-value-resources) resourcetype-type)
+          resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type)
           search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
 
 
