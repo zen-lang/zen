@@ -58,8 +58,7 @@
                         (zen.core/get-symbol ztx 'my-sturcts/User)
                         {:interpreters [::ts]}))
 
-    (str/join "" (::ts r))
-
+    (str/join "" (::ts r)) 
     (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
 
 (comment
