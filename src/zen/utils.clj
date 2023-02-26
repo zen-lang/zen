@@ -152,6 +152,33 @@
             aliases)
       tagged-symbols)))
 
+(defmacro iter-reduce
+  [fn val iterable]
+  (let [[params & fn-body] (if (list? fn)
+                             (drop-while symbol? fn)
+                             [['acc 'val] (list fn 'acc 'val)])
+        [acc-arg el-arg] params
+        tagged-iter (vary-meta iterable assoc :tag `Iterable)]
+    `(let [iter# (.iterator ~tagged-iter)]
+       (loop [~acc-arg ~val]
+         (if (.hasNext iter#)
+           (let [~el-arg (.next iter#)]
+             (recur (do ~@fn-body)))
+           ~acc-arg)))))
+
+;; NOTE: `clojure.core/into` uses transients when possible. Here they
+;; are not used because `bench.clj` performance benchmarking showed
+;; noticeable improvements (≈10%) when they were omitted. That
+;; performance was done on FHIR resources schemas and data. For other
+;; usecases this implementation may not be as efficient.
+(defn iter-into
+  "Efficient implementation of monadic and dyadic arities of clojure.core/into."
+  ([to] to)
+  ([to from]
+   (if from
+     (iter-reduce conj to from)
+     to)))
+
 (defn mk-symbol [ns-part name-part]
   (with-meta
     (symbol
@@ -210,7 +237,7 @@
                        set1))]
     (persistent! set1-diffed-transient)))
 
-(defn string->md5 [s]
+(defn string->md5 [^String s]
   (let [md5-digest (doto (java.security.MessageDigest/getInstance "MD5")
                      (.update (.getBytes s)))]
     (format "%032x" (BigInteger. 1 (.digest md5-digest)))))
@@ -233,18 +260,28 @@
     dest-dir))
 
 
+;; GZIP files don't have entries. They have single payloads. Thus, we
+;; don’t iterate over entries here.
+(defn gunzip! [^String input ^String output]
+  (with-open [rdr (-> input
+                      (java.io.FileInputStream.)
+                      (java.util.zip.GZIPInputStream.))]
+    (spit output (slurp rdr))))
+
+
 (defn copy-file [src dest]
   (java.nio.file.Files/copy (.toPath (io/file src))
                             (.toPath (io/file dest))
+                            ^"[Ljava.nio.file.CopyOption;"
                             (into-array java.nio.file.CopyOption
                                         [(java.nio.file.StandardCopyOption/REPLACE_EXISTING)])))
 
 
 (defn copy-directory [from to]
-  (let [from (File. from)
-        to (File. to)]
+  (let [from (io/file from)
+        to (io/file to)]
     (when (not (.exists to)) (.mkdirs to))
-    (doseq [file (.listFiles from)]
+    (doseq [^java.io.File file (.listFiles from)]
       (if (.isDirectory file)
         (copy-directory (.getPath file) (str to "/" (.getName file)))
         (copy-file (.getPath file) (str to "/" (.getName file)))))))

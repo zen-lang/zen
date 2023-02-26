@@ -185,20 +185,34 @@
   (let [modules (io/file (str path "/node_modules"))]
     (when (and (.exists modules) (.isDirectory modules))
       (->> (.listFiles modules)
-           (mapcat (fn [x]
+           (mapcat (fn [^java.io.File x]
                      (if (and (.isDirectory x) (str/starts-with? (.getName x) "@"))
                        (.listFiles x)
                        [x])))
-           (filter #(.isDirectory %))))))
+           (filter (fn [^java.io.File x] (.isDirectory x)))))))
 
-(defn find-in-paths [paths pth]
+(defn mk-full-path [zen-path file-path]
+  (str zen-path "/" file-path))
+
+(defn get-file [zen-path file-path]
+  (let [^java.io.File file (io/file (mk-full-path zen-path file-path))]
+    (when (.exists file)
+      file)))
+
+(defn find-path
+  "Returns a zen path containing pth"
+  [paths pth]
   (loop [[p & ps] paths]
     (when p
-      (let [fpth (str p "/" pth)
-            file (io/file fpth)]
-        (if (.exists file)
-          file
-          (recur (concat (expand-node-modules p) ps)))))))
+      (if (some? (get-file p pth))
+        (.getPath (io/file p))
+        (recur (concat (expand-node-modules p) ps))))))
+
+(defn find-in-paths
+  "Returns file found in zen paths"
+  [paths pth]
+  (some-> (find-path paths pth)
+          (get-file pth)))
 
 (defn expand-zen-packages [path]
   (let [modules (io/file path)]
@@ -221,13 +235,19 @@
       (str unzip-dest \/ "zrc")
       (str (zen.utils/unzip! zip-path unzip-dest) \/ "zrc"))))
 
+(defn find-file&path [ctx pth]
+  (or (when-let [resource-file (io/resource pth)]
+        {:file resource-file})
+      (when-let [zen-path (find-path (concat (mapcat expand-package-path (:package-paths @ctx))
+                                             (:paths @ctx)
+                                             (map unzip-to-cache-dir (:zip-paths @ctx)))
+                                     pth)]
+        {:file     (get-file zen-path pth)
+         :zen-path zen-path})))
+
 ;; TODO: cache find file
 (defn find-file [ctx pth]
-  (or (io/resource pth)
-      (find-in-paths (concat (mapcat expand-package-path (:package-paths @ctx))
-                             (:paths @ctx)
-                             (map unzip-to-cache-dir (:zip-paths @ctx)))
-                     pth)))
+  (:file (find-file&path ctx pth)))
 
 (defn get-env [env env-name]
   (or (get env (keyword env-name))
@@ -258,7 +278,7 @@
 
 (defn read-ns [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
-    (if-let [file (find-file ctx pth)]
+    (if-let [{:keys [file zen-path]} (find-file&path ctx pth)]
       (try
         (let [content (slurp file)
               env (:env @ctx)
@@ -272,7 +292,8 @@
                                                            'zen/quote   (fn [d] (zen-quote d))}})
               zen-ns (or (get ns-map 'ns) (get ns-map :ns))]
           (if (= nm zen-ns)
-            (do (load-ns ctx ns-map {:zen/file (.getPath file)})
+            (do (load-ns ctx ns-map (cond-> {:zen/file (.getPath file)}
+                                      zen-path (assoc :zen/zen-path zen-path)))
                 :zen/loaded)
             (do (println :file-doesnt-match-namespace (.getPath file) nm zen-ns)
                 (swap! ctx update :errors

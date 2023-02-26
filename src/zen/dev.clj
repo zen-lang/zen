@@ -7,7 +7,7 @@
 (defn make-ns-name [paths filename]
   (when-let [nm (->> paths
                      (keep io/as-file)
-                     (map #(.getPath %)) #_"NOTE: path sanitization"
+                     (map (fn [^java.io.File f] (.getPath f))) #_"NOTE: path sanitization"
                      (map (fn [p]
                             (when (str/starts-with? filename p)
                               (subs filename (inc (count p)) (- (count filename) 4)))))
@@ -29,7 +29,7 @@
   (swap! ztx assoc-in [:ns-reloads ns-sym] (hash (get-in @ztx [:ns ns-sym])))
   (zen.core/read-ns ztx (symbol ns-sym)))
 
-(defn handle-updates [ztx paths htx {file :file kind :kind}]
+(defn handle-updates [ztx paths htx {^java.io.File file :file kind :kind}]
   (let [filename (-> (.getPath file)
                      ;; this is strange prefix in macos
                      (str/replace  #"^/private" ""))]

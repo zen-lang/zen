@@ -50,15 +50,17 @@ Probably safe to remove if no one relies on them"
 
 (defn validate-props [vtx data props opts]
   ;; props is clojure map
-  (utils/iter-reduce (fn [vtx* prop-entry]
-                       (let [prop (nth prop-entry 0)]
-                         (if-let [prop-value (get data prop)]
-                           (-> (validation.utils/node-vtx&log vtx* [:property prop] [prop])
-                               ((get props prop) prop-value opts)
-                               (validation.utils/merge-vtx vtx*))
-                           vtx*)))
-                     vtx
-                     props))
+  (if props
+    (utils/iter-reduce (fn [vtx* prop-entry]
+                         (let [prop (nth prop-entry 0)]
+                           (if-let [prop-value (get data prop)]
+                             (-> (validation.utils/node-vtx&log vtx* [:property prop] [prop])
+                                 ((get props prop) prop-value opts)
+                                 (validation.utils/merge-vtx vtx*))
+                             vtx*)))
+                       vtx
+                       props)
+    vtx))
 
 
 (defn props-pre-process-hook [ztx schema]
@@ -174,7 +176,7 @@ Probably safe to remove if no one relies on them"
       (let [pth-key (peek (:path vtx))]
         (cond
           ;; TODO fix this when compile-opts are implemented
-          (get #{:zen/tags :zen/file :zen/desc :zen/name} pth-key) vtx
+          (get #{:zen/tags :zen/file :zen/desc :zen/name :zen/zen-path} pth-key) vtx
 
           (type-pred data) vtx
 
@@ -464,7 +466,8 @@ Probably safe to remove if no one relies on them"
 (defn is-exclusive? [group data]
   (let [group-iter (.iterator ^Iterable group)]
     (loop [count 0]
-      (if (> count 1)
+      ;; `(= 2 count)` is slightly more performant than `(> count 1)`
+      (if (= 2 count)
         false
         (if (.hasNext group-iter)
           (let [el (.next group-iter)]

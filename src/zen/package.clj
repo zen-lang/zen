@@ -7,7 +7,6 @@
             [zen.utils])
   (:import java.io.File))
 
-
 (defn sh! [& args]
   (println "$" (str/join " " args))
   (let [result (apply shell/sh args)]
@@ -87,7 +86,7 @@
 
 (defn zen-init! [root & {:keys [package-name]}]
   (let [not-empty-zen-dir? (->> (file-seq (io/file root))
-                                (filter #(.isFile %))
+                                (filter (fn [^java.io.File f] (.isFile f)))
                                 seq)]
     (if not-empty-zen-dir?
       nil
@@ -131,7 +130,7 @@
           :else
           (do
             (when (.exists dep-dir)
-              (sh-with-env! "rm" "-rf" dep-name-str :dir root))
+              (throw (Exception. (format "Directory %s already exists" dep-dir-path))))
             (sh-with-env! "git" "clone" "--depth=1" (str dep-url) dep-name-str
                           :dir root)
             (recur
