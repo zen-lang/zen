@@ -58,7 +58,20 @@
 
          system
          {:zen/tags #{zen/system}
-          :start [custom-comp]}})
+          :start [custom-comp]}
+
+         myevent
+         {:zen/tags #{zen/event}}
+
+         mysub
+         {:zen/tags #{zen/sub}
+          :events #{myevent}
+          :op my-sub-op}
+
+         my-sub-op
+         {:zen/tags #{zen/op}}
+
+         })
 
   (zen/start-system ztx 'mysystem/system)
 

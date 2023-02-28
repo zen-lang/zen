@@ -142,6 +142,9 @@
             resource))
         resource))))
 
+(defn get-index [ztx idx-nm k]
+  (get-in @ztx  [:zen/index idx-nm k]))
+
 #_"TODO: profile performance with alisases"
 (defn get-tag [ctx tag]
   (let [ctx-value @ctx

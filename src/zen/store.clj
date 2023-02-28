@@ -13,6 +13,8 @@
 
 (def mk-symbol zen.utils/mk-symbol)
 
+(def get-index zen.utils/get-index)
+
 (defn update-types-recur [ctx tp-sym sym]
   (swap! ctx update-in [:tps tp-sym] (fn [x] (conj (or x #{}) sym)))
   (doseq [tp-sym' (:isa (get-symbol ctx tp-sym))]
@@ -92,13 +94,23 @@
         (when-not (empty? errs)
           (swap! ctx update :errors (fn [x] (into (or x []) (mapv #(assoc % :resource (:zen/name res)) errs)))))))))
 
+(defn find-indexes [ctx tags]
+  (->> tags
+       (mapv (fn [s]
+               (let [t (get-symbol ctx s)]
+                 (when (contains? (:zen/tags t) 'zen/index)
+                   [s (:index-key t)]))))
+       (filter identity)
+       seq))
+
 (defn load-symbol
   "resolve refs in resource, update indices"
   [ctx zen-ns ns-sym v]
   (let [sym (mk-symbol zen-ns ns-sym)
-
         {:keys [zen/tags zen/bind] :as resource}
-        (eval-resource ctx zen-ns ns-sym v)]
+        (eval-resource ctx zen-ns ns-sym v)
+        index-by (find-indexes ctx tags)]
+
 
     (swap! ctx (fn [ctx]
                  ;; save resource
@@ -108,6 +120,15 @@
                              (update-in acc [:tags tag] (fnil conj #{}) sym))
                            ctx*
                            tags)
+                   (reduce (fn [acc [idx idx-key]]
+                             (let [vs (get resource idx-key)
+                                   vs (if (set? vs) vs #{vs})]
+                               (->> vs
+                                   (reduce (fn [acc v]
+                                             (update-in acc [:zen/index idx v] (fnil conj #{}) sym))
+                                           acc))))
+                           ctx*
+                           index-by)
                    ;; resolve late binding
                    (cond-> ctx*
                      bind (assoc-in [:bindings bind :backref] sym)))))
