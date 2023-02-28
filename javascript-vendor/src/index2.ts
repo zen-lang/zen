@@ -70,44 +70,22 @@ export class Client{
     }
 }
 
-const c = new Client('123', { username: 'a', password: '2' });
+const aidbox = new Client('https://aidboxvlad.aidbox.app', { username: 'basic', password: 'secret' });
 
-async function getRes () {
-    const patients = await c.getResources('Patient', {
+async function getPatient () {
+    const patients = await aidbox.getResources('Patient', {
         phone: {and: ["2", '2']},
         language: "a",
         "general-practitioner": "Patient/1"
     })
-
-    if (patients instanceof AxiosError) {
-        return
-    }
-
-    patients.entry.map((patient) => {
-        console.log(patient.name)
-    })
 }
 
-const a = ["Patient/123", "Patient/14"]
 
 
 
 
 
-async function getRes1 () {
-    const patients = await c.getResources('Patient')
-
-    let n = new URLSearchParams()
-
-    n.append("general-practitioner", "Patient/123")
-    n.append("general-practitioner", "Patient/321")
-
-
-
-}
-
-// getRes()
-getRes1()
+getPatient()
 
 
 

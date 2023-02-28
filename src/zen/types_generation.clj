@@ -8,7 +8,8 @@
             [clojure.set :as set]
             [clojure.java.shell :as shell]
             [zen.ftr]
-            [clojure.pprint :as pp]))
+            [clojure.pprint :as pp]
+            [clojure.edn :as edn]))
 
 (def premitives-map
   {:integer "number"
@@ -16,8 +17,15 @@
    :number "number"
    :boolean "boolean"
    :datetime "dateTime"
-   :any "any"
-   })
+   :any "any"})
+
+(def prepared-interfaces
+  {:onekey-type "type OneKey<T extends Record<string, unknown>> = { [K in keyof T]-?:\n
+                          ({ [P in K]: T[K] } & { [P in Exclude<keyof T, K>]?: never }) extends infer O ? { [P in keyof O]: O[P] } : never\n
+                       }[keyof T];\n"
+   :require-at-least-one-type "type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>; }[keyof T];\n"
+   :reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
+   :resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"})
 
 (def non-parsable-premitives
   {:string "string"
@@ -57,12 +65,11 @@
 
 (defn get-reference-union-type [references]
   (str "Reference<"
-       (if (empty? references) "ResourceType" 
-           (str/join " | " (map (fn [item] 
-                                  (cond 
+       (if (empty? references) "ResourceType"
+           (str/join " | " (map (fn [item]
+                                  (cond
                                     (= (name item) "schema") (str "'" (first (set-to-string #{item})) "'")
-                                    :else (str "'" (name item) "'")
-                                    )) references)))
+                                    :else (str "'" (name item) "'"))) references)))
        ">"))
 
 (defn generate-type-value
@@ -84,10 +91,10 @@
 
 (defn generate-interface [vtx {confirms :confirms}]
   (let [extended-resource (first (set-to-string confirms))
-        extand (cond 
-                 (not extended-resource) "" 
+        extand (cond
+                 (not extended-resource) ""
                  (= (first confirms) 'zenbox/Resource) " extends Resource "
-                 (not= extended-resource "zen.fhir") (format " extends %s " extended-resource) 
+                 (not= extended-resource "zen.fhir") (format " extends %s " extended-resource)
                  :else " ")]
     (str "interface " (::interface-name vtx) extand)))
 
@@ -125,6 +132,8 @@
      (= (first (set-to-string (:confirms schema))) "BackboneElement") ""
      :else (str (first (set-to-string (:confirms schema)))))))
 
+
+
 (defn get-exclusive-keys-values [ztx exclusive-keys ks]
   (str/join "\n" (map (fn [k]
                         (let [value (if (:zen.fhir/value-set (k ks)) (generate-valueset-union-type ztx (k ks)) (generate-confirms (k ks)))]
@@ -136,9 +145,8 @@
         non-exclusive-keys (set/difference (set (keys ks)) exclusive-keys)
         non-exclusive-keys-type (if (= (count non-exclusive-keys) 0) ""
                                     (format "{ %s } & "
-                                             (get-exclusive-keys-values ztx non-exclusive-keys ks)))
-        exclusive-keys-type (get-exclusive-keys-values ztx exclusive-keys ks) 
-        ]
+                                            (get-exclusive-keys-values ztx non-exclusive-keys ks)))
+        exclusive-keys-type (get-exclusive-keys-values ztx exclusive-keys ks)]
 
     (format "RequireAtLeastOne<%sOneKey<{ %s }>>" non-exclusive-keys-type exclusive-keys-type)))
 
@@ -228,72 +236,20 @@
        (= (last (:schema vtx)) :every) (update vtx ::ts conj ">")
        (= (last (:schema vtx)) :values) (update vtx ::ts conj ";")))))
 
-(defn generate-types [path]
-  (io/make-parents (str path "/package/index.js"))
-  (with-open [in (io/input-stream (clojure.java.io/resource "index.js"))]
-    (io/copy in (clojure.java.io/file (str path "/package/index.js"))))
-  (with-open [in (io/input-stream (clojure.java.io/resource "index.d.ts"))]
-    (io/copy in (clojure.java.io/file (str path "/package/index.d.ts"))))
-  (with-open [in (io/input-stream (clojure.java.io/resource "package.json"))]
-    (io/copy in (clojure.java.io/file (str path "/package/package.json"))))
-
+(defn generate-types-for-version [path version]
   (let [result-file-path "./package/aidbox-types.d.ts"
         ztx  (zen.core/new-context {:package-paths [path]})
-        _ (zen.core/read-ns ztx 'hl7-fhir-r4-core)
+        _ (zen.core/read-ns ztx (symbol version))
         _ (zen.core/read-ns ztx 'relatient.campaign-match)
-        schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
-        structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
-        searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))
-        custom-resources ('zenbox/persistent (:tags @ztx))
-        custom-resources-names (map (fn [resource] (name resource)) custom-resources)
-        reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
-        onekey-type "type OneKey<T extends Record<string, unknown>> = { [K in keyof T]-?:\n
-                          ({ [P in K]: T[K] } & { [P in Exclude<keyof T, K>]?: never }) extends infer O ? { [P in keyof O]: O[P] } : never\n
-                       }[keyof T];\n"
-        require-at-least-one-type "type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>; }[keyof T];\n"
-        resource-type-map-interface "export interface ResourceTypeMap {\n"
-        resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
-        key-value-resources (mapv (fn [n]
-                                    (format "%s: %s;" n n))
-                                  (concat (map (fn [[k _v]] k) schema) custom-resources-names))
-        search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
-        search-params-end-interface "\n}"
-        search-params-content (mapv (fn [[k v]]
-                                      (str (name k) ": {\n"
-                                           (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
-                                    (reduce (fn [acc [_ v]]
-                                              (reduce (fn [third-acc item]
-                                                        (zen.core/read-ns ztx (symbol (namespace (last item))))
-                                                        (let [sym (last item)
-                                                              schema (zen.core/get-symbol ztx (symbol sym))
-                                                              schema-keys (keys (:expr schema))
-                                                              type (:fhir/type schema)
-                                                              attribute-name (:name schema)]
-
-                                                          (reduce (fn [second-acc item]
-                                                                    (update-in second-acc [item] assoc (keyword attribute-name) (cond (= type "reference")
-                                                                                                                                      "`${ResourceType}/${string}`"
-                                                                                                                                      (= type "token")
-                                                                                                                                      (if (some #(:type %) (:data-types ((keyword item) (:expr schema))))
-                                                                                                                                        (some #(:type %) (:data-types ((keyword item) (:expr schema))))
-                                                                                                                                        "string")
-                                                                                                                                      (or (= type "special") (= type "quantity"))
-                                                                                                                                      "string"
-                                                                                                                                      :else type)))
-                                                                  third-acc
-                                                                  schema-keys))) acc v))
-                                            {} searches))
-        resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type)
-        search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
+        schema (:schemas (zen.core/get-symbol ztx (symbol (str version "/base-schemas"))))
+        structures (:schemas (zen.core/get-symbol ztx (symbol (str version "/structures"))))
+        custom-resources ('zenbox/persistent (:tags @ztx))]
 
 
-
-    (spit result-file-path (str/join ""  resource-map-result) :append true)
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
     (zen.ftr/build-complete-ftr-index ztx)
 
     (mapv (fn [resource]
-            (println "resource" resource)
             (let [n (name resource)
                   schemas-result
                   (zen.schema/apply-schema ztx
@@ -307,11 +263,10 @@
                                            (zen.core/get-symbol ztx (symbol resource))
                                            {:interpreters [::ts]})]
               (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) custom-resources)
-    
+
     (mapv (fn [[k _v]]
-            (println k)
-            (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
-            (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+            (zen.core/read-ns ztx (symbol (str version "." k)))
+            (zen.core/get-symbol ztx (symbol (str version "." k "/schema")))
             (let [schemas-result (when (not (re-find #"-" k))
                                    (zen.schema/apply-schema ztx
                                                             {::ts []
@@ -321,12 +276,12 @@
                                                              ::keys-in-array {}
                                                              ::exclusive-keys {}}
                                                             (zen.core/get-symbol ztx 'zen/schema)
-                                                            (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+                                                            (zen.core/get-symbol ztx (symbol (str version "." k "/schema")))
                                                             {:interpreters [::ts]}))]
               (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) schema)
 
     (mapv (fn [[_k v]]
-            (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
+            (let [n (str/trim (str/replace (namespace v) (str version ".") ""))
                   schema (zen.core/get-symbol ztx (symbol v))
                   structures-result (when (and (or (:type schema) (:confirms schema) (:keys schema)) (not (re-find #"-" n)) (not= n "Reference"))
                                       (zen.schema/apply-schema ztx
@@ -340,189 +295,280 @@
                                                                {:interpreters [::ts]}))]
 
               (spit result-file-path (str/join "" (conj (::ts structures-result) "\n")) :append true))) structures)
-    (spit result-file-path (str/join "" search-params-result) :append true)
-    (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
-                               " && rm -rf package"))
-    (System/exit 0)
     :ok))
 
-(comment
-  (def ztx (zen.core/new-context {}))
 
-  (def my-structs-ns
-    '{:ns my-sturcts
+(defn get-versions [path]
+  (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
+    (:deps (edn/read (java.io.PushbackReader. zen-project)))))
 
-      defaults
-      {:zen/tags #{zen/property zen/schema}
-       :type zen/boolean}
+(defn get-searches [ztx, versions]
+  (reduce (fn [acc version]
+            (zen.core/read-ns ztx (symbol (first version)))
+            (concat acc (:searches (zen.core/get-symbol ztx (symbol (str (first version) "/searches")))))) [], versions))
 
-      User
-      {:zen.fhir/version "0.6.12-1",
-       :confirms #{hl7-fhir-r4-core.DomainResource/schema
-                   zen.fhir/Resource},
-       :zen/tags #{zen/schema zen.fhir/base-schema},
-       :zen.fhir/profileUri "http://hl7.org/fhir/StructureDefinition/Composition",
-       :require #{:date :type :title :author :status},
-       :type zen/map,
-       :zen/desc "A set of healthcare-related information that is assembled together into a single logical package that provides a single coherent statement of meaning, establishes its own context and that has clinical attestation with regard to who is making the statement. A Composition defines the structure and narrative content necessary for a document. However, a Composition alone does not constitute a document. Rather, the Composition must be the first entry in a Bundle where Bundle.type=document, and any other resources referenced from Composition must be included as subsequent entries in the Bundle (for example Patient, Practitioner, Encounter, etc.).",
-       :keys {:deceased {:fhir/polymorphic true,
-                         :type zen/map,
-                         :exclusive-keys #{#{:dateTime :boolean}},
-                         :keys {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
-                                :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
-                                :dateTime {:confirms #{hl7-fhir-r4-core.dateTime/schema}},
-                                :_dateTime {:confirms #{hl7-fhir-r4-core.Element/schema}}},
-                         :fhir/flags #{:SU :?!},
-                         :zen/desc "Indicates if the individual is deceased or not"}},
-       :zen.fhir/type "Composition"}})
 
-  (zen.core/load-ns ztx my-structs-ns)
+(defn get-schemas [ztx, versions]
+  (reduce
+   (fn [acc schema-key]
+     (zen.core/read-ns ztx (symbol (first schema-key)))
+     (concat acc (keys (:schemas (zen.core/get-symbol ztx (symbol (str (first schema-key) "/base-schemas"))))))) [] versions))
 
-  (def r
-    (sut/apply-schema ztx
-                      {::ts []
-                       ::require {}
-                       ::exclusive-keys {}
-                       ::interface-name "User"
-                       ::keys-in-array {}}
-                      (zen.core/get-symbol ztx 'zen/schema)
-                      (zen.core/get-symbol ztx 'my-sturcts/User)
-                      {:interpreters [::ts]}))
+(defn get-resources [schema custom-resources-names]
+  (mapv (fn [n]
+          (format "%s: %s;" n n))
+        (concat schema custom-resources-names)))
 
-  (str/join "" (::ts r))
 
-  )
+(defn get-search-params [ztx, searches]
+  (mapv (fn [[k v]]
+          (str (name k) ": {\n"
+               (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
+        (reduce (fn [acc [_ v]]
+                  (reduce (fn [third-acc item]
+                            (zen.core/read-ns ztx (symbol (namespace (last item))))
+                            (let [sym (last item)
+                                  schema (zen.core/get-symbol ztx (symbol sym))
+                                  schema-keys (keys (:expr schema))
+                                  type (:fhir/type schema)
+                                  attribute-name (:name schema)]
 
-(comment
-  ;; CLASSPATH
+                              (reduce (fn [second-acc item]
+                                        (let [is-token (= type "token")
+                                              token-type (when is-token (some #(:type %) (:data-types ((keyword item) (:expr schema)))))
+                                              token-parsed-type (when token-type ((keyword token-type) non-parsable-premitives))]
+                                          (update-in second-acc [item] assoc
+                                                     (keyword attribute-name)
+                                                     (cond (= type "reference")
+                                                           "`${ResourceType}/${string}`"
+                                                           is-token
+                                                           (if token-type
+                                                             (if token-parsed-type token-parsed-type "string")
+                                                             "string")
+                                                           (or (= type "special") (= type "quantity"))
+                                                           "string"
+                                                           :else type))))
+                                      third-acc
+                                      schema-keys))) acc v))
+                {} searches)))
+
+(defn generate-types [path]
+  (io/make-parents (str path "/package/index.js"))
+  (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
+    (first (:deps (edn/read (java.io.PushbackReader. zen-project)))))
+  (with-open [in (io/input-stream (clojure.java.io/resource "index.js"))]
+    (io/copy in (clojure.java.io/file (str path "/package/index.js"))))
+  (with-open [in (io/input-stream (clojure.java.io/resource "index.d.ts"))]
+    (io/copy in (clojure.java.io/file (str path "/package/index.d.ts"))))
+  (with-open [in (io/input-stream (clojure.java.io/resource "package.json"))]
+    (io/copy in (clojure.java.io/file (str path "/package/package.json"))))
+
+  (let [result-file-path "./package/aidbox-types.d.ts"
+        ztx  (zen.core/new-context {:package-paths [path]})
+        versions (get-versions path)
+        _ (println versions)
+        searches (get-searches ztx versions)
+        _ (println "searches")
+        schema (get-schemas ztx versions)
+        _ (println "schema" schema)
+        resource-type-map-interface "export interface ResourceTypeMap {\n"
+        resourcetype-type (:resourcetype-type prepared-interfaces)
+        reference-type (:reference-type prepared-interfaces)
+        onekey-type (:onekey-type prepared-interfaces)
+        require-at-least-one-type (:require-at-least-one-type prepared-interfaces)
+        custom-resources ('zenbox/persistent (:tags @ztx))
+        custom-resources-names (map (fn [resource] (name resource)) custom-resources)
+        key-value-resources (get-resources schema custom-resources-names)
+        resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type)
+        search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
+        search-params-end-interface "\n}"
+        search-params-content (get-search-params ztx searches)
+        search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
+
+    (spit result-file-path (str/join ""  resource-map-result) :append true)
+
+    (mapv (fn [version]
+            (generate-types-for-version path (first version))) versions)
+
+    (spit result-file-path (str/join "" search-params-result) :append true)
+
+    (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
+                               " && rm -rf package"))
+
+    (System/exit 0)))
+
+#_(comment
+    (def ztx (zen.core/new-context {}))
+
+    (def my-structs-ns
+      '{:ns my-sturcts
+
+        defaults
+        {:zen/tags #{zen/property zen/schema}
+         :type zen/boolean}
+
+        User
+        {:zen.fhir/version "0.6.12-1",
+         :confirms #{hl7-fhir-r4-core.DomainResource/schema
+                     zen.fhir/Resource},
+         :zen/tags #{zen/schema zen.fhir/base-schema},
+         :zen.fhir/profileUri "http://hl7.org/fhir/StructureDefinition/Composition",
+         :require #{:date :type :title :author :status},
+         :type zen/map,
+         :zen/desc "A set of healthcare-related information that is assembled together into a single logical package that provides a single coherent statement of meaning, establishes its own context and that has clinical attestation with regard to who is making the statement. A Composition defines the structure and narrative content necessary for a document. However, a Composition alone does not constitute a document. Rather, the Composition must be the first entry in a Bundle where Bundle.type=document, and any other resources referenced from Composition must be included as subsequent entries in the Bundle (for example Patient, Practitioner, Encounter, etc.).",
+         :keys {:deceased {:fhir/polymorphic true,
+                           :type zen/map,
+                           :exclusive-keys #{#{:dateTime :boolean}},
+                           :keys {:boolean {:confirms #{hl7-fhir-r4-core.boolean/schema}},
+                                  :_boolean {:confirms #{hl7-fhir-r4-core.Element/schema}},
+                                  :dateTime {:confirms #{hl7-fhir-r4-core.dateTime/schema}},
+                                  :_dateTime {:confirms #{hl7-fhir-r4-core.Element/schema}}},
+                           :fhir/flags #{:SU :?!},
+                           :zen/desc "Indicates if the individual is deceased or not"}},
+         :zen.fhir/type "Composition"}})
+
+    (zen.core/load-ns ztx my-structs-ns)
+
+    (def r
+      (sut/apply-schema ztx
+                        {::ts []
+                         ::require {}
+                         ::exclusive-keys {}
+                         ::interface-name "User"
+                         ::keys-in-array {}}
+                        (zen.core/get-symbol ztx 'zen/schema)
+                        (zen.core/get-symbol ztx 'my-sturcts/User)
+                        {:interpreters [::ts]}))
+
+    (str/join "" (::ts r)))
+
+#_(comment
+    CLASSPATH
   ;; :paths (path to zrc/)
   ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)
 
-  (zen.package/zen-init-deps! "/Users/pavel/Desktop/zen/test/test_project")
+    (zen.package/zen-init-deps! "/Users/pavel/Desktop/zen/test/test_project")
 
-  (def ztx
-    (zen.core/new-context
-     {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]})) 
+    (def ztx
+      (zen.core/new-context
+       {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]}))
 
-  (pp/pprint ('zenbox/persistent (:tags @ztx))) 
-  (pp/pprint (:tags @ztx))
-  (zen.core/read-ns ztx 'relatient.campaign-match)
-  (zen.core/get-symbol ztx 'relatient.campaign-match/CampaignMatch)
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
-  (zen.ftr/build-complete-ftr-index ztx)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
+    (pp/pprint ('zenbox/persistent (:tags @ztx)))
+    (pp/pprint (:tags @ztx))
+    (zen.core/read-ns ztx 'relatient.campaign-match)
+    (zen.core/get-symbol ztx 'relatient.campaign-match/CampaignMatch)
+    (zen.core/read-ns ztx 'hl7-fhir-r4-core)
+    (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
+    (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
+    (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
+    (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
+    (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
+    (zen.ftr/build-complete-ftr-index ztx)
+    (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   ;; (get-valueset-values ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
 
-  (defn generate-types []
-    (let [result-file-path "./result.ts"
-          _ (zen.core/read-ns ztx 'hl7-fhir-r4-core)
-          _ (zen.core/read-ns ztx 'relatient.campaign-match)
-          schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
-          structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
-          searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))
-          custom-resources ('zenbox/persistent (:tags @ztx))
-          custom-resources-names (map (fn [resource] (name resource)) custom-resources)
-          reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
-          onekey-type "type OneKey<T extends Record<string, unknown>> = { [K in keyof T]-?:\n
-                          ({ [P in K]: T[K] } & { [P in Exclude<keyof T, K>]?: never }) extends infer O ? { [P in keyof O]: O[P] } : never\n
-                       }[keyof T];\n"
-          require-at-least-one-type "type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>; }[keyof T];\n"
-          resource-type-map-interface "export interface ResourceTypeMap {\n"
-          resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
-          key-value-resources (mapv (fn [n]
-                                      (format "%s: %s;" n n))
-                                    (concat (map (fn [[k _v]] k) schema) custom-resources-names))
-          search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
-          search-params-end-interface "\n}"
-          search-params-content (mapv (fn [[k v]]
-                                        (println k v)
-                                        (str (name k) ": {\n"
-                                             (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
-                                      (reduce (fn [acc [_ v]]
-                                                (reduce (fn [third-acc item]
-                                                          (zen.core/read-ns ztx (symbol (namespace (last item))))
-                                                          (let [sym (last item)
-                                                                schema (zen.core/get-symbol ztx (symbol sym))
-                                                                schema-keys (keys (:expr schema))
-                                                                type (:fhir/type schema)
-                                                                attribute-name (:name schema)]
+    (defn generate-types []
+      (let [result-file-path "./result.ts"
+            _ (zen.core/read-ns ztx 'hl7-fhir-r4-core)
+            _ (zen.core/read-ns ztx 'relatient.campaign-match)
+            schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
+            structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
+            searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))
+            custom-resources ('zenbox/persistent (:tags @ztx))
+            custom-resources-names (map (fn [resource] (name resource)) custom-resources)
+            reference-type (:reference-type prepared-interfaces)
+            onekey-type (:onekey-type prepared-interfaces)
+            require-at-least-one-type (:require-at-least-one-type prepared-interfaces)
+            resource-type-map-interface "export interface ResourceTypeMap {\n"
+            resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
+            key-value-resources (mapv (fn [n]
+                                        (format "%s: %s;" n n))
+                                      (concat (map (fn [[k _v]] k) schema) custom-resources-names))
+            search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
+            search-params-end-interface "\n}"
+            search-params-content (mapv (fn [[k v]]
+                                          (println k v)
+                                          (str (name k) ": {\n"
+                                               (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
+                                        (reduce (fn [acc [_ v]]
+                                                  (reduce (fn [third-acc item]
+                                                            (zen.core/read-ns ztx (symbol (namespace (last item))))
+                                                            (let [sym (last item)
+                                                                  schema (zen.core/get-symbol ztx (symbol sym))
+                                                                  schema-keys (keys (:expr schema))
+                                                                  type (:fhir/type schema)
+                                                                  attribute-name (:name schema)]
 
-                                                            (reduce (fn [second-acc item]
-                                                                      (update-in second-acc [item] assoc (keyword attribute-name) (cond (= type "reference")
-                                                                                                                                        "`${ResourceType}/${string}`"
-                                                                                                                                        (= type "token")
-                                                                                                                                        (if (some #(:type %) (:data-types ((keyword item) (:expr schema))))
-                                                                                                                                          (some #(:type %) (:data-types ((keyword item) (:expr schema))))
-                                                                                                                                          "string")
-                                                                                                                                        (or (= type "special") (= type "quantity"))
-                                                                                                                                        "string"
-                                                                                                                                        :else type)))
-                                                                    third-acc
-                                                                    schema-keys))) acc v))
-                                              {} searches))
-          resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type)
-          search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
+                                                              (reduce (fn [second-acc item]
+                                                                        (update-in second-acc [item] assoc (keyword attribute-name) (cond (= type "reference")
+                                                                                                                                          "`${ResourceType}/${string}`"
+                                                                                                                                          (= type "token")
+                                                                                                                                          (if (some #(:type %) (:data-types ((keyword item) (:expr schema))))
+                                                                                                                                            (some #(:type %) (:data-types ((keyword item) (:expr schema))))
+                                                                                                                                            "string")
+                                                                                                                                          (or (= type "special") (= type "quantity"))
+                                                                                                                                          "string"
+                                                                                                                                          :else type)))
+                                                                      third-acc
+                                                                      schema-keys))) acc v))
+                                                {} searches))
+            resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type)
+            search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
 
 
 
-      (spit result-file-path (str/join ""  resource-map-result) :append true)
-      (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
-      (zen.ftr/build-complete-ftr-index ztx)
-      (mapv (fn [[k _v]]
-              (println k)
-              (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
-              (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-              (let [schemas-result (when (not (re-find #"-" k))
-                                     (zen.schema/apply-schema ztx
-                                                              {::ts []
-                                                               ::require {}
-                                                               ::interface-name k
-                                                               ::is-type false
-                                                               ::keys-in-array {}
-                                                               ::exclusive-keys {}}
-                                                              (zen.core/get-symbol ztx 'zen/schema)
-                                                              (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-                                                              {:interpreters [::ts]}))]
-                (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) schema)
-      
+        (spit result-file-path (str/join ""  resource-map-result) :append true)
+        (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
+        (zen.ftr/build-complete-ftr-index ztx)
+        (mapv (fn [[k _v]]
+                (println k)
+                (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
+                (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+                (let [schemas-result (when (not (re-find #"-" k))
+                                       (zen.schema/apply-schema ztx
+                                                                {::ts []
+                                                                 ::require {}
+                                                                 ::interface-name k
+                                                                 ::is-type false
+                                                                 ::keys-in-array {}
+                                                                 ::exclusive-keys {}}
+                                                                (zen.core/get-symbol ztx 'zen/schema)
+                                                                (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
+                                                                {:interpreters [::ts]}))]
+                  (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) schema)
 
-       (mapv (fn [resource] 
-              (println "resource" resource)
-            (let [n (name resource)
-                  schemas-result
-                  (zen.schema/apply-schema ztx
-                                           {::ts []
-                                            ::require {}
-                                            ::interface-name n
-                                            ::is-type false
-                                            ::keys-in-array {}
-                                            ::exclusive-keys {}}
-                                           (zen.core/get-symbol ztx 'zen/schema)
-                                           (zen.core/get-symbol ztx (symbol resource))
-                                           {:interpreters [::ts]})]
-              (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) custom-resources)
 
-      (mapv (fn [[_k v]]
-              (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
-                    schema (zen.core/get-symbol ztx (symbol v))
-                    structures-result (when (and (or (:type schema) (:confirms schema) (:keys schema)) (not (re-find #"-" n)) (not= n "Reference"))
-                                        (zen.schema/apply-schema ztx
-                                                                 {::ts []
-                                                                  ::require {}
-                                                                  ::exclusive-keys {}
-                                                                  ::interface-name n
-                                                                  ::keys-in-array {}}
-                                                                 (zen.core/get-symbol ztx 'zen/schema)
-                                                                 (zen.core/get-symbol ztx (symbol v))
-                                                                 {:interpreters [::ts]}))]
+        (mapv (fn [resource]
+                (println "resource" resource)
+                (let [n (name resource)
+                      schemas-result
+                      (zen.schema/apply-schema ztx
+                                               {::ts []
+                                                ::require {}
+                                                ::interface-name n
+                                                ::is-type false
+                                                ::keys-in-array {}
+                                                ::exclusive-keys {}}
+                                               (zen.core/get-symbol ztx 'zen/schema)
+                                               (zen.core/get-symbol ztx (symbol resource))
+                                               {:interpreters [::ts]})]
+                  (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) custom-resources)
 
-                (spit result-file-path (str/join "" (conj (::ts structures-result) "\n")) :append true))) structures)
-      (spit result-file-path (str/join "" search-params-result) :append true)
-      :ok))
-  (generate-types)
-  )
+        (mapv (fn [[_k v]]
+                (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
+                      schema (zen.core/get-symbol ztx (symbol v))
+                      structures-result (when (and (or (:type schema) (:confirms schema) (:keys schema)) (not (re-find #"-" n)) (not= n "Reference"))
+                                          (zen.schema/apply-schema ztx
+                                                                   {::ts []
+                                                                    ::require {}
+                                                                    ::exclusive-keys {}
+                                                                    ::interface-name n
+                                                                    ::keys-in-array {}}
+                                                                   (zen.core/get-symbol ztx 'zen/schema)
+                                                                   (zen.core/get-symbol ztx (symbol v))
+                                                                   {:interpreters [::ts]}))]
+
+                  (spit result-file-path (str/join "" (conj (::ts structures-result) "\n")) :append true))) structures)
+        (spit result-file-path (str/join "" search-params-result) :append true)
+        :ok))
+    (generate-types))

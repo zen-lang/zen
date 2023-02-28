@@ -1,9 +1,59 @@
 import axios, {AxiosBasicCredentials, AxiosInstance} from 'axios';
-import { ResourceTypeMap, SearchParams } from './aidbox-types';
+import {
+  date,
+  ResourceTypeMap,
+  SearchParams
+} from './aidbox-types';
 
-export type BaseResponseResources<R extends keyof ResourceTypeMap> = { entry: ResourceTypeMap[R][] };
+export type UnnecessaryKeys =
+     'contained' |
+     'extension' |
+     'modifierExtension' |
+     "_id" |
+     "meta" |
+     "implicitRules" |
+     "_implicitRules" |
+     "language" |
+     "_language"
 
-export type BaseResponseResource<R extends keyof ResourceTypeMap> = ResourceTypeMap[R];
+export type PrefixWithArray =
+    'eq' |
+    'ne'
+
+export type Prefix =
+    'eq' |
+    'ne' |
+    'gt' |
+    'lt' |
+    'ge' |
+    'le' |
+    'sa' |
+    "eb" |
+    'ap'
+
+
+export type BaseResponseResources<T extends keyof ResourceTypeMap> = { entry: {
+  resource: ResourceTypeMap[T]
+  }[] };
+
+export type BaseResponseResource<T extends keyof ResourceTypeMap> = ResourceTypeMap[T];
+
+
+export type ResourceKeys<
+    T extends keyof ResourceTypeMap,
+    I extends ResourceTypeMap[T]
+> = Omit<I, UnnecessaryKeys>
+
+
+type SortParams<T extends keyof ResourceTypeMap> = {
+  key: keyof SearchParams[T] | `.${string}`,
+  dir: 'acs' | 'desc'
+}[]
+
+type ElementsParams<
+    T extends keyof ResourceTypeMap,
+    R extends  ResourceTypeMap[T]
+> = Array<keyof ResourceKeys<T,R>>
 
 export class Client{
   client: AxiosInstance;
@@ -58,7 +108,10 @@ export class Client{
   }
 }
 
-class GetResources<T extends keyof ResourceTypeMap> implements PromiseLike<BaseResponseResources<T>>{
+class GetResources<
+    T extends keyof ResourceTypeMap,
+    R extends ResourceTypeMap[T]
+> implements PromiseLike<BaseResponseResources<T>> {
   private searchParamsObject: URLSearchParams;
   resourceName: T;
   client: AxiosInstance;
@@ -69,50 +122,102 @@ class GetResources<T extends keyof ResourceTypeMap> implements PromiseLike<BaseR
     this.resourceName = resourceName;
   }
 
-  where<K extends keyof SearchParams[T]>(key: K, value: SearchParams[T][K]) {
-    this.searchParamsObject.append(key.toString(), value?.toString() ?? '')
-    return this;
+  where<
+      K extends keyof SearchParams[T],
+      SP extends SearchParams[T][K],
+      PR extends  PrefixWithArray
+  >(key: K, value: SP | SP[], prefix?: PR): this;
+  where<
+      K extends keyof SearchParams[T],
+      SP extends SearchParams[T][K],
+      PR extends Exclude<Prefix, PrefixWithArray>
+  >(key: K, value: SP, prefix?: PR): this;
+  where<
+      K extends keyof SearchParams[T],
+      SP extends SearchParams[T][K],
+      PR extends SP extends number ? Prefix : never,
+  >(key: K, value: SP | SP[], prefix?: Prefix | never): this {
+    if (!Array.isArray(value)) {
+      const queryValue = `${prefix ?? ''}${value}`
+
+
+      this.searchParamsObject.append(key.toString(), queryValue)
+      return this;
+    }
+
+    if (prefix) {
+      if (prefix === 'eq') {
+        this.searchParamsObject.append(key.toString(), value.join(','))
+        return this
+      }
+
+
+      value.map((item) => {
+        this.searchParamsObject.append(key.toString(), `${prefix}${item}`)
+      })
+
+      return this
+    }
+
+
+    const queryValues = value.join(",")
+    this.searchParamsObject.append(key.toString(), queryValues)
+
+    return this
   }
 
-  andWhere<K extends keyof SearchParams[T]>(key: K, value: SearchParams[T][K]) {
-    this.searchParamsObject.append(key.toString(), value?.toString() ?? '')
-    return this;
+  contained(contained: boolean | "both", containedType?: "container" | "contained") {
+    this.searchParamsObject.set("_contained", contained.toString())
+
+    if (containedType) {
+      this.searchParamsObject.set('_containedType', containedType)
+    }
+
+    return this
   }
 
- then<TResult1 = BaseResponseResources<T>, TResult2 = never>(onfulfilled?: ((value: BaseResponseResources<T>) => (PromiseLike<TResult1> | TResult1)) | undefined | null, onrejected?: ((reason: any) => (PromiseLike<TResult2> | TResult2)) | undefined | null): PromiseLike<TResult1 | TResult2> {
+  count(value: number) {
+    this.searchParamsObject.set("_count", value.toString())
+
+    return this
+  }
+
+  elements(args: ElementsParams<T, R>) {
+    const queryValue = args.join(',')
+
+    this.searchParamsObject.set('_elements', queryValue)
+
+    return this
+  }
+
+  summary(type: boolean | "text" | 'data' | 'count') {
+    this.searchParamsObject.set('_summary', type.toString())
+
+    return this
+  }
+
+  sort(args: SortParams<T>) {
+    const queryValue = args.map(({key, dir}) => {
+
+
+      return dir === 'acs' ? key : `-${key.toString()}`
+    })
+
+    this.searchParamsObject.set('_sort', queryValue.join(','))
+
+    return this
+  }
+
+
+  then<TResult1 = BaseResponseResources<T>, TResult2 = never>(onfulfilled?: ((value: BaseResponseResources<T>) => (PromiseLike<TResult1> | TResult1)) | undefined | null, onrejected?: ((reason: any) => (PromiseLike<TResult2> | TResult2)) | undefined | null): PromiseLike<TResult1 | TResult2> {
     return this.client.get<BaseResponseResources<T>>(this.resourceName, {
       params: this.searchParamsObject
     })
-       .then((response) => {
-         return onfulfilled ? onfulfilled(response.data ) : response.data as TResult1
-       })
- }
+        .then((response) => {
+          return onfulfilled ? onfulfilled(response.data) : response.data as TResult1
+        })
+  }
 }
-
-
-const c = new Client('https://aidboxvlad.aidbox.app', { username: 'basic', password: 'secret' });
-
-
-async function getPatients() {
-  let patient = await c.getResources('Patient')
-      .where("name", "Vlad")
-      .andWhere('active', true)
-
-
-  console.log(patient.entry)
-}
-async function getRes () {
-  let a = await c.getResources('ChargeItem')
-      .where("patient", "Patient/12")
-      .andWhere("patient", "Patient/32")
-      .where('factor-override', 2)
-
-
-
-  console.log(a)
-}
-
-getPatients()
 
 
 
