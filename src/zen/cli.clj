@@ -204,8 +204,26 @@
       (build path-str opts)
       (build path-str package-name opts))))
 
+(defn format-errors-output
+  [ztx errors]
+  (doseq [error errors]
+    (println
+     (format "\u001B[41m\u001B[37m %s \u001B[0m \u001B[31m%s %s\u001B[0m \nMessage: %s\n"
+             "ERROR"
+             (or (get-in @ztx [:ns (:ns error) :zen/file])
+                 (:file error)
+                 (and (:resource error)
+                      (:zen/file (zen.core/get-symbol ztx (:resource error)))))
+             (or (when (:resource error)
+                   (str "- "(name (:resource error)) "." (clojure.string/join "." (map name (:path error)))))
+                 nil)
+             
+             (:message error)))))
+
 (defmethod command 'zen.cli/errors [_ _args opts]
-  (errors opts))
+  (let [errors' (errors opts)]
+    (format-errors-output (load-ztx opts) errors')
+    errors'))
 
 (defmethod command 'zen.cli/changes [_ _ opts]
   (changes opts))
@@ -340,4 +358,5 @@
   (cli (zen.core/new-context) 'zen.cli/zen-config args opts))
 
 (defn -main [& args]
-  (cli-main args))
+  (cli-main args)
+  (System/exit 0))
