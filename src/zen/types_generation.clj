@@ -319,38 +319,44 @@
           (format "%s: %s;" n n))
         (concat schema custom-resources-names)))
 
+(defn search-params-generator [ztx, searches]
+  (reduce
+   (fn [acc [_ v]]
+     (reduce
+      (fn [second-acc item]
+        (zen.core/read-ns ztx (symbol (namespace (last item))))
+        (let [sym (last item)
+              schema (zen.core/get-symbol ztx (symbol sym))
+              schema-keys (keys (:expr schema))
+              type (:fhir/type schema)
+              attribute-name (:name schema)]
+
+          (reduce
+           (fn [third-acc item]
+             (let [is-token (= type "token")
+                   token-type (when is-token (some #(:type %) (:data-types ((keyword item) (:expr schema)))))
+                   token-parsed-type (when token-type ((keyword token-type) non-parsable-premitives))]
+               (update-in third-acc [item] assoc
+                          (keyword attribute-name)
+                          (cond (= type "reference")
+                                "`${ResourceType}/${string}`"
+                                is-token
+                                (if token-type
+                                  (if token-parsed-type token-parsed-type "string")
+                                  "string")
+                                (or (= type "special") (= type "quantity"))
+                                "string"
+                                :else type))))
+           second-acc
+           schema-keys)))
+      acc v))
+   {} searches))
 
 (defn get-search-params [ztx, searches]
   (mapv (fn [[k v]]
           (str (name k) ": {\n"
                (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
-        (reduce (fn [acc [_ v]]
-                  (reduce (fn [third-acc item]
-                            (zen.core/read-ns ztx (symbol (namespace (last item))))
-                            (let [sym (last item)
-                                  schema (zen.core/get-symbol ztx (symbol sym))
-                                  schema-keys (keys (:expr schema))
-                                  type (:fhir/type schema)
-                                  attribute-name (:name schema)]
-
-                              (reduce (fn [second-acc item]
-                                        (let [is-token (= type "token")
-                                              token-type (when is-token (some #(:type %) (:data-types ((keyword item) (:expr schema)))))
-                                              token-parsed-type (when token-type ((keyword token-type) non-parsable-premitives))]
-                                          (update-in second-acc [item] assoc
-                                                     (keyword attribute-name)
-                                                     (cond (= type "reference")
-                                                           "`${ResourceType}/${string}`"
-                                                           is-token
-                                                           (if token-type
-                                                             (if token-parsed-type token-parsed-type "string")
-                                                             "string")
-                                                           (or (= type "special") (= type "quantity"))
-                                                           "string"
-                                                           :else type))))
-                                      third-acc
-                                      schema-keys))) acc v))
-                {} searches)))
+        (search-params-generator ztx searches)))
 
 (defn generate-types [path]
   (io/make-parents (str path "/package/index.js"))
@@ -366,11 +372,8 @@
   (let [result-file-path "./package/aidbox-types.d.ts"
         ztx  (zen.core/new-context {:package-paths [path]})
         versions (get-versions path)
-        _ (println versions)
         searches (get-searches ztx versions)
-        _ (println "searches")
         schema (get-schemas ztx versions)
-        _ (println "schema" schema)
         resource-type-map-interface "export interface ResourceTypeMap {\n"
         resourcetype-type (:resourcetype-type prepared-interfaces)
         reference-type (:reference-type prepared-interfaces)
