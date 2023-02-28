@@ -9,7 +9,6 @@
             [clojure.edn]
             [clojure.stacktrace]
             [clojure.java.shell]
-            [zen.cli-tools :as cli]
             [clojure.string :as str]))
 
 
@@ -81,8 +80,8 @@
   ([_ztx package-name opts]
    (if (zen.package/zen-init! (get-pwd opts) (when package-name
                                                {:package-name (str->edn package-name)}))
-     {::cli/status :ok, ::cli/code :initted-new}
-     {::cli/status :ok, ::cli/code :already-exists})))
+     {::status :ok, ::code :initted-new}
+     {::status :ok, ::code :already-exists})))
 
 
 (defn pull-deps
@@ -168,23 +167,6 @@
         :exception (Throwable->map e#)})))
 
 
-(defn repl [commands & [opts]]
-  (let [prompt-fn (get-prompt-fn opts)
-        read-fn   (get-read-fn opts)
-        return-fn (get-return-fn opts)
-
-        opts (update opts :stop-repl-atom #(or % (atom false)))]
-    (while (not @(:stop-repl-atom opts))
-      (return-fn
-        (exception->error-result
-          (prompt-fn)
-          (let [line              (read-fn)
-                [cmd-name rest-s] (clojure.string/split line #" " 2)
-                args              (split-args-by-space rest-s)]
-            (if-let [cmd-fn (get commands cmd-name)]
-              (apply-with-opts cmd-fn args opts)
-              (command-not-found-err-message cmd-name (keys commands)))))))))
-
 
 (defn cmd-unsafe [commands cmd-name args & [opts]]
   (if-let [cmd-fn (get commands cmd-name)]
@@ -205,43 +187,157 @@
    (zen.package/zen-build! (get-pwd opts) {:build-path path :package-name package-name})
    {:status :ok :code :builded}))
 
+(defn command-dispatch [command-name _command-args _opts]
+  command-name)
 
-(defmethod cli/command 'zen.cli/init [_ [package-name] opts]
+(defmulti command #'command-dispatch :default ::not-found)
+
+(defmethod command 'zen.cli/init [_ [package-name] opts]
   (apply init (remove nil? [package-name opts])))
 
-(defmethod cli/command 'zen.cli/pull-deps [_ _ opts]
+(defmethod command 'zen.cli/pull-deps [_ _ opts]
   (pull-deps opts))
 
-(defmethod cli/command 'zen.cli/build [_ [path package-name] opts]
+(defmethod command 'zen.cli/build [_ [path package-name] opts]
   (let [path-str (str path)]
     (if-not package-name
       (build path-str opts)
       (build path-str package-name opts))))
 
-(defmethod cli/command 'zen.cli/errors [_ _args opts]
+(defmethod command 'zen.cli/errors [_ _args opts]
   (errors opts))
 
-(defmethod cli/command 'zen.cli/changes [_ _ opts]
+(defmethod command 'zen.cli/changes [_ _ opts]
   (changes opts))
 
-(defmethod cli/command 'zen.cli/validate [_ [symbols-str data-str] opts]
+(defmethod command 'zen.cli/validate [_ [symbols-str data-str] opts]
   (validate symbols-str data-str opts))
 
-(defmethod cli/command 'zen.cli/get-symbol [_ [sym-str] opts]
+(defmethod command 'zen.cli/get-symbol [_ [sym-str] opts]
   (get-symbol sym-str opts))
 
-(defmethod cli/command 'zen.cli/get-tag [_ [tag-str] opts]
+(defmethod command 'zen.cli/get-tag [_ [tag-str] opts]
   (get-tag tag-str opts))
 
-(defmethod cli/command 'zen.cli/exit [_ _ opts]
+(defmethod command 'zen.cli/exit [_ _ opts]
   (exit opts))
+
+(defmethod command ::not-found [command-name _command-args _opts] #_"TODO: return help"
+  {::status :error
+   ::code ::implementation-missing
+   ::result {:message (str "Command '" command-name " implementation is missing")}})
+
+
+(defn coerce-args-style-dispatch [command-args-def _command-args]
+  (:args-style command-args-def :positional))
+
+
+(defmulti coerce-args-style #'coerce-args-style-dispatch)
+
+
+(defmethod coerce-args-style :named [_command-args-def command-args]
+  (clojure.edn/read-string (str "{" (clojure.string/join " " command-args) "}")))
+
+
+(defmethod coerce-args-style :positional [_command-args-def command-args]
+  (clojure.edn/read-string (str "[" (clojure.string/join " " command-args) "]")))
+
+(defn handle-command
+  [ztx command-sym command-args & [opts]]
+  (if-let [command-def (zen.core/get-symbol ztx command-sym)]
+    (let [coerced-args      (coerce-args-style command-def command-args)
+          args-validate-res (zen.v2-validation/validate-schema ztx
+                                                               (:args command-def)
+                                                               coerced-args
+                                                               {:sch-symbol command-sym})]
+      (if (empty? (:errors args-validate-res))
+        (let [command-res (try (command command-sym coerced-args opts)
+                               (catch Exception e
+                                 #::{:result {:exception e}
+                                     :status :error
+                                     :code   ::exception}))]
+          (if (::status command-res)
+            command-res
+            #::{:result command-res
+                :status :ok}))
+        #::{:status :error
+            :code   ::invalid-args
+            :result {:message           "invalid args"
+                     :validation-result args-validate-res}}))
+    #::{:status :error
+        :code   ::undefined-command
+        :result {:message "undefined command"}}))
+
+(defn extract-commands-params [[command-name & command-args]]
+  {:command-name command-name
+   :command-args command-args})
+
+(defn cli-exec [ztx config-sym args & [opts]]
+  (let [config (zen.core/get-symbol ztx config-sym)
+        commands (:commands config)
+
+        {:keys [command-name command-args]} (extract-commands-params args)
+
+        command-entry (get commands (keyword command-name))
+
+        command-sym        (:command command-entry)
+        nested-config-sym  (:config command-entry)]
+
+    (cond
+      (= "help" command-name)
+      #::{:status :ok
+          :result commands}
+
+      (some? nested-config-sym)
+      (cli-exec ztx nested-config-sym command-args opts)
+
+      (some? command-sym)
+      (handle-command ztx command-sym command-args opts)
+
+      :else
+      #::{:status :error
+          :code ::unknown-command
+          :result {:message "unknown command"}})))
+
+(defn repl [ztx config-sym & [opts]]
+  (let [prompt-fn (get-prompt-fn opts)
+        read-fn   (get-read-fn opts)
+        return-fn (get-return-fn opts)
+        config    (zen.core/get-symbol ztx config-sym)
+        commands  (:commands config)
+
+        opts (update opts :stop-repl-atom #(or % (atom false)))]
+    (while (not @(:stop-repl-atom opts))
+      (return-fn
+        (exception->error-result
+          (prompt-fn)
+          (let [line (read-fn)
+                args (split-args-by-space line)]
+            (cli-exec ztx config-sym args opts)))))))
+
+
+(defn do-cli-exec [ztx config-sym args & [opts]]
+  (let [return-fn (get-return-fn opts)]
+    (return-fn (cli-exec ztx config-sym args opts))))
+
+(defn cli-main* [ztx config-sym [cmd-name :as args] opts]
+  (if (seq cmd-name)
+    (do-cli-exec ztx config-sym args opts)
+    (repl ztx config-sym opts)))
+
+(defn cli [ztx config-sym args & [opts]]
+  (let [main-ns (symbol (namespace config-sym))]
+    (if (= :zen/loaded (zen.core/read-ns ztx main-ns))
+      (cli-main* ztx config-sym args opts)
+      {::code   ::load-failed
+       ::status :error
+       ::result {:message "Couldn't load main CLI namespace"
+                 :ns      main-ns
+                 :errors  (zen.core/errors ztx)}})))
 
 
 (defn cli-main [args & [opts]]
-  (cli/cli-main (zen.core/new-context)
-                'zen.cli/config
-                args
-                opts))
+  (cli (zen.core/new-context) 'zen.cli/zen-config args opts))
 
 (defn -main [& args]
   (cli-main args))

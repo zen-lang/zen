@@ -1,9 +1,35 @@
 {:ns zen.cli
- :import #{zen.cli-tools}
+
+ command
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :keys {:args-style {:type zen/keyword
+                      :enum [{:value :positional-and-then-named}
+                             {:value :positional}
+                             {:value :named}]}
+
+         :args {:type zen/map
+                :require #{:type}
+                :keys {:type {:type zen/symbol
+                              :enum [{:value zen/map}
+                                     {:value zen/vector}]}}
+                :confirms #{zen/schema}}}}
+
+ config
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :require #{:commands}
+  :keys {:commands {:type zen/map
+                    :key {:type zen/keyword}
+                    :values {:type zen/map
+                             :require #{#{:config :command}}
+                             :exclusive-keys #{#{:config :command}}
+                             :keys {:command {:type zen/symbol :tags #{command}}
+                                    :config  {:type zen/symbol :tags #{config}}}}}}}
 
 
  init
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "init"
   :args-style :positional
   :args {:type     zen/vector
@@ -14,14 +40,14 @@
                               {:when {:type zen/string}}]}}}}
 
  pull-deps
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "pull deps"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  build
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "build"
   :args-style :positional
   :args {:type zen/vector
@@ -32,21 +58,21 @@
                         {:when {:type zen/string}}]}}}
 
  errors
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "errors"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  changes
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "changes"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  validate
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "validates data against a set of schemas"
   :args-style :positional
   :args {:type zen/vector
@@ -58,7 +84,7 @@
                1 {:type zen/any}}}}
 
  get-symbol
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "get symbol"
   :args-style :positional
   :args {:type zen/vector
@@ -68,7 +94,7 @@
                   :zen/desc "symbol to get"}}}}
 
  get-tag
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "get tag"
   :args-style :positional
   :args {:type zen/vector
@@ -78,14 +104,14 @@
                   :zen/desc "tag symbol to search by"}}}}
 
  exit
- {:zen/tags #{zen.cli-tools/command}
+ {:zen/tags #{command}
   :zen/desc "exit"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
- config
- {:zen/tags #{zen.cli-tools/config}
+ zen-config
+ {:zen/tags #{config}
   :commands {:init       {:command init}
              :pull-deps  {:command pull-deps}
              :build      {:command build}

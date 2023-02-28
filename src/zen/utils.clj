@@ -129,6 +129,17 @@
              (or disj-set {})
              new-group))))
 
+
+#_"NOTE: this fn can be used in get-symbol. Can be refactored if it doesn't affect 'get-symbol performance"
+(defn resolve-aliased-sym [ctx sym]
+  (let [symbols (:symbols @ctx)]
+    (or (when (contains? symbols sym)
+          sym)
+        (when-let [alias-root (disj-set-get-root (:aliases @ctx) sym)]
+          (when (contains? symbols alias-root)
+            alias-root)))))
+
+
 (defn get-symbol [ctx sym]
   (when (symbol? sym)
     (let [{:keys [zen/tags] :as resource}
@@ -142,15 +153,12 @@
             resource))
         resource))))
 
+
 #_"TODO: profile performance with alisases"
 (defn get-tag [ctx tag]
-  (let [ctx-value @ctx
-        tagged-symbols (get-in ctx-value [:tags tag])]
-    (if-let [aliases (seq (disj-set-get-group (:aliases @ctx) tag))]
-      (into (or tagged-symbols #{})
-            (mapcat #(get-in ctx-value [:tags %]))
-            aliases)
-      tagged-symbols)))
+  (let [tags (:tags @ctx)]
+    (or (get tags tag)
+        (get tags (resolve-aliased-sym ctx tag)))))
 
 (defmacro iter-reduce
   [fn val iterable]
