@@ -5,7 +5,6 @@
             [clojure.edn]
             [clojure.test :as t]
             [zen.test-utils]
-            [zen.cli-tools :as cli-tools]
             [matcho.core :as matcho]))
 
 
@@ -54,16 +53,16 @@
 
   (t/testing "wrong command"
     (matcho/match (sut-cmd "AAAAAAAAAAAAAA" {:pwd test-dir-path})
-                  {::cli-tools/status :error})
+                  {::sut/status :error})
 
     (matcho/match (sut-cmd "init" "a" "b" "c" "d" "too many args" {:pwd test-dir-path})
-                  {::cli-tools/status :error}))
+                  {::sut/status :error}))
 
   (t/testing "create template"
     (zen.test-utils/mkdir my-package-dir-path)
 
     (matcho/match (sut-cmd "init" "my-package" {:pwd my-package-dir-path})
-                  {::cli-tools/code :initted-new, ::cli-tools/status :ok})
+                  {::sut/code :initted-new, ::sut/status :ok})
 
     (matcho/match (zen.test-utils/fs-tree->tree-map my-package-dir-path)
                   {"zen-package.edn" some?
@@ -74,12 +73,12 @@
 
   (t/testing "try to create new template over existing directory, get error that repo already exists"
     (matcho/match (sut-cmd "init" "my-package" {:pwd my-package-dir-path})
-                  {::cli-tools/status :ok, ::cli-tools/code :already-exists}))
+                  {::sut/status :ok, ::sut/code :already-exists}))
 
 
   (t/testing "check new template no errors"
     (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                  {::cli-tools/status :ok}))
+                  {::sut/status :ok}))
 
 
   (zen.test-utils/git-init-commit my-package-dir-path)
@@ -88,17 +87,17 @@
   (t/testing "declare a symbol with tag and import ns from a dependency"
     (t/testing "no changes are made yet"
       (matcho/match (sut-cmd "changes" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result {:status :unchanged}}))
+                    {::sut/status :ok
+                     ::sut/result {:status :unchanged}}))
 
     (t/testing "the symbol doesn't exist before update"
       (matcho/match (sut-cmd "get-symbol" "my-package/sym" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result nil?})
+                    {::sut/status :ok
+                     ::sut/result nil?})
 
       (matcho/match (sut-cmd "get-tag" "my-dep/tag" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result empty?}))
+                    {::sut/status :ok
+                     ::sut/result empty?}))
 
     (zen.test-utils/update-zen-file (str my-package-dir-path "/zrc/my-package.edn")
                      #(assoc %
@@ -108,41 +107,41 @@
 
     (t/testing "get the symbol"
       (matcho/match (sut-cmd "get-symbol" "my-package/sym" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result {:zen/tags #{'my-dep/tag}
+                    {::sut/status :ok
+                     ::sut/result {:zen/tags #{'my-dep/tag}
                                          :a "a"}}))
 
     (t/testing "get the symbol by the tag"
       (matcho/match (sut-cmd "get-tag" "my-dep/tag" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result                     #{'my-package/sym}}))
+                    {::sut/status :ok
+                     ::sut/result                     #{'my-package/sym}}))
 
     (t/testing "see changes"
       (matcho/match (sut-cmd "changes" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result {:status :changed
+                    {::sut/status :ok
+                     ::sut/result {:status :changed
                                          :changes [{} nil]}})
 
       (zen.test-utils/git-commit my-package-dir-path "zrc/" "Add my-dep/new-sym")
 
       (matcho/match (sut-cmd "changes" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result {:status :unchanged}})))
+                    {::sut/status :ok
+                     ::sut/result {:status :unchanged}})))
 
 
   (t/testing "specify a dependency in zen-package.edn"
     (t/testing "check errors, see that namespace the dependency ns is missing"
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result [{:missing-ns 'my-dep}
+                    {::sut/status :ok
+                     ::sut/result [{:missing-ns 'my-dep}
                                          {:unresolved-symbol 'my-dep/tag}
                                          nil]}))
 
     (t/testing "can safely pull deps without deps specified"
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result {:status :ok
+                    {::sut/status :ok
+                     ::sut/result {:status :ok
                                          :code :nothing-to-pull
                                          :deps empty?}}))
 
@@ -151,23 +150,23 @@
 
     (t/testing "do pull-deps & check for errors, should be no errors"
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result {:status :ok
+                    {::sut/status :ok
+                     ::sut/result {:status :ok
                                          :code :pulled
                                          :deps #{'my-dep}}})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result nil?}))
+                    {::sut/status :ok
+                     ::sut/result nil?}))
 
     (t/testing "do pull-deps again should be no errors and no changes"
 
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok})
+                    {::sut/status :ok})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result nil?}))
+                    {::sut/status :ok
+                     ::sut/result nil?}))
 
 
     (t/testing "change repo url, pull"
@@ -175,15 +174,15 @@
                                       #(assoc % :deps {'my-dep dependency-fork-dir-path}))
 
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :error})
+                    {::sut/status :error})
       (zen.test-utils/update-zen-file (str my-package-dir-path "/zen-package.edn")
                                       #(assoc % :deps {'my-dep dependency-dir-path}))
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result nil?})
+                    {::sut/status :ok
+                     ::sut/result nil?})
 
       (matcho/match (sut-cmd "get-symbol" "my-dep/new-sym" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok})))
+                    {::sut/status :ok})))
 
 
   (t/testing "commit update to the dependency"
@@ -194,22 +193,22 @@
 
     (t/testing "do pull-deps and see the update"
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result {:status :ok
+                    {::sut/status :ok
+                     ::sut/result {:status :ok
                                          :code :pulled
                                          :deps #{'my-dep}}})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result nil?})
+                    {::sut/status :ok
+                     ::sut/result nil?})
 
       (matcho/match (sut-cmd "get-symbol" "my-dep/new-sym" {:pwd my-package-dir-path})
-                    {::cli-tools/result {:i-am-forked :fork-updated}})))
+                    {::sut/result {:i-am-forked :fork-updated}})))
 
 
   (t/testing "use validate command to validate some data"
     (matcho/match (sut-cmd "validate" "#{my-dep/tag}" "{}" {:pwd my-package-dir-path})
-                  {::cli-tools/result {:errors [{} nil]}})))
+                  {::sut/result {:errors [{} nil]}})))
 
 
 (defn sut-repl [opts]
@@ -229,7 +228,7 @@
                         (deliver @input-atom-promise s)
                         (get&promise-new return-atom-promise
                                          timeout
-                                         {::cli-tools/status :error, ::cli-tools/code :eval-timeout}))
+                                         {::sut/status :error, ::sut/code :eval-timeout}))
 
         repl-opts (merge {:prompt-fn (fn [])
                           :read-fn   #(get&promise-new input-atom-promise timeout "exit")
@@ -271,7 +270,7 @@
     (zen.test-utils/mkdir my-package-dir-path)
 
     (matcho/match (eval-in-repl! "init my-package")
-                  {::cli-tools/status :ok, ::cli-tools/code :initted-new})
+                  {::sut/status :ok, ::sut/code :initted-new})
 
     (zen.test-utils/git-init-commit my-package-dir-path))
   #_(throw (Exception. "HALT"))
@@ -284,7 +283,7 @@
 
   (t/testing "errors"
     (matcho/match (eval-in-repl! "errors")
-                  {::cli-tools/result [{:missing-ns 'my-dep}
+                  {::sut/result [{:missing-ns 'my-dep}
                                        {:unresolved-symbol 'my-dep/tag}
                                        nil]}))
 
@@ -293,15 +292,15 @@
 
   (t/testing "pull-deps"
     (matcho/match (eval-in-repl! "pull-deps")
-                  {::cli-tools/status :ok
-                   ::cli-tools/result {:code :pulled, :deps #{'my-dep}}})
+                  {::sut/status :ok
+                   ::sut/result {:code :pulled, :deps #{'my-dep}}})
 
     (matcho/match (eval-in-repl! "errors")
-                  {::cli-tools/result empty?}))
+                  {::sut/result empty?}))
 
   (t/testing "changes"
     (matcho/match (eval-in-repl! "changes")
-                  {::cli-tools/result
+                  {::sut/result
                    {:changes
                     [{:type :namespace/new, :namespace 'my-dep}
                      {:type :symbol/new, :symbol 'my-package/sym}
@@ -309,22 +308,22 @@
 
   (t/testing "validate"
     (matcho/match (eval-in-repl! "validate #{my-dep/tag} {:a :wrong-type}")
-                  {::cli-tools/result {:errors [{} nil]}})
+                  {::sut/result {:errors [{} nil]}})
 
     (matcho/match (eval-in-repl! "validate #{my-dep/tag} {:a \"correct-type\"}")
                   {:errors empty?}))
 
   (t/testing "get-symbol"
     (matcho/match (eval-in-repl! "get-symbol my-package/sym")
-                  {::cli-tools/result {:zen/name 'my-package/sym}}))
+                  {::sut/result {:zen/name 'my-package/sym}}))
 
   (t/testing "get-tag"
     (matcho/match (eval-in-repl! "get-tag my-dep/tag")
-                  {::cli-tools/result #{'my-package/sym}}))
+                  {::sut/result #{'my-package/sym}}))
 
   (t/testing "exit"
     (matcho/match (eval-in-repl! "exit")
-                  {::cli-tools/result {:status :ok, :code :exit}})
+                  {::sut/result {:status :ok, :code :exit}})
 
     (t/is (true? @stop-repl-atom)))
 
@@ -341,7 +340,7 @@
   (t/testing "Initialize project"
     (zen.test-utils/mkdir my-package-dir-path)
     (matcho/match (sut-cmd "init" "my-package" {:pwd my-package-dir-path})
-                  {::cli-tools/code :initted-new ::cli-tools/status :ok})
+                  {::sut/code :initted-new ::sut/status :ok})
 
     (matcho/match (zen.test-utils/fs-tree->tree-map my-package-dir-path)
                   {"zen-package.edn" some?
@@ -351,8 +350,8 @@
 
   (t/testing "Building project archive"
     (matcho/match (sut-cmd "build" build-dir "zen-project" {:pwd my-package-dir-path})
-                  {::cli-tools/result {:status :ok :code :builded}
-                   ::cli-tools/status :ok})
+                  {::sut/result {:status :ok :code :builded}
+                   ::sut/status :ok})
 
     (t/testing "Can see project-archive on fs-tree"
       (matcho/match (zen.test-utils/fs-tree->tree-map my-package-dir-path)
