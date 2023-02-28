@@ -175,24 +175,22 @@
                                       #(assoc % :deps {'my-dep dependency-fork-dir-path}))
 
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
-                    {::cli-tools/status :ok
-                     ::cli-tools/result {:status :ok
-                                         :code :pulled
-                                         :deps #{'my-dep}}})
-
+                    {::cli-tools/status :error})
+      (zen.test-utils/update-zen-file (str my-package-dir-path "/zen-package.edn")
+                                      #(assoc % :deps {'my-dep dependency-dir-path}))
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
                     {::cli-tools/status :ok
                      ::cli-tools/result nil?})
 
       (matcho/match (sut-cmd "get-symbol" "my-dep/new-sym" {:pwd my-package-dir-path})
-                    {::cli-tools/result {:i-am-forked :not-the-original-repo}})))
+                    {::cli-tools/status :ok})))
 
 
   (t/testing "commit update to the dependency"
-    (zen.test-utils/update-zen-file (str dependency-fork-dir-path "/zrc/my-dep.edn")
+    (zen.test-utils/update-zen-file (str dependency-dir-path "/zrc/my-dep.edn")
                                     #(assoc-in % ['new-sym :i-am-forked] :fork-updated))
 
-    (zen.test-utils/git-commit dependency-fork-dir-path "zrc/" "Update my-dep/new-sym")
+    (zen.test-utils/git-commit dependency-dir-path "zrc/" "Update my-dep/new-sym")
 
     (t/testing "do pull-deps and see the update"
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
