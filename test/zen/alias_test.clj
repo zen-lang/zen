@@ -12,10 +12,14 @@
 
            tag1 {:zen/tags #{zen/tag}}
 
+           tag-alias1 ns1/tag1
+           tag-alias2 ns1/tag-alias1
+
            sch1
-           {:zen/tags #{zen/schema}
+           {:zen/tags #{zen/schema zen/tag}
             :type zen/map
-            :keys {:a {:type zen/string}}}}
+            :keys {:a {:type zen/string}
+                   :b {:type zen/symbol :tags #{tag1}}}}}
 
       ns2 {:ns    ns2
            sym21 {:foo1 :bar2}
@@ -43,17 +47,51 @@
             tag1 ns1/tag1
             tagged-sym1 {:zen/tags #{tag1}}
             tagged-sym2 {:zen/tags #{ns1/tag1}}
+            tagged-sym3 {:zen/tags #{ns1/tag-alias1}}
+            tagged-sym4 {:zen/tags #{ns1/tag-alias2}}
 
             tag22 {:zen/tags #{zen/tag}}
             tagged-sym21  {:zen/tags #{tag21}}
             tagged-sym221 {:zen/tags #{tag22}}
-            tagged-sym222 {:zen/tags #{ns2/tag22}}}})
+            tagged-sym222 {:zen/tags #{ns2/tag22}}
+
+            sch2-res1
+            {:zen/tags #{zen/schema sch1}
+             :b tagged-sym1}
+
+            sch2-res2
+            {:zen/tags #{zen/schema sch1}
+             :b tagged-sym2}
+
+            sch2-res3
+            {:zen/tags #{zen/schema sch1}
+             :b tagged-sym3}
+
+            sch2-res4
+            {:zen/tags #{zen/schema sch1}
+             :b tagged-sym4}}})
 
   (def ztx (zen/new-context {:unsafe true :memory-store test-namespaces}))
 
   (zen/load-ns ztx (get test-namespaces 'myns))
 
   (is (empty? (zen/errors ztx)))
+
+  (matcho/match
+    (zen/get-symbol ztx 'myns/tagged-sym1)
+    {:zen/tags #{'ns1/tag1}})
+
+  (matcho/match
+    (zen/get-symbol ztx 'myns/tagged-sym2)
+    {:zen/tags #{'ns1/tag1}})
+
+  (matcho/match
+    (zen/get-symbol ztx 'myns/tagged-sym3)
+    {:zen/tags #{'ns1/tag1}})
+
+  (matcho/match
+    (zen/get-symbol ztx 'myns/tagged-sym4)
+    {:zen/tags #{'ns1/tag1}})
 
   (testing "symbol alias"
     (matcho/match
@@ -72,10 +110,10 @@
 
   (testing "tags alias"
     (testing "symbol alias"
-      (is (= #{'myns/tagged-sym1 'myns/tagged-sym2}
+      (is (= #{'myns/tagged-sym1 'myns/tagged-sym2 'myns/tagged-sym3 'myns/tagged-sym4}
              (zen/get-tag ztx 'myns/tag1)))
 
-      (is (= #{'myns/tagged-sym1 'myns/tagged-sym2}
+      (is (= #{'myns/tagged-sym1 'myns/tagged-sym2 'myns/tagged-sym3 'myns/tagged-sym4}
              (zen/get-tag ztx 'ns1/tag1))))
 
     (testing "ns alias"

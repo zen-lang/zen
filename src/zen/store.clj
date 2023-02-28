@@ -60,20 +60,32 @@
                 :unresolved-symbol sym
                 :ns zen-ns})))))
 
+(defn zen-sym? [sym]
+  (and (symbol? sym) (not (:zen/quote (meta sym)))))
+
+(defn local-zen-sym? [sym]
+  (and (zen-sym? sym) (not (namespace sym))))
+
+(defn ensure-qualified [zen-ns sym]
+  (if (local-zen-sym? sym)
+    (mk-symbol zen-ns sym)
+    sym))
+
 (defn eval-resource
   "walk resource, expand symbols and validate refs"
   [ctx zen-ns ns-sym resource]
   (let [walk-fn
         (fn [v]
           ;; do not validate zen/quote'd symbols
-          (let [zen-sym? (and (symbol? v) (not (:zen/quote (meta v))))]
-            (when zen-sym?
-              (validate-symbol ctx zen-ns ns-sym v))
+          (if (zen-sym? v)
+            (let [qual-sym (ensure-qualified zen-ns v)
+                  maybe-resolved (zen.utils/resolve-aliased-sym ctx qual-sym)]
 
-            ;; resolve local sym
-            (if (and zen-sym? (not (namespace v)))
-              (mk-symbol zen-ns v)
-              v)))]
+              #_"NOTE: because validate makes different messages for qual and unqual syms, we use v insead of qual-sysm here"
+              (validate-symbol ctx zen-ns ns-sym (or maybe-resolved v))
+
+              (or maybe-resolved qual-sym))
+            v))]
 
     (-> (walk-resource walk-fn resource)
         (assoc :zen/name (mk-symbol zen-ns ns-sym)))))
@@ -167,6 +179,7 @@
     ;; eval symbols and aliases
     (let [load-result
           (->> (dissoc ns-map ['ns 'import 'alias :ns :import :alias])
+               (sort-by (juxt symbol-definition? symbol-alias?)) #_"NOTE: load aliases first, symbols after"
                (mapv (fn [[k v :as kv]]
                        (cond (symbol-definition? kv) (load-symbol ctx zen-ns k (merge v opts))
                              (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns k))
