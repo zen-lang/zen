@@ -153,15 +153,12 @@
             resource))
         resource))))
 
+
 #_"TODO: profile performance with alisases"
 (defn get-tag [ctx tag]
-  (let [ctx-value @ctx
-        tagged-symbols (get-in ctx-value [:tags tag])]
-    (if-let [aliases (seq (disj-set-get-group (:aliases @ctx) tag))]
-      (into (or tagged-symbols #{})
-            (mapcat #(get-in ctx-value [:tags %]))
-            aliases)
-      tagged-symbols)))
+  (let [tags (:tags @ctx)]
+    (or (get tags tag)
+        (get tags (resolve-aliased-sym ctx tag)))))
 
 (defmacro iter-reduce
   [fn val iterable]
