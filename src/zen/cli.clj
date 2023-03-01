@@ -11,6 +11,30 @@
             [clojure.java.shell]
             [clojure.string :as str]))
 
+(defn help
+  [ztx command-symbol & [args]]
+  (let [schema (zen.core/get-symbol ztx command-symbol)]
+    (cond
+      (contains? schema :commands)
+      (clojure.pprint/print-table
+       (for [[command-name command-schema] (sort-by first (:commands schema))]
+         (let [command-definition (zen.core/get-symbol ztx (or (:command command-schema)
+                                                               (:config command-schema)))]
+           {"Command" (name command-name) "Description" (:zen/desc command-definition)})))
+
+      (contains? (:zen/tags schema) 'zen.cli/command)
+      (do
+        (println "Description:")
+        (println (:zen/desc schema))
+        (println)
+        (println "Usage:")
+        (println "zen"
+                 (clojure.string/join " " args)
+                 (->> (get-in schema [:args :nth])
+                      (sort-by first)
+                      (map (fn [[index arg-schema]]
+                             (str "[" (:zen/desc arg-schema) "]")))
+                      (clojure.string/join " ")))))))
 
 (defn str->edn [x]
   (clojure.edn/read-string (str x)))
@@ -310,6 +334,9 @@
         nested-config-sym  (:config command-entry)]
 
     (cond
+      (= "--help" (last args))
+      (help ztx (or command-sym config-sym) (butlast args))
+
       (= "help" command-name)
       #::{:status :ok
           :result commands}
