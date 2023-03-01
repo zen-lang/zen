@@ -30,25 +30,25 @@
 
  init
  {:zen/tags #{command}
-  :zen/desc "init"
+  :zen/desc "Set up a new zen project"
   :args-style :positional
   :args {:type     zen/vector
          :maxItems 1
-         :nth      {0 {:zen/desc "Project name. Creates zen namespace with this name"
+         :nth      {0 {:zen/desc "project-name"
                        :type zen/case
                        :case [{:when {:type zen/symbol}}
                               {:when {:type zen/string}}]}}}}
 
  pull-deps
  {:zen/tags #{command}
-  :zen/desc "pull deps"
+  :zen/desc "Updating all project dependencies"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  build
  {:zen/tags #{command}
-  :zen/desc "build"
+  :zen/desc "Build current project into zip file"
   :args-style :positional
   :args {:type zen/vector
          :minItems 0
@@ -59,49 +59,50 @@
 
  errors
  {:zen/tags #{command}
-  :zen/desc "errors"
+  :zen/desc "Show project errors"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  changes
  {:zen/tags #{command}
-  :zen/desc "changes"
+  :zen/desc "Show project changes"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  validate
  {:zen/tags #{command}
-  :zen/desc "validates data against a set of schemas"
+  :zen/desc "Validates data against a set of schemas"
   :args-style :positional
   :args {:type zen/vector
          :minItems 2
          :maxItems 2
-         :nth {0 {:zen/desc "Set of schema symbols to validate against"
+         :nth {0 {:zen/desc "set of symbols"
                   :type zen/set
                   :every {:type zen/symbol}}
-               1 {:type zen/any}}}}
+               1 {:type zen/any
+                  :zen/desc "data"}}}}
 
  get-symbol
  {:zen/tags #{command}
-  :zen/desc "get symbol"
+  :zen/desc "Get schema by symbol"
   :args-style :positional
   :args {:type zen/vector
          :minItems 1
          :maxItems 1
          :nth {0 {:type zen/symbol
-                  :zen/desc "symbol to get"}}}}
+                  :zen/desc "schema-symbol"}}}}
 
  get-tag
  {:zen/tags #{command}
-  :zen/desc "get tag"
+  :zen/desc "Get symbols by tag"
   :args-style :positional
   :args {:type zen/vector
          :minItems 1
          :maxItems 1
          :nth {0 {:type zen/symbol
-                  :zen/desc "tag symbol to search by"}}}}
+                  :zen/desc "tag"}}}}
 
  exit
  {:zen/tags #{command}
@@ -118,7 +119,7 @@
                :minItems 1
                :maxItems 1
                :nth      {0 {:type     zen/symbol
-                             :zen/desc "package identifier"}}}}
+                             :zen/desc "package-identifier"}}}}
 
  zen-config
  {:zen/tags #{config}
