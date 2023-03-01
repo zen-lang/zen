@@ -33,7 +33,7 @@
 (defn sut-cmd [cmd-name & args]
   (let [opts      (last args)
         cmd-args  (butlast args)
-        test-opts {:return-fn identity}
+        test-opts {:format :identity}
         cli-opts  (merge test-opts opts)]
     (assert (and (map? opts)
                  (contains? opts :pwd))
@@ -209,6 +209,25 @@
   (t/testing "use validate command to validate some data"
     (matcho/match (sut-cmd "validate" "#{my-dep/tag}" "{}" {:pwd my-package-dir-path})
                   {::sut/result {:errors [{} nil]}})))
+
+(t/deftest help-command-test
+  (matcho/match (sut-cmd "--help" {:pwd test-dir-path})
+                {::sut/result
+                 [{:command "build" :description string?}
+                  {:command "changes" :description string?}
+                  {:command "errors" :description string?}
+                  {:command "exit" :description string?}
+                  {:command "get-symbol" :description string?}
+                  {:command "get-tag" :description string?}
+                  {:command "init" :description string?}
+                  {:command "install" :description string?}
+                  {:command "pull-deps" :description string?}
+                  {:command "validate" :description string?}]})
+  (matcho/match (sut-cmd "install" "--help" {:pwd test-dir-path}) 
+                {::sut/result
+                 {:description string?
+                  :usage       [{:path   ["zen" "install"]
+                                 :params ["package-identifier"]}]}}))
 
 
 (defn sut-repl [opts]

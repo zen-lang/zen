@@ -3,6 +3,7 @@
   (:require [zen.package]
             [zen.changes]
             [zen.core]
+            [zen.cli.output]
             [clojure.pprint]
             [clojure.java.io :as io]
             [clojure.string]
@@ -16,34 +17,32 @@
   (let [schema (zen.core/get-symbol ztx command-symbol)]
     (cond
       (contains? schema :commands)
-      (clojure.pprint/print-table
-       (for [[command-name command-schema] (sort-by first (:commands schema))]
-         (let [command-definition (zen.core/get-symbol ztx (or (:command command-schema)
-                                                               (:config command-schema)))]
-           {"Command" (name command-name) "Description" (:zen/desc command-definition)})))
-
+      {:format  :table
+       ::result (mapv
+                 (fn [[command-name command-schema]]
+                   (let [command-definition (zen.core/get-symbol ztx (or (:command command-schema) (:config command-schema)))]
+                     {:command     (name command-name)
+                      :description (:zen/desc command-definition)}))
+                 (sort-by first (:commands schema)))}
       (contains? (:zen/tags schema) 'zen.cli/command)
-      (do
-        (println "Description:")
-        (println (:zen/desc schema))
-        (println)
-        (println "Usage:")
-        (if (= (get-in schema [:args :type]) 'zen/case)
-          (doseq [case-schema (get-in schema [:args :case])]
-            (println "zen"
-                     (clojure.string/join " " args)
-                     (->> (get-in case-schema [:then :nth])
-                          (sort-by first)
-                          (map (fn [[index arg-schema]]
-                                 (str "[" (:zen/desc arg-schema) "]")))
-                          (clojure.string/join " "))))
-          (println "zen"
-                   (clojure.string/join " " args)
-                   (->> (get-in schema [:args :nth])
-                        (sort-by first)
-                        (map (fn [[index arg-schema]]
-                               (str "[" (:zen/desc arg-schema) "]")))
-                        (clojure.string/join " "))))))))
+      {:format  :command
+       ::result {:description (:zen/desc schema)
+                 :usage       (cond
+                                (= (get-in schema [:args :type]) 'zen/case)
+                                (mapv
+                                 (fn [case-schema]
+                                   {:path   (into ["zen"] args)
+                                    :params (->> (get-in case-schema [:then :nth])
+                                                 (sort-by first)
+                                                 (map last)
+                                                 (mapv :zen/desc))})
+                                 (get-in schema [:args :case]))
+                                (= (get-in schema [:args :type]) 'zen/vector)
+                                [{:path   (into ["zen"] args)
+                                  :params (->> (get-in schema [:args :nth])
+                                               (sort-by first)
+                                               (map last)
+                                               (mapv :zen/desc))}])}})))
 
 (defn str->edn [x]
   (clojure.edn/read-string (str x)))
@@ -329,15 +328,21 @@
         :code   ::undefined-command
         :result {:message "undefined command"}}))
 
-(defn extract-commands-params [[command-name & command-args]]
-  {:command-name command-name
-   :command-args command-args})
+(defn extract-commands-params [args]
+  (let [[[command-name & command-args] subcommands]
+        (->> (group-by #(clojure.string/starts-with? % "--") args)
+             (merge {false [] true []})
+             (sort-by first)
+             (map last))]
+    {:command-name command-name
+     :command-args command-args
+     :subcommands  subcommands}))
 
 (defn cli-exec [ztx config-sym args & [opts]]
   (let [config (zen.core/get-symbol ztx config-sym)
         commands (:commands config)
 
-        {:keys [command-name command-args]} (extract-commands-params args)
+        {:keys [command-name command-args subcommands]} (extract-commands-params args)
 
         command-entry (get commands (keyword command-name))
 
@@ -345,12 +350,8 @@
         nested-config-sym  (:config command-entry)]
 
     (cond
-      (= "--help" (last args))
+      (some #(= "--help" %) subcommands)
       (help ztx (or command-sym config-sym) (butlast args))
-
-      (= "help" command-name)
-      #::{:status :ok
-          :result commands}
 
       (some? nested-config-sym)
       (cli-exec ztx nested-config-sym command-args opts)
@@ -379,14 +380,11 @@
                 args (split-args-by-space line)]
             (cli-exec ztx config-sym args opts)))))))
 
-
-(defn do-cli-exec [ztx config-sym args & [opts]]
-  (let [return-fn (get-return-fn opts)]
-    (return-fn (cli-exec ztx config-sym args opts))))
-
 (defn cli-main* [ztx config-sym [cmd-name :as args] opts]
   (if (seq cmd-name)
-    (do-cli-exec ztx config-sym args opts)
+    (zen.cli.output/return
+     (update (cli-exec ztx config-sym args opts)
+             :format #(or (:format opts) (zen.cli.output/get-format args) %)))
     (repl ztx config-sym opts)))
 
 (defn cli [ztx config-sym args & [opts]]
