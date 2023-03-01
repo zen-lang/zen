@@ -250,3 +250,14 @@
   (let [file (io/file path)]
     (when (.exists file)
       (run! io/delete-file (reverse (file-seq file))))))
+
+(defn update-file
+  [file-path update-fn]
+  (let [file        (io/file file-path)
+        old-content (when (.exists file)
+                      (let [content (slurp file-path)]
+                        (when (not-empty content)
+                          (read-string (slurp file-path)))))
+        new-content (update-fn old-content)]
+    (spit file-path new-content)
+    new-content))

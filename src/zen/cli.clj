@@ -240,6 +240,14 @@
 (defmethod command 'zen.cli/exit [_ _ opts]
   (exit opts))
 
+(defmethod command 'zen.cli/install
+  [_ [dependency-id] opts]
+  (let [root-dir (get-pwd opts)
+        zen-dep  (zen.package/format-dependency (str dependency-id))]
+    (zen.package/add-package (get-pwd opts) zen-dep)
+    (zen.package/zen-init-deps! root-dir)
+    {:status :ok :code :installed}))
+
 (defmethod command ::not-found [command-name _command-args _opts] #_"TODO: return help"
   {::status :error
    ::code ::implementation-missing

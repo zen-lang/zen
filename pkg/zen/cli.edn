@@ -110,9 +110,20 @@
   :args {:type zen/vector
          :maxItems 0}}
 
+ install
+ {:zen/tags   #{command}
+  :zen/desc   "Install a package"
+  :args-style :positional
+  :args       {:type     zen/vector
+               :minItems 1
+               :maxItems 1
+               :nth      {0 {:type     zen/symbol
+                             :zen/desc "package identifier"}}}}
+
  zen-config
  {:zen/tags #{config}
   :commands {:init       {:command init}
+             :install    {:command install}
              :pull-deps  {:command pull-deps}
              :build      {:command build}
              :errors     {:command errors}
