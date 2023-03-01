@@ -50,12 +50,14 @@
  {:zen/tags #{command}
   :zen/desc "Build current project into zip file"
   :args-style :positional
-  :args {:type zen/vector
-         :minItems 0
-         :maxItems 2
-         :every {:type zen/case
-                 :case [{:when {:type zen/symbol}}
-                        {:when {:type zen/string}}]}}}
+  :args {:type zen/case
+         :case [{:when {:type zen/vector :minItems 0 :maxItems 0}
+                 :then {}}
+                {:when {:type zen/vector :minItems 1 :maxItems 1}
+                 :then {:type zen/vector :nth {0 {:type zen/symbol :zen/desc "project"}}}}
+                {:when {:type zen/vector :minItems 2 :maxItems 2}
+                 :then {:type zen/vector :nth {0 {:type zen/symbol :zen/desc "path"}
+                                               1 {:type zen/symbol :zen/desc "project"}}}}]}}
 
  errors
  {:zen/tags #{command}

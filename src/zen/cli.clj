@@ -28,13 +28,22 @@
         (println (:zen/desc schema))
         (println)
         (println "Usage:")
-        (println "zen"
-                 (clojure.string/join " " args)
-                 (->> (get-in schema [:args :nth])
-                      (sort-by first)
-                      (map (fn [[index arg-schema]]
-                             (str "[" (:zen/desc arg-schema) "]")))
-                      (clojure.string/join " ")))))))
+        (if (= (get-in schema [:args :type]) 'zen/case)
+          (doseq [case-schema (get-in schema [:args :case])]
+            (println "zen"
+                     (clojure.string/join " " args)
+                     (->> (get-in case-schema [:then :nth])
+                          (sort-by first)
+                          (map (fn [[index arg-schema]]
+                                 (str "[" (:zen/desc arg-schema) "]")))
+                          (clojure.string/join " "))))
+          (println "zen"
+                   (clojure.string/join " " args)
+                   (->> (get-in schema [:args :nth])
+                        (sort-by first)
+                        (map (fn [[index arg-schema]]
+                               (str "[" (:zen/desc arg-schema) "]")))
+                        (clojure.string/join " "))))))))
 
 (defn str->edn [x]
   (clojure.edn/read-string (str x)))
@@ -152,6 +161,8 @@
   ([ztx tag-str opts]
    (load-used-namespaces ztx opts)
    (zen.core/get-tag ztx (str->edn tag-str))))
+
+(zen.core/get-tag (zen.core/new-context) 'zen/property)
 
 
 (defn exit
