@@ -6,7 +6,12 @@
             [zen.core]
             [zen.package]
             [clojure.pprint :as pp]
+            [clojure.string :as str]
+            [clojure.test :as t]
+            [zen.core]
             [zen.ftr]
+            [zen.package]
+            [zen.schema :as sut]
             [zen.types-generation]))
 
 (t/deftest patient-test
@@ -58,7 +63,7 @@
                         (zen.core/get-symbol ztx 'my-sturcts/User)
                         {:interpreters [::ts]}))
 
-    (str/join "" (::ts r)) 
+    (str/join "" (::ts r))
     (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
 
 (comment
@@ -66,16 +71,56 @@
   ;; :paths (path to zrc/)
   ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)
 
-  (zen.package/zen-init-deps! "/Users/pavel/Desktop/zen/test/test_project")
+  (zen.package/zen-init-deps! "/Users/pavel/Desktop/zen/test_project")
+
 
   (def ztx
     (zen.core/new-context
-     {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]}))
 
+     {:package-paths ["/Users/pavel/Desktop/zen/test_project"]}))
+
+
+  (pp/pprint @ztx)
 
   (zen.core/read-ns ztx 'hl7-fhir-r4-core)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
+
+
+  (zen.core/read-ns ztx 'hl7-fhir-us-core)
+
+  (defn read-versions [path]
+    (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
+      (mapv (fn [version]
+              (zen.core/read-ns ztx (symbol (first version)))) (:deps (edn/read (java.io.PushbackReader. zen-project))))))
+
+
+  (read-versions "/Users/pavel/Desktop/zen/test_project")
+
+  (defn get-searches [ztx versions]
+    (reduce (fn [acc version]
+              (zen.core/read-ns ztx (symbol version))
+              (concat acc (:searches (zen.core/get-symbol ztx (symbol version))))) [] versions))
+
+
+  (println (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas))))
+
+  (get-searches ztx (zen.core/get-tag ztx 'zen.fhir/searches))
+
+
+  (defn get-schemas [ztx, versions]
+    (reduce
+     (fn [acc version]
+       (zen.core/read-ns ztx (symbol version))
+       (concat acc (keys (:schemas (zen.core/get-symbol ztx (symbol version)))))) [] versions))
+
+  (get-schemas ztx (zen.core/get-tag ztx 'zen.fhir/base-schemas))
+
+  (pp/pprint (:tags @ztx))
+
+  (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas)))
+  (zen.core/get-symbol ztx 'zen.fhir/base-schemas)
+
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
@@ -83,6 +128,11 @@
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   ;; (get-valueset-values ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   (defn generate-types []
+
+
+    (println (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schema))
+
+
     (let [result-file-path "./result.ts"
           schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
           searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))

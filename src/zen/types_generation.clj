@@ -298,21 +298,24 @@
     :ok))
 
 
-(defn get-versions [path]
+(defn read-versions [ztx path]
   (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
-    (:deps (edn/read (java.io.PushbackReader. zen-project)))))
+    (mapv (fn [version]
+            (zen.core/read-ns ztx (symbol (first version)))) (:deps (edn/read (java.io.PushbackReader. zen-project))))))
 
-(defn get-searches [ztx, versions]
+
+
+(defn get-searches [ztx versions]
   (reduce (fn [acc version]
-            (zen.core/read-ns ztx (symbol (first version)))
-            (concat acc (:searches (zen.core/get-symbol ztx (symbol (str (first version) "/searches")))))) [], versions))
+            (zen.core/read-ns ztx (symbol version))
+            (concat acc (:searches (zen.core/get-symbol ztx (symbol version))))) [] versions))
 
 
 (defn get-schemas [ztx, versions]
   (reduce
-   (fn [acc schema-key]
-     (zen.core/read-ns ztx (symbol (first schema-key)))
-     (concat acc (keys (:schemas (zen.core/get-symbol ztx (symbol (str (first schema-key) "/base-schemas"))))))) [] versions))
+   (fn [acc version]
+     (zen.core/read-ns ztx (symbol version))
+     (concat acc (keys (:schemas (zen.core/get-symbol ztx (symbol version)))))) [] versions))
 
 (defn get-resources [schema custom-resources-names]
   (mapv (fn [n]
@@ -371,9 +374,9 @@
 
   (let [result-file-path "./package/aidbox-types.d.ts"
         ztx  (zen.core/new-context {:package-paths [path]})
-        versions (get-versions path)
-        searches (get-searches ztx versions)
-        schema (get-schemas ztx versions)
+        _ (read-versions ztx path)
+        searches (get-searches ztx (zen.core/get-tag ztx 'zen.fhir/searches))
+        schema  (get-schemas ztx (zen.core/get-tag ztx 'zen.fhir/base-schemas))
         resource-type-map-interface "export interface ResourceTypeMap {\n"
         resourcetype-type (:resourcetype-type prepared-interfaces)
         reference-type (:reference-type prepared-interfaces)
@@ -390,8 +393,11 @@
 
     (spit result-file-path (str/join ""  resource-map-result) :append true)
 
-    (mapv (fn [version]
-            (generate-types-for-version path (first version))) versions)
+    (println (first (zen.core/get-tag ztx 'zen.fhir/base-schemas)))
+
+
+    (generate-types-for-version path (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas))))
+
 
     (spit result-file-path (str/join "" search-params-result) :append true)
 
