@@ -135,7 +135,16 @@
 
   ([ztx opts]
    (load-used-namespaces ztx opts)
-   (zen.core/errors ztx :order :as-is)))
+   {:format  :error
+    ::status :ok
+    ::result (seq (map #(assoc % ::file
+                               (some-> 
+                                (or (get-in @ztx [:ns (:ns %) :zen/file])
+                                    (:file %)
+                                    (and (:resource %)
+                                         (:zen/file (zen.core/get-symbol ztx (:resource %)))))
+                                (subs (inc (count (get-pwd opts))))))
+                       (zen.core/errors ztx :order :as-is)))}))
 
 
 (defn validate
@@ -165,9 +174,6 @@
   ([ztx tag-str opts]
    (load-used-namespaces ztx opts)
    (zen.core/get-tag ztx (str->edn tag-str))))
-
-(zen.core/get-tag (zen.core/new-context) 'zen/property)
-
 
 (defn exit
   ([opts] (exit nil opts))
@@ -244,15 +250,7 @@
       (build path-str package-name opts))))
 
 (defmethod command 'zen.cli/errors [_ _args opts]
-  (let [ztx (load-ztx opts)]
-    {:format  :error
-     ::status :ok
-     ::result (seq (map #(assoc % ::file
-                                (or (get-in @ztx [:ns (:ns %) :zen/file])
-                                    (:file %)
-                                    (and (:resource %)
-                                         (:zen/file (zen.core/get-symbol ztx (:resource %))))))
-                        (errors opts)))}))
+  (errors opts))
 
 (defmethod command 'zen.cli/changes [_ _ opts]
   (changes opts))
@@ -306,7 +304,7 @@
                                                                coerced-args
                                                                {:sch-symbol command-sym})]
       (if (empty? (:errors args-validate-res))
-        (let [command-res (try (command command-sym coerced-args opts)
+        (let [command-res (try (command command-sym coerced-args (or opts {}))
                                (catch Exception e
                                  #::{:result {:exception e}
                                      :status :error

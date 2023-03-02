@@ -4,6 +4,9 @@
 (def ansi
   {:reset       "\u001B[0m"
    :color-green "\u001B[32m"
+   :color-white "\u001B[37m"
+   :color-red   "\u001B[31m"
+   :bg-red      "\u001B[41m"
    :format-bold "\u001B[1m"})
 
 (defn print-table
@@ -71,13 +74,14 @@
 (defmethod return :error
   [{result :zen.cli/result}]
   (if (seq result)
-    (doseq [error result]
-      (println
-       (format "\u001B[41m\u001B[37m %s \u001B[0m \u001B[31m%s %s\u001B[0m \nMessage: %s\n"
-               "ERROR"
-               (:zen.cli/file error)
-               (or (when (:resource error)
-                     (str "- "(name (:resource error)) "." (clojure.string/join "." (map name (:path error)))))
-                   nil)
-               (:message error))))
+    (print-table
+     (for [error result]
+       {:1 (str (:format-bold ansi) (:color-red ansi) (clojure.string/upper-case (name (or (:type error) "error"))) (:reset ansi))
+        :2 (str (:color-red ansi) (:zen.cli/file error)
+                " "
+                (some->> (remove nil? (into [(:resource error)] (:path error)))
+                         (seq)
+                         (vec))
+                (:reset ansi))
+        :3 (:message error)}))
     (println (str (:color-green ansi) "No errors found" (:reest ansi)))))
