@@ -17,7 +17,7 @@
   (->> (sort-by first schema-nth)
        (map last)
        (mapv #(if (contains? % :enum)
-                (clojure.string/join "|" (:enum %))
+                (clojure.string/join "|" (map :value (:enum %)))
                 (:zen/desc %)))))
 
 (defn help-command
@@ -125,8 +125,8 @@
   ([_ztx package-name opts]
    (if (zen.package/zen-init! (get-pwd opts) (when package-name
                                                {:package-name (str->edn package-name)}))
-     {::status :ok, ::code :initted-new}
-     {::status :ok, ::code :already-exists})))
+     {::status :ok ::code :initted-new    :format :message ::result {:message "Project was successfully initted"}}
+     {::status :ok ::code :already-exists :format :message ::result {:message "The current directory is not empty"}})))
 
 
 (defn pull-deps
@@ -134,8 +134,10 @@
 
   ([_ztx opts]
    (if-let [initted-deps (zen.package/zen-init-deps! (get-pwd opts))]
-     {:status :ok, :code :pulled, :deps initted-deps}
-     {:status :ok, :code :nothing-to-pull})))
+     {::status :ok :format :message ::result {:message "Dependencies have been successfully updated"
+                                               :status  :ok
+                                               :code :pulled :deps initted-deps}}
+     {::status :ok :format :message ::result {:status :ok :message "No dependencies found" :code :nothing-to-pull}})))
 
 
 (defn errors
@@ -238,7 +240,7 @@
   ([path package-name opts] (build nil path package-name opts))
   ([_ztx path package-name opts] #_"NOTE: currently this fn doesn't need ztx"
    (zen.package/zen-build! (get-pwd opts) {:build-path path :package-name package-name})
-   {:status :ok :code :builded}))
+   {::status :ok :format :message ::result {:message "Project was successfully builded" :code :builded :status :ok}}))
 
 (defn command-dispatch [command-name _command-args _opts]
   command-name)
@@ -265,11 +267,14 @@
    "audit-log-viewer" {:url "https://github.com/Aidbox/audit-log-viewer"}})
 
 (defmethod command 'zen.cli/template [_ [template-name] opts]
-  (let [root-dir (get-pwd opts)]
-    (if-let [template (get templates template-name)]
+  (let [root-dir (get-pwd opts)
+        ztx      (load-ztx opts)
+        _        (zen.core/read-ns ztx 'zen.cli)
+        template (zen.core/get-symbol ztx template-name)]
+    (if template
       (when (zen.package/init-template root-dir (:url template))
-        {::status :ok ::result {:message (format "Template %s was successfully created" template-name)}})
-      {::status :ok ::result {:message (format "Template %s was not found" template-name)}})))
+        {:format :message ::status :ok ::result {:message (format "Template %s was successfully created" template-name)}})
+      {:format :message ::status :ok ::result {:message (format "Template %s was not found" template-name)}})))
 
 (defmethod command 'zen.cli/changes [_ _ opts]
   (changes opts))
@@ -292,7 +297,7 @@
         zen-dep  (zen.package/format-dependency (str dependency-id))]
     (zen.package/add-package (get-pwd opts) zen-dep)
     (zen.package/zen-init-deps! root-dir)
-    {:status :ok :code :installed}))
+    {:format :message ::status :ok :code :installed ::result {:message (format "Dependency %s was successfully installed" dependency-id)}}))
 
 (defmethod command ::not-found [command-name _command-args _opts] #_"TODO: return help"
   {::status :error
@@ -338,9 +343,10 @@
          ::result (do (println "Use --help for more information")
                       (map #(assoc % :type "invalid arguments")
                            (:errors args-validate-res)))}))
-    #::{:status :error
-        :code   ::undefined-command
-        :result {:message "undefined command"}}))
+    {:format  :message
+     ::status :error
+     ::code   ::undefined-command
+     ::result {:message "undefined command"}}))
 
 (defn extract-commands-params [args]
   (let [[[command-name & command-args] subcommands]
@@ -374,9 +380,10 @@
       (handle-command ztx command-sym command-args opts)
 
       :else
-      #::{:status :error
-          :code ::unknown-command
-          :result {:message "unknown command"}})))
+      {:format  :message
+       ::status :error
+       ::code ::unknown-command
+       ::result {:message "unknown command"}})))
 
 (defn repl [ztx config-sym & [opts]]
   (let [prompt-fn (get-prompt-fn opts)

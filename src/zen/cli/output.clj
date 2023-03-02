@@ -49,6 +49,12 @@
   [data]
   (clojure.pprint/pprint data))
 
+(defmethod return :message
+  [data]
+  (if (= :ok (:zen.cli/status data))
+    (println (str (:color-green ansi) (get-in data [:zen.cli/result :message])))
+    (println (str (:color-red ansi) (get-in data [:zen.cli/result :message])))))
+
 (defmethod return :command
   [{result :zen.cli/result}]
   (println (str (:format-bold ansi) "Description:" (:reset ansi)))

@@ -195,8 +195,8 @@
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
                     {::sut/status :ok
                      ::sut/result {:status :ok
-                                         :code :pulled
-                                         :deps #{'my-dep}}})
+                                   :code :pulled
+                                   :deps #{'my-dep}}})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
                     {::sut/status :ok
