@@ -226,7 +226,9 @@
                    {:path ["zen" "init"]       :params ["project-name"]}
                    {:path ["zen" "install"]    :params ["package-identifier"]}
                    {:path ["zen" "pull-deps"]  :params []}
-                   {:path ["zen" "validate"]   :params ["set of symbols" "data"]}]}})
+                   {:path ["zen" "template"]   :params not-empty}
+                   {:path ["zen" "validate"]   :params ["set of symbols" "data"]}
+                   ]}})
 
   (matcho/match (sut-cmd "install" "--help" {:pwd test-dir-path}) 
                 {::sut/result

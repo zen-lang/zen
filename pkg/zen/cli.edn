@@ -7,7 +7,6 @@
                       :enum [{:value :positional-and-then-named}
                              {:value :positional}
                              {:value :named}]}
-
          :args {:type zen/map
                 :require #{:type}
                 :keys {:type {:type zen/symbol
@@ -123,11 +122,23 @@
                :nth      {0 {:type     zen/symbol
                              :zen/desc "package-identifier"}}}}
 
+ template
+ {:zen/tags   #{command}
+  :zen/desc   "Set up a new project by template"
+  :args-style :positional
+  :args       {:type     zen/vector
+               :minItems 1
+               :maxItems 1
+               :nth      {0 {:type     zen/string
+                             :enum     ["aidbox" "audit-log-viewer"]
+                             :zen/desc "template-name"}}}}
+
  zen-config
  {:zen/tags #{config}
   :zen/desc "Zen CLI"
   :commands {:init       {:command init}
              :install    {:command install}
+             :template   {:command template}
              :pull-deps  {:command pull-deps}
              :build      {:command build}
              :errors     {:command errors}

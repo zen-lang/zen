@@ -12,6 +12,14 @@
             [clojure.java.shell]
             [clojure.string :as str]))
 
+(defn format-command-usage
+  [schema-nth]
+  (->> (sort-by first schema-nth)
+       (map last)
+       (mapv #(if (contains? % :enum)
+                (clojure.string/join "|" (:enum %))
+                (:zen/desc %)))))
+
 (defn help-command
   [schema args]
   (cond
@@ -20,16 +28,12 @@
      (fn [case-schema]
        {:path   (into ["zen"] args)
         :params (->> (get-in case-schema [:then :nth])
-                     (sort-by first)
-                     (map last)
-                     (mapv :zen/desc))})
+                     (format-command-usage))})
      (get-in schema [:args :case]))
     (= (get-in schema [:args :type]) 'zen/vector)
     [{:path   (into ["zen"] args)
       :params (->> (get-in schema [:args :nth])
-                   (sort-by first)
-                   (map last)
-                   (mapv :zen/desc))}]))
+                   (format-command-usage))}]))
 
 (defn help
   [ztx command-symbol & [args]]
@@ -251,6 +255,17 @@
 
 (defmethod command 'zen.cli/errors [_ _args opts]
   (errors opts))
+
+(def templates
+  {"aidbox"           {:url "https://github.com/Aidbox/fhir-r4-configuration-project"}
+   "audit-log-viewer" {:url "https://github.com/Aidbox/audit-log-viewer"}})
+
+(defmethod command 'zen.cli/template [_ [template-name] opts]
+  (let [root-dir (get-pwd opts)]
+    (if-let [template (get templates template-name)]
+      (when (zen.package/init-template root-dir (:url template))
+        {::status :ok ::result {:message (format "Template %s was successfully created" template-name)}})
+      {::status :ok ::result {:message (format "Template %s was not found" template-name)}})))
 
 (defmethod command 'zen.cli/changes [_ _ opts]
   (changes opts))

@@ -209,6 +209,10 @@
         (io/copy f zip-stream)
         (.closeEntry zip-stream)))))
 
+(defn init-template
+  [root repository-url]
+  (sh! "git" "clone" "--depth=1" repository-url  "." :dir root))
+
 #_(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))
 
 
