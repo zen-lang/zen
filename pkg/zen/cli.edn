@@ -7,6 +7,7 @@
                       :enum [{:value :positional-and-then-named}
                              {:value :positional}
                              {:value :named}]}
+         :examples {:type zen/vector :every {:type zen/vector}}
          :args {:type zen/map
                 :require #{:type}
                 :keys {:type {:type zen/symbol
@@ -118,6 +119,17 @@
  install
  {:zen/tags   #{command}
   :zen/desc   "Install a package"
+  :examples   [["zen install https://github.com/Aidbox/fhir-r4-configuration-project" "HL7 FHIR R4 Core 4.0.1"]
+               ["zen install https://github.com/Aidbox/touchstone-fhir-r4-fixtures.git" "Touchstone fixtures for FHIR R4 Core 4.0.1"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-core.git" "HL7 FHIR US Core 5.0.1"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-pdex.git" "HL7 FHIR US Davinci PDex 2.0.0-ballot"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-pdex-plan-net.git" "HL7 FHIR US Davinci PDex Plan Net 1.1.0"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-drug-formulary.git" "HL7 FHIR US Davinci Drug Formulary 2.0.0"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-hrex.git" "HL7 FHIR US Davinci HRex 1.0.0"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-mcode.git" "HL7 FHIR US mCODE 2.0.0"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-carin-bb.git" "HL7 FHIR US CARIN BB 1.2.0"]
+               ["zen install https://github.com/HealthSamurai/aidbox-zen-sdc.git" "Aidbox SDC Forms"]]
+
   :args-style :positional
   :args       {:type     zen/vector
                :minItems 1

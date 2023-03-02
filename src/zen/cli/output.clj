@@ -69,7 +69,12 @@
                 (apply str))
       :description 
       (when (:description usage)
-        (str "- " (:description usage)))})))
+        (str "- " (:description usage)))}))
+  (when (seq (:examples result))
+    (println (str (:format-bold ansi) "Examples:" (:reset ansi)))
+    (print-table
+     (for [[value desc] (:examples result)]
+       {:1 value :2 desc}))))
 
 (defmethod return :error
   [{result :zen.cli/result}]

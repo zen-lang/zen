@@ -44,6 +44,7 @@
       (contains? schema :commands)
       {:format  :command
        ::result {:description (:zen/desc schema)
+                 :examples    (:examples schema)
                  :usage       (vec
                                (mapcat
                                 (fn [[command-name command-schema]]
@@ -53,6 +54,7 @@
       (contains? (:zen/tags schema) 'zen.cli/command)
       {:format  :command
        ::result {:description (:zen/desc schema)
+                 :examples    (:examples schema)
                  :usage       (help-command schema args)}})))
 
 (defn str->edn [x]
