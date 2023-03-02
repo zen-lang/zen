@@ -125,6 +125,7 @@
 
  zen-config
  {:zen/tags #{config}
+  :zen/desc "Zen CLI"
   :commands {:init       {:command init}
              :install    {:command install}
              :pull-deps  {:command pull-deps}

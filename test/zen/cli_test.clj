@@ -211,18 +211,23 @@
                   {::sut/result {:errors [{} nil]}})))
 
 (t/deftest help-command-test
-  (matcho/match (sut-cmd "--help" {:pwd test-dir-path})
+  (matcho/match (sut-cmd "--help" {:pwd test-dir-path}) 
                 {::sut/result
-                 [{:command "build" :description string?}
-                  {:command "changes" :description string?}
-                  {:command "errors" :description string?}
-                  {:command "exit" :description string?}
-                  {:command "get-symbol" :description string?}
-                  {:command "get-tag" :description string?}
-                  {:command "init" :description string?}
-                  {:command "install" :description string?}
-                  {:command "pull-deps" :description string?}
-                  {:command "validate" :description string?}]})
+                 {:description string?
+                  :usage
+                  [{:path ["zen" "build"]      :params []}
+                   {:path ["zen" "build"]      :params ["project"]}
+                   {:path ["zen" "build"]      :params ["path" "project"]}
+                   {:path ["zen" "changes"]    :params []}
+                   {:path ["zen" "errors"]     :params []}
+                   {:path ["zen" "exit"]       :params []}
+                   {:path ["zen" "get-symbol"] :params ["schema-symbol"]}
+                   {:path ["zen" "get-tag"]    :params ["tag"]}
+                   {:path ["zen" "init"]       :params ["project-name"]}
+                   {:path ["zen" "install"]    :params ["package-identifier"]}
+                   {:path ["zen" "pull-deps"]  :params []}
+                   {:path ["zen" "validate"]   :params ["set of symbols" "data"]}]}})
+
   (matcho/match (sut-cmd "install" "--help" {:pwd test-dir-path}) 
                 {::sut/result
                  {:description string?

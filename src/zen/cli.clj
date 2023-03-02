@@ -12,37 +12,42 @@
             [clojure.java.shell]
             [clojure.string :as str]))
 
+(defn help-command
+  [schema args]
+  (cond
+    (= (get-in schema [:args :type]) 'zen/case)
+    (mapv
+     (fn [case-schema]
+       {:path   (into ["zen"] args)
+        :params (->> (get-in case-schema [:then :nth])
+                     (sort-by first)
+                     (map last)
+                     (mapv :zen/desc))})
+     (get-in schema [:args :case]))
+    (= (get-in schema [:args :type]) 'zen/vector)
+    [{:path   (into ["zen"] args)
+      :params (->> (get-in schema [:args :nth])
+                   (sort-by first)
+                   (map last)
+                   (mapv :zen/desc))}]))
+
 (defn help
   [ztx command-symbol & [args]]
   (let [schema (zen.core/get-symbol ztx command-symbol)]
     (cond
       (contains? schema :commands)
-      {:format  :table
-       ::result (mapv
-                 (fn [[command-name command-schema]]
-                   (let [command-definition (zen.core/get-symbol ztx (or (:command command-schema) (:config command-schema)))]
-                     {:command     (name command-name)
-                      :description (:zen/desc command-definition)}))
-                 (sort-by first (:commands schema)))}
+      {:format  :command
+       ::result {:description (:zen/desc schema)
+                 :usage       (vec
+                               (mapcat
+                                (fn [[command-name command-schema]]
+                                  (let [command-definition (zen.core/get-symbol ztx (or (:command command-schema) (:config command-schema)))]
+                                    (help-command command-definition (conj args (name command-name)))))
+                                (sort-by first (:commands schema))))}}
       (contains? (:zen/tags schema) 'zen.cli/command)
       {:format  :command
        ::result {:description (:zen/desc schema)
-                 :usage       (cond
-                                (= (get-in schema [:args :type]) 'zen/case)
-                                (mapv
-                                 (fn [case-schema]
-                                   {:path   (into ["zen"] args)
-                                    :params (->> (get-in case-schema [:then :nth])
-                                                 (sort-by first)
-                                                 (map last)
-                                                 (mapv :zen/desc))})
-                                 (get-in schema [:args :case]))
-                                (= (get-in schema [:args :type]) 'zen/vector)
-                                [{:path   (into ["zen"] args)
-                                  :params (->> (get-in schema [:args :nth])
-                                               (sort-by first)
-                                               (map last)
-                                               (mapv :zen/desc))}])}})))
+                 :usage       (help-command schema args)}})))
 
 (defn str->edn [x]
   (clojure.edn/read-string (str x)))
