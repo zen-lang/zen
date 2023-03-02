@@ -13,4 +13,3 @@ target
 .idea
 zen-packages/
 node_modules
-result.ts
