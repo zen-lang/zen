@@ -11,6 +11,18 @@
             [clojure.pprint :as pp]
             [clojure.edn :as edn]))
 
+
+(def output-reset "\u001B[0m")
+(def black "\u001B[30m")
+(def red "\u001B[31m")
+(def green "\u001B[32m")
+(def yellow "\u001B[33m")
+(def blue "\u001B[34m")
+(def purple "\u001B[35m")
+(def cyan "\u001B[36m")
+(def white "\u001B[37m")
+
+
 (def premitives-map
   {:integer "number"
    :string "string"
@@ -247,8 +259,13 @@
 
 
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
+    (println "Building FTR index...")
+    (println (str blue "It may take more then 30 seconds" output-reset))
     (zen.ftr/build-complete-ftr-index ztx)
+    (println "Done")
 
+
+    (println "Custom resource generation...")
     (mapv (fn [resource]
             (let [n (name resource)
                   schemas-result
@@ -263,7 +280,9 @@
                                            (zen.core/get-symbol ztx (symbol resource))
                                            {:interpreters [::ts]})]
               (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) custom-resources)
+    (println "Done")
 
+    (println "Resource generation...")
     (mapv (fn [[k _v]]
             (zen.core/read-ns ztx (symbol (str version "." k)))
             (zen.core/get-symbol ztx (symbol (str version "." k "/schema")))
@@ -279,6 +298,7 @@
                                                             (zen.core/get-symbol ztx (symbol (str version "." k "/schema")))
                                                             {:interpreters [::ts]}))]
               (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) schema)
+
 
     (mapv (fn [[_k v]]
             (let [n (str/trim (str/replace (namespace v) (str version ".") ""))
@@ -299,19 +319,23 @@
 
 
 (defn read-versions [ztx path]
+  (println "Reading zen packages...")
   (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
-    (mapv (fn [version]
-            (zen.core/read-ns ztx (symbol (first version)))) (:deps (edn/read (java.io.PushbackReader. zen-project))))))
+    (mapv (fn [package]
+            (println "Reading " (first package))
+            (zen.core/read-ns ztx (symbol (first package)))) (:deps (edn/read (java.io.PushbackReader. zen-project))))))
 
 
 
 (defn get-searches [ztx versions]
+  (println "Generating search parameters...")
   (reduce (fn [acc version]
             (zen.core/read-ns ztx (symbol version))
             (concat acc (:searches (zen.core/get-symbol ztx (symbol version))))) [] versions))
 
 
 (defn get-schemas [ztx, versions]
+  (println "Getting schemas...")
   (reduce
    (fn [acc version]
      (zen.core/read-ns ztx (symbol version))
@@ -375,8 +399,11 @@
   (let [result-file-path "./package/aidbox-types.d.ts"
         ztx  (zen.core/new-context {:package-paths [path]})
         _ (read-versions ztx path)
+        _ (println "Done")
         searches (get-searches ztx (zen.core/get-tag ztx 'zen.fhir/searches))
+        _ (println "Done")
         schema  (get-schemas ztx (zen.core/get-tag ztx 'zen.fhir/base-schemas))
+        _ (println "Done")
         resource-type-map-interface "export interface ResourceTypeMap {\n"
         resourcetype-type (:resourcetype-type prepared-interfaces)
         reference-type (:reference-type prepared-interfaces)
@@ -393,16 +420,17 @@
 
     (spit result-file-path (str/join ""  resource-map-result) :append true)
 
-    (println (first (zen.core/get-tag ztx 'zen.fhir/base-schemas)))
-
-
+    (println "Type generation...")
     (generate-types-for-version path (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas))))
-
+    (println "Done")
 
     (spit result-file-path (str/join "" search-params-result) :append true)
 
+
+    (println "Archive generation")
     (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
                                " && rm -rf package"))
+    (println "Done")
 
     (System/exit 0)))
 
