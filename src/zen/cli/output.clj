@@ -66,3 +66,15 @@
       :description 
       (when (:description usage)
         (str "- " (:description usage)))})))
+
+(defmethod return :error
+  [{result :zen.cli/result}]
+  (doseq [error result]
+    (println
+     (format "\u001B[41m\u001B[37m %s \u001B[0m \u001B[31m%s %s\u001B[0m \nMessage: %s\n"
+             "ERROR"
+             (:zen.cli/file error)
+             (or (when (:resource error)
+                   (str "- "(name (:resource error)) "." (clojure.string/join "." (map name (:path error)))))
+                 nil)
+             (:message error)))))
