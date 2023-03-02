@@ -26,12 +26,14 @@
     (= (get-in schema [:args :type]) 'zen/case)
     (mapv
      (fn [case-schema]
-       {:path   (into ["zen"] args)
+       {:description (:zen/desc case-schema)
+        :path   (into ["zen"] args)
         :params (->> (get-in case-schema [:then :nth])
                      (format-command-usage))})
      (get-in schema [:args :case]))
     (= (get-in schema [:args :type]) 'zen/vector)
-    [{:path   (into ["zen"] args)
+    [{:description (:zen/desc schema)
+      :path   (into ["zen"] args)
       :params (->> (get-in schema [:args :nth])
                    (format-command-usage))}]))
 

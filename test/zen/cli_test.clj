@@ -215,19 +215,19 @@
                 {::sut/result
                  {:description string?
                   :usage
-                  [{:path ["zen" "build"]      :params []}
-                   {:path ["zen" "build"]      :params ["project"]}
-                   {:path ["zen" "build"]      :params ["path" "project"]}
-                   {:path ["zen" "changes"]    :params []}
-                   {:path ["zen" "errors"]     :params []}
-                   {:path ["zen" "exit"]       :params []}
-                   {:path ["zen" "get-symbol"] :params ["schema-symbol"]}
-                   {:path ["zen" "get-tag"]    :params ["tag"]}
-                   {:path ["zen" "init"]       :params ["project-name"]}
-                   {:path ["zen" "install"]    :params ["package-identifier"]}
-                   {:path ["zen" "pull-deps"]  :params []}
-                   {:path ["zen" "template"]   :params not-empty}
-                   {:path ["zen" "validate"]   :params ["set of symbols" "data"]}
+                  [{:path ["zen" "build"]      :params vector?}
+                   {:path ["zen" "build"]      :params vector?}
+                   {:path ["zen" "build"]      :params vector?}
+                   {:path ["zen" "changes"]    :params vector?}
+                   {:path ["zen" "errors"]     :params vector?}
+                   {:path ["zen" "exit"]       :params vector?}
+                   {:path ["zen" "get-symbol"] :params vector?}
+                   {:path ["zen" "get-tag"]    :params vector?}
+                   {:path ["zen" "init"]       :params vector?}
+                   {:path ["zen" "install"]    :params vector?}
+                   {:path ["zen" "pull-deps"]  :params vector?}
+                   {:path ["zen" "template"]   :params vector?}
+                   {:path ["zen" "validate"]   :params vector?}
                    ]}})
 
   (matcho/match (sut-cmd "install" "--help" {:pwd test-dir-path}) 

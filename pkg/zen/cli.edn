@@ -50,13 +50,16 @@
   :zen/desc "Build current project into zip file"
   :args-style :positional
   :args {:type zen/case
-         :case [{:when {:type zen/vector :minItems 0 :maxItems 0}
+         :case [{:zen/desc "Build the project into the current directory"
+                 :when {:type zen/vector :minItems 0 :maxItems 0}
                  :then {}}
-                {:when {:type zen/vector :minItems 1 :maxItems 1}
-                 :then {:type zen/vector :nth {0 {:type zen/symbol :zen/desc "project"}}}}
-                {:when {:type zen/vector :minItems 2 :maxItems 2}
+                {:zen/desc "Build the project in a specific path"
+                 :when {:type zen/vector :minItems 1 :maxItems 1}
+                 :then {:type zen/vector :nth {0 {:type zen/symbol :zen/desc "path"}}}}
+                {:zen/desc "Build the project in a specific path and zip name"
+                 :when {:type zen/vector :minItems 2 :maxItems 2}
                  :then {:type zen/vector :nth {0 {:type zen/symbol :zen/desc "path"}
-                                               1 {:type zen/symbol :zen/desc "project"}}}}]}}
+                                               1 {:type zen/symbol :zen/desc "zip-name"}}}}]}}
 
  errors
  {:zen/tags #{command}
