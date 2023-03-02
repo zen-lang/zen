@@ -137,6 +137,19 @@
                :nth      {0 {:type     zen/symbol
                              :zen/desc "package-identifier"}}}}
 
+ tpl
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{:url}
+  :keys {:url {:type zen/string}}}
+
+ aidbox
+ {:zen/tags #{zen/tag zen.cli/tpl}
+  :url      "https://github.com/Aidbox/fhir-r4-configuration-project"}
+ audit-log-viewer
+ {:zen/tags #{zen/tag zen.cli/tpl}
+  :url      "https://github.com/Aidbox/audit-log-viewer"}
+
  template
  {:zen/tags   #{command}
   :zen/desc   "Set up a new project by template"
@@ -144,8 +157,9 @@
   :args       {:type     zen/vector
                :minItems 1
                :maxItems 1
-               :nth      {0 {:type     zen/string
-                             :enum     ["aidbox" "audit-log-viewer"]
+               :nth      {0 {:type     zen/symbol
+                             :tags     #{tpl}
+                             :enum     [{:value aidbox} {:value audit-log-viewer}]
                              :zen/desc "template-name"}}}}
 
  zen-config
