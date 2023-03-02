@@ -130,8 +130,9 @@
 
 (defn model-state-key [ztx model]
   (or (:zen/state-key model)
-      (when-let [tp (:engine model)]
-        (:zen/state-key (get-symbol ztx tp)))))
+      (or (when-let [tp (:engine model)]
+            (or (:zen/state-key (get-symbol ztx tp)) tp))
+          (:zen/name model))))
 
 (defn model-state [ztx model]
   (get-state ztx (model-state-key ztx model)))
@@ -146,6 +147,8 @@
         (swap! ztx update :zen/state dissoc k)))
     (error ztx 'zen/on-stop-no-model {:op op-name})))
 
+;; in most of cases services are singletons
+;; we can use model or engine name as a key
 (defn start-call [ztx op-name]
   (stop-call ztx op-name)
   (if-let [model (get-symbol ztx op-name)]
