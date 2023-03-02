@@ -1,70 +1,49 @@
-import axios, {AxiosBasicCredentials, AxiosInstance} from 'axios';
-import {
-  date,
-  ResourceTypeMap,
-  SearchParams
-} from './aidbox-types';
+import axios, { AxiosBasicCredentials, AxiosInstance } from 'axios';
+import { ResourceTypeMap, SearchParams } from './aidbox-types';
+
+type PathResourceBody<T extends keyof ResourceTypeMap> = Partial<Omit<ResourceTypeMap[T], 'id' | 'meta'>>;
 
 export type UnnecessaryKeys =
-     'contained' |
-     'extension' |
-     'modifierExtension' |
-     "_id" |
-     "meta" |
-     "implicitRules" |
-     "_implicitRules" |
-     "language" |
-     "_language"
+  | 'contained'
+  | 'extension'
+  | 'modifierExtension'
+  | '_id'
+  | 'meta'
+  | 'implicitRules'
+  | '_implicitRules'
+  | 'language'
+  | '_language';
 
-export type PrefixWithArray =
-    'eq' |
-    'ne'
+export type PrefixWithArray = 'eq' | 'ne';
 
-export type Prefix =
-    'eq' |
-    'ne' |
-    'gt' |
-    'lt' |
-    'ge' |
-    'le' |
-    'sa' |
-    "eb" |
-    'ap'
+export type Prefix = 'eq' | 'ne' | 'gt' | 'lt' | 'ge' | 'le' | 'sa' | 'eb' | 'ap';
 
-
-export type BaseResponseResources<T extends keyof ResourceTypeMap> = { entry: {
-  resource: ResourceTypeMap[T]
-  }[] };
+export type BaseResponseResources<T extends keyof ResourceTypeMap> = {
+  entry: {
+    resource: ResourceTypeMap[T];
+  }[];
+};
 
 export type BaseResponseResource<T extends keyof ResourceTypeMap> = ResourceTypeMap[T];
 
-
-export type ResourceKeys<
-    T extends keyof ResourceTypeMap,
-    I extends ResourceTypeMap[T]
-> = Omit<I, UnnecessaryKeys>
-
+export type ResourceKeys<T extends keyof ResourceTypeMap, I extends ResourceTypeMap[T]> = Omit<I, UnnecessaryKeys>;
 
 type SortParams<T extends keyof ResourceTypeMap> = {
-  key: keyof SearchParams[T] | `.${string}`,
-  dir: 'acs' | 'desc'
-}[]
+  key: keyof SearchParams[T] | `.${string}`;
+  dir: 'acs' | 'desc';
+}[];
 
-type ElementsParams<
-    T extends keyof ResourceTypeMap,
-    R extends  ResourceTypeMap[T]
-> = Array<keyof ResourceKeys<T,R>>
+type ElementsParams<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> = Array<keyof ResourceKeys<T, R>>;
 
-export class Client{
+export class Client {
   client: AxiosInstance;
 
   constructor(baseURL: string, credentials: AxiosBasicCredentials) {
     this.client = axios.create({ baseURL, auth: credentials });
   }
   getResources<T extends keyof ResourceTypeMap>(resourceName: T) {
-    return new GetResources(this.client, resourceName)
+    return new GetResources(this.client, resourceName);
   }
-
 
   async getResource<T extends keyof ResourceTypeMap>(
     resourceName: T,
@@ -93,9 +72,9 @@ export class Client{
   async patchResource<T extends keyof ResourceTypeMap>(
     resourceName: T,
     id: string,
-    body: Partial<ResourceTypeMap[T]>,
+    body: PathResourceBody<T>,
   ): Promise<BaseResponseResource<T> | Error> {
-    const response = await this.client.patch<BaseResponseResource<T>>(resourceName + '/' + id, { body });
+    const response = await this.client.patch<BaseResponseResource<T>>(resourceName + '/' + id, { ...body });
     return response.data;
   }
 
@@ -103,15 +82,14 @@ export class Client{
     resourceName: T,
     body: ResourceTypeMap[T],
   ): Promise<BaseResponseResource<T> | Error> {
-    const response = await this.client.post<BaseResponseResource<T>>(resourceName, { body });
+    const response = await this.client.post<BaseResponseResource<T>>(resourceName, { ...body });
     return response.data;
   }
 }
 
-class GetResources<
-    T extends keyof ResourceTypeMap,
-    R extends ResourceTypeMap[T]
-> implements PromiseLike<BaseResponseResources<T>> {
+export class GetResources<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]>
+  implements PromiseLike<BaseResponseResources<T>>
+{
   private searchParamsObject: URLSearchParams;
   resourceName: T;
   client: AxiosInstance;
@@ -122,103 +100,97 @@ class GetResources<
     this.resourceName = resourceName;
   }
 
-  where<
-      K extends keyof SearchParams[T],
-      SP extends SearchParams[T][K],
-      PR extends  PrefixWithArray
-  >(key: K, value: SP | SP[], prefix?: PR): this;
-  where<
-      K extends keyof SearchParams[T],
-      SP extends SearchParams[T][K],
-      PR extends Exclude<Prefix, PrefixWithArray>
-  >(key: K, value: SP, prefix?: PR): this;
-  where<
-      K extends keyof SearchParams[T],
-      SP extends SearchParams[T][K],
-      PR extends SP extends number ? Prefix : never,
-  >(key: K, value: SP | SP[], prefix?: Prefix | never): this {
+  where<K extends keyof SearchParams[T], SP extends SearchParams[T][K], PR extends PrefixWithArray>(
+    key: K,
+    value: SP | SP[],
+    prefix?: PR,
+  ): this;
+  where<K extends keyof SearchParams[T], SP extends SearchParams[T][K], PR extends Exclude<Prefix, PrefixWithArray>>(
+    key: K,
+    value: SP,
+    prefix?: PR,
+  ): this;
+  where<K extends keyof SearchParams[T], SP extends SearchParams[T][K], PR extends SP extends number ? Prefix : never>(
+    key: K,
+    value: SP | SP[],
+    prefix?: Prefix | never,
+  ): this {
     if (!Array.isArray(value)) {
-      const queryValue = `${prefix ?? ''}${value}`
+      const queryValue = `${prefix ?? ''}${value}`;
 
-
-      this.searchParamsObject.append(key.toString(), queryValue)
+      this.searchParamsObject.append(key.toString(), queryValue);
       return this;
     }
 
     if (prefix) {
       if (prefix === 'eq') {
-        this.searchParamsObject.append(key.toString(), value.join(','))
-        return this
+        this.searchParamsObject.append(key.toString(), value.join(','));
+        return this;
       }
 
-
       value.map((item) => {
-        this.searchParamsObject.append(key.toString(), `${prefix}${item}`)
-      })
+        this.searchParamsObject.append(key.toString(), `${prefix}${item}`);
+      });
 
-      return this
+      return this;
     }
 
+    const queryValues = value.join(',');
+    this.searchParamsObject.append(key.toString(), queryValues);
 
-    const queryValues = value.join(",")
-    this.searchParamsObject.append(key.toString(), queryValues)
-
-    return this
+    return this;
   }
 
-  contained(contained: boolean | "both", containedType?: "container" | "contained") {
-    this.searchParamsObject.set("_contained", contained.toString())
+  contained(contained: boolean | 'both', containedType?: 'container' | 'contained') {
+    this.searchParamsObject.set('_contained', contained.toString());
 
     if (containedType) {
-      this.searchParamsObject.set('_containedType', containedType)
+      this.searchParamsObject.set('_containedType', containedType);
     }
 
-    return this
+    return this;
   }
 
   count(value: number) {
-    this.searchParamsObject.set("_count", value.toString())
+    this.searchParamsObject.set('_count', value.toString());
 
-    return this
+    return this;
   }
 
   elements(args: ElementsParams<T, R>) {
-    const queryValue = args.join(',')
+    const queryValue = args.join(',');
 
-    this.searchParamsObject.set('_elements', queryValue)
+    this.searchParamsObject.set('_elements', queryValue);
 
-    return this
+    return this;
   }
 
-  summary(type: boolean | "text" | 'data' | 'count') {
-    this.searchParamsObject.set('_summary', type.toString())
+  summary(type: boolean | 'text' | 'data' | 'count') {
+    this.searchParamsObject.set('_summary', type.toString());
 
-    return this
+    return this;
   }
 
   sort(args: SortParams<T>) {
-    const queryValue = args.map(({key, dir}) => {
+    const queryValue = args.map(({ key, dir }) => {
+      return dir === 'acs' ? key : `-${key.toString()}`;
+    });
 
+    this.searchParamsObject.set('_sort', queryValue.join(','));
 
-      return dir === 'acs' ? key : `-${key.toString()}`
-    })
-
-    this.searchParamsObject.set('_sort', queryValue.join(','))
-
-    return this
+    return this;
   }
 
-
-  then<TResult1 = BaseResponseResources<T>, TResult2 = never>(onfulfilled?: ((value: BaseResponseResources<T>) => (PromiseLike<TResult1> | TResult1)) | undefined | null, onrejected?: ((reason: any) => (PromiseLike<TResult2> | TResult2)) | undefined | null): PromiseLike<TResult1 | TResult2> {
-    return this.client.get<BaseResponseResources<T>>(this.resourceName, {
-      params: this.searchParamsObject
-    })
-        .then((response) => {
-          return onfulfilled ? onfulfilled(response.data) : response.data as TResult1
-        })
+  then<TResult1 = BaseResponseResources<T>, TResult2 = never>(
+    onfulfilled?: ((value: BaseResponseResources<T>) => PromiseLike<TResult1> | TResult1) | undefined | null,
+    onrejected?: ((reason: any) => PromiseLike<TResult2> | TResult2) | undefined | null,
+  ): PromiseLike<TResult1 | TResult2> {
+    return this.client
+      .get<BaseResponseResources<T>>(this.resourceName, {
+        params: this.searchParamsObject,
+      })
+      .then((response) => {
+        return onfulfilled ? onfulfilled(response.data) : (response.data as TResult1);
+      });
   }
 }
-
-
-
-

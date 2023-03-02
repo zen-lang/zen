@@ -36,25 +36,14 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Client = void 0;
-// @ts-nocheck
+exports.GetResources = exports.Client = void 0;
 var axios_1 = require("axios");
 var Client = /** @class */ (function () {
     function Client(baseURL, credentials) {
         this.client = axios_1.default.create({ baseURL: baseURL, auth: credentials });
     }
     Client.prototype.getResources = function (resourceName) {
-        return __awaiter(this, void 0, void 0, function () {
-            var response;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.client.get(resourceName)];
-                    case 1:
-                        response = _a.sent();
-                        return [2 /*return*/, response.data];
-                }
-            });
-        });
+        return new GetResources(this.client, resourceName);
     };
     Client.prototype.getResource = function (resourceName, id) {
         return __awaiter(this, void 0, void 0, function () {
@@ -124,3 +113,69 @@ var Client = /** @class */ (function () {
     return Client;
 }());
 exports.Client = Client;
+var GetResources = /** @class */ (function () {
+    function GetResources(client, resourceName) {
+        this.client = client;
+        this.searchParamsObject = new URLSearchParams();
+        this.resourceName = resourceName;
+    }
+    GetResources.prototype.where = function (key, value, prefix) {
+        var _this = this;
+        if (!Array.isArray(value)) {
+            var queryValue = "".concat(prefix !== null && prefix !== void 0 ? prefix : '').concat(value);
+            this.searchParamsObject.append(key.toString(), queryValue);
+            return this;
+        }
+        if (prefix) {
+            if (prefix === 'eq') {
+                this.searchParamsObject.append(key.toString(), value.join(','));
+                return this;
+            }
+            value.map(function (item) {
+                _this.searchParamsObject.append(key.toString(), "".concat(prefix).concat(item));
+            });
+            return this;
+        }
+        var queryValues = value.join(",");
+        this.searchParamsObject.append(key.toString(), queryValues);
+        return this;
+    };
+    GetResources.prototype.contained = function (contained, containedType) {
+        this.searchParamsObject.set("_contained", contained.toString());
+        if (containedType) {
+            this.searchParamsObject.set('_containedType', containedType);
+        }
+        return this;
+    };
+    GetResources.prototype.count = function (value) {
+        this.searchParamsObject.set("_count", value.toString());
+        return this;
+    };
+    GetResources.prototype.elements = function (args) {
+        var queryValue = args.join(',');
+        this.searchParamsObject.set('_elements', queryValue);
+        return this;
+    };
+    GetResources.prototype.summary = function (type) {
+        this.searchParamsObject.set('_summary', type.toString());
+        return this;
+    };
+    GetResources.prototype.sort = function (args) {
+        var queryValue = args.map(function (_a) {
+            var key = _a.key, dir = _a.dir;
+            return dir === 'acs' ? key : "-".concat(key.toString());
+        });
+        this.searchParamsObject.set('_sort', queryValue.join(','));
+        return this;
+    };
+    GetResources.prototype.then = function (onfulfilled, onrejected) {
+        return this.client.get(this.resourceName, {
+            params: this.searchParamsObject
+        })
+            .then(function (response) {
+            return onfulfilled ? onfulfilled(response.data) : response.data;
+        });
+    };
+    return GetResources;
+}());
+exports.GetResources = GetResources;
