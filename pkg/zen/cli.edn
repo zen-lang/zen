@@ -51,7 +51,7 @@
   :zen/desc "Build current project into zip file"
   :args-style :positional
   :args {:type zen/case
-         :case [{:zen/desc "Build the project into the current directory"
+         :case [#_{:zen/desc "Build the project into the current directory"
                  :when {:type zen/vector :minItems 0 :maxItems 0}
                  :then {}}
                 {:zen/desc "Build the project in a specific path"

@@ -332,10 +332,12 @@
             command-res
             #::{:result command-res
                 :status :ok}))
-        #::{:status :error
-            :code   ::invalid-args
-            :result {:message           "invalid args"
-                     :validation-result args-validate-res}}))
+        {:format  :error
+         ::status :error
+         ::code   ::invalid-args
+         ::result (do (println "Use --help for more information")
+                      (map #(assoc % :type "invalid arguments")
+                           (:errors args-validate-res)))}))
     #::{:status :error
         :code   ::undefined-command
         :result {:message "undefined command"}}))

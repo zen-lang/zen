@@ -217,7 +217,6 @@
                   :usage
                   [{:path ["zen" "build"]      :params vector?}
                    {:path ["zen" "build"]      :params vector?}
-                   {:path ["zen" "build"]      :params vector?}
                    {:path ["zen" "changes"]    :params vector?}
                    {:path ["zen" "errors"]     :params vector?}
                    {:path ["zen" "exit"]       :params vector?}
