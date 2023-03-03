@@ -13,15 +13,8 @@
 
 
 (def output-reset "\u001B[0m")
-(def black "\u001B[30m")
-(def red "\u001B[31m")
 (def green "\u001B[32m")
-(def yellow "\u001B[33m")
 (def blue "\u001B[34m")
-(def purple "\u001B[35m")
-(def cyan "\u001B[36m")
-(def white "\u001B[37m")
-
 
 (def premitives-map
   {:integer "number"

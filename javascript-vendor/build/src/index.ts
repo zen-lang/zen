@@ -14,6 +14,8 @@ export type UnnecessaryKeys =
   | 'language'
   | '_language';
 
+type Dir = "asc" | "desc"
+
 export type PrefixWithArray = 'eq' | 'ne';
 
 export type Prefix = 'eq' | 'ne' | 'gt' | 'lt' | 'ge' | 'le' | 'sa' | 'eb' | 'ap';
@@ -28,10 +30,7 @@ export type BaseResponseResource<T extends keyof ResourceTypeMap> = ResourceType
 
 export type ResourceKeys<T extends keyof ResourceTypeMap, I extends ResourceTypeMap[T]> = Omit<I, UnnecessaryKeys>;
 
-type SortParams<T extends keyof ResourceTypeMap> = {
-  key: keyof SearchParams[T] | `.${string}`;
-  dir: 'acs' | 'desc';
-}[];
+type SortKey<T extends keyof ResourceTypeMap> = keyof SearchParams[T] | `.${string}`
 
 type ElementsParams<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> = Array<keyof ResourceKeys<T, R>>;
 
@@ -171,12 +170,17 @@ export class GetResources<T extends keyof ResourceTypeMap, R extends ResourceTyp
     return this;
   }
 
-  sort(args: SortParams<T>) {
-    const queryValue = args.map(({ key, dir }) => {
-      return dir === 'acs' ? key : `-${key.toString()}`;
-    });
+  sort(key: SortKey<T>, dir: Dir ) {
+    const existedSortParams = this.searchParamsObject.get('_sort')
 
-    this.searchParamsObject.set('_sort', queryValue.join(','));
+    if (existedSortParams) {
+      const newSortParams = `${existedSortParams},${dir === 'asc' ? '-' : ''}${key.toString()}`
+
+      this.searchParamsObject.set("_sort", newSortParams)
+      return this;
+    }
+
+    this.searchParamsObject.set("_sort", dir === 'asc' ? `-${key.toString()}` : key.toString())
 
     return this;
   }
