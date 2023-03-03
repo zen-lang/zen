@@ -119,7 +119,7 @@
  install
  {:zen/tags   #{command}
   :zen/desc   "Install a package"
-  :examples   [["zen install https://github.com/Aidbox/fhir-r4-configuration-project" "HL7 FHIR R4 Core 4.0.1"]
+  :examples   [["zen install https://github.com/Aidbox/fhir-r4-configuration-project.git" "HL7 FHIR R4 Core 4.0.1"]
                ["zen install https://github.com/Aidbox/touchstone-fhir-r4-fixtures.git" "Touchstone fixtures for FHIR R4 Core 4.0.1"]
                ["zen install https://github.com/zen-fhir/hl7-fhir-us-core.git" "HL7 FHIR US Core 5.0.1"]
                ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-pdex.git" "HL7 FHIR US Davinci PDex 2.0.0-ballot"]
