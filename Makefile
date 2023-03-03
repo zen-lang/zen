@@ -24,3 +24,6 @@ pub:
 
 build:
 	clj -T:build-pm uber
+
+sdk-publish:
+	cd javascript-vendor/publish && npm i && cp ../../target/zen.jar zen.jar && npm publish --access=public && rm zen.jar

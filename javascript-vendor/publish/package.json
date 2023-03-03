@@ -1,0 +1,11 @@
+{
+  "runnable-jar-regexp": "./zen.jar",
+  "files": ["./zen.jar"],
+  "bin": "index.js",
+  "license": "ISC",
+  "name": "@aidbox/zen-cli",
+  "version": "1.0.4",
+  "dependencies": {
+    "npm-java-runner": "1.0.2"
+  }
+}
