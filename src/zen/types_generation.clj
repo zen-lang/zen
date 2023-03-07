@@ -258,7 +258,7 @@
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
     (println "Building FTR index...")
     (println (str blue "It may take more then 30 seconds" output-reset))
-    (zen.ftr/build-complete-ftr-index ztx)
+    (zen.ftr/build-complete-ftr-index ztx version)
     (println "Done")
 
 
@@ -478,8 +478,8 @@
 
     (str/join "" (::ts r)))
 
-#_(comment
-    CLASSPATH
+(comment
+    ;; CLASSPATH
   ;; :paths (path to zrc/)
   ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)
 
@@ -499,7 +499,7 @@
     (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
     (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
-    (zen.ftr/build-complete-ftr-index ztx)
+    (time (zen.ftr/build-complete-ftr-index ztx "hl7-fhir-r4-core"))
     (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   ;; (get-valueset-values ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
 
@@ -555,7 +555,7 @@
 
         (spit result-file-path (str/join ""  resource-map-result) :append true)
         (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
-        (zen.ftr/build-complete-ftr-index ztx)
+        (zen.ftr/build-complete-ftr-index ztx "hl7-fhir-r4-core")
         (mapv (fn [[k _v]]
                 (println k)
                 (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
