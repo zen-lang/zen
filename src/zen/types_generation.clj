@@ -166,7 +166,9 @@
                     (when (:enum data) "")
                     (when (= (:validation-type data) :open) "any")
                     (when (:confirms data)
-                      (if (:zen.fhir/value-set data) (generate-valueset-union-type ztx data) (generate-confirms data)))
+                      (if (and (:zen.fhir/value-set data) (not (:confirms data)))
+                        (generate-valueset-union-type ztx data)
+                        (generate-confirms data)))
                     (when-let [tp (and
                                    (= (:type vtx) 'zen/symbol)
                                    (not (= (last (:path vtx)) :every))
@@ -317,7 +319,6 @@
     (mapv (fn [package]
             (println "Reading " (first package))
             (zen.core/read-ns ztx (symbol (first package)))) (:deps (edn/read (java.io.PushbackReader. zen-project))))))
-
 
 
 (defn get-searches [ztx versions]
