@@ -33,7 +33,7 @@
 (defn sut-cmd [cmd-name & args]
   (let [opts      (last args)
         cmd-args  (butlast args)
-        test-opts {:return-fn identity}
+        test-opts {:format :identity}
         cli-opts  (merge test-opts opts)]
     (assert (and (map? opts)
                  (contains? opts :pwd))
@@ -195,8 +195,8 @@
       (matcho/match (sut-cmd "pull-deps" {:pwd my-package-dir-path})
                     {::sut/status :ok
                      ::sut/result {:status :ok
-                                         :code :pulled
-                                         :deps #{'my-dep}}})
+                                   :code :pulled
+                                   :deps #{'my-dep}}})
 
       (matcho/match (sut-cmd "errors" {:pwd my-package-dir-path})
                     {::sut/status :ok
@@ -209,6 +209,31 @@
   (t/testing "use validate command to validate some data"
     (matcho/match (sut-cmd "validate" "#{my-dep/tag}" "{}" {:pwd my-package-dir-path})
                   {::sut/result {:errors [{} nil]}})))
+
+(t/deftest help-command-test
+  (matcho/match (sut-cmd "--help" {:pwd test-dir-path}) 
+                {::sut/result
+                 {:description string?
+                  :usage
+                  [{:path ["zen" "build"]      :params vector?}
+                   {:path ["zen" "build"]      :params vector?}
+                   {:path ["zen" "changes"]    :params vector?}
+                   {:path ["zen" "errors"]     :params vector?}
+                   {:path ["zen" "exit"]       :params vector?}
+                   {:path ["zen" "get-symbol"] :params vector?}
+                   {:path ["zen" "get-tag"]    :params vector?}
+                   {:path ["zen" "init"]       :params vector?}
+                   {:path ["zen" "install"]    :params vector?}
+                   {:path ["zen" "pull-deps"]  :params vector?}
+                   {:path ["zen" "template"]   :params vector?}
+                   {:path ["zen" "validate"]   :params vector?}
+                   ]}})
+
+  (matcho/match (sut-cmd "install" "--help" {:pwd test-dir-path}) 
+                {::sut/result
+                 {:description string?
+                  :usage       [{:path   ["zen" "install"]
+                                 :params ["package-identifier"]}]}}))
 
 
 (defn sut-repl [opts]

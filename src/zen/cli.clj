@@ -3,6 +3,7 @@
   (:require [zen.package]
             [zen.changes]
             [zen.core]
+            [zen.cli.output]
             [clojure.pprint]
             [clojure.java.io :as io]
             [clojure.string]
@@ -11,6 +12,50 @@
             [clojure.java.shell]
             [clojure.string :as str]))
 
+(defn format-command-usage
+  [schema-nth]
+  (->> (sort-by first schema-nth)
+       (map last)
+       (mapv #(if (contains? % :enum)
+                (clojure.string/join "|" (map :value (:enum %)))
+                (:zen/desc %)))))
+
+(defn help-command
+  [schema args]
+  (cond
+    (= (get-in schema [:args :type]) 'zen/case)
+    (mapv
+     (fn [case-schema]
+       {:description (:zen/desc case-schema)
+        :path   (into ["zen"] args)
+        :params (->> (get-in case-schema [:then :nth])
+                     (format-command-usage))})
+     (get-in schema [:args :case]))
+    (= (get-in schema [:args :type]) 'zen/vector)
+    [{:description (:zen/desc schema)
+      :path   (into ["zen"] args)
+      :params (->> (get-in schema [:args :nth])
+                   (format-command-usage))}]))
+
+(defn help
+  [ztx command-symbol & [args]]
+  (let [schema (zen.core/get-symbol ztx command-symbol)]
+    (cond
+      (contains? schema :commands)
+      {:format  :command
+       ::result {:description (:zen/desc schema)
+                 :examples    (:examples schema)
+                 :usage       (vec
+                               (mapcat
+                                (fn [[command-name command-schema]]
+                                  (let [command-definition (zen.core/get-symbol ztx (or (:command command-schema) (:config command-schema)))]
+                                    (help-command command-definition (conj args (name command-name)))))
+                                (sort-by first (:commands schema))))}}
+      (contains? (:zen/tags schema) 'zen.cli/command)
+      {:format  :command
+       ::result {:description (:zen/desc schema)
+                 :examples    (:examples schema)
+                 :usage       (help-command schema args)}})))
 
 (defn str->edn [x]
   (clojure.edn/read-string (str x)))
@@ -80,8 +125,8 @@
   ([_ztx package-name opts]
    (if (zen.package/zen-init! (get-pwd opts) (when package-name
                                                {:package-name (str->edn package-name)}))
-     {::status :ok, ::code :initted-new}
-     {::status :ok, ::code :already-exists})))
+     {::status :ok ::code :initted-new    :format :message ::result {:message "Project was successfully initted"}}
+     {::status :ok ::code :already-exists :format :message ::result {:message "The current directory is not empty"}})))
 
 
 (defn pull-deps
@@ -89,8 +134,10 @@
 
   ([_ztx opts]
    (if-let [initted-deps (zen.package/zen-init-deps! (get-pwd opts))]
-     {:status :ok, :code :pulled, :deps initted-deps}
-     {:status :ok, :code :nothing-to-pull})))
+     {::status :ok :format :message ::result {:message "Dependencies have been successfully updated"
+                                               :status  :ok
+                                               :code :pulled :deps initted-deps}}
+     {::status :ok :format :message ::result {:status :ok :message "No dependencies found" :code :nothing-to-pull}})))
 
 
 (defn errors
@@ -98,7 +145,16 @@
 
   ([ztx opts]
    (load-used-namespaces ztx opts)
-   (zen.core/errors ztx :order :as-is)))
+   {:format  :error
+    ::status :ok
+    ::result (seq (map #(assoc % ::file
+                               (some-> 
+                                (or (get-in @ztx [:ns (:ns %) :zen/file])
+                                    (:file %)
+                                    (and (:resource %)
+                                         (:zen/file (zen.core/get-symbol ztx (:resource %)))))
+                                (subs (inc (count (get-pwd opts))))))
+                       (zen.core/errors ztx :order :as-is)))}))
 
 
 (defn validate
@@ -128,7 +184,6 @@
   ([ztx tag-str opts]
    (load-used-namespaces ztx opts)
    (zen.core/get-tag ztx (str->edn tag-str))))
-
 
 (defn exit
   ([opts] (exit nil opts))
@@ -185,7 +240,7 @@
   ([path package-name opts] (build nil path package-name opts))
   ([_ztx path package-name opts] #_"NOTE: currently this fn doesn't need ztx"
    (zen.package/zen-build! (get-pwd opts) {:build-path path :package-name package-name})
-   {:status :ok :code :builded}))
+   {::status :ok :format :message ::result {:message "Project was successfully builded" :code :builded :status :ok}}))
 
 (defn command-dispatch [command-name _command-args _opts]
   command-name)
@@ -207,6 +262,20 @@
 (defmethod command 'zen.cli/errors [_ _args opts]
   (errors opts))
 
+(def templates
+  {"aidbox"           {:url "https://github.com/Aidbox/fhir-r4-configuration-project"}
+   "audit-log-viewer" {:url "https://github.com/Aidbox/audit-log-viewer"}})
+
+(defmethod command 'zen.cli/template [_ [template-name] opts]
+  (let [root-dir (get-pwd opts)
+        ztx      (load-ztx opts)
+        _        (zen.core/read-ns ztx 'zen.cli)
+        template (zen.core/get-symbol ztx template-name)]
+    (if template
+      (when (zen.package/init-template root-dir (:url template))
+        {:format :message ::status :ok ::result {:message (format "Template %s was successfully created" template-name)}})
+      {:format :message ::status :ok ::result {:message (format "Template %s was not found" template-name)}})))
+
 (defmethod command 'zen.cli/changes [_ _ opts]
   (changes opts))
 
@@ -221,6 +290,14 @@
 
 (defmethod command 'zen.cli/exit [_ _ opts]
   (exit opts))
+
+(defmethod command 'zen.cli/install
+  [_ [dependency-id] opts]
+  (let [root-dir (get-pwd opts)
+        zen-dep  (zen.package/format-dependency (str dependency-id))]
+    (zen.package/add-package (get-pwd opts) zen-dep)
+    (zen.package/zen-init-deps! root-dir)
+    {:format :message ::status :ok :code :installed ::result {:message (format "Dependency %s was successfully installed" dependency-id)}}))
 
 (defmethod command ::not-found [command-name _command-args _opts] #_"TODO: return help"
   {::status :error
@@ -251,7 +328,7 @@
                                                                coerced-args
                                                                {:sch-symbol command-sym})]
       (if (empty? (:errors args-validate-res))
-        (let [command-res (try (command command-sym coerced-args opts)
+        (let [command-res (try (command command-sym coerced-args (or opts {}))
                                (catch Exception e
                                  #::{:result {:exception e}
                                      :status :error
@@ -260,23 +337,32 @@
             command-res
             #::{:result command-res
                 :status :ok}))
-        #::{:status :error
-            :code   ::invalid-args
-            :result {:message           "invalid args"
-                     :validation-result args-validate-res}}))
-    #::{:status :error
-        :code   ::undefined-command
-        :result {:message "undefined command"}}))
+        {:format  :error
+         ::status :error
+         ::code   ::invalid-args
+         ::result (do (println "Use --help for more information")
+                      (map #(assoc % :type "invalid arguments")
+                           (:errors args-validate-res)))}))
+    {:format  :message
+     ::status :error
+     ::code   ::undefined-command
+     ::result {:message "undefined command"}}))
 
-(defn extract-commands-params [[command-name & command-args]]
-  {:command-name command-name
-   :command-args command-args})
+(defn extract-commands-params [args]
+  (let [[[command-name & command-args] subcommands]
+        (->> (group-by #(clojure.string/starts-with? % "--") args)
+             (merge {false [] true []})
+             (sort-by first)
+             (map last))]
+    {:command-name command-name
+     :command-args command-args
+     :subcommands  subcommands}))
 
 (defn cli-exec [ztx config-sym args & [opts]]
   (let [config (zen.core/get-symbol ztx config-sym)
         commands (:commands config)
 
-        {:keys [command-name command-args]} (extract-commands-params args)
+        {:keys [command-name command-args subcommands]} (extract-commands-params args)
 
         command-entry (get commands (keyword command-name))
 
@@ -284,9 +370,8 @@
         nested-config-sym  (:config command-entry)]
 
     (cond
-      (= "help" command-name)
-      #::{:status :ok
-          :result commands}
+      (some #(= "--help" %) subcommands)
+      (help ztx (or command-sym config-sym) (butlast args))
 
       (some? nested-config-sym)
       (cli-exec ztx nested-config-sym command-args opts)
@@ -295,9 +380,10 @@
       (handle-command ztx command-sym command-args opts)
 
       :else
-      #::{:status :error
-          :code ::unknown-command
-          :result {:message "unknown command"}})))
+      {:format  :message
+       ::status :error
+       ::code ::unknown-command
+       ::result {:message "unknown command"}})))
 
 (defn repl [ztx config-sym & [opts]]
   (let [prompt-fn (get-prompt-fn opts)
@@ -315,14 +401,11 @@
                 args (split-args-by-space line)]
             (cli-exec ztx config-sym args opts)))))))
 
-
-(defn do-cli-exec [ztx config-sym args & [opts]]
-  (let [return-fn (get-return-fn opts)]
-    (return-fn (cli-exec ztx config-sym args opts))))
-
 (defn cli-main* [ztx config-sym [cmd-name :as args] opts]
   (if (seq cmd-name)
-    (do-cli-exec ztx config-sym args opts)
+    (zen.cli.output/return
+     (update (cli-exec ztx config-sym args opts)
+             :format #(or (:format opts) (zen.cli.output/get-format args) %)))
     (repl ztx config-sym opts)))
 
 (defn cli [ztx config-sym args & [opts]]
@@ -340,4 +423,5 @@
   (cli (zen.core/new-context) 'zen.cli/zen-config args opts))
 
 (defn -main [& args]
-  (cli-main args))
+  (cli-main args)
+  (System/exit 0))

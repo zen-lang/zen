@@ -7,7 +7,7 @@
                       :enum [{:value :positional-and-then-named}
                              {:value :positional}
                              {:value :named}]}
-
+         :examples {:type zen/vector :every {:type zen/vector}}
          :args {:type zen/map
                 :require #{:type}
                 :keys {:type {:type zen/symbol
@@ -30,78 +30,84 @@
 
  init
  {:zen/tags #{command}
-  :zen/desc "init"
+  :zen/desc "Set up a new zen project"
   :args-style :positional
   :args {:type     zen/vector
          :maxItems 1
-         :nth      {0 {:zen/desc "Project name. Creates zen namespace with this name"
+         :nth      {0 {:zen/desc "project-name"
                        :type zen/case
                        :case [{:when {:type zen/symbol}}
                               {:when {:type zen/string}}]}}}}
 
  pull-deps
  {:zen/tags #{command}
-  :zen/desc "pull deps"
+  :zen/desc "Updating all project dependencies"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  build
  {:zen/tags #{command}
-  :zen/desc "build"
+  :zen/desc "Build current project into zip file"
   :args-style :positional
-  :args {:type zen/vector
-         :minItems 0
-         :maxItems 2
-         :every {:type zen/case
-                 :case [{:when {:type zen/symbol}}
-                        {:when {:type zen/string}}]}}}
+  :args {:type zen/case
+         :case [#_{:zen/desc "Build the project into the current directory"
+                 :when {:type zen/vector :minItems 0 :maxItems 0}
+                 :then {}}
+                {:zen/desc "Build the project in a specific path"
+                 :when {:type zen/vector :minItems 1 :maxItems 1}
+                 :then {:type zen/vector :nth {0 {:type zen/symbol :zen/desc "path"}}}}
+                {:zen/desc "Build the project in a specific path and zip name"
+                 :when {:type zen/vector :minItems 2 :maxItems 2}
+                 :then {:type zen/vector :nth {0 {:type zen/symbol :zen/desc "path"}
+                                               1 {:type zen/symbol :zen/desc "zip-name"}}}}]}}
 
  errors
  {:zen/tags #{command}
-  :zen/desc "errors"
+  :zen/desc "Show project errors"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  changes
  {:zen/tags #{command}
-  :zen/desc "changes"
+  :zen/desc "Show project changes"
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
 
  validate
  {:zen/tags #{command}
-  :zen/desc "validates data against a set of schemas"
+  :zen/desc "Validates data against a set of schemas"
   :args-style :positional
   :args {:type zen/vector
          :minItems 2
          :maxItems 2
-         :nth {0 {:zen/desc "Set of schema symbols to validate against"
+         :nth {0 {:zen/desc "set of symbols"
                   :type zen/set
                   :every {:type zen/symbol}}
-               1 {:type zen/any}}}}
+               1 {:type zen/any
+                  :zen/desc "data"}}}}
 
  get-symbol
  {:zen/tags #{command}
-  :zen/desc "get symbol"
+  :zen/desc "Get schema by symbol"
   :args-style :positional
   :args {:type zen/vector
          :minItems 1
          :maxItems 1
          :nth {0 {:type zen/symbol
-                  :zen/desc "symbol to get"}}}}
+                  :zen/desc "schema-symbol"}}}}
 
  get-tag
  {:zen/tags #{command}
-  :zen/desc "get tag"
+  :zen/desc "Get symbols by tag"
   :args-style :positional
   :args {:type zen/vector
          :minItems 1
          :maxItems 1
          :nth {0 {:type zen/symbol
-                  :zen/desc "tag symbol to search by"}}}}
+                  :zen/desc "tag"}}}}
 
  exit
  {:zen/tags #{command}
@@ -110,9 +116,58 @@
   :args {:type zen/vector
          :maxItems 0}}
 
+ install
+ {:zen/tags   #{command}
+  :zen/desc   "Install a package"
+  :examples   [["zen install https://github.com/Aidbox/fhir-r4-configuration-project.git" "HL7 FHIR R4 Core 4.0.1"]
+               ["zen install https://github.com/Aidbox/touchstone-fhir-r4-fixtures.git" "Touchstone fixtures for FHIR R4 Core 4.0.1"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-core.git" "HL7 FHIR US Core 5.0.1"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-pdex.git" "HL7 FHIR US Davinci PDex 2.0.0-ballot"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-pdex-plan-net.git" "HL7 FHIR US Davinci PDex Plan Net 1.1.0"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-drug-formulary.git" "HL7 FHIR US Davinci Drug Formulary 2.0.0"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-davinci-hrex.git" "HL7 FHIR US Davinci HRex 1.0.0"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-mcode.git" "HL7 FHIR US mCODE 2.0.0"]
+               ["zen install https://github.com/zen-fhir/hl7-fhir-us-carin-bb.git" "HL7 FHIR US CARIN BB 1.2.0"]
+               ["zen install https://github.com/HealthSamurai/aidbox-zen-sdc.git" "Aidbox SDC Forms"]]
+
+  :args-style :positional
+  :args       {:type     zen/vector
+               :minItems 1
+               :maxItems 1
+               :nth      {0 {:type     zen/symbol
+                             :zen/desc "package-identifier"}}}}
+
+ tpl
+ {:zen/tags #{zen/schema}
+  :type zen/map
+  :require #{:url}
+  :keys {:url {:type zen/string}}}
+
+ aidbox
+ {:zen/tags #{zen/tag zen.cli/tpl}
+  :url      "https://github.com/Aidbox/fhir-r4-configuration-project"}
+ audit-log-viewer
+ {:zen/tags #{zen/tag zen.cli/tpl}
+  :url      "https://github.com/Aidbox/audit-log-viewer"}
+
+ template
+ {:zen/tags   #{command}
+  :zen/desc   "Set up a new project by template"
+  :args-style :positional
+  :args       {:type     zen/vector
+               :minItems 1
+               :maxItems 1
+               :nth      {0 {:type     zen/symbol
+                             :tags     #{tpl}
+                             :enum     [{:value aidbox} {:value audit-log-viewer}]
+                             :zen/desc "template-name"}}}}
+
  zen-config
  {:zen/tags #{config}
+  :zen/desc "Zen CLI"
   :commands {:init       {:command init}
+             :install    {:command install}
+             :template   {:command template}
              :pull-deps  {:command pull-deps}
              :build      {:command build}
              :errors     {:command errors}

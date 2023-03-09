@@ -31,6 +31,20 @@
 (defn mkdir! [path name]
   (sh! "mkdir" "-p" name :dir path))
 
+(defn format-dependency
+  [dependency-id]
+  (cond
+    (clojure.string/ends-with? dependency-id ".git")
+    (let [[_ repository] (re-find #".*/(.*?)\.git$" dependency-id)]
+      [(symbol repository) dependency-id])))
+
+(defn add-package
+  [root & deps]
+  (zen.utils/update-file
+   (str root "/zen-package.edn")
+   (fn [zen-package]
+     (update zen-package :deps (fnil into {}) deps))))
+
 
 (defn read-deps [root]
   (let [package-file (io/file (str root "/zen-package.edn"))]
@@ -194,6 +208,10 @@
         (.putNextEntry zip-stream zip-entry)
         (io/copy f zip-stream)
         (.closeEntry zip-stream)))))
+
+(defn init-template
+  [root repository-url]
+  (sh! "git" "clone" "--depth=1" repository-url  "." :dir root))
 
 #_(defn copy! [& from-to] (apply sh! "cp" "-r" from-to))
 
