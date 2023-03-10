@@ -37,15 +37,17 @@
    :number "number"
    :boolean "boolean"})
 
-(defn set-to-string [value]
+(defn set-to-string [vtx value]
   (reduce
    (fn [acc item]
      (cond
-       (set? item) (set-to-string item)
-       (keyword? item) (conj acc
-                             (str/replace (name item) #"hl7-fhir-r4-core." ""))
-       :else (conj acc
-                   (str/replace (namespace item) #"hl7-fhir-r4-core." ""))))
+       (set? item) (set-to-string vtx item)
+       (keyword? item)
+       (conj acc
+             (str/replace (name item) (str (::version vtx) ".") ""))
+       :else
+       (conj acc
+             (str/replace (namespace item) (str (::version vtx) ".") ""))))
    [] value))
 
 (defn get-desc [{desc :zen/desc}]
@@ -68,22 +70,22 @@
   (and (> (count (::keys-in-array vtx)) 0) (> (count (:path vtx)) 1)
        (contains? (::keys-in-array vtx) (str/join "." (:path vtx)))))
 
-(defn get-reference-union-type [references]
+(defn get-reference-union-type [vtx references]
   (str "Reference<"
        (if (empty? references) "ResourceType"
            (str/join " | " (map (fn [item]
                                   (cond
-                                    (= (name item) "schema") (str "'" (first (set-to-string #{item})) "'")
+                                    (= (name item) "schema") (str "'" (first (set-to-string vtx #{item})) "'")
                                     :else (str "'" (name item) "'"))) references)))
        ">"))
 
 (defn generate-type-value
-  [data]
+  [data vtx]
   (if (:confirms data)
     (if
      (get-in data [:zen.fhir/reference :refers])
-      (get-reference-union-type (set-to-string (get-in data [:zen.fhir/reference :refers])))
-      (str/join " | " (set-to-string (:confirms data))))
+      (get-reference-union-type vtx (set-to-string vtx (get-in data [:zen.fhir/reference :refers])))
+      (str/join " | " (set-to-string vtx (:confirms data))))
     (if
      ((keyword (name (:type data))) premitives-map)
       ((keyword (name (:type data))) premitives-map)
@@ -92,10 +94,10 @@
 (defn generate-type [vtx data]
   (when (and (empty? (::ts vtx))
              (not ((keyword (::interface-name vtx)) non-parsable-premitives)))
-    (str "type " (::interface-name vtx)  " = " (generate-type-value data))))
+    (str "type " (::interface-name vtx)  " = " (generate-type-value data vtx))))
 
 (defn generate-interface [vtx {confirms :confirms}]
-  (let [extended-resource (first (set-to-string confirms))
+  (let [extended-resource (first (set-to-string vtx confirms))
         extand (cond
                  (not extended-resource) ""
                  (= (first confirms) 'zenbox/Resource) " extends Resource "
@@ -129,29 +131,29 @@
     (if (or (> (count valueset-values) 20) (= (count valueset-values) 0))
       "string" (str/join " | " (map #(format "'%s'" %) valueset-values)))))
 
-(defn generate-confirms [schema]
+(defn generate-confirms [vtx schema]
   (str
    (cond
-     (or (= (first (set-to-string (:confirms schema))) "Reference") (= (first (:confirms schema)) 'zenbox/Reference))
-     (get-reference-union-type (:refers (:zen.fhir/reference schema)))
-     (= (first (set-to-string (:confirms schema))) "BackboneElement") ""
-     :else (str (first (set-to-string (:confirms schema)))))))
+     (or (= (first (set-to-string vtx (:confirms schema))) "Reference") (= (first (:confirms schema)) 'zenbox/Reference))
+     (get-reference-union-type vtx (:refers (:zen.fhir/reference schema)))
+     (= (first (set-to-string vtx (:confirms schema))) "BackboneElement") ""
+     :else (str (first (set-to-string vtx (:confirms schema)))))))
 
 
 
-(defn get-exclusive-keys-values [ztx exclusive-keys ks]
+(defn get-exclusive-keys-values [ztx vtx exclusive-keys ks]
   (str/join "\n" (map (fn [k]
-                        (let [value (if (:zen.fhir/value-set (k ks)) (generate-valueset-union-type ztx (k ks)) (generate-confirms (k ks)))]
+                        (let [value (if (:zen.fhir/value-set (k ks)) (generate-valueset-union-type ztx (k ks)) (generate-confirms vtx (k ks)))]
                           (format "%s?: %s;" (name k) value))) exclusive-keys)))
 
-(defn get-exclusive-keys-type [ztx schema]
+(defn get-exclusive-keys-type [ztx vtx schema]
   (let [ks (:keys schema)
         exclusive-keys (first (:exclusive-keys schema))
         non-exclusive-keys (set/difference (set (keys ks)) exclusive-keys)
         non-exclusive-keys-type (if (= (count non-exclusive-keys) 0) ""
                                     (format "{ %s } & "
-                                            (get-exclusive-keys-values ztx non-exclusive-keys ks)))
-        exclusive-keys-type (get-exclusive-keys-values ztx exclusive-keys ks)]
+                                            (get-exclusive-keys-values ztx vtx non-exclusive-keys ks)))
+        exclusive-keys-type (get-exclusive-keys-values ztx vtx exclusive-keys ks)]
 
     (format "RequireAtLeastOne<%sOneKey<{ %s }>>" non-exclusive-keys-type exclusive-keys-type)))
 
@@ -160,7 +162,7 @@
  (fn [_ ztx ks]
    (fn [vtx data opts]
      (if-let [s (or (when (:zen.fhir/type data) (generate-name vtx data))
-                    (when (:exclusive-keys data) (get-exclusive-keys-type ztx data))
+                    (when (:exclusive-keys data) (get-exclusive-keys-type ztx vtx data))
                     (when (exclusive-keys-child? vtx) "")
                     (when (keys-in-array-child? vtx) "")
                     (when (:enum data) "")
@@ -168,7 +170,7 @@
                     (when (:confirms data)
                       (if (and (:zen.fhir/value-set data) (not (:confirms data)))
                         (generate-valueset-union-type ztx data)
-                        (generate-confirms data)))
+                        (generate-confirms vtx data)))
                     (when-let [tp (and
                                    (= (:type vtx) 'zen/symbol)
                                    (not (= (last (:path vtx)) :every))
@@ -260,6 +262,7 @@
     (println "Done")
 
 
+
     (println "Custom resource generation...")
     (mapv (fn [resource]
             (let [n (name resource)
@@ -287,6 +290,7 @@
                                                              ::require {}
                                                              ::interface-name k
                                                              ::is-type false
+                                                             ::version version
                                                              ::keys-in-array {}
                                                              ::exclusive-keys {}}
                                                             (zen.core/get-symbol ztx 'zen/schema)
@@ -304,6 +308,7 @@
                                                                 ::require {}
                                                                 ::exclusive-keys {}
                                                                 ::interface-name n
+                                                                ::version version
                                                                 ::keys-in-array {}}
                                                                (zen.core/get-symbol ztx 'zen/schema)
                                                                (zen.core/get-symbol ztx (symbol v))
