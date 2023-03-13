@@ -10,7 +10,7 @@
         zen-lang/cli         {:git/url "https://github.com/zen-lang/cli.git"
                               :sha "9187cd266ee63b6c299a016aeca6184dc385e6c9"}
         healthsamurai/matcho {:mvn/version "0.3.10"}
-        cheshire/cheshire    {:mvn/version "5.11.0"}}
+        com.taoensso/nippy   {:mvn/version "3.2.0"}}
 
  :aliases
  {:nrepl

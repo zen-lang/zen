@@ -124,7 +124,6 @@
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
-  (zen.ftr/build-complete-ftr-index ztx)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   ;; (get-valueset-values ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   (defn generate-types []
