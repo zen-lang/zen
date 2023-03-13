@@ -442,7 +442,7 @@
 
     (System/exit 0)))
 
-(comment
+#_(comment
   ;; CLASSPATH
   ;; :paths (path to zrc/)
   ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)

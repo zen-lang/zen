@@ -6,9 +6,6 @@
  :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
         borkdude/edamame     {:mvn/version "1.0.16"}
         hawk/hawk            {:mvn/version "0.2.11"}
-        healthsamurai/matcho {:mvn/version "0.3.10"}}
-        zen-lang/cli         {:git/url "https://github.com/zen-lang/cli.git"
-                              :sha "9187cd266ee63b6c299a016aeca6184dc385e6c9"}
         healthsamurai/matcho {:mvn/version "0.3.10"}
         com.taoensso/nippy   {:mvn/version "3.2.0"}}
 

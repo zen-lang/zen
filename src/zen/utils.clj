@@ -156,7 +156,6 @@
 
 #_"TODO: profile performance with alisases"
 (defn get-tag [ctx tag]
-<<<<<<< HEAD
   (let [tags (:tags @ctx)]
     (or (get tags tag)
         (get tags (resolve-aliased-sym ctx tag)))))
@@ -187,15 +186,6 @@
    (if from
      (iter-reduce conj to from)
      to)))
-=======
-  (let [ctx-value @ctx
-        tagged-symbols (get-in ctx-value [:tags tag])] 
-    (if-let [aliases (seq (disj-set-get-group (:aliases @ctx) tag))]
-      (into (or tagged-symbols #{})
-            (mapcat #(get-in ctx-value [:tags %]))
-            aliases)
-      tagged-symbols)))
->>>>>>> 639e83d (add value set parsing and clean up schema test file)
 
 (defn mk-symbol [ns-part name-part]
   (with-meta
