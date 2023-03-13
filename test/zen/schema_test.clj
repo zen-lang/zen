@@ -210,3 +210,32 @@
   (matcho/match
     (zen.core/validate ztx #{'my-ns/a} "foo")
     {:errors [{} nil]}))
+
+
+(t/deftest ^:kaocha/pending dynamic-key-schema-cache-reset-test
+  (def ztx (zen.core/new-context {}))
+
+  #_"NOTE: you can drop cache to see that this fixes validation"
+  #_(swap! ztx
+           dissoc
+           :errors
+           :zen.v2-validation/compiled-schemas
+           :zen.v2-validation/prop-schemas
+           :zen.v2-validation/cached-pops)
+
+  (def my-ns
+    '{:ns my-ns
+
+      test-key
+      {:zen/tags #{zen/is-key zen/schema}
+       :zen/desc "just a key that should be allowed in any schema"
+       :type zen/any}
+
+      a {:zen/tags #{zen/schema}
+         :my-ns/test-key "should be no errorors, this key is registred via my-ns/test-key"}})
+
+  (zen.core/load-ns ztx my-ns)
+
+  (matcho/match
+    (zen.core/errors ztx)
+    empty?))
