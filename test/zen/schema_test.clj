@@ -175,3 +175,38 @@
                    :active true
                    :name   [{:family "None"
                              :given  ["foo"]}]})))
+
+
+(t/deftest ^:kaocha/pending dynamic-confirms-cache-reset-test
+  (def ztx (zen.core/new-context {}))
+
+  #_"NOTE: you can drop cache to see that this fixes validation"
+  #_(swap! ztx
+           dissoc
+           :errors
+           :zen.v2-validation/compiled-schemas
+           :zen.v2-validation/prop-schemas
+           :zen.v2-validation/cached-pops)
+
+  (def my-ns
+    '{:ns my-ns
+
+      b {:zen/tags #{zen/schema}
+         :type zen/string
+         :const {:value "foo"}}
+
+      a {:zen/tags #{zen/schema}
+         :my-ns/test-key "should be no errorors, this key is registred via my-ns/test-key"
+         :confirms #{b}}})
+
+  (zen.core/load-ns ztx my-ns)
+
+  (matcho/match
+    (zen.core/validate ztx #{'my-ns/a} "foo")
+    {:errors empty?})
+
+  (zen.core/load-ns ztx (assoc-in my-ns ['b :const :value] "bar"))
+
+  (matcho/match
+    (zen.core/validate ztx #{'my-ns/a} "foo")
+    {:errors [{} nil]}))
