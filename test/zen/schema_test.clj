@@ -3,12 +3,6 @@
             [matcho.core :as matcho]
             [clojure.test :as t]
             [clojure.string :as str]
-            [zen.core]
-            [zen.package]
-            [clojure.pprint :as pp]
-            [clojure.string :as str]
-            [clojure.test :as t]
-            [clojure.string :as str]
             [zen.core]))
 
 
@@ -83,169 +77,32 @@
            "name: Array < {"
            "given: Array < string >;"
            "family: string;"
-           "}>;}"))
+           "}>}"))
 
     (def r
       (sut/apply-schema ztx
-                        {::ts []
-                         ::require {}
-                         ::exclusive-keys {}
-                         ::interface-name "User"
-                         ::keys-in-array {}}
+                        {::ts []}
                         (zen.core/get-symbol ztx 'zen/schema)
                         (zen.core/get-symbol ztx 'my-sturcts/User)
                         {:interpreters [::ts]}))
 
-    (str/join "" (::ts r))
-    (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
-
-(comment
-  ;; CLASSPATH
-  ;; :paths (path to zrc/)
-  ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)
-
-  (zen.package/zen-init-deps! "/Users/pavel/Desktop/zen/test_project")
+    (t/is (= ts-typedef-assert (str/join "" (distinct (::ts r)))))))
 
 
-  (def ztx
-    (zen.core/new-context
-
-     {:package-paths ["/Users/pavel/Desktop/zen/test_project"]}))
+(defmethod sut/compile-key :my/defaults [_ _ _] {:priority -1})
 
 
-  (pp/pprint @ztx)
-
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core.Patient)
-
-
-  (zen.core/read-ns ztx 'hl7-fhir-us-core)
-
-  (defn read-versions [path]
-    (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
-      (mapv (fn [version]
-              (zen.core/read-ns ztx (symbol (first version)))) (:deps (edn/read (java.io.PushbackReader. zen-project))))))
+(sut/register-compile-key-interpreter!
+  [:my/defaults ::default]
+  (fn [_ ztx defaults]
+    (fn [vtx data opts]
+      (update-in vtx
+                 (cons ::with-defaults (:path vtx))
+                 #(merge defaults %)))))
 
 
-  (read-versions "/Users/pavel/Desktop/zen/test_project")
-
-  (defn get-searches [ztx versions]
-    (reduce (fn [acc version]
-              (zen.core/read-ns ztx (symbol version))
-              (concat acc (:searches (zen.core/get-symbol ztx (symbol version))))) [] versions))
-
-
-  (println (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas))))
-
-  (get-searches ztx (zen.core/get-tag ztx 'zen.fhir/searches))
-
-
-  (defn get-schemas [ztx, versions]
-    (reduce
-     (fn [acc version]
-       (zen.core/read-ns ztx (symbol version))
-       (concat acc (keys (:schemas (zen.core/get-symbol ztx (symbol version)))))) [] versions))
-
-  (get-schemas ztx (zen.core/get-tag ztx 'zen.fhir/base-schemas))
-
-  (pp/pprint (:tags @ztx))
-
-  (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas)))
-  (zen.core/get-symbol ztx 'zen.fhir/base-schemas)
-
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.Patient/schema)
-  (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
-  ;; (get-valueset-values ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
-  (defn generate-types []
-
-
-    (println (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schema))
-
-
-    (let [result-file-path "./result.ts"
-          schema (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/base-schemas))
-          searches (:searches (zen.core/get-symbol ztx 'hl7-fhir-r4-core/searches))
-          structures (:schemas (zen.core/get-symbol ztx 'hl7-fhir-r4-core/structures))
-          reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
-          resource-type-map-interface "export interface ResourceTypeMap {\n"
-          resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
-          key-value-resources (mapv (fn [[k _v]]
-                                      (format "%s: %s;" k k))
-                                    schema)
-          resource-map-result (conj (into [reference-type resource-type-map-interface] key-value-resources) resourcetype-type)
-          search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
-          search-params-end-interface "\n}"
-          search-params-content (mapv (fn [[k v]]
-                                        (println k v)
-                                        (str (name k) ": {\n"
-                                             (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
-                                      (reduce (fn [acc [_ v]]
-                                                (reduce (fn [third-acc item]
-                                                          (zen.core/read-ns ztx (symbol (namespace (last item))))
-                                                          (let [sym (last item)
-                                                                schema (zen.core/get-symbol ztx (symbol sym))
-                                                                schema-keys (keys (:expr schema))
-                                                                type (:fhir/type schema)
-                                                                attribute-name (:name schema)]
-
-                                                            (reduce (fn [second-acc item]
-                                                                      (update-in second-acc [item] assoc
-                                                                                 (keyword attribute-name)
-                                                                                 (cond (= type "reference")
-                                                                                       "`${ResourceType}/${string}`"
-                                                                                       (= type "token")
-                                                                                       (if (some #(:type %) (:data-types ((keyword item) (:expr schema))))
-                                                                                         (some #(:type %) (:data-types ((keyword item) (:expr schema))))
-                                                                                         "string")
-                                                                                       (or (= type "special") (= type "quantity"))
-                                                                                       "string"
-                                                                                       :else type)))
-                                                                    third-acc
-                                                                    schema-keys))) acc v))
-                                              {} searches))
-          search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
-
-      (spit result-file-path (str/join "" resource-map-result) :append true)
-      (mapv (fn [[k _v]]
-              (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))
-              (let [schemas-result (when (not (re-find #"-" k))
-                                     (sut/apply-schema ztx
-                                                       {::ts []
-                                                        ::require {}
-                                                        ::interface-name k
-                                                        ::is-type false
-                                                        ::keys-in-array {}
-                                                        ::exclusive-keys {}}
-                                                       (zen.core/get-symbol ztx 'zen/schema)
-                                                       (zen.core/get-symbol ztx (symbol (str "hl7-fhir-r4-core." k "/schema")))
-                                                       {:interpreters [::ts]}))]
-                (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) schema)
-
-      (mapv (fn [[_k v]]
-              (let [n (str/trim (str/replace (namespace v) #"hl7-fhir-r4-core." ""))
-                    schema (zen.core/get-symbol ztx (symbol v))
-                    structures-result (when (and (or (:type schema) (:confirms schema) (:keys schema)) (not (re-find #"-" n)) (not= n "Reference"))
-                                        (sut/apply-schema ztx
-                                                          {::ts []
-                                                           ::require {}
-                                                           ::exclusive-keys {}
-                                                           ::interface-name n
-                                                           ::keys-in-array {}}
-                                                          (zen.core/get-symbol ztx 'zen/schema)
-                                                          (zen.core/get-symbol ztx (symbol v))
-                                                          {:interpreters [::ts]}))]
-
-                (spit result-file-path (str/join "" (conj (::ts structures-result) "\n")) :append true))) structures)
-
-      (spit result-file-path (str/join "" search-params-result) :append true)
-      :ok))
-  (generate-types))
-
-(t/deftest ^:kaocha/pending custom-interpreter-test
-  (t/testing "should correctly generate"
+(t/deftest default-value-test
+  (t/testing "set default value"
     (def ztx (zen.core/new-context {}))
     (zen.core/get-tag ztx 'zen/type)
 
@@ -288,14 +145,14 @@
         User
         {:zen/tags #{zen/schema}
          :type zen/map
+         :my/defaults {:active true}
          :keys {:id {:type zen/string}
                 :name {:type zen/vector
                        :every {:confirms #{HumanName DefaultHumanName}}}
                 :active {:type zen/boolean}
-                :count {:type zen/number}}
-         :zen.fhir/type "Patient"}})
+                :email {:type zen/string}}}})
 
-    (zen.core/load-ns ztx my-structs-ns)
+    (zen.core/load-ns ztx my-ns)
 
     #_(matcho/match (zen.core/errors ztx) #_"NOTE: FIXME: keys that use get-cached during compile time won't be recompiled when these schemas used in get-cached updated. E.g. adding new is-key for zen/schema won't cause zen/schema recompile and the key won't be recognized by zen/schema validation"
                     empty?)
@@ -307,50 +164,18 @@
 
     (def r
       (sut/apply-schema ztx
-                        {::ts []}
-                        (zen.core/get-symbol ztx 'zen/schema)
-                        (zen.core/get-symbol ztx 'my-sturcts/User)
-                        {:interpreters [::ts]}))
-
-    (t/is (= ts-typedef-assert (str/join "" (distinct (::ts r)))))))
-
+                        {::with-defaults data}
+                        (zen.core/get-symbol ztx 'my/User)
+                        data
+                        {:interpreters [::default]}))
 
     (matcho/match (::with-defaults r)
                   {:id "foo"
                    :email "bar@baz"
                    :active true
                    :name   [{:family "None"
-                             :given  ["foo"]}]})
+                             :given  ["foo"]}]})))
 
-    User
-    {:zen/tags #{zen/schema}
-     :type zen/map
-     :require #{:string :boolean},
-     :keys {:string {:type zen/string}
-            :object {:type zen/map
-                     :keys {:string {:type zen/boolean}
-                            :booalen {:type zen/boolean}
-                            :object-2 {:type zen/map
-                                       :keys {:string {:type zen/boolean}
-                                              :booalen {:type zen/boolean}}
-                                       :require #{:booalen}}}
-                     :require #{:string}}
-            :boolean {:type zen/boolean}
-            :number {:type zen/number}}
-     :zen.fhir/type "Patient"}})
-
-(zen.core/load-ns ztx my-structs-ns)
-
-(def ts-typedef-assert
-  (str "interface Patient { string:string;boolean?:boolean;number?:number;enumV?:'phone' | 'email';arrayConfirms?:Array<HumanName>;confirms?:HumanName; }"))
-
-(def r
-  (sut/apply-schema ztx
-                    {::ts []
-                     ::require {}}
-                    (zen.core/get-symbol ztx 'zen/schema)
-                    (zen.core/get-symbol ztx 'my-sturcts/User)
-                    {:interpreters [::ts ::require]}))
 
 (t/deftest ^:kaocha/pending dynamic-confirms-cache-reset-test
   (def ztx (zen.core/new-context {}))

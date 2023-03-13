@@ -254,10 +254,10 @@
 (defmethod command 'zen.cli/pull-deps [_ _ opts]
   (pull-deps opts))
 
-(defmethod command 'zen.zen-cli/get-sdk [_ _ _]
+(defmethod command 'zen.cli/get-sdk [_ _ _]
   (get-sdk))
 
-(defmethod command 'zen.zen-cli/build [_ [path package-name] opts]
+(defmethod command 'zen.cli/build [_ [path package-name] opts]
   (let [path-str (str path)]
     (if-not package-name
       (build path-str opts)
