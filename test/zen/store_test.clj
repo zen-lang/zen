@@ -162,8 +162,7 @@
    [{:message "No binding for 'mylib/config-binding"
      :type :unbound-binding
      :ns 'zen.store
-     :diref #{'mylib/operation}}
-    nil]
+     :diref #{'mylib/operation}}]
    (zen/errors ztx))
 
   (testing "late binding"
@@ -182,7 +181,7 @@
     (is (empty? (zen/errors ztx)))
 
     (matcho/assert
-     '{:zen/tags #{mylib/config}
+     '{:zen/tags #{zen/binding}
        :zen/bind mylib/config-binding
        :token "mytoken"
        :zen/name mylib/config-binding}

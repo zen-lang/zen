@@ -149,9 +149,7 @@
       (if (contains? tags 'zen/binding)
         (let [{:keys [backref]} (get-in @ctx [:bindings sym])]
           (if backref
-            (merge resource
-                   (get-symbol ctx backref)
-                   (select-keys resource [:zen/name]))
+            (merge (get-symbol ctx backref) resource)
             resource))
         resource))))
 
