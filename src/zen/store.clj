@@ -178,7 +178,7 @@
 
     ;; eval symbols and aliases
     (let [load-result
-          (->> (dissoc ns-map ['ns 'import 'alias :ns :import :alias])
+          (->> (apply dissoc ns-map ['ns 'import 'alias :ns :import :alias])
                (sort-by (juxt symbol-definition? symbol-alias?)) #_"NOTE: load aliases first, symbols after"
                (mapv (fn [[k v :as kv]]
                        (cond (symbol-definition? kv) (load-symbol ctx zen-ns k (merge v opts))

@@ -186,3 +186,14 @@
        :token "mytoken"
        :zen/name mylib/config-binding}
      (zen/get-symbol ztx 'mylib/config-binding))))
+
+
+(t/deftest load-ns-resources-loaded-test
+  (def ztx (zen.core/new-context {}))
+
+  (matcho/match
+    (zen/load-ns ztx
+                 '{:ns my-ns
+                   a {:zen/tags #{zen/schema}
+                      :type zen/map}})
+    [:resources-loaded 1 nil]))
