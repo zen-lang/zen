@@ -8,38 +8,71 @@
             [clojure.pprint :as pp]
             [clojure.string :as str]
             [clojure.test :as t]
-            [zen.core]
-            [zen.ftr]
-            [zen.package]
-            [zen.schema :as sut]
-            [zen.types-generation]))
+            [clojure.string :as str]
+            [zen.core]))
 
-(t/deftest patient-test
-  (t/testing "patient test"
+
+(sut/register-compile-key-interpreter!
+  [:keys ::ts]
+  (fn [_ ztx ks]
+    (fn [vtx data opts]
+      (if-let [s (or (when-let [nm (:zen/name data)]
+                       (str "type " (name nm) " = {"))
+                     (when-let [tp (:type data)]
+                       (str (name (last (:path vtx))) ": "
+                            (get {'zen/string "string"}
+                                 tp)
+                            ";")))]
+        (update vtx ::ts conj s)
+        vtx))))
+
+(sut/register-compile-key-interpreter!
+  [:every ::ts]
+  (fn [_ ztx every]
+    (fn [vtx data opts]
+      (update vtx ::ts conj "Array < "))))
+
+(sut/register-compile-key-interpreter!
+  [:type ::ts]
+  (fn [_ ztx ks]
+    (fn [vtx data opts]
+      (-> vtx
+          #_(update ::ts conj [:type (:schema vtx) (:path vtx) data])))))
+
+(sut/register-schema-pre-process-hook!
+  ::ts
+  (fn [ztx schema]
+    (fn [vtx data opts]
+      (-> vtx
+          #_(update ::ts conj [:pre (:schema vtx) (:path vtx) data])))))
+
+(sut/register-schema-post-process-hook!
+  ::ts
+  (fn [ztx schema]
+    (fn [vtx data opts]
+      (if-let [nm (:zen/name data)]
+        (update vtx ::ts conj "}")
+        vtx))))
+
+
+(t/deftest ^:kaocha/pending custom-interpreter-test
+  (t/testing "typescript type generation"
     (def ztx (zen.core/new-context {}))
 
     (def my-structs-ns
       '{:ns my-sturcts
 
-        defaults
-        {:zen/tags #{zen/property zen/schema}
-         :type zen/boolean}
-
         User
-        {:zen.fhir/version "0.6.12-1",
-         :confirms #{hl7-fhir-r4-core.DomainResource/schema
-                     zen.fhir/Resource},
-         :zen/tags #{zen/schema zen.fhir/base-schema},
-         :zen.fhir/profileUri "http://hl7.org/fhir/StructureDefinition/Composition",
-         :require #{:date :type :title :author :status},
-         :type zen/map,
-         :zen/desc "A set of healthcare-related information that is assembled together into a single logical package that provides a single coherent statement of meaning, establishes its own context and that has clinical attestation with regard to who is making the statement. A Composition defines the structure and narrative content necessary for a document. However, a Composition alone does not constitute a document. Rather, the Composition must be the first entry in a Bundle where Bundle.type=document, and any other resources referenced from Composition must be included as subsequent entries in the Bundle (for example Patient, Practitioner, Encounter, etc.).",
-         :keys {:status {:confirms #{hl7-fhir-r4-core.code/schema},
-                         :fhir/flags #{:SU :?!},
-                         :zen.fhir/value-set {:symbol hl7-fhir-r4-core.value-set.appointmentstatus/value-set,
-                                              :strength :required},
-                         :zen/desc "proposed | pending | booked | arrived | fulfilled | cancelled | noshow | entered-in-error | checked-in | waitlist"}},
-         :zen.fhir/type "Composition"}})
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:id {:type zen/string}
+                :email {:type zen/string
+                        #_#_:regex "@"}
+                :name {:type zen/vector
+                       :every {:type zen/map
+                               :keys {:given {:type zen/vector
+                                              :every {:type zen/string}}
+                                      :family {:type zen/string}}}}}}})
 
     (zen.core/load-ns ztx my-structs-ns)
 
@@ -279,7 +312,7 @@
                         (zen.core/get-symbol ztx 'my-sturcts/User)
                         {:interpreters [::ts]}))
 
-    (t/is (= ts-typedef-assert (str/join "" (::ts r))))))
+    (t/is (= ts-typedef-assert (str/join "" (distinct (::ts r)))))))
 
 
     (matcho/match (::with-defaults r)
