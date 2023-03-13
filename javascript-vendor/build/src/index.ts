@@ -20,10 +20,20 @@ export type PrefixWithArray = 'eq' | 'ne';
 
 export type Prefix = 'eq' | 'ne' | 'gt' | 'lt' | 'ge' | 'le' | 'sa' | 'eb' | 'ap';
 
+type Link = { relation: string, url: string }
+
 export type BaseResponseResources<T extends keyof ResourceTypeMap> = {
+  'query-time': number,
+  meta: { versionId: string },
+  type: string,
+  resourceType: string,
+  total: number,
+  link: Link[],
+  'query-timeout': number,
   entry: {
     resource: ResourceTypeMap[T];
   }[];
+  'query-sql': (string | number)[]
 };
 
 export type BaseResponseResource<T extends keyof ResourceTypeMap> = ResourceTypeMap[T];
