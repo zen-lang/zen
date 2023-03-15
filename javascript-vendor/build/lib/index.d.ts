@@ -1,8 +1,8 @@
 import { AxiosBasicCredentials, AxiosInstance, AxiosResponse } from 'axios';
-import { ResourceTypeMap, SearchParams } from './aidbox-types';
+import { DomainResource, ResourceType, ResourceTypeMap, SearchParams } from './aidbox-types';
 type PathResourceBody<T extends keyof ResourceTypeMap> = Partial<Omit<ResourceTypeMap[T], 'id' | 'meta'>>;
 export type UnnecessaryKeys = 'contained' | 'extension' | 'modifierExtension' | '_id' | 'meta' | 'implicitRules' | '_implicitRules' | 'language' | '_language';
-type Dir = "asc" | "desc";
+type Dir = 'asc' | 'desc';
 export type PrefixWithArray = 'eq' | 'ne';
 export type Prefix = 'eq' | 'ne' | 'gt' | 'lt' | 'ge' | 'le' | 'sa' | 'eb' | 'ap';
 export type ExecuteQueryResponseWrapper<T> = {
@@ -28,7 +28,7 @@ export type CreateQueryParams = {
 export type CreateQueryBody = {
     params?: Record<string, CreateQueryParams>;
     query: string;
-    "count-query": string;
+    'count-query': string;
 };
 type Link = {
     relation: string;
@@ -53,6 +53,30 @@ export type BaseResponseResource<T extends keyof ResourceTypeMap> = ResourceType
 export type ResourceKeys<T extends keyof ResourceTypeMap, I extends ResourceTypeMap[T]> = Omit<I, UnnecessaryKeys>;
 type SortKey<T extends keyof ResourceTypeMap> = keyof SearchParams[T] | `.${string}`;
 type ElementsParams<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> = Array<keyof ResourceKeys<T, R>>;
+type SubscriptionParams = {
+    id: string;
+    status: 'active' | 'off';
+    trigger: Partial<Record<ResourceType, {
+        event: Array<'all' | 'create' | 'update' | 'delete'>;
+        filter?: unknown;
+    }>>;
+    channel: {
+        endpoint: string;
+        payload?: {
+            content: string;
+            contentType: string;
+            context: unknown;
+        };
+        headers?: Record<string, string>;
+        timeout?: number;
+    };
+};
+type Subscription = DomainResource & SubscriptionParams & {
+    resourceType: 'SubsSubscription';
+    channel: {
+        type: 'rest-hook';
+    };
+};
 export declare class Client {
     client: AxiosInstance;
     constructor(baseURL: string, credentials: AxiosBasicCredentials);
@@ -65,6 +89,7 @@ export declare class Client {
     patchResource<T extends keyof ResourceTypeMap>(resourceName: T, id: string, body: PathResourceBody<T>): Promise<BaseResponseResource<T> | Error>;
     createResource<T extends keyof ResourceTypeMap>(resourceName: T, body: ResourceTypeMap[T]): Promise<BaseResponseResource<T> | Error>;
     rawSQL(sql: string, params?: unknown[]): Promise<any>;
+    createSubscription({ id, status, trigger, channel }: SubscriptionParams): Promise<Subscription | Error>;
 }
 export declare class GetResources<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> implements PromiseLike<BaseResponseResources<T>> {
     private searchParamsObject;

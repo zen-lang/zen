@@ -132,7 +132,7 @@ var Client = /** @class */ (function () {
                         });
                     }
                     return [2 /*return*/, this.client.get("$query/".concat(name), {
-                            params: queryParams_1
+                            params: queryParams_1,
                         })];
                 }
                 catch (e) {
@@ -177,6 +177,25 @@ var Client = /** @class */ (function () {
                     case 0:
                         body = __spreadArray([sql], ((_a = params === null || params === void 0 ? void 0 : params.map(function (value) { return value === null || value === void 0 ? void 0 : value.toString(); })) !== null && _a !== void 0 ? _a : []), true);
                         return [4 /*yield*/, this.client.post('/$sql', body)];
+                    case 1:
+                        response = _b.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
+    };
+    Client.prototype.createSubscription = function (_a) {
+        var id = _a.id, status = _a.status, trigger = _a.trigger, channel = _a.channel;
+        return __awaiter(this, void 0, void 0, function () {
+            var response;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0: return [4 /*yield*/, this.client.post('SubsSubscription', {
+                            id: id,
+                            status: status,
+                            trigger: trigger,
+                            channel: __assign(__assign({}, channel), { type: 'rest-hook' }),
+                        })];
                     case 1:
                         response = _b.sent();
                         return [2 /*return*/, response.data];
@@ -238,10 +257,10 @@ var GetResources = /** @class */ (function () {
         var existedSortParams = this.searchParamsObject.get('_sort');
         if (existedSortParams) {
             var newSortParams = "".concat(existedSortParams, ",").concat(dir === 'asc' ? '-' : '').concat(key.toString());
-            this.searchParamsObject.set("_sort", newSortParams);
+            this.searchParamsObject.set('_sort', newSortParams);
             return this;
         }
-        this.searchParamsObject.set("_sort", dir === 'asc' ? "-".concat(key.toString()) : key.toString());
+        this.searchParamsObject.set('_sort', dir === 'asc' ? "-".concat(key.toString()) : key.toString());
         return this;
     };
     GetResources.prototype.then = function (onfulfilled, onrejected) {
