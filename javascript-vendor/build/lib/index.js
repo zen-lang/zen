@@ -46,6 +46,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetResources = exports.Client = void 0;
 var axios_1 = require("axios");
@@ -95,6 +104,44 @@ var Client = /** @class */ (function () {
             });
         });
     };
+    Client.prototype.createQuery = function (name, body) {
+        return __awaiter(this, void 0, void 0, function () {
+            var response;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.client.put("/AidboxQuery/".concat(name), body)];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
+    };
+    Client.prototype.executeQuery = function (name, params) {
+        return __awaiter(this, void 0, void 0, function () {
+            var queryParams_1;
+            return __generator(this, function (_a) {
+                try {
+                    queryParams_1 = new URLSearchParams();
+                    if (params) {
+                        Object.keys(params).map(function (key) {
+                            var value = params[key];
+                            if (value) {
+                                queryParams_1.set(key, value.toString());
+                            }
+                        });
+                    }
+                    return [2 /*return*/, this.client.get("$query/".concat(name), {
+                            params: queryParams_1
+                        })];
+                }
+                catch (e) {
+                    throw e;
+                }
+                return [2 /*return*/];
+            });
+        });
+    };
     Client.prototype.patchResource = function (resourceName, id, body) {
         return __awaiter(this, void 0, void 0, function () {
             var response;
@@ -116,6 +163,22 @@ var Client = /** @class */ (function () {
                     case 0: return [4 /*yield*/, this.client.post(resourceName, __assign({}, body))];
                     case 1:
                         response = _a.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
+    };
+    Client.prototype.rawSQL = function (sql, params) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var body, response;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        body = __spreadArray([sql], ((_a = params === null || params === void 0 ? void 0 : params.map(function (value) { return value === null || value === void 0 ? void 0 : value.toString(); })) !== null && _a !== void 0 ? _a : []), true);
+                        return [4 /*yield*/, this.client.post('/$sql', body)];
+                    case 1:
+                        response = _b.sent();
                         return [2 /*return*/, response.data];
                 }
             });
