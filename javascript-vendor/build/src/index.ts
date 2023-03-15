@@ -1,5 +1,5 @@
-import axios, { AxiosBasicCredentials, AxiosInstance } from 'axios';
-import { ResourceTypeMap, SearchParams } from './aidbox-types';
+import axios, {AxiosBasicCredentials, AxiosInstance, AxiosResponse} from 'axios';
+import { ResourceTypeMap, SearchParams} from './aidbox-types';
 
 type PathResourceBody<T extends keyof ResourceTypeMap> = Partial<Omit<ResourceTypeMap[T], 'id' | 'meta'>>;
 
@@ -19,6 +19,36 @@ type Dir = "asc" | "desc"
 export type PrefixWithArray = 'eq' | 'ne';
 
 export type Prefix = 'eq' | 'ne' | 'gt' | 'lt' | 'ge' | 'le' | 'sa' | 'eb' | 'ap';
+
+export type ExecuteQueryResponseWrapper<T> = {
+  data: ExecuteQueryResponseItem<T>[],
+  query: string[],
+  total: number
+}
+
+export type ExecuteQueryResponseItem<T> = {
+  id: string,
+  txid: number,
+  cts: string,
+  ts: string,
+  resource_type: string,
+  status: string,
+  resource: T
+}
+
+export type CreateQueryParams =  {
+  isRequired: boolean
+  type: string
+  format?: string
+  default?: unknown
+}
+
+
+export type CreateQueryBody = {
+  params?: Record<string, CreateQueryParams>,
+  query: string
+  "count-query": string
+}
 
 type Link = { relation: string, url: string }
 
@@ -78,6 +108,30 @@ export class Client {
     return response.data;
   }
 
+  async createQuery(name: string, body: CreateQueryBody) {
+    const response = await this.client.put(`/AidboxQuery/${name}`, body);
+    return response.data
+  }
+
+  async executeQuery<T>(name: string, params?: Record<string, unknown>): Promise<AxiosResponse<ExecuteQueryResponseWrapper<T>>> {
+    try {
+      const queryParams = new URLSearchParams()
+      if (params) {
+        Object.keys(params).map((key) => {
+          const value = params[key]
+          if (value) {
+            queryParams.set(key, value.toString())
+          }
+        })
+      }
+      return this.client.get<ExecuteQueryResponseWrapper<T>>(`$query/${name}`, {
+        params: queryParams
+      })
+    } catch (e) {
+      throw e
+    }
+  }
+
   async patchResource<T extends keyof ResourceTypeMap>(
     resourceName: T,
     id: string,
@@ -93,6 +147,14 @@ export class Client {
   ): Promise<BaseResponseResource<T> | Error> {
     const response = await this.client.post<BaseResponseResource<T>>(resourceName, { ...body });
     return response.data;
+  }
+
+
+  async rawSQL (sql: string, params?: unknown[]) {
+    const body = [sql, ...(params?.map((value) => value?.toString()) ?? [])]
+
+    const response = await this.client.post('/$sql', body)
+    return response.data
   }
 }
 
