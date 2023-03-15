@@ -110,17 +110,17 @@ export class GetResources<T extends keyof ResourceTypeMap, R extends ResourceTyp
   }
 
   where<K extends keyof SearchParams[T], SP extends SearchParams[T][K], PR extends PrefixWithArray>(
-    key: K,
+    key: K | string,
     value: SP | SP[],
     prefix?: PR,
   ): this;
   where<K extends keyof SearchParams[T], SP extends SearchParams[T][K], PR extends Exclude<Prefix, PrefixWithArray>>(
-    key: K,
+    key: K | string,
     value: SP,
     prefix?: PR,
   ): this;
   where<K extends keyof SearchParams[T], SP extends SearchParams[T][K], PR extends SP extends number ? Prefix : never>(
-    key: K,
+    key: K | string,
     value: SP | SP[],
     prefix?: Prefix | never,
   ): this {
