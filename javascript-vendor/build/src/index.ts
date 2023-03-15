@@ -1,5 +1,5 @@
-import axios, {AxiosBasicCredentials, AxiosInstance, AxiosResponse} from 'axios';
-import { ResourceTypeMap, SearchParams} from './aidbox-types';
+import axios, { AxiosBasicCredentials, AxiosInstance, AxiosResponse } from 'axios';
+import { DomainResource, ResourceType, ResourceTypeMap, SearchParams } from './aidbox-types';
 
 type PathResourceBody<T extends keyof ResourceTypeMap> = Partial<Omit<ResourceTypeMap[T], 'id' | 'meta'>>;
 
@@ -14,65 +14,79 @@ export type UnnecessaryKeys =
   | 'language'
   | '_language';
 
-type Dir = "asc" | "desc"
+type Dir = 'asc' | 'desc';
 
 export type PrefixWithArray = 'eq' | 'ne';
 
 export type Prefix = 'eq' | 'ne' | 'gt' | 'lt' | 'ge' | 'le' | 'sa' | 'eb' | 'ap';
 
 export type ExecuteQueryResponseWrapper<T> = {
-  data: ExecuteQueryResponseItem<T>[],
-  query: string[],
-  total: number
-}
+  data: ExecuteQueryResponseItem<T>[];
+  query: string[];
+  total: number;
+};
 
 export type ExecuteQueryResponseItem<T> = {
-  id: string,
-  txid: number,
-  cts: string,
-  ts: string,
-  resource_type: string,
-  status: string,
-  resource: T
-}
+  id: string;
+  txid: number;
+  cts: string;
+  ts: string;
+  resource_type: string;
+  status: string;
+  resource: T;
+};
 
-export type CreateQueryParams =  {
-  isRequired: boolean
-  type: string
-  format?: string
-  default?: unknown
-}
-
+export type CreateQueryParams = {
+  isRequired: boolean;
+  type: string;
+  format?: string;
+  default?: unknown;
+};
 
 export type CreateQueryBody = {
-  params?: Record<string, CreateQueryParams>,
-  query: string
-  "count-query": string
-}
+  params?: Record<string, CreateQueryParams>;
+  query: string;
+  'count-query': string;
+};
 
-type Link = { relation: string, url: string }
+type Link = { relation: string; url: string };
 
 export type BaseResponseResources<T extends keyof ResourceTypeMap> = {
-  'query-time': number,
-  meta: { versionId: string },
-  type: string,
-  resourceType: string,
-  total: number,
-  link: Link[],
-  'query-timeout': number,
+  'query-time': number;
+  meta: { versionId: string };
+  type: string;
+  resourceType: string;
+  total: number;
+  link: Link[];
+  'query-timeout': number;
   entry: {
     resource: ResourceTypeMap[T];
   }[];
-  'query-sql': (string | number)[]
+  'query-sql': (string | number)[];
 };
 
 export type BaseResponseResource<T extends keyof ResourceTypeMap> = ResourceTypeMap[T];
 
 export type ResourceKeys<T extends keyof ResourceTypeMap, I extends ResourceTypeMap[T]> = Omit<I, UnnecessaryKeys>;
 
-type SortKey<T extends keyof ResourceTypeMap> = keyof SearchParams[T] | `.${string}`
+type SortKey<T extends keyof ResourceTypeMap> = keyof SearchParams[T] | `.${string}`;
 
 type ElementsParams<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> = Array<keyof ResourceKeys<T, R>>;
+
+type SubscriptionParams = {
+  id: string;
+  status: 'active' | 'off';
+  trigger: Partial<Record<ResourceType, { event: Array<'all' | 'create' | 'update' | 'delete'>; filter?: unknown }>>;
+  channel: {
+    endpoint: string;
+    payload?: { content: string; contentType: string; context: unknown };
+    headers?: Record<string, string>;
+    timeout?: number;
+  };
+};
+
+type Subscription = DomainResource &
+  SubscriptionParams & { resourceType: 'SubsSubscription'; channel: { type: 'rest-hook' } };
 
 export class Client {
   client: AxiosInstance;
@@ -110,25 +124,28 @@ export class Client {
 
   async createQuery(name: string, body: CreateQueryBody) {
     const response = await this.client.put(`/AidboxQuery/${name}`, body);
-    return response.data
+    return response.data;
   }
 
-  async executeQuery<T>(name: string, params?: Record<string, unknown>): Promise<AxiosResponse<ExecuteQueryResponseWrapper<T>>> {
+  async executeQuery<T>(
+    name: string,
+    params?: Record<string, unknown>,
+  ): Promise<AxiosResponse<ExecuteQueryResponseWrapper<T>>> {
     try {
-      const queryParams = new URLSearchParams()
+      const queryParams = new URLSearchParams();
       if (params) {
         Object.keys(params).map((key) => {
-          const value = params[key]
+          const value = params[key];
           if (value) {
-            queryParams.set(key, value.toString())
+            queryParams.set(key, value.toString());
           }
-        })
+        });
       }
       return this.client.get<ExecuteQueryResponseWrapper<T>>(`$query/${name}`, {
-        params: queryParams
-      })
+        params: queryParams,
+      });
     } catch (e) {
-      throw e
+      throw e;
     }
   }
 
@@ -149,12 +166,21 @@ export class Client {
     return response.data;
   }
 
+  async rawSQL(sql: string, params?: unknown[]) {
+    const body = [sql, ...(params?.map((value) => value?.toString()) ?? [])];
 
-  async rawSQL (sql: string, params?: unknown[]) {
-    const body = [sql, ...(params?.map((value) => value?.toString()) ?? [])]
+    const response = await this.client.post('/$sql', body);
+    return response.data;
+  }
 
-    const response = await this.client.post('/$sql', body)
-    return response.data
+  async createSubscription({ id, status, trigger, channel }: SubscriptionParams): Promise<Subscription | Error> {
+    const response = await this.client.post<Subscription>('SubsSubscription', {
+      id,
+      status,
+      trigger,
+      channel: { ...channel, type: 'rest-hook' },
+    });
+    return response.data;
   }
 }
 
@@ -242,17 +268,17 @@ export class GetResources<T extends keyof ResourceTypeMap, R extends ResourceTyp
     return this;
   }
 
-  sort(key: SortKey<T>, dir: Dir ) {
-    const existedSortParams = this.searchParamsObject.get('_sort')
+  sort(key: SortKey<T>, dir: Dir) {
+    const existedSortParams = this.searchParamsObject.get('_sort');
 
     if (existedSortParams) {
-      const newSortParams = `${existedSortParams},${dir === 'asc' ? '-' : ''}${key.toString()}`
+      const newSortParams = `${existedSortParams},${dir === 'asc' ? '-' : ''}${key.toString()}`;
 
-      this.searchParamsObject.set("_sort", newSortParams)
+      this.searchParamsObject.set('_sort', newSortParams);
       return this;
     }
 
-    this.searchParamsObject.set("_sort", dir === 'asc' ? `-${key.toString()}` : key.toString())
+    this.searchParamsObject.set('_sort', dir === 'asc' ? `-${key.toString()}` : key.toString());
 
     return this;
   }
