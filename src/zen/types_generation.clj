@@ -29,7 +29,11 @@
                        }[keyof T];\n"
    :require-at-least-one-type "type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>; }[keyof T];\n"
    :reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
-   :resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"})
+   :resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
+   :subs-subscription "export interface SubsSubscription extends DomainResource {\nstatus: 'active' | 'off';
+                       trigger: Partial<Record<ResourceType, { event: Array<'all' | 'create' | 'update' | 'delete'>; filter?: unknown }>>;
+                       channel: {\ntype: 'rest-hook';\nendpoint: string;\npayload?: { content: string; contentType: string; context: unknown };
+                       headers?: Record<string, string>;\ntimeout?: number;\n};\n}"})
 
 (def non-parsable-premitives
   {:string "string"
@@ -102,7 +106,7 @@
                  (= (first confirms) 'zenbox/Resource) " extends Resource "
                  (not= extended-resource "zen.fhir") (format " extends %s " extended-resource)
                  :else " ")]
-    (str "interface " (::interface-name vtx) extand)))
+    (str "export interface " (::interface-name vtx) extand)))
 
 (defn generate-name
   [vtx data]
@@ -231,6 +235,8 @@
          (update new-vtx ::ts conj (generate-enum data))
          (= (last (:schema new-vtx)) :values)
          (update new-vtx ::ts conj (get-desc data) (generate-values new-vtx))
+         (and (= (last (:path new-vtx)) :keys) (= (::interface-name vtx) "Resource")) 
+         (update new-vtx ::ts conj "{ \n resourceType: ResourceType;")
          (= (last (:path new-vtx)) :keys) (update new-vtx ::ts conj "{ ")
          (= (last (:schema new-vtx)) :every) (update new-vtx ::ts conj "Array<")
          :else new-vtx)))))
@@ -352,7 +358,7 @@
 (defn get-resources [schema custom-resources-names]
   (mapv (fn [n]
           (format "%s: %s;" n n))
-        (concat schema custom-resources-names)))
+        (conj (concat schema custom-resources-names) "SubsSubscription")))
 
 (defn search-params-generator [ztx, searches]
   (reduce
@@ -417,10 +423,11 @@
         reference-type (:reference-type prepared-interfaces)
         onekey-type (:onekey-type prepared-interfaces)
         require-at-least-one-type (:require-at-least-one-type prepared-interfaces)
+        subs-subscription (:subs-subscription prepared-interfaces)
         custom-resources ('zenbox/persistent (:tags @ztx))
         custom-resources-names (map (fn [resource] (name resource)) custom-resources)
         key-value-resources (get-resources schema custom-resources-names)
-        resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type)
+        resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type subs-subscription)
         search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
         search-params-end-interface "\n}"
         search-params-content (get-search-params ztx searches)
@@ -477,11 +484,12 @@
           reference-type (:reference-type prepared-interfaces)
           onekey-type (:onekey-type prepared-interfaces)
           require-at-least-one-type (:require-at-least-one-type prepared-interfaces)
+          subs-subscription (:subs-subscription prepared-interfaces)
           resource-type-map-interface "export interface ResourceTypeMap {\n"
           resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
           key-value-resources (mapv (fn [n]
                                       (format "%s: %s;" n n))
-                                    (concat (map (fn [[k _v]] k) schema) custom-resources-names))
+                                    (conj (concat (map (fn [[k _v]] k) schema) custom-resources-names) "SubsSubscription"))
           search-params-start-interface "export interface SearchParams extends Record<ResourceType, unknown> {\n"
           search-params-end-interface "\n}"
           search-params-content (mapv (fn [[k v]]
@@ -510,7 +518,7 @@
                                                                     third-acc
                                                                     schema-keys))) acc v))
                                               {} searches))
-          resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type)
+          resource-map-result (conj (into [reference-type onekey-type require-at-least-one-type resource-type-map-interface] key-value-resources) resourcetype-type subs-subscription)
           search-params-result (conj (into [search-params-start-interface]  search-params-content) search-params-end-interface)]
 
 

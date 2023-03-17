@@ -1,7 +1,10 @@
 import axios, { AxiosBasicCredentials, AxiosInstance, AxiosResponse } from 'axios';
-import { DomainResource, ResourceType, ResourceTypeMap, SearchParams } from './aidbox-types';
+import { ResourceType, ResourceTypeMap, SearchParams, SubsSubscription } from './aidbox-types';
 
 type PathResourceBody<T extends keyof ResourceTypeMap> = Partial<Omit<ResourceTypeMap[T], 'id' | 'meta'>>;
+
+type SetOptional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
+type SetRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };
 
 export type UnnecessaryKeys =
   | 'contained'
@@ -73,20 +76,27 @@ type SortKey<T extends keyof ResourceTypeMap> = keyof SearchParams[T] | `.${stri
 
 type ElementsParams<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> = Array<keyof ResourceKeys<T, R>>;
 
-type SubscriptionParams = {
-  id: string;
-  status: 'active' | 'off';
-  trigger: Partial<Record<ResourceType, { event: Array<'all' | 'create' | 'update' | 'delete'>; filter?: unknown }>>;
-  channel: {
-    endpoint: string;
-    payload?: { content: string; contentType: string; context: unknown };
-    headers?: Record<string, string>;
-    timeout?: number;
-  };
+type ChangeFields<T, R> = Omit<T, keyof R> & R;
+type SubscriptionParams = Omit<
+  ChangeFields<
+    SubsSubscription,
+    {
+      channel: Omit<SubsSubscription['channel'], 'type'>;
+    }
+  >,
+  'resourceType'
+>;
+
+type BundleRequestEntry<T = ResourceTypeMap[keyof ResourceTypeMap]> = {
+  request: { method: string; url: string };
+  resource?: T;
 };
 
-type Subscription = DomainResource &
-  SubscriptionParams & { resourceType: 'SubsSubscription'; channel: { type: 'rest-hook' } };
+type BundleRequestResponse<T = ResourceTypeMap[keyof ResourceTypeMap]> = {
+  type: 'transaction-response';
+  resourceType: 'Bundle';
+  entry: Array<T>;
+};
 
 export class Client {
   client: AxiosInstance;
@@ -173,14 +183,59 @@ export class Client {
     return response.data;
   }
 
-  async createSubscription({ id, status, trigger, channel }: SubscriptionParams): Promise<Subscription | Error> {
-    const response = await this.client.post<Subscription>('SubsSubscription', {
-      id,
+  async createSubscription({ id, status, trigger, channel }: SubscriptionParams): Promise<SubsSubscription | Error> {
+    const response = await this.client.put<SubsSubscription>(`SubsSubscription/${id}`, {
       status,
       trigger,
       channel: { ...channel, type: 'rest-hook' },
     });
     return response.data;
+  }
+
+  async bundleRequest(entry: Array<BundleRequestEntry>): Promise<BundleRequestResponse | Error> {
+    const response = await this.client.post(`/`, {
+      resourceType: 'Bundle',
+      type: 'transaction',
+      entry,
+    });
+    return response.data;
+  }
+
+  bundleEntryPut<T extends keyof ResourceTypeMap>(
+    resource: ResourceTypeMap[T],
+  ): BundleRequestEntry<ResourceTypeMap[T]> {
+    return {
+      request: { method: 'PUT', url: `/${resource.resourceType}/${resource.id}` },
+      resource,
+    };
+  }
+
+  bundleEntryPost<T extends keyof ResourceTypeMap>(
+    resource: SetOptional<ResourceTypeMap[T], 'id'>,
+  ): BundleRequestEntry<SetOptional<ResourceTypeMap[T], 'id'>> {
+    return {
+      request: { method: 'POST', url: `/${resource.resourceType}` },
+      resource,
+    };
+  }
+
+  bundleEntryPatch<T extends keyof ResourceTypeMap>(
+    resource: SetRequired<Partial<ResourceTypeMap[T]>, 'id' | 'resourceType'>,
+  ): BundleRequestEntry<SetRequired<Partial<ResourceTypeMap[T]>, 'id' | 'resourceType'>> {
+    return {
+      request: { method: 'PATCH', url: `/${resource.resourceType}/${resource.id}` },
+      resource,
+    };
+  }
+
+  subscriptionEntry({ id, status, trigger, channel }: SubscriptionParams): SubsSubscription {
+    return {
+      resourceType: 'SubsSubscription',
+      id,
+      status,
+      trigger,
+      channel: { ...channel, type: 'rest-hook' },
+    };
   }
 }
 

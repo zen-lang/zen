@@ -1,6 +1,10 @@
 import { AxiosBasicCredentials, AxiosInstance, AxiosResponse } from 'axios';
-import { DomainResource, ResourceType, ResourceTypeMap, SearchParams } from './aidbox-types';
+import { ResourceTypeMap, SearchParams, SubsSubscription } from './aidbox-types';
 type PathResourceBody<T extends keyof ResourceTypeMap> = Partial<Omit<ResourceTypeMap[T], 'id' | 'meta'>>;
+type SetOptional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
+type SetRequired<T, K extends keyof T> = T & {
+    [P in K]-?: T[P];
+};
 export type UnnecessaryKeys = 'contained' | 'extension' | 'modifierExtension' | '_id' | 'meta' | 'implicitRules' | '_implicitRules' | 'language' | '_language';
 type Dir = 'asc' | 'desc';
 export type PrefixWithArray = 'eq' | 'ne';
@@ -53,29 +57,21 @@ export type BaseResponseResource<T extends keyof ResourceTypeMap> = ResourceType
 export type ResourceKeys<T extends keyof ResourceTypeMap, I extends ResourceTypeMap[T]> = Omit<I, UnnecessaryKeys>;
 type SortKey<T extends keyof ResourceTypeMap> = keyof SearchParams[T] | `.${string}`;
 type ElementsParams<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> = Array<keyof ResourceKeys<T, R>>;
-type SubscriptionParams = {
-    id: string;
-    status: 'active' | 'off';
-    trigger: Partial<Record<ResourceType, {
-        event: Array<'all' | 'create' | 'update' | 'delete'>;
-        filter?: unknown;
-    }>>;
-    channel: {
-        endpoint: string;
-        payload?: {
-            content: string;
-            contentType: string;
-            context: unknown;
-        };
-        headers?: Record<string, string>;
-        timeout?: number;
+type ChangeFields<T, R> = Omit<T, keyof R> & R;
+type SubscriptionParams = Omit<ChangeFields<SubsSubscription, {
+    channel: Omit<SubsSubscription['channel'], 'type'>;
+}>, 'resourceType'>;
+type BundleRequestEntry<T = ResourceTypeMap[keyof ResourceTypeMap]> = {
+    request: {
+        method: string;
+        url: string;
     };
+    resource?: T;
 };
-type Subscription = DomainResource & SubscriptionParams & {
-    resourceType: 'SubsSubscription';
-    channel: {
-        type: 'rest-hook';
-    };
+type BundleRequestResponse<T = ResourceTypeMap[keyof ResourceTypeMap]> = {
+    type: 'transaction-response';
+    resourceType: 'Bundle';
+    entry: Array<T>;
 };
 export declare class Client {
     client: AxiosInstance;
@@ -89,7 +85,12 @@ export declare class Client {
     patchResource<T extends keyof ResourceTypeMap>(resourceName: T, id: string, body: PathResourceBody<T>): Promise<BaseResponseResource<T> | Error>;
     createResource<T extends keyof ResourceTypeMap>(resourceName: T, body: ResourceTypeMap[T]): Promise<BaseResponseResource<T> | Error>;
     rawSQL(sql: string, params?: unknown[]): Promise<any>;
-    createSubscription({ id, status, trigger, channel }: SubscriptionParams): Promise<Subscription | Error>;
+    createSubscription({ id, status, trigger, channel }: SubscriptionParams): Promise<SubsSubscription | Error>;
+    bundleRequest(entry: Array<BundleRequestEntry>): Promise<BundleRequestResponse | Error>;
+    bundleEntryPut<T extends keyof ResourceTypeMap>(resource: ResourceTypeMap[T]): BundleRequestEntry<ResourceTypeMap[T]>;
+    bundleEntryPost<T extends keyof ResourceTypeMap>(resource: SetOptional<ResourceTypeMap[T], 'id'>): BundleRequestEntry<SetOptional<ResourceTypeMap[T], 'id'>>;
+    bundleEntryPatch<T extends keyof ResourceTypeMap>(resource: SetRequired<Partial<ResourceTypeMap[T]>, 'id' | 'resourceType'>): BundleRequestEntry<SetRequired<Partial<ResourceTypeMap[T]>, 'id' | 'resourceType'>>;
+    subscriptionEntry({ id, status, trigger, channel }: SubscriptionParams): SubsSubscription;
 }
 export declare class GetResources<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> implements PromiseLike<BaseResponseResources<T>> {
     private searchParamsObject;

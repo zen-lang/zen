@@ -190,8 +190,7 @@ var Client = /** @class */ (function () {
             var response;
             return __generator(this, function (_b) {
                 switch (_b.label) {
-                    case 0: return [4 /*yield*/, this.client.post('SubsSubscription', {
-                            id: id,
+                    case 0: return [4 /*yield*/, this.client.put("SubsSubscription/".concat(id), {
                             status: status,
                             trigger: trigger,
                             channel: __assign(__assign({}, channel), { type: 'rest-hook' }),
@@ -202,6 +201,51 @@ var Client = /** @class */ (function () {
                 }
             });
         });
+    };
+    Client.prototype.bundleRequest = function (entry) {
+        return __awaiter(this, void 0, void 0, function () {
+            var response;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.client.post("/", {
+                            resourceType: 'Bundle',
+                            type: 'transaction',
+                            entry: entry,
+                        })];
+                    case 1:
+                        response = _a.sent();
+                        return [2 /*return*/, response.data];
+                }
+            });
+        });
+    };
+    Client.prototype.bundleEntryPut = function (resource) {
+        return {
+            request: { method: 'PUT', url: "/".concat(resource.resourceType, "/").concat(resource.id) },
+            resource: resource,
+        };
+    };
+    Client.prototype.bundleEntryPost = function (resource) {
+        return {
+            request: { method: 'POST', url: "/".concat(resource.resourceType) },
+            resource: resource,
+        };
+    };
+    Client.prototype.bundleEntryPatch = function (resource) {
+        return {
+            request: { method: 'PATCH', url: "/".concat(resource.resourceType, "/").concat(resource.id) },
+            resource: resource,
+        };
+    };
+    Client.prototype.subscriptionEntry = function (_a) {
+        var id = _a.id, status = _a.status, trigger = _a.trigger, channel = _a.channel;
+        return {
+            resourceType: 'SubsSubscription',
+            id: id,
+            status: status,
+            trigger: trigger,
+            channel: __assign(__assign({}, channel), { type: 'rest-hook' }),
+        };
     };
     return Client;
 }());
