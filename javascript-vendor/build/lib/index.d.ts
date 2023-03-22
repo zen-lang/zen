@@ -73,6 +73,12 @@ type BundleRequestResponse<T = ResourceTypeMap[keyof ResourceTypeMap]> = {
     resourceType: 'Bundle';
     entry: Array<T>;
 };
+export type LogData = {
+    message: Record<string, any>;
+    type: string;
+    v?: string;
+    fx?: string;
+};
 export declare class Client {
     client: AxiosInstance;
     constructor(baseURL: string, credentials: AxiosBasicCredentials);
@@ -91,6 +97,7 @@ export declare class Client {
     bundleEntryPost<T extends keyof ResourceTypeMap>(resource: SetOptional<ResourceTypeMap[T], 'id'>): BundleRequestEntry<SetOptional<ResourceTypeMap[T], 'id'>>;
     bundleEntryPatch<T extends keyof ResourceTypeMap>(resource: SetRequired<Partial<ResourceTypeMap[T]>, 'id' | 'resourceType'>): BundleRequestEntry<SetRequired<Partial<ResourceTypeMap[T]>, 'id' | 'resourceType'>>;
     subscriptionEntry({ id, status, trigger, channel }: SubscriptionParams): SubsSubscription;
+    sendLog(data: LogData): Promise<void | Error>;
 }
 export declare class GetResources<T extends keyof ResourceTypeMap, R extends ResourceTypeMap[T]> implements PromiseLike<BaseResponseResources<T>> {
     private searchParamsObject;

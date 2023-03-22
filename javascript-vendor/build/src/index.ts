@@ -98,6 +98,13 @@ type BundleRequestResponse<T = ResourceTypeMap[keyof ResourceTypeMap]> = {
   entry: Array<T>;
 };
 
+export type LogData = {
+  message: Record<string, any>;
+  type: string;
+  v?: string;
+  fx?: string;
+};
+
 export class Client {
   client: AxiosInstance;
 
@@ -236,6 +243,10 @@ export class Client {
       trigger,
       channel: { ...channel, type: 'rest-hook' },
     };
+  }
+
+  async sendLog(data: LogData): Promise<void> {
+    await this.client.post('/$loggy', data);
   }
 }
 
