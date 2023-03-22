@@ -111,7 +111,7 @@ export class Client {
   async getResource<T extends keyof ResourceTypeMap>(
     resourceName: T,
     id: string,
-  ): Promise<BaseResponseResource<T> | Error> {
+  ): Promise<BaseResponseResource<T>> {
     const response = await this.client.get<BaseResponseResource<T>>(resourceName + '/' + id);
     return response.data;
   }
@@ -119,7 +119,7 @@ export class Client {
   async findResources<T extends keyof ResourceTypeMap>(
     resourceName: T,
     params: Record<string, unknown>,
-  ): Promise<BaseResponseResources<T> | Error> {
+  ): Promise<BaseResponseResources<T>> {
     const response = await this.client.post<BaseResponseResources<T>>(resourceName, { params });
     return response.data;
   }
@@ -127,7 +127,7 @@ export class Client {
   async deleteResource<T extends keyof ResourceTypeMap>(
     resourceName: T,
     id: string,
-  ): Promise<BaseResponseResource<T> | Error> {
+  ): Promise<BaseResponseResource<T>> {
     const response = await this.client.delete<BaseResponseResource<T>>(resourceName + '/' + id);
     return response.data;
   }
@@ -163,7 +163,7 @@ export class Client {
     resourceName: T,
     id: string,
     body: PathResourceBody<T>,
-  ): Promise<BaseResponseResource<T> | Error> {
+  ): Promise<BaseResponseResource<T>> {
     const response = await this.client.patch<BaseResponseResource<T>>(resourceName + '/' + id, { ...body });
     return response.data;
   }
@@ -171,7 +171,7 @@ export class Client {
   async createResource<T extends keyof ResourceTypeMap>(
     resourceName: T,
     body: ResourceTypeMap[T],
-  ): Promise<BaseResponseResource<T> | Error> {
+  ): Promise<BaseResponseResource<T>> {
     const response = await this.client.post<BaseResponseResource<T>>(resourceName, { ...body });
     return response.data;
   }
@@ -183,7 +183,7 @@ export class Client {
     return response.data;
   }
 
-  async createSubscription({ id, status, trigger, channel }: SubscriptionParams): Promise<SubsSubscription | Error> {
+  async createSubscription({ id, status, trigger, channel }: SubscriptionParams): Promise<SubsSubscription> {
     const response = await this.client.put<SubsSubscription>(`SubsSubscription/${id}`, {
       status,
       trigger,
@@ -192,7 +192,7 @@ export class Client {
     return response.data;
   }
 
-  async bundleRequest(entry: Array<BundleRequestEntry>): Promise<BundleRequestResponse | Error> {
+  async bundleRequest(entry: Array<BundleRequestEntry>): Promise<BundleRequestResponse> {
     const response = await this.client.post(`/`, {
       resourceType: 'Bundle',
       type: 'transaction',
