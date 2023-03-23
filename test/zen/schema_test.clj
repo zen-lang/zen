@@ -212,7 +212,7 @@
     {:errors [{} nil]}))
 
 
-(t/deftest ^:kaocha/pending dynamic-key-schema-cache-reset-test
+(t/deftest dynamic-key-schema-cache-reset-test
   (def ztx (zen.core/new-context {}))
 
   #_"NOTE: you can drop cache to see that this fixes validation"

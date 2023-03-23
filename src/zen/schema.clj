@@ -402,32 +402,33 @@
 (register-compile-key-interpreter!
  [:key-schema ::navigate]
  (fn [_ ztx {:keys [tags key]}]
-   (let [keys-schemas
-         (->> tags
-              (mapcat #(utils/get-tag ztx %))
-              (mapv (fn [sch-name]
-                      (let [sch (utils/get-symbol ztx sch-name)] ;; TODO get rid of type coercion
-                        {:sch-key (if (= "zen" (namespace sch-name))
-                                    (keyword (name sch-name))
-                                    (keyword sch-name))
-                         :for?    (:for sch)
-                         :v       (get-cached ztx sch false)}))))]
-    (fn navigate-key-schema [vtx data opts]
-      (let [key-rules
-            (into {}
-                  (keep (fn [{:keys [sch-key for? v]}]
-                          (when (or (nil? for?)
-                                    (contains? for? (get data key)))
-                            [sch-key v])))
-                  keys-schemas)]
-        (loop [data (seq data)
-               vtx* vtx]
-          (if (empty? data)
-            vtx*
-            (let [[k v] (first data)]
-              (recur (rest data)
-                     (if (contains? key-rules k)
-                       (-> (validation.utils/node-vtx&log vtx* [k] [k])
-                           ((get key-rules k) v opts)
-                           (validation.utils/merge-vtx vtx*))
-                       vtx*))))))))))
+   (fn navigate-key-schema [vtx data opts]
+     (let [keys-schemas
+           (->> tags
+                (mapcat #(utils/get-tag ztx %))
+                (mapv (fn [sch-name]
+                        (let [sch (utils/get-symbol ztx sch-name)] ;; TODO get rid of type coercion
+                          {:sch-key (if (= "zen" (namespace sch-name))
+                                      (keyword (name sch-name))
+                                      (keyword sch-name))
+                           :for?    (:for sch)
+                           :v       (get-cached ztx sch false)}))))
+
+           key-rules
+           (into {}
+                 (keep (fn [{:keys [sch-key for? v]}]
+                         (when (or (nil? for?)
+                                   (contains? for? (get data key)))
+                           [sch-key v])))
+                 keys-schemas)]
+       (loop [data (seq data)
+              vtx* vtx]
+         (if (empty? data)
+           vtx*
+           (let [[k v] (first data)]
+             (recur (rest data)
+                    (if (contains? key-rules k)
+                      (-> (validation.utils/node-vtx&log vtx* [k] [k])
+                          ((get key-rules k) v opts)
+                          (validation.utils/merge-vtx vtx*))
+                      vtx*)))))))))
