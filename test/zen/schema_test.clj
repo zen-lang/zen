@@ -177,7 +177,7 @@
                              :given  ["foo"]}]})))
 
 
-(t/deftest ^:kaocha/pending dynamic-confirms-cache-reset-test
+(t/deftest dynamic-confirms-cache-reset-test
   (def ztx (zen.core/new-context {}))
 
   #_"NOTE: you can drop cache to see that this fixes validation"

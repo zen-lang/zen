@@ -253,37 +253,31 @@
 (register-compile-key-interpreter!
  [:confirms ::navigate]
   (fn [_ ztx ks]
-    (let [compile-confirms
-          (fn [sym]
-            (if-let [sch (utils/get-symbol ztx sym)]
-              [sym (:zen/name sch) (get-cached ztx sch false)]
-              [sym]))
+    (letfn [(compile-confirms [sym]
+              (if-let [sch (utils/get-symbol ztx sym)]
+                [sym (:zen/name sch) (get-cached ztx sch false)]
+                [sym]))]
+      (fn navigate-confirms [vtx data opts]
+        (loop [comp-fns (mapv compile-confirms ks)
+               vtx*     vtx]
+          (if (empty? comp-fns)
+            vtx*
+            (let [[sym sch-nm v] (first comp-fns)]
+              (cond
+                (true? (get-in vtx* [:zen.v2-validation/confirmed (:path vtx*) sch-nm]))
+                (recur (rest comp-fns) vtx*)
 
-          comp-fns
-          (->> ks
-               (map compile-confirms)
-               doall)]
-    (fn navigate-confirms [vtx data opts]
-      (loop [comp-fns comp-fns
-             vtx*     vtx]
-        (if (empty? comp-fns)
-          vtx*
-          (let [[sym sch-nm v] (first comp-fns)]
-            (cond
-              (true? (get-in vtx* [:zen.v2-validation/confirmed (:path vtx*) sch-nm]))
-              (recur (rest comp-fns) vtx*)
+                (fn? v)
+                (recur (rest comp-fns)
+                       (-> (assoc-in vtx* [:zen.v2-validation/confirmed (:path vtx*) sch-nm] true)
+                           (validation.utils/node-vtx [:confirms sch-nm])
+                           (v data opts)
+                           (validation.utils/merge-vtx vtx*)))
 
-              (fn? v)
-              (recur (rest comp-fns)
-                     (-> (assoc-in vtx* [:zen.v2-validation/confirmed (:path vtx*) sch-nm] true)
-                         (validation.utils/node-vtx [:confirms sch-nm])
-                         (v data opts)
-                         (validation.utils/merge-vtx vtx*)))
-
-              :else
-              (recur (rest comp-fns)
-                     #_"NOTE: This errors mechanism comes from ::validate interpreter. Maybe we should untie it from here."
-                     (validation.utils/add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)}))))))))))
+                :else
+                (recur (rest comp-fns)
+                       #_"NOTE: This errors mechanism comes from ::validate interpreter. Maybe we should untie it from here."
+                       (validation.utils/add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)}))))))))))
 
 
 #_"NOTE: Errors mechanism used here comes from ::validate interpreter. Maybe we should untie it from here."
