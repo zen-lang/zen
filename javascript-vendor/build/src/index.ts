@@ -115,10 +115,7 @@ export class Client {
     return new GetResources(this.client, resourceName);
   }
 
-  async getResource<T extends keyof ResourceTypeMap>(
-    resourceName: T,
-    id: string,
-  ): Promise<BaseResponseResource<T>> {
+  async getResource<T extends keyof ResourceTypeMap>(resourceName: T, id: string): Promise<BaseResponseResource<T>> {
     const response = await this.client.get<BaseResponseResource<T>>(resourceName + '/' + id);
     return response.data;
   }
@@ -131,10 +128,7 @@ export class Client {
     return response.data;
   }
 
-  async deleteResource<T extends keyof ResourceTypeMap>(
-    resourceName: T,
-    id: string,
-  ): Promise<BaseResponseResource<T>> {
+  async deleteResource<T extends keyof ResourceTypeMap>(resourceName: T, id: string): Promise<BaseResponseResource<T>> {
     const response = await this.client.delete<BaseResponseResource<T>>(resourceName + '/' + id);
     return response.data;
   }
@@ -177,7 +171,7 @@ export class Client {
 
   async createResource<T extends keyof ResourceTypeMap>(
     resourceName: T,
-    body: ResourceTypeMap[T],
+    body: SetOptional<ResourceTypeMap[T], 'resourceType'>,
   ): Promise<BaseResponseResource<T>> {
     const response = await this.client.post<BaseResponseResource<T>>(resourceName, { ...body });
     return response.data;
@@ -199,10 +193,13 @@ export class Client {
     return response.data;
   }
 
-  async bundleRequest(entry: Array<BundleRequestEntry>): Promise<BundleRequestResponse> {
+  async bundleRequest(
+    entry: Array<BundleRequestEntry>,
+    type: 'transaction' | 'batch' = 'transaction',
+  ): Promise<BundleRequestResponse> {
     const response = await this.client.post(`/`, {
       resourceType: 'Bundle',
-      type: 'transaction',
+      type,
       entry,
     });
     return response.data;

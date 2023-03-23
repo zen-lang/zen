@@ -202,14 +202,15 @@ var Client = /** @class */ (function () {
             });
         });
     };
-    Client.prototype.bundleRequest = function (entry) {
+    Client.prototype.bundleRequest = function (entry, type) {
+        if (type === void 0) { type = 'transaction'; }
         return __awaiter(this, void 0, void 0, function () {
             var response;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, this.client.post("/", {
                             resourceType: 'Bundle',
-                            type: 'transaction',
+                            type: type,
                             entry: entry,
                         })];
                     case 1:
