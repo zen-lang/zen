@@ -115,6 +115,13 @@
   :args-style :positional
   :args {:type zen/vector
          :maxItems 0}}
+ 
+  get-ts-types
+ {:zen/tags #{zen.cli-tools/command}
+  :zen/desc "typescript types generation"
+  :args-style :positional
+  :args {:type zen/vector
+         :maxItems 0}}
 
  exit
  {:zen/tags #{command}
@@ -172,15 +179,16 @@
  zen-config
  {:zen/tags #{config}
   :zen/desc "Zen CLI"
-  :commands {:init       {:command init}
-             :install    {:command install}
-             :template   {:command template}
-             :pull-deps  {:command pull-deps}
-             :build      {:command build}
-             :errors     {:command errors}
-             :changes    {:command changes}
-             :validate   {:command validate}
-             :get-symbol {:command get-symbol}
-             :get-tag    {:command get-tag}
-             :get-sdk    {:command get-sdk}
-             :exit       {:command exit}}}}
+  :commands {:init         {:command init}
+             :install      {:command install}
+             :template     {:command template}
+             :pull-deps    {:command pull-deps}
+             :build        {:command build}
+             :errors       {:command errors}
+             :changes      {:command changes}
+             :validate     {:command validate}
+             :get-symbol   {:command get-symbol}
+             :get-tag      {:command get-tag}
+             :get-sdk      {:command get-sdk}
+             :get-ts-types {:command get-ts-types}
+             :exit         {:command exit}}}}

@@ -261,9 +261,8 @@
     
      (swap! ztx assoc :zen.fhir/ftr-index ftr-index)))
 
-(defn generate-types-for-version [path version]
-  (let [result-file-path "./package/aidbox-types.d.ts"
-        ztx  (zen.core/new-context {:package-paths [path]})
+(defn generate-types-for-version [path version result-file-path]
+  (let [ztx  (zen.core/new-context {:package-paths [path]})
         _ (zen.core/read-ns ztx (symbol version))
         _ (zen.core/read-ns ztx 'relatient.campaign-match)
         schema (:schemas (zen.core/get-symbol ztx (symbol (str version "/base-schemas"))))
@@ -399,19 +398,8 @@
                (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
         (search-params-generator ztx searches)))
 
-(defn generate-types [path]
-  (io/make-parents (str path "/package/index.js"))
-  (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
-    (first (:deps (edn/read (java.io.PushbackReader. zen-project)))))
-  (with-open [in (io/input-stream (clojure.java.io/resource "index.js"))]
-    (io/copy in (clojure.java.io/file (str path "/package/index.js"))))
-  (with-open [in (io/input-stream (clojure.java.io/resource "index.d.ts"))]
-    (io/copy in (clojure.java.io/file (str path "/package/index.d.ts"))))
-  (with-open [in (io/input-stream (clojure.java.io/resource "package.json"))]
-    (io/copy in (clojure.java.io/file (str path "/package/package.json"))))
-
-  (let [result-file-path "./package/aidbox-types.d.ts"
-        ztx  (zen.core/new-context {:package-paths [path]})
+(defn generate-types [path result-file-path] 
+  (let [ztx  (zen.core/new-context {:package-paths [path]})
         _ (read-versions ztx path)
         _ (println "Done")
         searches (get-searches ztx (zen.core/get-tag ztx 'zen.fhir/searches))
@@ -436,18 +424,34 @@
     (spit result-file-path (str/join ""  resource-map-result) :append true)
 
     (println "Type generation...")
-    (generate-types-for-version path (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas))))
+    (generate-types-for-version path (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas))) result-file-path)
     (println "Done")
 
-    (spit result-file-path (str/join "" search-params-result) :append true)
+    (spit result-file-path (str/join "" search-params-result) :append true)))
 
 
-    (println "Archive generation")
-    (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
-                               " && rm -rf package"))
-    (println "Done")
+(defn get-sdk [path]
+  (io/make-parents (str path "/package/index.js"))
+  (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
+    (first (:deps (edn/read (java.io.PushbackReader. zen-project)))))
+  (with-open [in (io/input-stream (clojure.java.io/resource "index.js"))]
+    (io/copy in (clojure.java.io/file (str path "/package/index.js"))))
+  (with-open [in (io/input-stream (clojure.java.io/resource "index.d.ts"))]
+    (io/copy in (clojure.java.io/file (str path "/package/index.d.ts"))))
+  (with-open [in (io/input-stream (clojure.java.io/resource "package.json"))]
+    (io/copy in (clojure.java.io/file (str path "/package/package.json"))))
 
-    (System/exit 0)))
+  (generate-types path "./package/aidbox-types.d.ts")
+  (println "Archive generation")
+  (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
+                             " && rm -rf package"))
+  (println "Done")
+
+  (System/exit 0))
+
+(defn get-ts-types [path]
+  (generate-types path "../aidbox-types.d.ts")
+  (println "Done"))
 
 #_(comment
   ;; CLASSPATH

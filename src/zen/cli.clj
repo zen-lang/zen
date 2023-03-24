@@ -136,8 +136,8 @@
   ([_ztx opts]
    (if-let [initted-deps (zen.package/zen-init-deps! (get-pwd opts))]
      {::status :ok :format :message ::result {:message "Dependencies have been successfully updated"
-                                               :status  :ok
-                                               :code :pulled :deps initted-deps}}
+                                              :status  :ok
+                                              :code :pulled :deps initted-deps}}
      {::status :ok :format :message ::result {:status :ok :message "No dependencies found" :code :nothing-to-pull}})))
 
 
@@ -149,7 +149,7 @@
    {:format  :error
     ::status :ok
     ::result (seq (map #(assoc % ::file
-                               (some-> 
+                               (some->
                                 (or (get-in @ztx [:ns (:ns %) :zen/file])
                                     (:file %)
                                     (and (:resource %)
@@ -158,7 +158,10 @@
                        (zen.core/errors ztx :order :as-is)))}))
 
 (defn get-sdk []
-  (zen.types-generation/generate-types (get-pwd nil)))
+  (zen.types-generation/get-sdk (get-pwd nil)))
+
+(defn get-ts-types []
+  (zen.types-generation/get-ts-types (get-pwd nil)))
 
 (defn validate
   ([symbols-str data-str opts] (validate (load-ztx opts) symbols-str data-str opts))
@@ -241,7 +244,7 @@
   ([path package-name opts] (build nil path package-name opts))
   ([_ztx path package-name opts] #_"NOTE: currently this fn doesn't need ztx"
    (zen.package/zen-build! (get-pwd opts) {:build-path path :package-name package-name})
-   {::status :ok :format :message ::result {:message "Project was successfully builded" :code :builded :status :ok}}))
+                                 {::status :ok :format :message ::result {:message "Project was successfully builded" :code :builded :status :ok}}))
 
 (defn command-dispatch [command-name _command-args _opts]
   command-name)
@@ -256,6 +259,9 @@
 
 (defmethod command 'zen.cli/get-sdk [_ _ _]
   (get-sdk))
+
+(defmethod command 'zen.cli/get-ts-types [_ _ _]
+  (get-ts-types))
 
 (defmethod command 'zen.cli/build [_ [path package-name] opts]
   (let [path-str (str path)]
@@ -399,11 +405,11 @@
         opts (update opts :stop-repl-atom #(or % (atom false)))]
     (while (not @(:stop-repl-atom opts))
       (return-fn
-        (exception->error-result
-          (prompt-fn)
-          (let [line (read-fn)
-                args (split-args-by-space line)]
-            (cli-exec ztx config-sym args opts)))))))
+       (exception->error-result
+        (prompt-fn)
+        (let [line (read-fn)
+              args (split-args-by-space line)]
+          (cli-exec ztx config-sym args opts)))))))
 
 (defn cli-main* [ztx config-sym [cmd-name :as args] opts]
   (if (seq cmd-name)
