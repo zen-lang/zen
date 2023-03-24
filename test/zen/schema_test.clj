@@ -113,7 +113,6 @@
         {:zen/tags #{zen/schema zen/is-key}
          :zen/desc "only primitive default values are supported currently"
          :for #{zen/map}
-         :priority 100
          :type zen/map
          :key {:type zen/keyword}
          :values {:type zen/case
@@ -154,8 +153,8 @@
 
     (zen.core/load-ns ztx my-ns)
 
-    #_(matcho/match (zen.core/errors ztx) #_"NOTE: FIXME: keys that use get-cached during compile time won't be recompiled when these schemas used in get-cached updated. E.g. adding new is-key for zen/schema won't cause zen/schema recompile and the key won't be recognized by zen/schema validation"
-                    empty?)
+    (matcho/match (zen.core/errors ztx)
+                  empty?)
 
     (def data
       {:id "foo"
