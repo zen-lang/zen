@@ -11,9 +11,6 @@
             [taoensso.nippy :as nippy]))
 
 
-(def output-reset "\u001B[0m")
-(def green "\u001B[32m")
-(def blue "\u001B[34m")
 
 (def premitives-map
   {:integer "number"
@@ -29,6 +26,7 @@
                        }[keyof T];\n"
    :require-at-least-one-type "type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>; }[keyof T];\n"
    :reference-type "export type Reference<T extends ResourceType> = {\nid: string;\nresourceType: T;\ndisplay?: string;\n};\n"
+   :reference-type-fhir "export type Reference<T extends ResourceType> = {\nreference: string;\ndisplay?: string;\n};\n"
    :resourcetype-type "}\n\nexport type ResourceType = keyof ResourceTypeMap;\n"
    :subs-subscription "export interface SubsSubscription extends DomainResource {\nstatus: 'active' | 'off';
                        trigger: Partial<Record<ResourceType, { event: Array<'all' | 'create' | 'update' | 'delete'>; filter?: unknown }>>;
@@ -132,9 +130,9 @@
 (defn generate-valueset-type [ztx vtx schema]
   (let [confirms (first (set-to-string vtx (:confirms schema)))
         valueset-values (get-valueset-values ztx (get-in schema [:zen.fhir/value-set :symbol]))]
-    (cond 
+    (cond
       (= confirms "CodeableConcept") "CodeableConcept"
-      (or (> (count valueset-values) 20) (= (count valueset-values) 0)) "string" 
+      (or (> (count valueset-values) 20) (= (count valueset-values) 0)) "string"
       :else (str/join " | " (map #(format "'%s'" %) valueset-values)))))
 
 (defn generate-confirms [vtx schema]
@@ -235,7 +233,7 @@
          (update new-vtx ::ts conj (generate-enum data))
          (= (last (:schema new-vtx)) :values)
          (update new-vtx ::ts conj (get-desc data) (generate-values new-vtx))
-         (and (= (last (:path new-vtx)) :keys) (= (::interface-name vtx) "Resource")) 
+         (and (= (last (:path new-vtx)) :keys) (= (::interface-name vtx) "Resource"))
          (update new-vtx ::ts conj "{ \n resourceType: ResourceType;")
          (= (last (:path new-vtx)) :keys) (update new-vtx ::ts conj "{ ")
          (= (last (:schema new-vtx)) :every) (update new-vtx ::ts conj "Array<")
@@ -258,8 +256,8 @@
         _ (clojure.java.io/copy in out)
         ftr-index (->> (.toByteArray out)
                        (nippy/thaw))]
-    
-     (swap! ztx assoc :zen.fhir/ftr-index ftr-index)))
+
+    (swap! ztx assoc :zen.fhir/ftr-index ftr-index)))
 
 (defn generate-types-for-version [path version result-file-path]
   (let [ztx  (zen.core/new-context {:package-paths [path]})
@@ -271,9 +269,7 @@
 
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
     (println "Building FTR index...")
-    (println (str blue "It may take some time" output-reset))
-    (get-ftr-index ztx (str path "/zen-packages/" version "/index.nippy")) 
-    (println "Done")
+    (get-ftr-index ztx (str path "/zen-packages/" version "/index.nippy"))
 
 
 
@@ -292,7 +288,6 @@
                                            (zen.core/get-symbol ztx (symbol resource))
                                            {:interpreters [::ts]})]
               (spit result-file-path (str/join "" (conj (::ts schemas-result) "\n")) :append true))) custom-resources)
-    (println "Done")
 
     (println "Resource generation...")
     (mapv (fn [[k _v]]
@@ -398,17 +393,16 @@
                (str/join "" (mapv (fn [[k1 v1]] (str "'" (name k1) "'" ": " v1 ";")) v)) "\n};\n"))
         (search-params-generator ztx searches)))
 
-(defn generate-types [path result-file-path] 
+(defn generate-types [path api-type result-file-path]
   (let [ztx  (zen.core/new-context {:package-paths [path]})
         _ (read-versions ztx path)
-        _ (println "Done")
         searches (get-searches ztx (zen.core/get-tag ztx 'zen.fhir/searches))
-        _ (println "Done")
         schema  (get-schemas ztx (zen.core/get-tag ztx 'zen.fhir/base-schemas))
-        _ (println "Done")
         resource-type-map-interface "export interface ResourceTypeMap {\n"
         resourcetype-type (:resourcetype-type prepared-interfaces)
-        reference-type (:reference-type prepared-interfaces)
+        reference-type (if (= api-type "fhir")
+                         (:reference-type-fhir prepared-interfaces)
+                         (:reference-type prepared-interfaces))
         onekey-type (:onekey-type prepared-interfaces)
         require-at-least-one-type (:require-at-least-one-type prepared-interfaces)
         subs-subscription (:subs-subscription prepared-interfaces)
@@ -425,12 +419,11 @@
 
     (println "Type generation...")
     (generate-types-for-version path (namespace (first (zen.core/get-tag ztx 'zen.fhir/base-schemas))) result-file-path)
-    (println "Done")
 
     (spit result-file-path (str/join "" search-params-result) :append true)))
 
 
-(defn get-sdk [path]
+(defn get-sdk [path api-type]
   (io/make-parents (str path "/package/index.js"))
   (with-open [zen-project (io/reader (str path "/zen-package.edn"))]
     (first (:deps (edn/read (java.io.PushbackReader. zen-project)))))
@@ -441,7 +434,7 @@
   (with-open [in (io/input-stream (clojure.java.io/resource "package.json"))]
     (io/copy in (clojure.java.io/file (str path "/package/package.json"))))
 
-  (generate-types path "./package/aidbox-types.d.ts")
+  (generate-types path api-type "./package/aidbox-types.d.ts")
   (println "Archive generation")
   (shell/sh "bash" "-c" (str " tar -czvf ../aidbox-javascript-sdk-v1.0.0.tgz -C package ."
                              " && rm -rf package"))
@@ -449,20 +442,20 @@
 
   (System/exit 0))
 
-(defn get-ts-types [path]
-  (generate-types path "../aidbox-types.d.ts")
+(defn get-ts-types [path api-type]
+  (generate-types path api-type "../aidbox-types.d.ts")
   (println "Done"))
 
 #_(comment
   ;; CLASSPATH
   ;; :paths (path to zrc/)
   ;; :package-paths (path to a project. project = dir with zrc/ and zen-package.edn)
-  
+
   (zen.package/zen-init-deps! "/Users/pavel/Desktop/zen/test/test_project")
 
  (def ztx
     (zen.core/new-context
-     {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]})) 
+     {:package-paths ["/Users/ross/Desktop/HS/zen/test/test_project"]}))
 
   (zen.core/read-ns ztx 'hl7-fhir-r4-core)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core/ig)
@@ -471,11 +464,11 @@
   (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
   (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   (get-ftr-index ztx "/Users/ross/Desktop/HS/zen/test_project/zen-packages/hl7-fhir-r4-core/index.nippy")
-  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set) 
+  (zen.core/get-symbol ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
   (get-valueset-values ztx 'hl7-fhir-r4-core.value-set.clinical-findings/value-set)
-  
+
   (get-in @ztx [:zen.fhir/ftr-index "init"])
-  
+
   (defn generate-types []
     (let [result-file-path "./result.ts"
           _ (zen.core/read-ns ztx 'hl7-fhir-r4-core)
@@ -528,7 +521,7 @@
 
 
       (spit result-file-path (str/join ""  resource-map-result) :append true)
-      (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings) 
+      (zen.core/read-ns ztx 'hl7-fhir-r4-core.value-set.clinical-findings)
       (mapv (fn [[k _v]]
               (println k)
               (zen.core/read-ns ztx (symbol (str "hl7-fhir-r4-core." k)))

@@ -157,11 +157,11 @@
                                 (subs (inc (count (get-pwd opts))))))
                        (zen.core/errors ztx :order :as-is)))}))
 
-(defn get-sdk []
-  (zen.types-generation/get-sdk (get-pwd nil)))
+(defn get-sdk [args]
+  (zen.types-generation/get-sdk (get-pwd) (last (clojure.string/split (str (first args)) #"="))))
 
-(defn get-ts-types []
-  (zen.types-generation/get-ts-types (get-pwd nil)))
+(defn get-ts-types [args]
+  (zen.types-generation/get-ts-types (get-pwd) (last (clojure.string/split (str (first args)) #"="))))
 
 (defn validate
   ([symbols-str data-str opts] (validate (load-ztx opts) symbols-str data-str opts))
@@ -257,11 +257,11 @@
 (defmethod command 'zen.cli/pull-deps [_ _ opts]
   (pull-deps opts))
 
-(defmethod command 'zen.cli/get-sdk [_ _ _]
-  (get-sdk))
+(defmethod command 'zen.cli/get-sdk [_ args _]
+  (get-sdk args))
 
-(defmethod command 'zen.cli/get-ts-types [_ _ _]
-  (get-ts-types))
+(defmethod command 'zen.cli/get-ts-types [_ args _]
+  (get-ts-types args))
 
 (defmethod command 'zen.cli/build [_ [path package-name] opts]
   (let [path-str (str path)]

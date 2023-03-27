@@ -52,8 +52,8 @@
   :args-style :positional
   :args {:type zen/case
          :case [#_{:zen/desc "Build the project into the current directory"
-                 :when {:type zen/vector :minItems 0 :maxItems 0}
-                 :then {}}
+                   :when {:type zen/vector :minItems 0 :maxItems 0}
+                   :then {}}
                 {:zen/desc "Build the project in a specific path"
                  :when {:type zen/vector :minItems 1 :maxItems 1}
                  :then {:type zen/vector :nth {0 {:type zen/symbol :zen/desc "path"}}}}
@@ -114,14 +114,20 @@
   :zen/desc "sdk generation"
   :args-style :positional
   :args {:type zen/vector
-         :maxItems 0}}
- 
-  get-ts-types
+         :minItems 0
+         :maxItems 1
+         :nth {0 {:type zen/symbol
+                  :zen/desc "API Type"}}}}
+
+ get-ts-types
  {:zen/tags #{zen.cli-tools/command}
   :zen/desc "typescript types generation"
   :args-style :positional
   :args {:type zen/vector
-         :maxItems 0}}
+         :minItems 0
+         :maxItems 1
+         :nth {0 {:type zen/symbol
+                  :zen/desc "API Type"}}}}
 
  exit
  {:zen/tags #{command}
