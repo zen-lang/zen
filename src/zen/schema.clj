@@ -56,9 +56,9 @@
       hooks)))
 
 
-(defn wrap-with-hooks [compiled-schema-fn {:keys [pre post]}]
+(defn wrap-with-hooks [compiled-schema {:keys [pre post]}]
   (if (and (empty? pre) (empty? post))
-    compiled-schema-fn
+    compiled-schema
     (fn compiled-with-hooks-fn [vtx data opts]
       (let [pre-hooks  (get-hooks pre data opts)
             post-hooks (get-hooks post data opts)]
@@ -66,7 +66,7 @@
           pre-hooks  (as-> $ (utils/iter-reduce (fn [vtx* hook-fn] (hook-fn vtx*))
                                                 $
                                                 pre-hooks))
-          :always    (compiled-schema-fn data opts)
+          :always    (compiled-schema data opts)
           post-hooks (as-> $ (utils/iter-reduce (fn [vtx* hook-fn] (hook-fn vtx*))
                                                 $
                                                 post-hooks)))))))
@@ -86,36 +86,67 @@
                                              :message (.getMessage e)}))})))
 
 
-(defn compile-schema [ztx schema]
+(defn safe-compile-key-into-dispatch [target _k _ztx _v] target)
+
+
+(defmulti safe-compile-key-into #'safe-compile-key-into-dispatch)
+
+
+(defmethod safe-compile-key-into ::interpreters-fn [_ k ztx v]
+  (safe-compile-key k ztx v))
+
+
+(defn compile-rulesets-into-dispatch [target _ztx schema _compiled-rulesets] target)
+
+
+(defmulti compile-rulesets-into #'compile-rulesets-into-dispatch)
+
+
+(defmethod compile-rulesets-into ::interpreters-fn [_ ztx schema compiled-rulesets]
+  (fn compiled-schema [vtx data opts]
+    ;; Efficiently apply interpreters for each rule
+    (utils/iter-reduce
+      (fn [vtx* rule]
+        (let [when-fn (:when rule)
+              apply-rule? (or (nil? when-fn) (when-fn data))]
+          (if apply-rule?
+            (utils/iter-reduce
+              (fn [vtx** interpreter-key]
+                (if-let [interpreter (get rule interpreter-key)]
+                  (interpreter vtx** data opts)
+                  vtx**))
+              vtx* (:interpreters opts))
+            vtx*)))
+      (assoc vtx :type (:type schema))
+      compiled-rulesets)))
+
+
+(defn get-hooks-for-dispatch [target _ztx _schema] target)
+
+
+(defmulti get-hooks-for #'get-hooks-for-dispatch)
+
+
+(defmethod get-hooks-for ::interpreters-fn [_ ztx schema]
+  {:pre (get-schema-hooks ztx @schema-pre-process-hooks-atom schema)
+   :post (get-schema-hooks ztx @schema-post-process-hooks-atom schema)})
+
+
+(defn compile-schema [target ztx schema]
   (let [rulesets (->> schema
-                      (keep (fn [[k v]] (safe-compile-key k ztx v)))
+                      (keep (fn [[k v]] (safe-compile-key-into target k ztx v)))
                       (sort-by #(:priority % 100)))
 
-        compiled-schema-fn
-        (fn compiled-schema-fn [vtx data opts]
-          ;; Efficiently apply interpreters for each rule
-          (utils/iter-reduce (fn [vtx* rule]
-                               (let [when-fn (:when rule)
-                                     apply-rule? (or (nil? when-fn) (when-fn data))]
-                                 (if apply-rule?
-                                   (utils/iter-reduce (fn [vtx** interpreter-key]
-                                                        (if-let [interpreter (get rule interpreter-key)]
-                                                          (interpreter vtx** data opts)
-                                                          vtx**))
-                                                      vtx* (:interpreters opts))
-                                   vtx*)))
-                             (assoc vtx :type (:type schema))
-                             rulesets))]
+        compiled-schema (compile-rulesets-into target ztx schema rulesets)]
 
-    (wrap-with-hooks
-      compiled-schema-fn
-      {:pre (get-schema-hooks ztx @schema-pre-process-hooks-atom schema)
-       :post (get-schema-hooks ztx @schema-post-process-hooks-atom schema)})))
+    (wrap-with-hooks compiled-schema
+                     (get-hooks-for target ztx schema))))
 
 
 (defn get-cached
-  [ztx schema init?]
-  (let [hash* (hash schema)
+  [ztx schema init? & [target]]
+  (let [target (or target ::interpreters-fn)
+        hash* (hash schema)
         v-promise (get-in @ztx [:zen.v2-validation/compiled-schemas hash*])]
     (if (some? v-promise) #_"NOTE: race condition will result in double compilation, but this shouldn't crash anything"
       (fn cached-schema-fn [vtx data opts]
@@ -125,16 +156,20 @@
                        ::timeout)]
           (if (= ::timeout v) ;; can't wait this long for the compilation to end, going to compile ourselves
             (do (swap! ztx update :zen.v2-validation/compiled-schemas dissoc hash*)
-                ((get-cached ztx schema init?)
+                ((get-cached ztx schema init? target)
                  vtx data opts))
             (v vtx data opts))))
 
       (let [v-promise (promise)
             _ (swap! ztx assoc-in [:zen.v2-validation/compiled-schemas hash*] v-promise)
-            v (compile-schema ztx schema)]
+            v (compile-schema target ztx schema)]
 
         (deliver v-promise v)
         v))))
+
+
+(defn compile-schema-into [ztx schema compile-target & {:keys [init?]}]
+  (get-cached ztx schema init? compile-target))
 
 
 (defn apply-schema
@@ -145,11 +180,11 @@
                 (assoc :path [])
                 (assoc-in [:zen.v2-validation/confirmed [] (:zen/name schema)] true))
 
-        compiled-schema-fn (get-cached ztx schema true)
+        compiled-schema (compile-schema-into ztx schema ::interpreters-fn :init? true)
 
         opts (update opts :interpreters #(into [:rule ::navigate] %))]
 
-    (compiled-schema-fn vtx data opts)))
+    (compiled-schema vtx data opts)))
 
 
 (defmethod compile-key :keys            [_ _ _] {:when map? :priority 0})

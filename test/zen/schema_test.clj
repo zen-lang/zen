@@ -89,6 +89,75 @@
     (t/is (= ts-typedef-assert (str/join "" (distinct (::ts r)))))))
 
 
+#_(t/deftest ^:kaocha/pending custom-compile-target-test
+  (t/testing "typescript type generation"
+    (def ztx (zen.core/new-context {}))
+
+    (def my-structs-ns
+      '{:ns my-sturcts
+
+        name
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:given {:type zen/vector
+                        :every {:type zen/string}}
+                :family {:type zen/string}}}
+
+        User
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:id {:type zen/string}
+                :email {:type zen/string
+                        #_#_:regex "@"}
+                :name {:type zen/vector
+                       :every {:confirms #{name myname}}}
+                :link {:type zen/vector
+                       :every {:type zen/map
+                               :keys {:id {:type zen/string}}}}}}})
+
+    (sut/register-compile-target!
+      [::attrs :keys]
+      (fn [_ ztx ks]
+        (let [key-rules (->> ks
+                             (map (fn [[k sch]]
+                                    [k (sut/get-cached ztx sch false)]))
+                             (zen.utils/iter-into {}))]
+          key-rules)))
+
+    (sut/register-compile-target!
+      [::attrs :every]
+      (fn [_ ztx evr]
+        [[:* (sut/get-cached ztx evr false)]]))
+
+    (sut/register-compile-target!
+      [::attrs :type]
+      (fn [_ ztx tp]
+        {}))
+
+    (sut/register-post-hook!
+      ::attrs
+      (fn [ztx sch]))
+
+
+    (zen.core/load-ns ztx my-structs-ns)
+
+    (def r
+      (sut/compile-schema-into
+        ztx
+        (zen.core/get-symbol ztx 'my-sturcts/User)
+        ::attrs))
+
+    (t/is (= {:User.id       {:path ["id"]}
+              :User.email    {:path ["email"]}
+              :User.name     {:path ["name"] :isCollection true :type :name}
+              :User.link     {:path ["link"] :isCollection true}
+              :User.link.id  {:path ["link" "id"]}
+
+              :name.given  {:path ["given"] :isCollection true}
+              :name.family {:path ["family"]}}
+             (::attrs r)))))
+
+
 (defmethod sut/compile-key :my/defaults [_ _ _] {:priority -1})
 
 
@@ -238,3 +307,42 @@
   (matcho/match
     (zen.core/errors ztx)
     empty?))
+
+
+(sut/register-compile-key-interpreter!
+  [:keys ::get-keys]
+  (fn [_ ztx ks]
+    (fn [vtx data opts]
+      (update-in vtx [::get-keys (:path vtx) :keys] (fnil conj []) ks))))
+
+
+(sut/register-compile-key-interpreter!
+ [:key-schema ::get-keys]
+ (fn [_ ztx {:keys [tags]}]
+   (fn navigate-key-schema [vtx data opts]
+     (let [ks
+           (->> tags
+                (mapcat #(zen.utils/get-tag ztx %))
+                (mapv (fn [sch-name]
+                        (if (= "zen" (namespace sch-name))
+                          (keyword (name sch-name))
+                          (keyword sch-name)))))]
+       (update-in vtx [::get-keys (:path vtx) :keys] (fnil conj []) ks)))))
+
+
+(t/deftest get-keys-test
+  (def ztx (zen.core/new-context {}))
+
+  (matcho/match (zen.core/errors ztx)
+                empty?)
+
+  (def data
+    {:zen/tags #{'zen/schema}})
+
+  (def r
+    (sut/apply-schema ztx
+                      {::get-keys {}}
+                      data
+                      'zen/schema
+                      {:interpreters [::get-keys]}))
+  )
