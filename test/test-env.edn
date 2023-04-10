@@ -8,6 +8,8 @@
          :sym    {:type zen/symbol}
          :key    {:type zen/keyword}
          :num    {:type zen/number}
+         :bool-true {:type zen/boolean}
+         :bool-false {:type zen/boolean}
          }}
 
  model
@@ -18,6 +20,8 @@
   :sym    #env-symbol ESYM
   :key    #env-keyword EKEY
   :num    #env-number ENUM
+  :bool-true #env-boolean BOOL_TRUE
+  :bool-false #env-boolean BOOL_FALSE
   }
 
 

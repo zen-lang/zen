@@ -7,7 +7,9 @@
 
   (def ztx (zen.core/new-context {:paths ["test"]
                                   :env {:ESTR "extr" :EINT "99" :ESYM "schema"
-                                        :ENUM "0.02" :EKEY "some/key"}}))
+                                        :ENUM "0.02" :EKEY "some/key"
+                                        :BOOL_TRUE "true"
+                                        :BOOL_FALSE "false"}}))
 
   (zen.core/read-ns ztx 'test-env)
 
@@ -22,4 +24,6 @@
      :int 99
      :key :some/key
      :num 0.02
+     :bool-true true
+     :bool-false false
      :sym 'test-env/schema}))

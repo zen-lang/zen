@@ -286,6 +286,13 @@
   (when-let [v (get-env env env-name)]
     (Double/parseDouble v)))
 
+(defn env-boolean [env env-name]
+  (when-let [v (get-env env env-name)]
+    (cond
+      (= "true" v) true
+      (= "false" v) false
+      :else (throw (ex-info (str "Expected true or false in " env-name ", got " v) {})))))
+
 (defn zen-quote [d]
   (with-meta d {:zen/quote true}))
 
@@ -302,6 +309,7 @@
                                                            'env-symbol  (fn [v] (env-symbol  env v))
                                                            'env-number  (fn [v] (env-number  env v))
                                                            'env-keyword (fn [v] (env-keyword  env v))
+                                                           'env-boolean (fn [v] (env-boolean env v))
                                                            'zen/quote   (fn [d] (zen-quote d))}})
               zen-ns (or (get ns-map 'ns) (get ns-map :ns))]
           (if (= nm zen-ns)
