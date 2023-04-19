@@ -9,6 +9,9 @@
                                :task (clojure "-Sdeps '{:deps {clj-kondo/clj-kondo {:mvn/version \"RELEASE\"}}} '-m clj-kondo.main --lint src:test --parallel --fail-level error")}
 
          test                 {:doc  "Run tests"
-                               :task (clojure "-M:test:kaocha")}
+                               :task (clojure "-A:test:kaocha")}
+
+         test-ci              {:doc  "Run CI tests"
+                               :task (clojure "-A:test:kaocha --skip zen.dev-test --skip zen.package-test --skip zen.cli-test")}
 
          }}
