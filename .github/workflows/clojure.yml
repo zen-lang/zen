@@ -14,16 +14,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Prepare java
-        uses: actions/setup-java@v3.5.0
+      - name: Install all the tools
+        uses: DeLaGuardo/setup-clojure@10.3
         with:
-          distribution: "zulu"
-          java-version: "8"
-
-      - name: Install clojure tools
-        uses: DeLaGuardo/setup-clojure@9.5
+          cli: 1.11.1.1149
+          bb: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache clojure dependencies
+        uses: actions/cache@v3
         with:
-          cli: 1.11.1.1155
-
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+            ~/libs/validator_cli.jar
+          key: cljdeps-${{ hashFiles('deps.edn') }}
+          restore-keys: cljdeps-
       - name: Run tests
-        run: make test-ci
+        run: bb test
+
