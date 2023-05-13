@@ -164,3 +164,31 @@
           :type "string.type"
           :path [:a]
           :schema [myns/sch2 :a :type]}]})))
+
+
+(deftest backward-alias-test
+  (def test-namespaces
+    '{lib {:ns lib
+           foo :zen/declare
+           bar {:cfg foo}}
+
+      user {:ns     user
+            :import #{lib}
+            lib/foo myfoo
+            myfoo   {:baz :quux}}})
+
+  (def ztx (zen/new-context {:unsafe true :memory-store test-namespaces}))
+
+  (zen/load-ns ztx (get test-namespaces 'user))
+
+  (matcho/match (zen/errors ztx)
+                empty?)
+
+  (matcho/match (zen/get-symbol ztx 'lib/foo)
+                {:baz :quux})
+
+  (matcho/match (zen/get-symbol ztx 'user/myfoo)
+                {:baz :quux})
+
+  (is (= (zen/get-symbol ztx 'lib/foo)
+         (zen/get-symbol ztx 'user/myfoo))))

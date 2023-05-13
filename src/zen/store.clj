@@ -47,7 +47,7 @@
                        (fnil conj #{})
                        (mk-symbol zen-ns ns-key)))))
 
-    (when (nil? res)
+    (when (and (nil? res) (not (contains? (:declares @ctx) resolved-sym)))
       (swap! ctx update :errors
              (fnil conj [])
              (if (namespace sym)
@@ -128,11 +128,20 @@
 (defn load-alias [ctx alias-dest alias]
   (swap! ctx update :aliases zen.utils/disj-set-union-push alias-dest alias))
 
+(defn load-declare [ctx declare-sym]
+  (swap! ctx update :declares (fnil conj #{}) declare-sym))
+
 (defn symbol-definition? [[k v]]
   (and (symbol? k) (map? v)))
 
 (defn symbol-alias? [[k v]]
   (and (symbol? k) (qualified-symbol? v)))
+
+(defn backward-alias? [[k v]]
+  (and (qualified-symbol? k) (simple-symbol? v)))
+
+(defn backward-alias-declare? [[k v]]
+  (and (simple-symbol? k) (= :zen/declare v)))
 
 (defn pre-load-ns!
   "loads symbols from namespace to ztx before processing"
@@ -179,11 +188,13 @@
     ;; eval symbols and aliases
     (let [load-result
           (->> (apply dissoc ns-map ['ns 'import 'alias :ns :import :alias])
-               (sort-by (juxt symbol-definition? symbol-alias?)) #_"NOTE: load aliases first, symbols after"
+               (sort-by (juxt symbol-definition? symbol-alias? backward-alias? backward-alias-declare?)) #_"NOTE: load aliases first, symbols after"
                (mapv (fn [[k v :as kv]]
                        (cond (symbol-definition? kv) (load-symbol ctx zen-ns k (merge v opts))
                              (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns k))
-                             :else                   nil)))
+                             (backward-alias? kv)         (load-alias ctx (mk-symbol zen-ns v) k)
+                             (backward-alias-declare? kv) (load-declare ctx (mk-symbol zen-ns k))
+                             :else nil)))
                (mapv (fn [res] (validate-resource ctx res))))]
 
       [:resources-loaded (count load-result)])))
