@@ -143,7 +143,7 @@
             (set-state ztx k state op-name))
           (catch Exception ex
             (error ztx 'zen/start-failed {:exception ex :op op-name})))
-        (error ztx 'zen/no-start-key {:op op-name})))
+        (error ztx 'zen/no-state-key {:op op-name})))
     (error ztx 'zen/start-missed {:op op-name})))
 
 (defn start-system [ztx & [entry-point]]
