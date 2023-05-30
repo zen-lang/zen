@@ -18,12 +18,21 @@
 
   (matcho/match
    (zen.core/get-symbol ztx 'test-env/model)
-    {:zen/tags #{'test-env/schema}
-     :home string?
-     :string "extr"
-     :int 99
-     :key :some/key
-     :num 0.02
-     :bool-true true
-     :bool-false false
-     :sym 'test-env/schema}))
+   {:zen/tags #{'test-env/schema}
+    :home string?
+    :string "extr"
+    :int 99
+    :key :some/key
+    :num 0.02
+    :bool-true true
+    :bool-false false
+    :sym 'test-env/schema
+
+    :dstring "DS"
+    :dint 4
+    :dkey :key
+    :dbool-false false
+    :dbool-true true
+    :dnum 4.0
+    :dsym 'test-env/sym
+    :dhome "DH"}))

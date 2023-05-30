@@ -263,8 +263,12 @@
   (:file (find-file&path ctx pth)))
 
 (defn get-env [env env-name]
-  (or (get env (keyword env-name))
-      (System/getenv (str env-name))))
+  (let [[env-name default] (if (vector? env-name)
+                             env-name
+                             [env-name nil])]
+    (or (get env (keyword env-name))
+        (System/getenv (str env-name))
+        default)))
 
 (defn env-string [env env-name]
   (when-let [v (get-env env env-name)]
@@ -272,26 +276,37 @@
 
 (defn env-integer [env env-name]
   (when-let [v (get-env env env-name)]
-    (Integer/parseInt v)))
+    (if (number? v)
+      v
+      (Integer/parseInt v))))
 
 (defn env-symbol [env env-name]
   (when-let [v (get-env env env-name)]
-    (symbol v)))
+    (if (symbol? v)
+      v
+      (symbol v))))
 
 (defn env-keyword [env env-name]
   (when-let [v (get-env env env-name)]
-    (keyword v)))
+    (if (keyword? v)
+      v
+      (keyword v))))
 
 (defn env-number [env env-name]
   (when-let [v (get-env env env-name)]
-    (Double/parseDouble v)))
+    (if (number? v)
+      v
+      (Double/parseDouble v))))
 
 (defn env-boolean [env env-name]
-  (when-let [v (get-env env env-name)]
-    (cond
-      (= "true" v) true
-      (= "false" v) false
-      :else (throw (ex-info (str "Expected true or false in " env-name ", got " v) {})))))
+  (let [v (get-env env env-name)]
+    (when (not (nil? v))
+      (if (boolean? v)
+        v
+        (cond
+          (= "true" v) true
+          (= "false" v) false
+          :else (throw (ex-info (str "Expected true or false in " env-name ", got " v) {})))))))
 
 (defn zen-quote [d]
   (with-meta d {:zen/quote true}))

@@ -160,7 +160,10 @@ or system env variables should be set - `export MY_VAR='value'`.
   :sym    #env-symbol ESYM
   :key    #env-keyword EKEY
   :num    #env-number ENUM}
-  :bool   #env-boolean BOOL}
+  :bool   #env-boolean BOOL
+  ;; or with defaults
+  :string #env [ESTR "Default"]
+  }
 ```
 
 ## Schema
