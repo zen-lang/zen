@@ -107,7 +107,7 @@
   (if-let [config (get-symbol ztx  model-name)]
     (if-let [proto-nm (:op config)]
       (if-let [proto (get-symbol ztx proto-nm)]
-        (op ztx proto (merge-with merge params (select-keys config [:params])) session)
+        (op ztx proto (merge-with merge params config) session)
         (error ztx 'zen/op-missed {:op proto-nm}))
       (op ztx config params session))
     (error ztx 'zen/op-missed {:op model-name})))
