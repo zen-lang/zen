@@ -102,9 +102,14 @@
   (pub ztx error-name params session)
   {:error (assoc params :name error-name)})
 
+;; TODO: impl partial op
 (defn op-call [ztx model-name params & [session]]
   (if-let [config (get-symbol ztx  model-name)]
-    (op ztx config params session)
+    (if-let [proto-nm (:op config)]
+      (if-let [proto (get-symbol ztx proto-nm)]
+        (op ztx proto (merge-with merge params (select-keys config [:params])) session)
+        (error ztx 'zen/op-missed {:op proto-nm}))
+      (op ztx config params session))
     (error ztx 'zen/op-missed {:op model-name})))
 
 (defn set-state [ztx key state & [start]]
@@ -132,18 +137,35 @@
         (swap! ztx update :zen/state dissoc k)))
     (error ztx 'zen/on-stop-no-model {:op op-name})))
 
+;; find method model (model or if engine then model)
+;; check is it start (rename to state) or op
+(defn get-op-model [ztx op-name]
+  (let [model (get-symbol ztx op-name)]
+    (if-let [op (:op model)]
+      (get-symbol ztx op)
+      model)))
+
 (defn start-call [ztx op-name]
-  (stop-call ztx op-name)
-  (if-let [model (get-symbol ztx op-name)]
-    (let [k (model-state-key ztx model)]
-      (if k
-        (try
-          (pub ztx 'zen/on-start {:op op-name :zen/state-key k})
-          (let [state (start ztx model)]
-            (set-state ztx k state op-name))
-          (catch Exception ex
-            (error ztx 'zen/start-failed {:exception ex :op op-name})))
-        (error ztx 'zen/no-state-key {:op op-name})))
+  (if-let [op-model (get-op-model ztx op-name)]
+    (cond
+      (contains? (:zen/tags op-model) 'zen/start)
+      (do
+        (stop-call ztx op-name)
+        (if-let [model (get-symbol ztx op-name)]
+          (let [k (model-state-key ztx model)]
+            (if k
+              (try
+                (pub ztx 'zen/on-start {:op op-name :zen/state-key k})
+                (let [state (start ztx model)]
+                  (set-state ztx k state op-name))
+                (catch Exception ex
+                  (error ztx 'zen/start-failed {:exception ex :op op-name})))
+              (error ztx 'zen/no-state-key {:op op-name})))
+          (error ztx 'zen/start-missed {:op op-name})))
+      (contains? (:zen/tags op-model) 'zen/op)
+      (op ztx op-model (get-symbol ztx op-name))
+      :else
+      (error ztx 'zen/start-unknown {:op op-name :message (str "expected op-name is zen/start or zen/op")}))
     (error ztx 'zen/start-missed {:op op-name})))
 
 (defn start-system [ztx & [entry-point]]

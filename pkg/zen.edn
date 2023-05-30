@@ -459,4 +459,4 @@
   :type map
   :keys {:start {:type vector
                  :zen/desc "Vector of start operations"
-                 :every {:type symbol :tags #{start}}}}}}
+                 :every {:type symbol}}}}}
