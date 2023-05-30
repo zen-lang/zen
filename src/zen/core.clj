@@ -141,7 +141,7 @@
 ;; check is it start (rename to state) or op
 (defn get-op-model [ztx op-name]
   (let [model (get-symbol ztx op-name)]
-    (if-let [op (:op model)]
+    (if-let [op (or (:engine model) (:op model))]
       (get-symbol ztx op)
       model)))
 
