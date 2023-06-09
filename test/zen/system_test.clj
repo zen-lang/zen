@@ -33,6 +33,18 @@
       (get @db (:resourceType req)))
     (zen/error ztx 'mysystem/no-db {:op 'mysystem/search})))
 
+(defmethod zen/op
+  'mysystem/just-op
+  [ztx config req & [session]]
+  (swap! ztx assoc :just-op true)
+  {:status :ok})
+
+(defmethod zen/op
+  'mysystem/generic-op
+  [ztx config {{v :value :as params} :params} & [session]]
+  (swap! ztx assoc :generic-op v)
+  {:status :ok :params params})
+
 (t/deftest test-zen-system
 
   (def ztx (zen/new-context {}))
@@ -51,6 +63,16 @@
           :type zen/map
           :values {:type zen/any}}
 
+         just-op
+         {:zen/tags #{zen/op}}
+
+         generic-op
+         {:zen/tags #{zen/op}}
+
+         partial-op
+         {:op generic-op
+          :params {:value 2}}
+
          custom-comp
          {:zen/tags #{zen/start comp-sch}
           :zen/state-key :custom-comp
@@ -58,7 +80,7 @@
 
          system
          {:zen/tags #{zen/system}
-          :start [custom-comp]}})
+          :start [custom-comp just-op partial-op]}})
 
   (zen/start-system ztx 'mysystem/system)
 
@@ -66,6 +88,15 @@
 
   (t/is (zen/model-state ztx (zen/get-symbol ztx 'mysystem/custom-comp)))
   (t/is (zen/get-state ztx :custom-comp))
+
+  (t/is (:just-op @ztx))
+  (t/is (= 2 (:generic-op @ztx)))
+
+  (zen/op-call ztx 'mysystem/generic-op {:params {:value 3}})
+
+  (zen/op-call ztx 'mysystem/partial-op {:params {:value 3 :extra 4}})
+
+  (zen/op-call ztx 'mysystem/just-op {})
 
   (:zen/state @ztx)
 

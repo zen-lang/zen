@@ -134,6 +134,7 @@ Some data can be moved from edn to envs using special readers:
 * #env-symbol - read symbol
 * #env-keyword - read keyword
 * #env-number  - read number
+* #env-boolean  - read boolean
 
 Before reading with envs - zen context should be initialized with envs: `(zen.core/new-context {:env {:ENV_NAME "env-value"}}))`
 or system env variables should be set - `export MY_VAR='value'`.
@@ -149,7 +150,8 @@ or system env variables should be set - `export MY_VAR='value'`.
          :int    {:type zen/integer}
          :sym    {:type zen/symbol}
          :key    {:type zen/keyword}
-         :num    {:type zen/number}}}
+         :num    {:type zen/number}
+         :bool   {:type zen/boolean}}}
 
  model
  {:zen/tags #{schema }
@@ -157,7 +159,11 @@ or system env variables should be set - `export MY_VAR='value'`.
   :int    #env-integer EINT
   :sym    #env-symbol ESYM
   :key    #env-keyword EKEY
-  :num    #env-number ENUM}}
+  :num    #env-number ENUM}
+  :bool   #env-boolean BOOL
+  ;; or with defaults
+  :string #env [ESTR "Default"]
+  }
 ```
 
 ## Schema

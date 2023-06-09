@@ -8,6 +8,8 @@
          :sym    {:type zen/symbol}
          :key    {:type zen/keyword}
          :num    {:type zen/number}
+         :bool-true {:type zen/boolean}
+         :bool-false {:type zen/boolean}
          }}
 
  model
@@ -18,6 +20,17 @@
   :sym    #env-symbol ESYM
   :key    #env-keyword EKEY
   :num    #env-number ENUM
+  :bool-true #env-boolean BOOL_TRUE
+  :bool-false #env-boolean BOOL_FALSE
+
+  :dstring     #env [UPS "DS"]
+  :dhome       #env [UPS "DH"]
+  :dint        #env-integer [UPS 4]
+  :dsym        #env-symbol [UPS sym]
+  :dkey        #env-keyword [UPS :key]
+  :dnum        #env-number [UPS 4.0]
+  :dbool-true  #env-boolean [UPS true]
+  :dbool-false #env-boolean [UPS false]
   }
 
 
