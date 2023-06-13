@@ -7,6 +7,13 @@
             [edamame.core]
             [clojure.string :as str]))
 
+#_"NOTE: this namespace extensively uses the following var names:
+- zen-ns-map -- namespace map
+- zen-ns-sym -- symbol name of a namespace
+- sym        -- symbol from a namespace, may be qualified or not
+- qsym       -- namespace qualified symbol
+- resource   -- definition of a symbol from a namespace"
+
 (def get-symbol zen.utils/get-symbol)
 
 (def get-tag zen.utils/get-tag)
@@ -34,10 +41,10 @@
 
 (defn validate-symbol
   "try to resolve symbol, add error, add direct late binding reference"
-  [ctx zen-ns ns-key sym]
+  [ctx zen-ns-sym ns-key sym]
   (let [resolved-sym (if (namespace sym)
                        sym
-                       (mk-symbol zen-ns sym))
+                       (mk-symbol zen-ns-sym sym))
         res (get-symbol ctx resolved-sym)]
 
     (when (contains? (:zen/tags res) 'zen/binding)
@@ -46,20 +53,20 @@
                (update (or cfg res)
                        :diref
                        (fnil conj #{})
-                       (mk-symbol zen-ns ns-key)))))
+                       (mk-symbol zen-ns-sym ns-key)))))
 
     (when (nil? res)
       (swap! ctx update :errors
              (fnil conj [])
              (if (namespace sym)
-               {:message (format "Could not resolve symbol '%s in %s/%s" sym zen-ns ns-key)
+               {:message (format "Could not resolve symbol '%s in %s/%s" sym zen-ns-sym ns-key)
                 :type :unresolved-qualified-symbol
                 :unresolved-symbol sym
-                :ns zen-ns}
-               {:message (format "Could not resolve local symbol '%s in %s/%s" sym zen-ns ns-key)
+                :ns zen-ns-sym}
+               {:message (format "Could not resolve local symbol '%s in %s/%s" sym zen-ns-sym ns-key)
                 :type :unresolved-local-symbol
                 :unresolved-symbol sym
-                :ns zen-ns})))))
+                :ns zen-ns-sym})))))
 
 (defn zen-sym? [sym]
   (and (symbol? sym) (not (:zen/quote (meta sym)))))
@@ -67,29 +74,29 @@
 (defn local-zen-sym? [sym]
   (and (zen-sym? sym) (not (namespace sym))))
 
-(defn ensure-qualified [zen-ns sym]
+(defn ensure-qualified [zen-ns-sym sym]
   (if (local-zen-sym? sym)
-    (mk-symbol zen-ns sym)
+    (mk-symbol zen-ns-sym sym)
     sym))
 
 (defn eval-resource
   "walk resource, expand symbols and validate refs"
-  [ctx zen-ns ns-sym resource]
+  [ctx zen-ns-sym sym resource]
   (let [walk-fn
         (fn [v]
           ;; do not validate zen/quote'd symbols
           (if (zen-sym? v)
-            (let [qual-sym (ensure-qualified zen-ns v)
+            (let [qual-sym (ensure-qualified zen-ns-sym v)
                   maybe-resolved (zen.utils/resolve-aliased-sym ctx qual-sym)]
 
               #_"NOTE: because validate makes different messages for qual and unqual syms, we use v insead of qual-sysm here"
-              (validate-symbol ctx zen-ns ns-sym (or maybe-resolved v))
+              (validate-symbol ctx zen-ns-sym sym (or maybe-resolved v))
 
               (or maybe-resolved qual-sym))
             v))]
 
     (-> (walk-resource walk-fn resource)
-        (assoc :zen/name (mk-symbol zen-ns ns-sym)))))
+        (assoc :zen/name (mk-symbol zen-ns-sym sym)))))
 
 (defn validate-resource [ctx res]
   (let [tags (get res :zen/tags)
@@ -107,23 +114,23 @@
 
 (defn load-symbol
   "resolve refs in resource, update indices"
-  [ctx zen-ns ns-sym v]
-  (let [sym (mk-symbol zen-ns ns-sym)
+  [ctx zen-ns-sym sym v]
+  (let [qsym (mk-symbol zen-ns-sym sym)
 
         {:keys [zen/tags zen/bind] :as resource}
-        (eval-resource ctx zen-ns ns-sym v)]
+        (eval-resource ctx zen-ns-sym sym v)]
 
     (swap! ctx (fn [ctx]
                  ;; save resource
-                 (as-> (assoc-in ctx [:symbols sym] resource) ctx*
+                 (as-> (assoc-in ctx [:symbols qsym] resource) ctx*
                    ;; upd tags registry
                    (reduce (fn [acc tag]
-                             (update-in acc [:tags tag] (fnil conj #{}) sym))
+                             (update-in acc [:tags tag] (fnil conj #{}) qsym))
                            ctx*
                            tags)
                    ;; resolve late binding
                    (cond-> ctx*
-                     bind (assoc-in [:bindings bind :backref] sym)))))
+                     bind (assoc-in [:bindings bind :backref] qsym)))))
     resource))
 
 (defn load-alias [ctx alias-dest alias]
@@ -137,39 +144,39 @@
 
 (defn pre-load-ns!
   "loads symbols from namespace to ztx before processing"
-  [ctx zen-ns ns-map]
+  [ctx zen-ns-sym zen-ns-map]
   (let [symbols
         (into {}
               (keep (fn [[sym resource :as kv]]
                       (when (symbol-definition? kv)
-                        [(mk-symbol zen-ns sym)
+                        [(mk-symbol zen-ns-sym sym)
                          (select-keys resource #{:zen/tags})]))) ;; TODO: maybe not only tags must be saved?
-              ns-map)]
+              zen-ns-map)]
     (swap! ctx update :symbols merge symbols)))
 
-(defn add-zen-ns! [ctx zen-ns ns-map opts]
-  (swap! ctx assoc-in [:ns zen-ns] (assoc ns-map :zen/file (:zen/file opts))))
+(defn add-zen-ns! [ctx zen-ns-sym zen-ns-map opts]
+  (swap! ctx assoc-in [:ns zen-ns-sym] (assoc zen-ns-map :zen/file (:zen/file opts))))
 
-(defn get-ns [ns-map]
-  (or (get ns-map 'ns) (get ns-map :ns)))
+(defn get-ns [zen-ns-map]
+  (or (get zen-ns-map 'ns) (get zen-ns-map :ns)))
 
-(defn get-ns-alias [ns-map]
-  (or (get ns-map 'alias) (get ns-map :alias)))
+(defn get-ns-alias [zen-ns-map]
+  (or (get zen-ns-map 'alias) (get zen-ns-map :alias)))
 
-(defn get-ns-imports [ns-map]
-  (or (get ns-map 'import)
-      (get ns-map :import)))
+(defn get-ns-imports [zen-ns-map]
+  (or (get zen-ns-map 'import)
+      (get zen-ns-map :import)))
 
-(defn ns-already-imported? [ctx zen-ns]
-  (get-in @ctx [:ns zen-ns]))
+(defn ns-already-imported? [ctx zen-ns-sym]
+  (get-in @ctx [:ns zen-ns-sym]))
 
-(defn ns-in-memory-store? [ctx zen-ns]
-  (contains? (:memory-store @ctx) zen-ns))
+(defn ns-in-memory-store? [ctx zen-ns-sym]
+  (contains? (:memory-store @ctx) zen-ns-sym))
 
-(defn get-from-memry-store [ctx zen-ns]
-  (get-in @ctx [:memory-store zen-ns]))
+(defn get-from-memry-store [ctx zen-ns-sym]
+  (get-in @ctx [:memory-store zen-ns-sym]))
 
-(defn import-nss! [ctx zen-ns imports opts]
+(defn import-nss! [ctx zen-ns-sym imports opts]
   (doseq [imp imports]
     (cond
       (ns-already-imported? ctx imp) :already-imported
@@ -177,7 +184,7 @@
       (ns-in-memory-store? ctx imp)
       (load-ns ctx (get-from-memry-store ctx imp) opts)
 
-      :else (read-ns* ctx imp (assoc opts :ns zen-ns)))))
+      :else (read-ns* ctx imp (assoc opts :ns zen-ns-sym)))))
 
 (defn process-ns-alias! [ctx this-ns-sym aliased-ns this-ns-map]
   (when (symbol? aliased-ns)
@@ -189,38 +196,38 @@
                         (mk-symbol aliased-ns aliased-sym)
                         (mk-symbol this-ns-sym aliased-sym))))))))
 
-(defn load-ns-content! [ctx zen-ns ns-map opts]
-  (let [ns-content (apply dissoc ns-map ['ns 'import 'alias :ns :import :alias])]
+(defn load-ns-content! [ctx zen-ns-sym zen-ns-map opts]
+  (let [ns-content (apply dissoc zen-ns-map ['ns 'import 'alias :ns :import :alias])]
     (->> ns-content
          (sort-by (juxt symbol-definition? symbol-alias?)) #_"NOTE: load aliases first, symbols after"
          (mapv (fn [[k v :as kv]]
-                 (cond (symbol-definition? kv) (load-symbol ctx zen-ns k (merge v opts))
-                       (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns k))
+                 (cond (symbol-definition? kv) (load-symbol ctx zen-ns-sym k (merge v opts))
+                       (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns-sym k))
                        :else                   nil)))
          (mapv (fn [res] (validate-resource ctx res))))))
 
-(defn load-ns [ctx ns-map & [opts]]
-  (let [zen-ns (get-ns ns-map)
-        aliased-ns (get-ns-alias ns-map)]
+(defn load-ns [ctx zen-ns-map & [opts]]
+  (let [zen-ns-sym (get-ns zen-ns-map)
+        aliased-ns (get-ns-alias zen-ns-map)]
 
-    (add-zen-ns! ctx zen-ns ns-map opts)
+    (add-zen-ns! ctx zen-ns-sym zen-ns-map opts)
 
-    (pre-load-ns! ctx zen-ns ns-map)
+    (pre-load-ns! ctx zen-ns-sym zen-ns-map)
 
     (import-nss! ctx
-                 zen-ns
-                 (cond->> (get-ns-imports ns-map)
+                 zen-ns-sym
+                 (cond->> (get-ns-imports zen-ns-map)
                    (some? aliased-ns) (cons aliased-ns))
                  opts)
 
-    (process-ns-alias! ctx zen-ns aliased-ns ns-map)
+    (process-ns-alias! ctx zen-ns-sym aliased-ns zen-ns-map)
 
-    (let [load-result (load-ns-content! ctx zen-ns ns-map opts)]
+    (let [load-result (load-ns-content! ctx zen-ns-sym zen-ns-map opts)]
       [:resources-loaded (count load-result)])))
 
-(defn load-ns! [ctx ns-map]
-  (assert (map? ns-map) "Expected map")
-  (load-ns ctx ns-map)
+(defn load-ns! [ctx zen-ns-map]
+  (assert (map? zen-ns-map) "Expected map")
+  (load-ns ctx zen-ns-map)
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
@@ -347,27 +354,27 @@
       (try
         (let [content (slurp file)
               env (:env @ctx)
-              ns-map (edamame.core/parse-string content
-                                                {:readers {'env         (fn [v] (env-string  env v))
-                                                           'env-string  (fn [v] (env-string  env v))
-                                                           'env-integer (fn [v] (env-integer env v))
-                                                           'env-symbol  (fn [v] (env-symbol  env v))
-                                                           'env-number  (fn [v] (env-number  env v))
-                                                           'env-keyword (fn [v] (env-keyword  env v))
-                                                           'env-boolean (fn [v] (env-boolean env v))
-                                                           'zen/quote   (fn [d] (zen-quote d))}})
-              zen-ns (or (get ns-map 'ns) (get ns-map :ns))]
-          (if (= nm zen-ns)
-            (load-ns ctx ns-map (cond-> {:zen/file (.getPath file)}
-                                   zen-path (assoc :zen/zen-path zen-path)))
-            (do (println :file-doesnt-match-namespace (.getPath file) nm zen-ns)
+              zen-ns-map (edamame.core/parse-string content
+                                                    {:readers {'env         (fn [v] (env-string  env v))
+                                                               'env-string  (fn [v] (env-string  env v))
+                                                               'env-integer (fn [v] (env-integer env v))
+                                                               'env-symbol  (fn [v] (env-symbol  env v))
+                                                               'env-number  (fn [v] (env-number  env v))
+                                                               'env-keyword (fn [v] (env-keyword  env v))
+                                                               'env-boolean (fn [v] (env-boolean env v))
+                                                               'zen/quote   (fn [d] (zen-quote d))}})
+              zen-ns-sym (or (get zen-ns-map 'ns) (get zen-ns-map :ns))]
+          (if (= nm zen-ns-sym)
+            (load-ns ctx zen-ns-map (cond-> {:zen/file (.getPath file)}
+                                      zen-path (assoc :zen/zen-path zen-path)))
+            (do (println :file-doesnt-match-namespace (.getPath file) nm zen-ns-sym)
                 (swap! ctx update :errors
                        (fnil conj [])
                        {:message (str "Filename should match contained namespace. Expected "
-                                      nm " got " zen-ns)
+                                      nm " got " zen-ns-sym)
                         :file (.getPath file)
                         :ns nm
-                        :got-ns zen-ns})
+                        :got-ns zen-ns-sym})
                 nil)))
         (catch Exception e
           (println :error-while-reading (.getPath file) e)
@@ -385,14 +392,14 @@
           nil))))
 
 
-(defn read-ns [ctx ns-map & [opts]]
-  (if (read-ns* ctx ns-map opts)
+(defn read-ns [ctx zen-ns-map & [opts]]
+  (if (read-ns* ctx zen-ns-map opts)
     :zen/loaded
     :zen/load-failed))
 
-(defn read-ns! [ctx zen-ns]
-  (assert (symbol? zen-ns) "Expected symbol")
-  (read-ns ctx zen-ns)
+(defn read-ns! [ctx zen-ns-sym]
+  (assert (symbol? zen-ns-sym) "Expected symbol")
+  (read-ns ctx zen-ns-sym)
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
