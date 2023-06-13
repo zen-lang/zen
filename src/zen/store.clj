@@ -167,7 +167,10 @@
   (or (get zen-ns-map 'import)
       (get zen-ns-map :import)))
 
-(defn ns-already-imported? [ctx zen-ns-sym]
+(defn ns-already-loaded? [ctx zen-ns-sym]
+  (contains? (:ns @ctx) zen-ns-sym))
+
+(defn get-loaded-ns [ctx zen-ns-sym]
   (get-in @ctx [:ns zen-ns-sym]))
 
 (defn ns-in-memory-store? [ctx zen-ns-sym]
@@ -179,7 +182,7 @@
 (defn import-nss! [ctx zen-ns-sym imports opts]
   (doseq [imp imports]
     (cond
-      (ns-already-imported? ctx imp) :already-imported
+      (ns-already-loaded? ctx imp) :already-imported
 
       (ns-in-memory-store? ctx imp)
       (load-ns ctx (get-from-memry-store ctx imp) opts)
@@ -188,7 +191,7 @@
 
 (defn process-ns-alias! [ctx this-ns-sym aliased-ns this-ns-map]
   (when (symbol? aliased-ns)
-    (doseq [[aliased-sym _ :as kv] (get-in @ctx [:ns aliased-ns])]
+    (doseq [[aliased-sym _ :as kv] (get-loaded-ns ctx aliased-ns)]
       (when (symbol-definition? kv)
         (let [shadowed-here? (contains? this-ns-map aliased-sym)]
           (when (not shadowed-here?)
@@ -363,7 +366,7 @@
                                                                'env-keyword (fn [v] (env-keyword  env v))
                                                                'env-boolean (fn [v] (env-boolean env v))
                                                                'zen/quote   (fn [d] (zen-quote d))}})
-              zen-ns-sym (or (get zen-ns-map 'ns) (get zen-ns-map :ns))]
+              zen-ns-sym (get-ns zen-ns-map)]
           (if (= nm zen-ns-sym)
             (load-ns ctx zen-ns-map (cond-> {:zen/file (.getPath file)}
                                       zen-path (assoc :zen/zen-path zen-path)))
