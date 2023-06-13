@@ -7,6 +7,7 @@
             [edamame.core]
             [clojure.string :as str]))
 
+
 #_"NOTE: this namespace extensively uses the following var names:
 - zen-ns-map -- namespace map
 - zen-ns-sym -- symbol name of a namespace
@@ -14,30 +15,40 @@
 - qsym       -- namespace qualified symbol
 - resource   -- definition of a symbol from a namespace"
 
+
 (def get-symbol zen.utils/get-symbol)
+
 
 (def get-tag zen.utils/get-tag)
 
+
 (def mk-symbol zen.utils/mk-symbol)
+
 
 (defn update-types-recur [ctx tp-sym sym]
   (swap! ctx update-in [:tps tp-sym] (fn [x] (conj (or x #{}) sym)))
   (doseq [tp-sym' (:isa (get-symbol ctx tp-sym))]
     (update-types-recur ctx tp-sym' sym)))
 
+
 (declare read-ns*)
+
+
 (declare load-ns)
+
 
 (defn pretty-path [pth]
   (->> pth
        (mapv (fn [x] (if (keyword? x) (subs (str x) 1) (str x))))
        (str/join "->" )))
 
+
 (defn walk-resource [walk-fn resource]
   ;; disables sym expansion in zen/list (expr types)
   (if (list? resource)
     resource
     (walk/walk (partial walk-resource walk-fn) walk-fn resource)))
+
 
 (defn validate-symbol
   "try to resolve symbol, add error, add direct late binding reference"
@@ -68,16 +79,20 @@
                 :unresolved-symbol sym
                 :ns zen-ns-sym})))))
 
+
 (defn zen-sym? [sym]
   (and (symbol? sym) (not (:zen/quote (meta sym)))))
 
+
 (defn local-zen-sym? [sym]
   (and (zen-sym? sym) (not (namespace sym))))
+
 
 (defn ensure-qualified [zen-ns-sym sym]
   (if (local-zen-sym? sym)
     (mk-symbol zen-ns-sym sym)
     sym))
+
 
 (defn eval-resource
   "walk resource, expand symbols and validate refs"
@@ -98,6 +113,7 @@
     (-> (walk-resource walk-fn resource)
         (assoc :zen/name (mk-symbol zen-ns-sym sym)))))
 
+
 (defn validate-resource [ctx res]
   (let [tags (get res :zen/tags)
         schemas (->> tags
@@ -111,6 +127,7 @@
       (let [{errs :errors} (v2/validate ctx schemas res)]
         (when-not (empty? errs)
           (swap! ctx update :errors (fn [x] (into (or x []) (mapv #(assoc % :resource (:zen/name res)) errs)))))))))
+
 
 (defn load-symbol
   "resolve refs in resource, update indices"
@@ -133,14 +150,18 @@
                      bind (assoc-in [:bindings bind :backref] qsym)))))
     resource))
 
+
 (defn load-alias [ctx alias-dest alias]
   (swap! ctx update :aliases zen.utils/disj-set-union-push alias-dest alias))
+
 
 (defn symbol-definition? [[k v]]
   (and (symbol? k) (map? v)))
 
+
 (defn symbol-alias? [[k v]]
   (and (symbol? k) (qualified-symbol? v)))
+
 
 (defn pre-load-ns!
   "loads symbols from namespace to ztx before processing"
@@ -154,30 +175,39 @@
               zen-ns-map)]
     (swap! ctx update :symbols merge symbols)))
 
+
 (defn add-zen-ns! [ctx zen-ns-sym zen-ns-map opts]
   (swap! ctx assoc-in [:ns zen-ns-sym] (assoc zen-ns-map :zen/file (:zen/file opts))))
+
 
 (defn get-ns [zen-ns-map]
   (or (get zen-ns-map 'ns) (get zen-ns-map :ns)))
 
+
 (defn get-ns-alias [zen-ns-map]
   (or (get zen-ns-map 'alias) (get zen-ns-map :alias)))
+
 
 (defn get-ns-imports [zen-ns-map]
   (or (get zen-ns-map 'import)
       (get zen-ns-map :import)))
 
+
 (defn ns-already-loaded? [ctx zen-ns-sym]
   (contains? (:ns @ctx) zen-ns-sym))
+
 
 (defn get-loaded-ns [ctx zen-ns-sym]
   (get-in @ctx [:ns zen-ns-sym]))
 
+
 (defn ns-in-memory-store? [ctx zen-ns-sym]
   (contains? (:memory-store @ctx) zen-ns-sym))
 
+
 (defn get-from-memry-store [ctx zen-ns-sym]
   (get-in @ctx [:memory-store zen-ns-sym]))
+
 
 (defn import-nss! [ctx zen-ns-sym imports opts]
   (doseq [imp imports]
@@ -189,6 +219,7 @@
 
       :else (read-ns* ctx imp (assoc opts :ns zen-ns-sym)))))
 
+
 (defn process-ns-alias! [ctx this-ns-sym aliased-ns this-ns-map]
   (when (symbol? aliased-ns)
     (doseq [[aliased-sym _ :as kv] (get-loaded-ns ctx aliased-ns)]
@@ -199,6 +230,7 @@
                         (mk-symbol aliased-ns aliased-sym)
                         (mk-symbol this-ns-sym aliased-sym))))))))
 
+
 (defn load-ns-content! [ctx zen-ns-sym zen-ns-map opts]
   (let [ns-content (apply dissoc zen-ns-map ['ns 'import 'alias :ns :import :alias])]
     (->> ns-content
@@ -208,6 +240,7 @@
                        (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns-sym k))
                        :else                   nil)))
          (mapv (fn [res] (validate-resource ctx res))))))
+
 
 (defn load-ns [ctx zen-ns-map & [opts]]
   (let [zen-ns-sym (get-ns zen-ns-map)
@@ -228,11 +261,13 @@
     (let [load-result (load-ns-content! ctx zen-ns-sym zen-ns-map opts)]
       [:resources-loaded (count load-result)])))
 
+
 (defn load-ns! [ctx zen-ns-map]
   (assert (map? zen-ns-map) "Expected map")
   (load-ns ctx zen-ns-map)
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
+
 
 (defn expand-node-modules [path]
   (let [modules (io/file (str path "/node_modules"))]
@@ -244,13 +279,16 @@
                        [x])))
            (filter (fn [^java.io.File x] (.isDirectory x)))))))
 
+
 (defn mk-full-path [zen-path file-path]
   (str zen-path "/" file-path))
+
 
 (defn get-file [zen-path file-path]
   (let [^java.io.File file (io/file (mk-full-path zen-path file-path))]
     (when (.exists file)
       file)))
+
 
 (defn find-path
   "Returns a zen path containing pth"
@@ -261,11 +299,13 @@
         (.getPath (io/file p))
         (recur (concat (expand-node-modules p) ps))))))
 
+
 (defn find-in-paths
   "Returns file found in zen paths"
   [paths pth]
   (some-> (find-path paths pth)
           (get-file pth)))
+
 
 (defn expand-zen-packages [path]
   (let [modules (io/file path)]
@@ -274,12 +314,15 @@
            (map (fn [x] (str x "/zrc")))
            (filter #(.isDirectory (io/file %)))))))
 
+
 (defn expand-package-path [package-path]
   (let [zrc-path         (str package-path "/zrc")
         zen-packages-path (str package-path "/zen-packages")]
     (cons zrc-path (expand-zen-packages zen-packages-path))))
 
+
 (def ^:const unzip-cache-dir "/tmp/zen-unzip/")
+
 
 (defn unzip-to-cache-dir [zip-path]
   (let [path-hash (zen.utils/string->md5 zip-path)
@@ -287,6 +330,7 @@
     (if (.exists (io/file unzip-dest))
       (str unzip-dest \/ "zrc")
       (str (zen.utils/unzip! zip-path unzip-dest) \/ "zrc"))))
+
 
 (defn find-file&path [ctx pth]
   (or (when-let [resource-file (io/resource pth)]
@@ -298,9 +342,11 @@
         {:file     (get-file zen-path pth)
          :zen-path zen-path})))
 
+
 ;; TODO: cache find file
 (defn find-file [ctx pth]
   (:file (find-file&path ctx pth)))
+
 
 (defn get-env [env env-name]
   (let [[env-name default] (if (vector? env-name)
@@ -310,9 +356,11 @@
         (System/getenv (str env-name))
         default)))
 
+
 (defn env-string [env env-name]
   (when-let [v (get-env env env-name)]
     v))
+
 
 (defn env-integer [env env-name]
   (when-let [v (get-env env env-name)]
@@ -320,11 +368,13 @@
       v
       (Integer/parseInt v))))
 
+
 (defn env-symbol [env env-name]
   (when-let [v (get-env env env-name)]
     (if (symbol? v)
       v
       (symbol v))))
+
 
 (defn env-keyword [env env-name]
   (when-let [v (get-env env env-name)]
@@ -332,11 +382,13 @@
       v
       (keyword v))))
 
+
 (defn env-number [env env-name]
   (when-let [v (get-env env env-name)]
     (if (number? v)
       v
       (Double/parseDouble v))))
+
 
 (defn env-boolean [env env-name]
   (let [v (get-env env env-name)]
@@ -348,8 +400,10 @@
           (= "false" v) false
           :else (throw (ex-info (str "Expected true or false in " env-name ", got " v) {})))))))
 
+
 (defn zen-quote [d]
   (with-meta d {:zen/quote true}))
+
 
 (defn read-ns* [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
@@ -400,16 +454,19 @@
     :zen/loaded
     :zen/load-failed))
 
+
 (defn read-ns! [ctx zen-ns-sym]
   (assert (symbol? zen-ns-sym) "Expected symbol")
   (read-ns ctx zen-ns-sym)
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
+
 (defn new-context [& [opts]]
   (let [ctx (atom (or opts {}))]
     (read-ns ctx 'zen)
     ctx))
+
 
 (defn instance-of? [tp res]
   (let [tps (get res 'types)]
