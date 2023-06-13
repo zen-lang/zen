@@ -18,7 +18,7 @@
   (doseq [tp-sym' (:isa (get-symbol ctx tp-sym))]
     (update-types-recur ctx tp-sym' sym)))
 
-(declare read-ns)
+(declare read-ns*)
 (declare load-ns)
 
 (defn pretty-path [pth]
@@ -341,7 +341,7 @@
 (defn zen-quote [d]
   (with-meta d {:zen/quote true}))
 
-(defn read-ns [ctx nm & [opts]]
+(defn read-ns* [ctx nm & [opts]]
   (let [pth (str (str/replace (str nm) #"\." "/") ".edn")]
     (if-let [{:keys [file zen-path]} (find-file&path ctx pth)]
       (try
@@ -358,9 +358,8 @@
                                                            'zen/quote   (fn [d] (zen-quote d))}})
               zen-ns (or (get ns-map 'ns) (get ns-map :ns))]
           (if (= nm zen-ns)
-            (do (load-ns ctx ns-map (cond-> {:zen/file (.getPath file)}
-                                      zen-path (assoc :zen/zen-path zen-path)))
-                :zen/loaded)
+            (load-ns ctx ns-map (cond-> {:zen/file (.getPath file)}
+                                   zen-path (assoc :zen/zen-path zen-path)))
             (do (println :file-doesnt-match-namespace (.getPath file) nm zen-ns)
                 (swap! ctx update :errors
                        (fnil conj [])
@@ -369,7 +368,7 @@
                         :file (.getPath file)
                         :ns nm
                         :got-ns zen-ns})
-                :zen/load-failed)))
+                nil)))
         (catch Exception e
           (println :error-while-reading (.getPath file) e)
           (swap! ctx update :errors
@@ -377,17 +376,23 @@
                  {:message (.getMessage e)
                   :file (.getPath file)
                   :ns nm})
-          :zen/load-failed))
+          nil))
       (do (swap! ctx update :errors
                  (fnil conj [])
                  {:message (format "No file for ns '%s" nm)
                   :missing-ns nm
                   :ns (or (:ns opts) nm)})
-          :zen/load-failed))))
+          nil))))
 
-(defn read-ns! [ctx ns-sym]
-  (assert (symbol? ns-sym) "Expected symbol")
-  (read-ns ctx ns-sym)
+
+(defn read-ns [ctx ns-map & [opts]]
+  (if (read-ns* ctx ns-map opts)
+    :zen/loaded
+    :zen/load-failed))
+
+(defn read-ns! [ctx zen-ns]
+  (assert (symbol? zen-ns) "Expected symbol")
+  (read-ns ctx zen-ns)
   (when-let [errs (:errors @ctx)]
     (throw (Exception. (str/join "\n" errs)))))
 
