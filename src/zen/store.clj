@@ -34,7 +34,7 @@
 (declare read-ns*)
 
 
-(declare load-ns)
+(declare load-ns*)
 
 
 (defn pretty-path [pth]
@@ -215,7 +215,7 @@
       (ns-already-loaded? ctx imp) :already-imported
 
       (ns-in-memory-store? ctx imp)
-      (load-ns ctx (get-from-memry-store ctx imp) opts)
+      (load-ns* ctx (get-from-memry-store ctx imp) opts)
 
       :else (read-ns* ctx imp (assoc opts :ns zen-ns-sym)))))
 
@@ -232,6 +232,7 @@
 
 
 (defn load-ns-content! [ctx zen-ns-sym zen-ns-map opts]
+  #_"TODO do group-by instead of sort, validate only symbol-definitions, return validated resources"
   (let [ns-content (apply dissoc zen-ns-map ['ns 'import 'alias :ns :import :alias])]
     (->> ns-content
          (sort-by (juxt symbol-definition? symbol-alias?)) #_"NOTE: load aliases first, symbols after"
@@ -242,7 +243,7 @@
          (mapv (fn [res] (validate-resource ctx res))))))
 
 
-(defn load-ns [ctx zen-ns-map & [opts]]
+(defn load-ns* [ctx zen-ns-map & [opts]]
   (let [zen-ns-sym (get-ns zen-ns-map)
         aliased-ns (get-ns-alias zen-ns-map)]
 
@@ -258,8 +259,11 @@
 
     (process-ns-alias! ctx zen-ns-sym aliased-ns zen-ns-map)
 
-    (let [load-result (load-ns-content! ctx zen-ns-sym zen-ns-map opts)]
-      [:resources-loaded (count load-result)])))
+    (load-ns-content! ctx zen-ns-sym zen-ns-map opts)))
+
+
+(defn load-ns [ctx zen-ns-map & [opts]]
+  [:resources-loaded (count (load-ns* ctx zen-ns-map opts))])
 
 
 (defn load-ns! [ctx zen-ns-map]
