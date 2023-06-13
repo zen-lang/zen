@@ -19,6 +19,7 @@
     (update-types-recur ctx tp-sym' sym)))
 
 (declare read-ns)
+(declare load-ns)
 
 (defn pretty-path [pth]
   (->> pth
@@ -146,46 +147,75 @@
               ns-map)]
     (swap! ctx update :symbols merge symbols)))
 
+(defn add-zen-ns! [ctx zen-ns ns-map opts]
+  (swap! ctx assoc-in [:ns zen-ns] (assoc ns-map :zen/file (:zen/file opts))))
+
+(defn get-ns [ns-map]
+  (or (get ns-map 'ns) (get ns-map :ns)))
+
+(defn get-ns-alias [ns-map]
+  (or (get ns-map 'alias) (get ns-map :alias)))
+
+(defn get-ns-imports [ns-map]
+  (or (get ns-map 'import)
+      (get ns-map :import)))
+
+(defn ns-already-imported? [ctx zen-ns]
+  (get-in @ctx [:ns zen-ns]))
+
+(defn ns-in-memory-store? [ctx zen-ns]
+  (contains? (:memory-store @ctx) zen-ns))
+
+(defn get-from-memry-store [ctx zen-ns]
+  (get-in @ctx [:memory-store zen-ns]))
+
+(defn import-nss! [ctx zen-ns imports opts]
+  (doseq [imp imports]
+    (cond
+      (ns-already-imported? ctx imp) :already-imported
+
+      (ns-in-memory-store? ctx imp)
+      (load-ns ctx (get-from-memry-store ctx imp) opts)
+
+      :else (read-ns* ctx imp (assoc opts :ns zen-ns)))))
+
+(defn process-ns-alias! [ctx this-ns-sym aliased-ns this-ns-map]
+  (when (symbol? aliased-ns)
+    (doseq [[aliased-sym _ :as kv] (get-in @ctx [:ns aliased-ns])]
+      (when (symbol-definition? kv)
+        (let [shadowed-here? (contains? this-ns-map aliased-sym)]
+          (when (not shadowed-here?)
+            (load-alias ctx
+                        (mk-symbol aliased-ns aliased-sym)
+                        (mk-symbol this-ns-sym aliased-sym))))))))
+
+(defn load-ns-content! [ctx zen-ns ns-map opts]
+  (let [ns-content (apply dissoc ns-map ['ns 'import 'alias :ns :import :alias])]
+    (->> ns-content
+         (sort-by (juxt symbol-definition? symbol-alias?)) #_"NOTE: load aliases first, symbols after"
+         (mapv (fn [[k v :as kv]]
+                 (cond (symbol-definition? kv) (load-symbol ctx zen-ns k (merge v opts))
+                       (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns k))
+                       :else                   nil)))
+         (mapv (fn [res] (validate-resource ctx res))))))
+
 (defn load-ns [ctx ns-map & [opts]]
-  (let [zen-ns (or (get ns-map 'ns) (get ns-map :ns))
-        aliased-ns (or (get ns-map 'alias) (get ns-map :alias))]
-    (swap! ctx assoc-in [:ns zen-ns] (assoc ns-map :zen/file (:zen/file opts)))
+  (let [zen-ns (get-ns ns-map)
+        aliased-ns (get-ns-alias ns-map)]
+
+    (add-zen-ns! ctx zen-ns ns-map opts)
 
     (pre-load-ns! ctx zen-ns ns-map)
 
-    ;; do imports
-    (doseq [imp (cond->> (or (get ns-map 'import)
-                             (get ns-map :import))
-                  (symbol? aliased-ns) (cons aliased-ns))]
-      (cond
-        (get-in @ctx [:ns imp])
-        :already-imported
+    (import-nss! ctx
+                 zen-ns
+                 (cond->> (get-ns-imports ns-map)
+                   (some? aliased-ns) (cons aliased-ns))
+                 opts)
 
-        (contains? (:memory-store @ctx) imp)
-        (load-ns ctx (get-in @ctx [:memory-store imp]) opts)
+    (process-ns-alias! ctx zen-ns aliased-ns ns-map)
 
-        :else (read-ns ctx imp (assoc opts :ns zen-ns))))
-
-    ;; process aliases
-    (when (symbol? aliased-ns)
-      (doseq [[aliased-sym _ :as kv] (get-in @ctx [:ns aliased-ns])]
-        (when (symbol-definition? kv)
-          (let [shadowed-here? (contains? ns-map aliased-sym)]
-            (when (not shadowed-here?)
-              (load-alias ctx
-                          (mk-symbol aliased-ns aliased-sym)
-                          (mk-symbol zen-ns aliased-sym)))))))
-
-    ;; eval symbols and aliases
-    (let [load-result
-          (->> (apply dissoc ns-map ['ns 'import 'alias :ns :import :alias])
-               (sort-by (juxt symbol-definition? symbol-alias?)) #_"NOTE: load aliases first, symbols after"
-               (mapv (fn [[k v :as kv]]
-                       (cond (symbol-definition? kv) (load-symbol ctx zen-ns k (merge v opts))
-                             (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns k))
-                             :else                   nil)))
-               (mapv (fn [res] (validate-resource ctx res))))]
-
+    (let [load-result (load-ns-content! ctx zen-ns ns-map opts)]
       [:resources-loaded (count load-result)])))
 
 (defn load-ns! [ctx ns-map]
