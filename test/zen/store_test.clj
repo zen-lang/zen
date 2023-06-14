@@ -225,3 +225,23 @@
   (is (= :zen/loaded (zen/read-ns z 'a)))
 
   (is (seq (zen/errors z))))
+
+
+(deftest symbol-validation-test
+  (def memory-store
+    {'b '{:ns b
+          :import #{a}
+          s {:zen/tags #{a/t b}}}
+
+     'a '{:ns a
+          :import #{b}
+          s {:zen/tags #{b/t a}}}})
+
+  (def z (zen/new-context {:memory-store memory-store}))
+
+  (is (= [:resources-loaded 2]
+         (zen/load-ns z (get memory-store 'a))))
+
+  (t/testing "unresolved symbols errors"
+    (matcho/match (zen/errors z)
+                  [{} {} {} {} nil])))
