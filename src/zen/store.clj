@@ -210,14 +210,15 @@
 
 
 (defn import-nss! [ctx zen-ns-sym imports opts]
-  (doseq [imp imports]
-    (cond
-      (ns-already-loaded? ctx imp) :already-imported
+  (doall
+    (for [imp imports]
+      (cond
+        (ns-already-loaded? ctx imp) nil
 
-      (ns-in-memory-store? ctx imp)
-      (load-ns* ctx (get-from-memry-store ctx imp) opts)
+        (ns-in-memory-store? ctx imp)
+        (load-ns* ctx (get-from-memry-store ctx imp) opts)
 
-      :else (read-ns* ctx imp (assoc opts :ns zen-ns-sym)))))
+        :else (read-ns* ctx imp (assoc opts :ns zen-ns-sym))))))
 
 
 (defn process-ns-alias! [ctx this-ns-sym aliased-ns this-ns-map]
@@ -239,31 +240,35 @@
          (mapv (fn [[k v :as kv]]
                  (cond (symbol-definition? kv) (load-symbol ctx zen-ns-sym k (merge v opts))
                        (symbol-alias? kv)      (load-alias ctx v (mk-symbol zen-ns-sym k))
-                       :else                   nil)))
-         (mapv (fn [res] (validate-resource ctx res))))))
+                       :else                   nil))))))
 
 
 (defn load-ns* [ctx zen-ns-map & [opts]]
   (let [zen-ns-sym (get-ns zen-ns-map)
-        aliased-ns (get-ns-alias zen-ns-map)]
+        aliased-ns (get-ns-alias zen-ns-map)
 
-    (add-zen-ns! ctx zen-ns-sym zen-ns-map opts)
+        _ (add-zen-ns! ctx zen-ns-sym zen-ns-map opts)
+        _ (pre-load-ns! ctx zen-ns-sym zen-ns-map)
 
-    (pre-load-ns! ctx zen-ns-sym zen-ns-map)
+        imports (cond->> (get-ns-imports zen-ns-map)
+                  (some? aliased-ns) (cons aliased-ns))
 
-    (import-nss! ctx
-                 zen-ns-sym
-                 (cond->> (get-ns-imports zen-ns-map)
-                   (some? aliased-ns) (cons aliased-ns))
-                 opts)
+        imports-validate-queue (import-nss! ctx zen-ns-sym imports opts)
 
-    (process-ns-alias! ctx zen-ns-sym aliased-ns zen-ns-map)
+        _ (process-ns-alias! ctx zen-ns-sym aliased-ns zen-ns-map)
 
-    (load-ns-content! ctx zen-ns-sym zen-ns-map opts)))
+        this-ns-validate-queue (load-ns-content! ctx zen-ns-sym zen-ns-map opts)]
+
+    (apply concat
+           this-ns-validate-queue
+           imports-validate-queue)))
 
 
 (defn load-ns [ctx zen-ns-map & [opts]]
-  [:resources-loaded (count (load-ns* ctx zen-ns-map opts))])
+  (let [validate-queue      (load-ns* ctx zen-ns-map opts)
+        validated-resources (mapv (fn [res] (validate-resource ctx res))
+                                  validate-queue)]
+    [:resources-loaded (count validated-resources)]))
 
 
 (defn load-ns! [ctx zen-ns-map]
@@ -426,8 +431,8 @@
                                                                'zen/quote   (fn [d] (zen-quote d))}})
               zen-ns-sym (get-ns zen-ns-map)]
           (if (= nm zen-ns-sym)
-            (load-ns ctx zen-ns-map (cond-> {:zen/file (.getPath file)}
-                                      zen-path (assoc :zen/zen-path zen-path)))
+            (load-ns* ctx zen-ns-map (cond-> {:zen/file (.getPath file)}
+                                       zen-path (assoc :zen/zen-path zen-path)))
             (do (println :file-doesnt-match-namespace (.getPath file) nm zen-ns-sym)
                 (swap! ctx update :errors
                        (fnil conj [])

@@ -197,3 +197,23 @@
                    a {:zen/tags #{zen/schema}
                       :type zen/map}})
     [:resources-loaded 1 nil]))
+
+
+(deftest cyclic-import-validation-test
+  (def memory-store
+    {'b '{:ns b
+          :import #{a}
+          s {:zen/tags #{a/t}}}
+
+     'a '{:ns a
+          :import #{b}
+          t {:zen/tags #{zen/tag zen/schema}
+             :type zen/map
+             :require #{:foo}}}})
+
+  (def z (zen/new-context {:memory-store memory-store}))
+
+  (is (= [:resources-loaded 2]
+         (zen/load-ns z (get memory-store 'a))))
+
+  (is (seq (zen/errors z))))
