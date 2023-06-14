@@ -1,0 +1,5 @@
+{:ns a
+ :import #{b}
+ t {:zen/tags #{zen/tag zen/schema}
+    :type zen/map
+    :require #{:foo}}}

@@ -217,3 +217,11 @@
          (zen/load-ns z (get memory-store 'a))))
 
   (is (seq (zen/errors z))))
+
+
+(deftest cyclic-import-validation-on-read-ns-test
+  (def z (zen/new-context {:paths ["test/fixtures/cyclic-import-validation-on-read-ns-test"]}))
+
+  (is (= :zen/loaded (zen/read-ns z 'a)))
+
+  (is (seq (zen/errors z))))

@@ -1,0 +1,3 @@
+{:ns b
+ :import #{a}
+ s {:zen/tags #{a/t}}}

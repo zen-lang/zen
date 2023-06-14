@@ -264,11 +264,14 @@
            imports-validate-queue)))
 
 
+(defn validate-queue-resources! [ctx queue]
+  (mapv (fn [res] (validate-resource ctx res))
+        queue))
+
+
 (defn load-ns [ctx zen-ns-map & [opts]]
-  (let [validate-queue      (load-ns* ctx zen-ns-map opts)
-        validated-resources (mapv (fn [res] (validate-resource ctx res))
-                                  validate-queue)]
-    [:resources-loaded (count validated-resources)]))
+  (let [validate-queue (load-ns* ctx zen-ns-map opts)]
+    [:resources-loaded (count (validate-queue-resources! ctx validate-queue))]))
 
 
 (defn load-ns! [ctx zen-ns-map]
@@ -458,9 +461,11 @@
           nil))))
 
 
-(defn read-ns [ctx zen-ns-map & [opts]]
-  (if (read-ns* ctx zen-ns-map opts)
-    :zen/loaded
+(defn read-ns [ctx zen-ns-sym & [opts]]
+  (if-let [validate-queue (read-ns* ctx zen-ns-sym opts)]
+    (do
+      (validate-queue-resources! ctx validate-queue)
+      :zen/loaded)
     :zen/load-failed))
 
 
