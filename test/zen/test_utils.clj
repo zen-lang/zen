@@ -155,7 +155,6 @@
 (defn fs-tree->tree-map [init-path]
   (let [path (str init-path)
         splitted-path (drop 1 (str/split path #"/"))
-        _ (println :path splitted-path)
         tree-map (reduce
                   (fn [store path] (assoc-in store path {}))
                   {}

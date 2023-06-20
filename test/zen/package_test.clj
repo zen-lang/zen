@@ -70,7 +70,6 @@
                   "\n/zen-packages"))))
 
   (t/testing "read initted"
-    (println :here module-dir-path)
     (sut/zen-init-deps! module-dir-path)
 
     (t/is (.exists (io/file module-dir-path "zen-packages")))

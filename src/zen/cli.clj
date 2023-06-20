@@ -131,7 +131,6 @@
   ([package-name opts] (init nil package-name opts))
 
   ([_ztx package-name opts]
-   (println :opts package-name opts)
    (if (zen.package/zen-init! (get-pwd opts) (when package-name
                                                {:package-name (str->edn package-name)}))
      {::status :ok ::code :initted-new    :format :message ::result {:message "Project was successfully initted"}}
