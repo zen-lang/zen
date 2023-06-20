@@ -1,11 +1,12 @@
 (ns zen.store
-  (:require [zen.v2-validation :as v2]
-            [zen.utils]
-            [clojure.edn]
-            [clojure.java.io :as io]
-            [clojure.walk :as walk]
-            [edamame.core]
-            [clojure.string :as str]))
+  (:require
+   [clojure.edn]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [edamame.core]
+   [zen.utils]
+   [zen.v2-validation :as v2]))
 
 
 #_"NOTE: this namespace extensively uses the following var names:
@@ -40,7 +41,7 @@
 (defn pretty-path [pth]
   (->> pth
        (mapv (fn [x] (if (keyword? x) (subs (str x) 1) (str x))))
-       (str/join "->" )))
+       (str/join "->")))
 
 
 (defn walk-resource [walk-fn resource]
@@ -51,7 +52,7 @@
 
 
 (defn validate-symbol
-  "try to resolve symbol, add error, add direct late binding reference"
+  "Try to resolve symbol, add error, add direct late binding reference."
   [ctx zen-ns-sym ns-key sym]
   (let [resolved-sym (if (namespace sym)
                        sym
@@ -95,7 +96,7 @@
 
 
 (defn eval-resource
-  "walk resource, expand symbols and validate refs"
+  "Walk resource, expand symbols and validate refs."
   [ctx zen-ns-sym sym resource]
   (let [walk-fn
         (fn [v]
@@ -130,7 +131,7 @@
 
 
 (defn load-symbol
-  "resolve refs in resource, update indices"
+  "Resolve refs in resource, update indices."
   [ctx zen-ns-sym sym v]
   (let [qsym (mk-symbol zen-ns-sym sym)
 
@@ -164,7 +165,7 @@
 
 
 (defn pre-load-ns!
-  "loads symbols from namespace to ztx before processing"
+  "Loads symbols from namespace to ztx before processing."
   [ctx zen-ns-sym zen-ns-map]
   (let [symbols
         (into {}
@@ -211,14 +212,14 @@
 
 (defn import-nss! [ctx zen-ns-sym imports opts]
   (doall
-    (for [imp imports]
-      (cond
-        (ns-already-loaded? ctx imp) nil
+   (for [imp imports]
+     (cond
+       (ns-already-loaded? ctx imp) nil
 
-        (ns-in-memory-store? ctx imp)
-        (load-ns* ctx (get-from-memry-store ctx imp) opts)
+       (ns-in-memory-store? ctx imp)
+       (load-ns* ctx (get-from-memry-store ctx imp) opts)
 
-        :else (read-ns* ctx imp (assoc opts :ns zen-ns-sym))))))
+       :else (read-ns* ctx imp (assoc opts :ns zen-ns-sym))))))
 
 
 (defn process-ns-alias! [ctx this-ns-sym aliased-ns this-ns-map]
@@ -282,7 +283,7 @@
 
 
 (defn expand-node-modules [path]
-  (let [modules (io/file (str path "/node_modules"))]
+  (let [modules (io/file path "node_modules")]
     (when (and (.exists modules) (.isDirectory modules))
       (->> (.listFiles modules)
            (mapcat (fn [^java.io.File x]
@@ -293,17 +294,17 @@
 
 
 (defn mk-full-path [zen-path file-path]
-  (str zen-path "/" file-path))
+  (io/file zen-path file-path))
 
 
 (defn get-file [zen-path file-path]
-  (let [^java.io.File file (io/file (mk-full-path zen-path file-path))]
+  (let [^java.io.File file (mk-full-path zen-path file-path)]
     (when (.exists file)
       file)))
 
 
 (defn find-path
-  "Returns a zen path containing pth"
+  "Returns a zen path containing pth."
   [paths pth]
   (loop [[p & ps] paths]
     (when p
@@ -313,35 +314,34 @@
 
 
 (defn find-in-paths
-  "Returns file found in zen paths"
+  "Returns file found in zen paths."
   [paths pth]
   (some-> (find-path paths pth)
           (get-file pth)))
 
 
-(defn expand-zen-packages [path]
-  (let [modules (io/file path)]
-    (when (and (.exists modules) (.isDirectory modules))
-      (->> (.listFiles modules)
-           (map (fn [x] (str x "/zrc")))
-           (filter #(.isDirectory (io/file %)))))))
+(defn expand-zen-packages [modules]
+  (when (and (.exists modules) (.isDirectory modules))
+    (->> (.listFiles modules)
+         (map (fn [x] (io/file x "zrc")))
+         (filter #(.isDirectory %)))))
 
 
 (defn expand-package-path [package-path]
-  (let [zrc-path         (str package-path "/zrc")
-        zen-packages-path (str package-path "/zen-packages")]
-    (cons zrc-path (expand-zen-packages zen-packages-path))))
+  (cons (io/file package-path "zrc") (expand-zen-packages (io/file package-path "zen-packages"))))
 
 
-(def ^:const unzip-cache-dir "/tmp/zen-unzip/")
+(defn unzip-cache-dir
+  []
+  (io/file "/tmp/zen-unzip"))
 
 
 (defn unzip-to-cache-dir [zip-path]
   (let [path-hash (zen.utils/string->md5 zip-path)
-        unzip-dest (str unzip-cache-dir "/" path-hash)]
-    (if (.exists (io/file unzip-dest))
-      (str unzip-dest \/ "zrc")
-      (str (zen.utils/unzip! zip-path unzip-dest) \/ "zrc"))))
+        unzip-dest (io/file (unzip-cache-dir) path-hash)]
+    (if (.exists unzip-dest)
+      (io/file unzip-dest "zrc")
+      (io/file (zen.utils/unzip! zip-path unzip-dest) "zrc"))))
 
 
 (defn find-file&path [ctx pth]
@@ -431,7 +431,7 @@
                                                                'env-number  (fn [v] (env-number  env v))
                                                                'env-keyword (fn [v] (env-keyword  env v))
                                                                'env-boolean (fn [v] (env-boolean env v))
-                                                               'zen/quote   (fn [d] (zen-quote d))}})
+                                                               'zen/quote   zen-quote}})
               zen-ns-sym (get-ns zen-ns-map)]
           (if (= nm zen-ns-sym)
             (load-ns* ctx zen-ns-map (cond-> {:zen/file (.getPath file)}
@@ -482,7 +482,7 @@
     ctx))
 
 
-(defn instance-of? [tp res]
+(defn instance-of? [_tp res]
   (let [tps (get res 'types)]
     (or (and (set? tps) (contains? tps 'primitive))
         (= tps 'primitive))))

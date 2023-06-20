@@ -1,14 +1,14 @@
 (ns zen.misc
   (:require
-   [zen.utils :as utils]
    [clojure.string :as str]
+   [zen.utils :as utils]
    [zen.v2-validation]))
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/reference
   [_ ztx {:keys [refers]}]
   ;; TODO add test somewhere?
   {:rule
-   (fn [vtx data opts]
+   (fn [vtx data _opts]
      (if-not (and (seq refers)
                   (map? data)
                   (some data [:resourceType :type]))
@@ -38,7 +38,7 @@
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
   [_ ztx value-set]
   {:rule
-   (fn [vtx data opts]
+   (fn [vtx data _opts]
      (if (and (= "enabled" (get-in @ztx
                                    [:aidbox/config :features :validation :value-set :mode]
                                    "enabled"))

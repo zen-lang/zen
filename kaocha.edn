@@ -1,15 +1,18 @@
 #kaocha/v1
-{:fail-fast?                  false
- :color?                      true
+ {:fail-fast?                  false
+  :color?                      true
  ;; :reporter                 [kaocha.report/dots]
  ;;:reporter                  [kaocha.report.progress/report]
- :reporter                    [kaocha.report/documentation]
+  :reporter                    [kaocha.report/documentation]
 
- :plugins                     [:hooks
+  :plugins                     [:hooks
                                ;; :kaocha.plugin/filter
                                ;; :kaocha.plugin/capture-output
-                               :kaocha.plugin/print-invocations
-                               :kaocha.plugin/profiling]
-
- :kaocha.plugin.randomize/randomize? false
- :kaocha.plugin.profiling/profiling? true}
+                                :kaocha.plugin/print-invocations
+                                :kaocha.plugin/profiling]
+  :tests                       [{:id   :unit
+                                 :source-paths  ["src"]
+                                 :test-paths    ["test"]
+                                 :ns-patterns   ["-test$"]}]
+  :kaocha.plugin.randomize/randomize? false
+  :kaocha.plugin.profiling/profiling? true}

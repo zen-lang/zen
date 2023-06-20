@@ -1,26 +1,26 @@
 (ns zen.v2-validation-test
   (:require
    [clojure.java.io]
-   [zen.utils]
-   [zen.store]
-   [zen.effect :as fx]
-   [zen.test-runner :as r]
-   [clojure.test :refer [deftest is testing]]
-   [zen.v2-validation :as v]
-   [zen.validation]
-   [zen.core :as zen]
+   [clojure.test :as t]
    [edamame.core]
-   [matcho.core :as matcho]))
+   [matcho.core :as matcho]
+   [zen.core :as zen]
+   [zen.effect :as fx]
+   [zen.store]
+   [zen.test-runner :as r]
+   [zen.utils]
+   [zen.v2-validation :as v]
+   [zen.validation]))
 
 ;; see slicing-test/zen-fx-engine-slicing-test
 (defmethod fx/fx-evaluator 'zen.tests.slicing-test/slice-key-check
-  [ztx {:keys [params path]} data]
+  [_ztx {:keys [params _path]} data]
   (if (= (get data (first params)) "fx-value")
     {:errors []}
     {:errors [{:message "wrong slice key value"
                :type "fx.apply"}]}))
 
-(deftest implemented-validations
+(t/deftest implemented-validations
 
   (do
     (def ztx (zen/new-context {:unsafe true}))
@@ -37,10 +37,10 @@
 
     (def list-expr (zen.utils/get-symbol ztx 'zen.tests.types-test/expr))
 
-    (is list-expr)
+    (t/is list-expr)
 
-    (testing "lists are not expanded by default"
-      (is (= '(print hello user zen.test/empty?) (get-in list-expr [:keys :list-value :const :value]))))
+    (t/testing "lists are not expanded by default"
+      (t/is (= '(print hello user zen.test/empty?) (get-in list-expr [:keys :list-value :const :value]))))
 
     (r/zen-read-ns ztx 'zen.tests.keyname-schemas-test)
 
@@ -62,7 +62,7 @@
 
     (r/run-tests ztx))
 
-  (testing "valmode :extended"
+  (t/testing "valmode :extended"
 
     "keys, values and key impl dependent validation"
     (do
@@ -70,25 +70,24 @@
 
       (r/zen-read-ns ztx 'zen.tests.routing-test)
 
-      (zen.v2-validation/validate ztx
-                                  #{'zen/schema
-                                    'zen.tests.routing-test/Configuration
-                                    'zen.tests.routing-test/nested-schema}
-                                  (zen/get-symbol ztx 'zen.tests.routing-test/config))
+      (v/validate ztx
+                  #{'zen/schema
+                    'zen.tests.routing-test/Configuration
+                    'zen.tests.routing-test/nested-schema}
+                  (zen/get-symbol ztx 'zen.tests.routing-test/config))
 
-      (is (empty? (zen/errors ztx))))))
+      (t/is (empty? (zen/errors ztx))))))
 
-(defn resolve-zen-ns [ztx]
+(defn resolve-zen-ns [zt]
   (->> (read-string (slurp (clojure.java.io/resource "zen.edn")))
-
        (map (fn [[k v]]
-              [k (or (zen.utils/get-symbol ztx (zen.utils/mk-symbol 'zen k))
+              [k (or (zen.utils/get-symbol zt (zen.utils/mk-symbol 'zen k))
                      v)]))
        (into {})))
 
-(deftest metadata-roundtrip
+(t/deftest metadata-roundtrip
 
-  (testing "zen ns is read and validated"
+  (t/testing "zen ns is read and validated"
     (do
       (def ztx (zen/new-context {:unsafe true}))
 
@@ -96,9 +95,9 @@
 
       (:errors @ztx)
 
-      (is (empty? (:errors @ztx)))))
+      (t/is (empty? (:errors @ztx)))))
 
-  (testing "zen meta validates itself"
+  (t/testing "zen meta validates itself"
 
     (do
       (def ztx (zen/new-context {:unsafe true}))
@@ -107,9 +106,9 @@
 
       (def result (v/validate ztx #{'zen/namespace} (resolve-zen-ns ztx)))
 
-      (is (empty? (:errors result))))))
+      (t/is (empty? (:errors result))))))
 
-(deftest values-validation-test
+(t/deftest values-validation-test
   (def myns
     '{ns myns
 
@@ -124,19 +123,19 @@
 
        :hello "world"}})
 
-  (testing "current valiatdion"
-    (def ztx (zen.core/new-context))
-    (zen.core/load-ns ztx myns)
-    (is (empty? (zen.core/errors ztx))))
+  (t/testing "current valiatdion"
+    (def ztx (zen/new-context))
+    (zen/load-ns ztx myns)
+    (t/is (empty? (zen/errors ztx))))
 
-  (testing "previous validation engine with previous zen.edn"
-    (with-redefs [zen.v2-validation/validate zen.validation/validate]
+  (t/testing "previous validation engine with previous zen.edn"
+    (with-redefs [v/validate zen.validation/validate]
       (def ztx (atom {}))
-      (zen.core/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
-      (zen.core/load-ns ztx myns)
-      (is (empty? (zen.core/errors ztx))))))
+      (zen/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
+      (zen/load-ns ztx myns)
+      (t/is (empty? (zen/errors ztx))))))
 
-(deftest set-validation-test
+(t/deftest set-validation-test
   (def myns
     '{ns myns
 
@@ -148,125 +147,125 @@
                :every {:type zen/string
                        :minLength 2}}}}})
 
-  (testing "current valiatdion"
-    (def ztx (zen.core/new-context))
-    (zen.core/load-ns ztx myns)
+  (t/testing "current valiatdion"
+    (def ztx (zen/new-context))
+    (zen/load-ns ztx myns)
 
-    (matcho/match (zen.core/validate ztx #{'myns/my-set-schema} {:strings #{"aa" "bb" "c"}})
-                  {:errors [{:path [:strings "c" nil]}
-                            nil]}))
+    (matcho/match (zen/validate ztx #{'myns/my-set-schema} {:strings #{"aa" "bb" "c"}})
+      {:errors [{:path [:strings "c" nil]}
+                nil]}))
 
-  (testing "previous validation engine with previous zen.edn"
-    (with-redefs [zen.v2-validation/validate zen.validation/validate]
+  (t/testing "previous validation engine with previous zen.edn"
+    (with-redefs [v/validate zen.validation/validate]
       (def ztx (atom {}))
-      (zen.core/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
-      (zen.core/load-ns ztx myns)
+      (zen/load-ns ztx (->> (clojure.java.io/resource "v1/zen.edn") slurp edamame.core/parse-string))
+      (zen/load-ns ztx myns)
 
-      (matcho/match (zen.core/validate ztx #{'myns/my-set-schema} {:strings #{"aa" "bb" "c"}})
-                    {:errors [{:path [:strings "c" nil]}
-                              nil]}))))
+      (matcho/match (zen/validate ztx #{'myns/my-set-schema} {:strings #{"aa" "bb" "c"}})
+        {:errors [{:path [:strings "c" nil]}
+                  nil]}))))
 
-(deftest concurerncy-compilation-npe-test
-  (testing "validate by schema which currently is compiling"
+(t/deftest concurerncy-compilation-npe-test
+  (t/testing "validate by schema which currently is compiling"
     (dotimes [_ 100]
-      (def ztx (zen.core/new-context))
+      (def ztx (zen/new-context))
 
       (def lock (promise))
 
-      (zen.core/load-ns ztx '{:ns myns
-                              sym {:zen/tags #{zen/schema}
-                                   :type zen/map
-                                   :keys {:a {:type zen/string}}}})
+      (zen/load-ns ztx '{:ns myns
+                         sym {:zen/tags #{zen/schema}
+                              :type zen/map
+                              :keys {:a {:type zen/string}}}})
 
       (def futures
         (mapv (fn [_]
                 (future
                   @lock
-                  (zen.core/validate ztx
-                                     #{'myns/sym}
-                                     {:a "1"})))
+                  (zen/validate ztx
+                                #{'myns/sym}
+                                {:a "1"})))
               [1 2]))
 
       (deliver lock :unlock)
 
       (matcho/match (mapv (fn [req-fut] @req-fut) futures)
-                    [{:errors empty?}
-                     {:errors empty?}]))))
+        [{:errors empty?}
+         {:errors empty?}]))))
 
 
-(deftest compile-key-error-handling-test
+(t/deftest compile-key-error-handling-test
 
   (defn sample-rule [vtx _data _opts]
     (v/add-err vtx
                ::compile-timeout
                {:message "rule has been executed" :type "test"}))
 
-  (def ztx (zen.core/new-context))
+  (def ztx (zen/new-context))
 
-  (testing "compile exception"
+  (t/testing "compile exception"
     (defmethod v/compile-key ::compile-exception [_ _ztx _]
       (throw (Exception. "compile exception"))
       {:rule sample-rule})
 
-    (zen.core/load-ns ztx '{:ns myns1
-                            sym {:zen/tags #{zen/schema}
-                                 :type zen/any
-                                 ::compile-exception true}})
+    (zen/load-ns ztx '{:ns myns1
+                       sym {:zen/tags #{zen/schema}
+                            :type zen/any
+                            ::compile-exception true}})
 
     (matcho/match (v/validate ztx #{'myns1/sym} {:a "1"})
-                  {:errors
-                   [{:type "compile-key-exception"
-                     :message "compile exception"}
-                    nil]})
+      {:errors
+       [{:type "compile-key-exception"
+         :message "compile exception"}
+        nil]})
 
     (matcho/match (v/validate ztx #{'myns1/sym} {:a "1"})
-                  {:errors
-                   [{:type "compile-key-exception"
-                     :message "compile exception"}
-                    nil]}))
+      {:errors
+       [{:type "compile-key-exception"
+         :message "compile exception"}
+        nil]}))
 
   #_(testing "compile exception once" #_"TODO"
-    (def already-thrown? (atom false))
-    (defmethod v/compile-key ::compile-exception-once [_ _ztx _]
-      (when (not @already-thrown?)
-        (reset! already-thrown? true)
-        (throw (Exception. "compile exception once")))
-      {:rule sample-rule})
+             (def already-thrown? (atom false))
+             (defmethod v/compile-key ::compile-exception-once [_ _ztx _]
+               (when (not @already-thrown?)
+                 (reset! already-thrown? true)
+                 (throw (Exception. "compile exception once")))
+               {:rule sample-rule})
 
-    (zen.core/load-ns ztx '{:ns myns2
-                            sym {:zen/tags #{zen/schema}
-                                 :type zen/any
-                                 ::compile-exception-once true}})
+             (zen/load-ns ztx '{:ns myns2
+                                sym {:zen/tags #{zen/schema}
+                                     :type zen/any
+                                     ::compile-exception-once true}})
 
-    (matcho/match (v/validate ztx #{'myns2/sym} {:a "1"})
-                  {:errors
-                   [{:type "compile-key-exception"
-                     :message "compile exception once"}
-                    nil]})
+             (matcho/match (v/validate ztx #{'myns2/sym} {:a "1"})
+               {:errors
+                [{:type "compile-key-exception"
+                  :message "compile exception once"}
+                 nil]})
 
-    (matcho/match (v/validate ztx #{'myns2/sym} {:a "1"})
-                  {:errors
-                   [{:type "test"
-                     :message "rule has been executed"}
-                    nil]}))
+             (matcho/match (v/validate ztx #{'myns2/sym} {:a "1"})
+               {:errors
+                [{:type "test"
+                  :message "rule has been executed"}
+                 nil]}))
 
-  (testing "compile timeout"
+  (t/testing "compile timeout"
     (defmethod v/compile-key ::compile-timeout [_ _ztx _]
       (Thread/sleep 500)
       {:rule sample-rule})
 
-    (zen.core/load-ns ztx '{:ns myns3
-                            sym {:zen/tags #{zen/schema}
-                                 :type zen/any
-                                 ::compile-timeout true}})
+    (zen/load-ns ztx '{:ns myns3
+                       sym {:zen/tags #{zen/schema}
+                            :type zen/any
+                            ::compile-timeout true}})
 
     (def v1 (future (v/validate ztx #{'myns3/sym} {:a "1"} {:compile-schema-timeout 1})))
     (def v2 (future (v/validate ztx #{'myns3/sym} {:a "1"} {:compile-schema-timeout 1})))
 
     (matcho/match (sort-by :type (concat (:errors @v1) (:errors @v2)))
-                  [{:type "test" :message "rule has been executed"}
-                   {:type "test" :message "rule has been executed"}
-                   nil])))
+      [{:type "test" :message "rule has been executed"}
+       {:type "test" :message "rule has been executed"}
+       nil])))
 
 (comment
 

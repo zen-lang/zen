@@ -1,10 +1,11 @@
 (ns zen.schema
-  (:require [zen.utils :as utils]
-            [zen.validation.utils :as validation.utils]
-            [clojure.set]))
+  (:require
+   [clojure.set]
+   [zen.utils :as utils]
+   [zen.validation.utils :as validation.utils]))
 
 
-(defmulti compile-key (fn [k ztx kfg] k))
+(defmulti compile-key (fn [k _ztx _kfg] k))
 
 
 (defonce schema-key-interpreters-atom (atom {}))
@@ -75,8 +76,8 @@
 (defn safe-compile-key [k ztx kfg]
   (try (merge (some-> (get @schema-key-interpreters-atom k)
                       (update-vals
-                        (fn [interpreter-compile-key-fn]
-                          (interpreter-compile-key-fn k ztx kfg))))
+                       (fn [interpreter-compile-key-fn]
+                         (interpreter-compile-key-fn k ztx kfg))))
               (compile-key k ztx kfg))
        (catch Exception e
          {:rule (fn [vtx _data _opts]
@@ -108,9 +109,9 @@
                              rulesets))]
 
     (wrap-with-hooks
-      compiled-schema-fn
-      {:pre (get-schema-hooks ztx @schema-pre-process-hooks-atom schema)
-       :post (get-schema-hooks ztx @schema-post-process-hooks-atom schema)})))
+     compiled-schema-fn
+     {:pre (get-schema-hooks ztx @schema-pre-process-hooks-atom schema)
+      :post (get-schema-hooks ztx @schema-post-process-hooks-atom schema)})))
 
 
 (defn get-cached
@@ -118,27 +119,27 @@
   (let [hash* (hash schema)
         v-promise (get-in @ztx [:zen.v2-validation/compiled-schemas hash*])]
     (if (some? v-promise) #_"NOTE: race condition will result in double compilation, but this shouldn't crash anything"
-      (fn cached-schema-fn [vtx data opts]
+        (fn cached-schema-fn [vtx data opts]
         ;; TODO add to vtx :warning
-        (let [v (deref v-promise
-                       (:compile-schema-timeout opts 60000)
-                       ::timeout)]
-          (if (= ::timeout v) ;; can't wait this long for the compilation to end, going to compile ourselves
-            (do (swap! ztx update :zen.v2-validation/compiled-schemas dissoc hash*)
-                ((get-cached ztx schema init?)
-                 vtx data opts))
-            (v vtx data opts))))
+          (let [v (deref v-promise
+                         (:compile-schema-timeout opts 60000)
+                         ::timeout)]
+            (if (= ::timeout v) ;; can't wait this long for the compilation to end, going to compile ourselves
+              (do (swap! ztx update :zen.v2-validation/compiled-schemas dissoc hash*)
+                  ((get-cached ztx schema init?)
+                   vtx data opts))
+              (v vtx data opts))))
 
-      (let [v-promise (promise)
-            _ (swap! ztx assoc-in [:zen.v2-validation/compiled-schemas hash*] v-promise)
-            v (compile-schema ztx schema)]
+        (let [v-promise (promise)
+              _ (swap! ztx assoc-in [:zen.v2-validation/compiled-schemas hash*] v-promise)
+              v (compile-schema ztx schema)]
 
-        (deliver v-promise v)
-        v))))
+          (deliver v-promise v)
+          v))))
 
 
 (defn apply-schema
-  "gets schema from cache and appiles on data with chosen interpreter. ex 'zen.v2-validation/*validate-schema"
+  "Gets schema from cache and appiles on data with chosen interpreter. ex 'zen.v2-validation/*validate-schema."
   [ztx vtx schema data {:keys [sch-symbol] :as opts}]
   (let [vtx (-> vtx
                 (assoc :schema [(or sch-symbol (:zen/name schema))])
@@ -186,24 +187,24 @@
 
 
 (register-compile-key-interpreter!
-  [:keys ::navigate]
-  (fn [_ ztx ks]
-    (let [key-rules (->> ks
-                         (map (fn [[k sch]]
-                                [k (get-cached ztx sch false)]))
-                         (utils/iter-into {}))]
-      (fn navigate-keys [vtx data opts]
-        (loop [data (seq data)
-               vtx* vtx]
-          (if (empty? data)
-            vtx*
-            (let [[k v] (first data)]
-              (if-let [key-rule (get key-rules k)]
-                (recur (rest data)
-                       (-> (validation.utils/node-vtx&log vtx* [k] [k] :keys)
-                           (key-rule v opts)
-                           (validation.utils/merge-vtx vtx*)))
-                (recur (rest data) vtx*)))))))))
+ [:keys ::navigate]
+ (fn [_ ztx ks]
+   (let [key-rules (->> ks
+                        (map (fn [[k sch]]
+                               [k (get-cached ztx sch false)]))
+                        (utils/iter-into {}))]
+     (fn navigate-keys [vtx data opts]
+       (loop [data (seq data)
+              vtx* vtx]
+         (if (empty? data)
+           vtx*
+           (let [[k v] (first data)]
+             (if-let [key-rule (get key-rules k)]
+               (recur (rest data)
+                      (-> (validation.utils/node-vtx&log vtx* [k] [k] :keys)
+                          (key-rule v opts)
+                          (validation.utils/merge-vtx vtx*)))
+               (recur (rest data) vtx*)))))))))
 
 
 (register-compile-key-interpreter!
@@ -252,32 +253,32 @@
 
 (register-compile-key-interpreter!
  [:confirms ::navigate]
-  (fn [_ ztx ks]
-    (letfn [(compile-confirms [sym]
-              (if-let [sch (utils/get-symbol ztx sym)]
-                [sym (:zen/name sch) (get-cached ztx sch false)]
-                [sym]))]
-      (fn navigate-confirms [vtx data opts]
-        (loop [comp-fns (mapv compile-confirms ks)
-               vtx*     vtx]
-          (if (empty? comp-fns)
-            vtx*
-            (let [[sym sch-nm v] (first comp-fns)]
-              (cond
-                (true? (get-in vtx* [:zen.v2-validation/confirmed (:path vtx*) sch-nm]))
-                (recur (rest comp-fns) vtx*)
+ (fn [_ ztx ks]
+   (letfn [(compile-confirms [sym]
+             (if-let [sch (utils/get-symbol ztx sym)]
+               [sym (:zen/name sch) (get-cached ztx sch false)]
+               [sym]))]
+     (fn navigate-confirms [vtx data opts]
+       (loop [comp-fns (mapv compile-confirms ks)
+              vtx*     vtx]
+         (if (empty? comp-fns)
+           vtx*
+           (let [[sym sch-nm v] (first comp-fns)]
+             (cond
+               (true? (get-in vtx* [:zen.v2-validation/confirmed (:path vtx*) sch-nm]))
+               (recur (rest comp-fns) vtx*)
 
-                (fn? v)
-                (recur (rest comp-fns)
-                       (-> (assoc-in vtx* [:zen.v2-validation/confirmed (:path vtx*) sch-nm] true)
-                           (validation.utils/node-vtx [:confirms sch-nm])
-                           (v data opts)
-                           (validation.utils/merge-vtx vtx*)))
+               (fn? v)
+               (recur (rest comp-fns)
+                      (-> (assoc-in vtx* [:zen.v2-validation/confirmed (:path vtx*) sch-nm] true)
+                          (validation.utils/node-vtx [:confirms sch-nm])
+                          (v data opts)
+                          (validation.utils/merge-vtx vtx*)))
 
-                :else
-                (recur (rest comp-fns)
-                       #_"NOTE: This errors mechanism comes from ::validate interpreter. Maybe we should untie it from here."
-                       (validation.utils/add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)}))))))))))
+               :else
+               (recur (rest comp-fns)
+                      #_"NOTE: This errors mechanism comes from ::validate interpreter. Maybe we should untie it from here."
+                      (validation.utils/add-err vtx* :confirms {:message (str "Could not resolve schema '" sym)}))))))))))
 
 
 #_"NOTE: Errors mechanism used here comes from ::validate interpreter. Maybe we should untie it from here."
@@ -285,24 +286,24 @@
  [:schema-key ::navigate]
  (fn [_ ztx {sk :key sk-ns :ns sk-tags :tags}]
    (fn navigate-schema-key [vtx data opts]
-    (if-let [sch-nm (get data sk)]
-      (let [sch-symbol               (if sk-ns (symbol sk-ns (name sch-nm)) (symbol sch-nm))
-            {tags :zen/tags :as sch} (utils/get-symbol ztx sch-symbol)]
+     (if-let [sch-nm (get data sk)]
+       (let [sch-symbol               (if sk-ns (symbol sk-ns (name sch-nm)) (symbol sch-nm))
+             {tags :zen/tags :as sch} (utils/get-symbol ztx sch-symbol)]
          (cond
            (nil? sch)
            (validation.utils/add-err vtx :schema-key
-                    {:message (str "Could not find schema " sch-symbol)
-                     :type    "schema"})
+                                     {:message (str "Could not find schema " sch-symbol)
+                                      :type    "schema"})
 
            (not (contains? tags 'zen/schema))
            (validation.utils/add-err vtx :schema-key
-                    {:message (str "'" sch-symbol " should be tagged with zen/schema, but " tags)
-                     :type    "schema"})
+                                     {:message (str "'" sch-symbol " should be tagged with zen/schema, but " tags)
+                                      :type    "schema"})
 
            (and sk-tags (not (clojure.set/subset? sk-tags tags)))
            (validation.utils/add-err vtx :schema-key
-                    {:message (str "'" sch-symbol " should be tagged with " sk-tags ", but " tags)
-                     :type    "schema"})
+                                     {:message (str "'" sch-symbol " should be tagged with " sk-tags ", but " tags)
+                                      :type    "schema"})
 
            :else
            (let [v (get-cached ztx sch false)]
@@ -323,9 +324,9 @@
          (cond
            (nil? sch)
            (validation.utils/add-err vtx
-                    :schema-index
-                    {:message (format "Could not find schema %s" sch-symbol)
-                     :type    "schema"})
+                                     :schema-index
+                                     {:message (format "Could not find schema %s" sch-symbol)
+                                      :type    "schema"})
 
            :else
            (let [v (get-cached ztx sch false)]

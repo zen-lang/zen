@@ -1,5 +1,7 @@
 (ns zen.cli.output
-  (:require clojure.pprint))
+  (:require
+   clojure.pprint
+   [clojure.string :as str]))
 
 (def ansi
   {:reset       "\u001B[0m"
@@ -12,31 +14,32 @@
 (defn print-table
   ;; Custom clojure.pprint/print-table
   ([ks rows]
-     (when (seq rows)
-       (let [widths (map
-                     (fn [k]
-                       (apply max (count (str k)) (map #(count (str (get % k))) rows)))
-                     ks)
-             spacers (map #(apply str (repeat % "-")) widths)
-             fmts (map #(str "%-" % "s") widths)
-             fmt-row (fn [leader divider trailer row]
-                       (apply str (interpose divider
-                                             (for [[col fmt] (map vector (map #(get row %) ks) fmts)]
-                                               (format fmt (str col))))))]
-         (doseq [row rows]
-           (println (fmt-row " " " " " " row))))))
+   (when (seq rows)
+     (let [widths (map
+                   (fn [k]
+                     (apply max (count (str k)) (map #(count (str (get % k))) rows)))
+                   ks)
+           _spacers (map #(apply str (repeat % "-")) widths)
+           fmts (map #(str "%-" % "s") widths)
+           fmt-row (fn [_leader divider _trailer row]
+                     (apply str (interpose divider
+                                           (for [[col fmt] (map vector (map #(get row %) ks) fmts)]
+                                             (format fmt (str col))))))]
+       (doseq [row rows]
+         (println (fmt-row " " " " " " row))))))
   ([rows] (print-table (keys (first rows)) rows)))
 
 (defn get-format
   [arguments]
   (some->>
-   (filter #(clojure.string/starts-with? % "--format=") arguments)
+   (filter #(str/starts-with? % "--format=") arguments)
    (first)
    (re-find #"--format=(.*)")
    (last)
    (keyword)))
 
 (defmulti return
+  #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
   (fn [data]
     (:format data))
   :default :pprint)
@@ -73,7 +76,7 @@
                   (str " "))]
                 (remove empty?)
                 (apply str))
-      :description 
+      :description
       (when (:description usage)
         (str "- " (:description usage)))}))
   (when (seq (:examples result))

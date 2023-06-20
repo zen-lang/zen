@@ -1,7 +1,7 @@
 (ns zen.v2-validation-smoke-test
   (:require
+   [clojure.test :as t]
    [matcho.core :as matcho]
-   [clojure.test :refer [deftest is testing]]
    [zen.core]
    [zen.v2-validation :as v2]))
 
@@ -17,12 +17,12 @@
 
 (defmacro valid [tctx schema subj]
   `(let [res# (v2/validate ~tctx #{~schema} ~subj)]
-     (is (empty? (:errors res#)))
+     (t/is (empty? (:errors res#)))
      (:errors res#)))
 
 (defmacro valid-schema! [tctx subj]
   `(let [res# (v2/validate ~tctx #{'zen/schema} ~subj)]
-     (is (empty? (:errors res#)))
+     (t/is (empty? (:errors res#)))
      res#))
 
 (defmacro invalid-schema [tctx subj res]
@@ -139,8 +139,8 @@
 
        'some-number {:type 'zen/number}})
 
-(deftest test-validation
-  (is (empty? (:errors @tctx)))
+(t/deftest test-validation
+  (t/is (empty? (:errors @tctx)))
 
   (vmatch tctx #{'myapp/str} 1
           {:errors [{:message #"Expected type of 'string"}]})
@@ -466,7 +466,7 @@
              :path [],
              :schema ['myapp/const-map]}]})
 
-  (testing "zen/string"
+  (t/testing "zen/string"
 
     (def str-sch {:zen/tags #{'zen/schema}
                   :type 'zen/string
@@ -519,7 +519,7 @@
     (valid tctx 'test.str/str-tgs "test.str/tagged"))
 
 ;; tessting map
-  (testing "zen/map"
+  (t/testing "zen/map"
 
     ;; TODO fix this
     #_(valid-schema! tctx
@@ -610,7 +610,7 @@
              :schema ['test.map.sk/obj :schema-key 'test.map.sk/org :require]}
             {:type "unknown-key", :message "unknown key :extra", :path [:extra]}]))
 
-  (testing "zen/vector"
+  (t/testing "zen/vector"
 
     ;; TODO fix this
     #_(valid-schema! tctx
@@ -646,7 +646,7 @@
              :path [0],
              :schema ['test.vec/nth :nth 0 :type]}]))
 
-  (testing "zen/symbol"
+  (t/testing "zen/symbol"
 
     ;; TODO fix this
     #_(valid-schema! tctx
@@ -744,9 +744,9 @@
            [{:type "enum", :message "Expected 'c' in #{\"a1\" \"a2\"}", :path []}])
 
     #_(match tctx 'test.enum/inh-val "c"
-           [{:type "enum",
-             :message "Expected 'c' in #{\"a1\" \"b2\" \"a2\" \"b1\"}",
-             :path []}])
+             [{:type "enum",
+               :message "Expected 'c' in #{\"a1\" \"b2\" \"a2\" \"b1\"}",
+               :path []}])
 
     (zen.core/load-ns!
      tctx {'ns 'test.list
@@ -908,8 +908,8 @@
            :path [:path 0]
            :schema ['test.fn/tpl :path 'test.fn/get :args :every 0 :type]}]))
 
-(deftest set-validation
-  (testing "superset-of"
+(t/deftest set-validation
+  (t/testing "superset-of"
     (vmatch tctx #{'myapp/some-superset} #{"foo"}
             {:errors [{:type "set"
                        :schema ['myapp/some-superset :superset-of]}
@@ -926,7 +926,7 @@
     (vmatch tctx #{'myapp/some-superset} #{"foo" "bar" "baz" "quux"}
             {:errors [nil?]}))
 
-  (testing "subset-of"
+  (t/testing "subset-of"
     (vmatch tctx #{'myapp/some-subset} #{"foo"}
             {:errors [nil?]})
 
@@ -943,7 +943,7 @@
                        :schema ['myapp/some-subset :subset-of]}
                       nil?]})))
 
-(deftest number-validation
+(t/deftest number-validation
   (vmatch tctx #{'myapp/some-number} 1
           {:errors [nil?]})
 
@@ -962,7 +962,7 @@
   (vmatch tctx #{'myapp/some-number} 1/3
           {:errors [nil?]}))
 
-(deftest validate+confirms-no-recheck-test
+(t/deftest validate+confirms-no-recheck-test
   (zen.core/load-ns!
    tctx {'ns 'validate+confirms
 
@@ -975,6 +975,7 @@
          'confirms-sch
          {:zen/tags #{'zen/schema}
           :confirms #{'base-sch}}})
+
 
   (matcho/match (zen.core/validate tctx
                                    #{'validate+confirms/confirms-sch

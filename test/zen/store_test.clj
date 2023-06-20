@@ -1,22 +1,21 @@
 (ns zen.store-test
   (:require
+   [clojure.test :as t]
    [matcho.core :as matcho]
-   [zen.core :as zen]
-   [clojure.test :refer [deftest is testing]]
-   [clojure.test :as t]))
+   [zen.core :as zen]))
 
-(deftest core-schema
+(t/deftest core-schema
   (def ctx (zen/new-context))
 
-  (is (empty? (:errors @ctx)))
+  (t/is (empty? (:errors @ctx)))
 
-  (is (not (empty? (get-in @ctx [:symbols 'zen/schema]))))
+  (t/is (not (empty? (get-in @ctx [:symbols 'zen/schema]))))
 
-  (is (not (empty? (get-in @ctx [:ns 'zen]))))
+  (t/is (not (empty? (get-in @ctx [:ns 'zen]))))
 
-  (is (not (nil? ('zen/property (:tags @ctx))))))
+  (t/is (not (nil? ('zen/property (:tags @ctx))))))
 
-(deftest memory-store-schema
+(t/deftest memory-store-schema
   (def data '{ns data
               import #{check}
               foo {:foo "bar"}})
@@ -33,46 +32,46 @@
 
   (zen/load-ns ctx data)
 
-  (is (= memory-store (:memory-store @ctx)))
+  (t/is (= memory-store (:memory-store @ctx)))
 
   ;; TODO remove dissoc sometimes - prop is validated incorrectly
   (def errs (:errors (zen/validate ctx ['check/check] (dissoc (zen/get-symbol ctx 'data/foo)
                                                               :zen/name))))
 
-  (is (empty? errs)))
+  (t/is (empty? errs)))
 
-(deftest dynamic-paths
+(t/deftest dynamic-paths
   (def wctx (zen/new-context))
   (zen/read-ns wctx 'dyns)
-  (is (nil? (zen/get-symbol wctx 'dyns/model)))
+  (t/is (nil? (zen/get-symbol wctx 'dyns/model)))
 
   (def dctx (zen/new-context {:paths ["/unexisting"
                                       (str (System/getProperty "user.dir") "/test/dynamic")]}))
 
   (zen/read-ns dctx 'dyns)
-  (is (not (nil? (zen/get-symbol dctx 'dyns/model)))))
+  (t/is (not (nil? (zen/get-symbol dctx 'dyns/model)))))
 
-(deftest node-modules
+(t/deftest node-modules
   (def path "test/fixtures/tmp-proj")
   (def zctx* (zen/new-context {:paths [path]}))
   (zen/read-ns zctx* 'project)
 
-  (is (empty? (:errors @zctx*)))
+  (t/is (empty? (:errors @zctx*)))
 
-  (is (contains? (:ns @zctx*) 'fhir.r4))
-  (is (contains? (:ns @zctx*) 'us-core.patient))
+  (t/is (contains? (:ns @zctx*) 'fhir.r4))
+  (t/is (contains? (:ns @zctx*) 'us-core.patient))
 
-  (testing ":zen/file and :zen/zen-path point to file and path containing the file"
+  (t/testing ":zen/file and :zen/zen-path point to file and path containing the file"
     (def node-modules-us-core-path
       "node_modules/@zen-lang/us-core")
 
-    (matcho/match (zen.core/get-symbol zctx* 'us-core.patient/patient)
-                  {:zen/file (str path
-                                  "/" node-modules-us-core-path
-                                  "/us-core/patient.edn")
-                   :zen/zen-path (str path "/" node-modules-us-core-path)})))
+    (matcho/match (zen/get-symbol zctx* 'us-core.patient/patient)
+      {:zen/file (str path
+                      "/" node-modules-us-core-path
+                      "/us-core/patient.edn")
+       :zen/zen-path (str path "/" node-modules-us-core-path)})))
 
-(deftest recursive-import
+(t/deftest recursive-import
   (def memory-store
     '{foo {ns     foo
            import #{bar}
@@ -90,12 +89,12 @@
 
   (zen/load-ns ctx (memory-store 'foo))
 
-  (is (empty? (:errors @ctx))))
+  (t/is (empty? (:errors @ctx))))
 
-(deftest keywords-syntax
-  (def ztx (zen.core/new-context {:unsafe true}))
+(t/deftest keywords-syntax
+  (def ztx (zen/new-context {:unsafe true}))
 
-  (zen.core/load-ns!
+  (zen/load-ns!
    ztx {:ns 'mytest
 
         :import #{'zen.test}
@@ -106,33 +105,33 @@
 
   (def errs (:errors @ztx))
 
-  (is (empty? errs)))
+  (t/is (empty? errs)))
 
-(deftest zen-quote-reader-tag
-  (testing "Store preparation"
+(t/deftest zen-quote-reader-tag
+  (t/testing "Store preparation"
     (def ztx (zen/new-context {:paths ["test/fixtures/qsyms"]})))
 
-  (testing "No errors on ns load"
+  (t/testing "No errors on ns load"
     (zen/read-ns ztx 'main)
 
-    (is (empty? (:errors @ztx)))
+    (t/is (empty? (:errors @ztx)))
 
-    (is (= 'name.spaced/quoted-symbol (:a (zen.core/get-symbol ztx 'main/qsch))))
-    (is (= 'unqualified-quoted-symbol (:b (zen.core/get-symbol ztx 'main/qsch))))))
+    (t/is (= 'name.spaced/quoted-symbol (:a (zen/get-symbol ztx 'main/qsch))))
+    (t/is (= 'unqualified-quoted-symbol (:b (zen/get-symbol ztx 'main/qsch))))))
 
-(deftest zen-loading-errors
-  (testing "Store preparation"
+(t/deftest zen-loading-errors
+  (t/testing "Store preparation"
     (def ztx (zen/new-context {:paths ["test/fixtures/loading"]})))
 
-  (testing "No errors on ns load"
+  (t/testing "No errors on ns load"
     (zen/read-ns ztx 'missing-things)
 
-    (is (= ['{:message    "No file for ns 'non-existent-ns"
-              :missing-ns non-existent-ns
-              :ns         missing-things}]
-           (:errors @ztx)))))
+    (t/is (= ['{:message    "No file for ns 'non-existent-ns"
+                :missing-ns non-existent-ns
+                :ns         missing-things}]
+             (:errors @ztx)))))
 
-(deftest late-binding
+(t/deftest late-binding
   (def ztx (zen/new-context))
 
   (def lib-ns
@@ -165,7 +164,7 @@
      :diref #{'mylib/operation}}]
    (zen/errors ztx))
 
-  (testing "late binding"
+  (t/testing "late binding"
 
     (def app-ns
       '{:ns myapp
@@ -178,7 +177,7 @@
 
     (zen/load-ns ztx app-ns)
 
-    (is (empty? (zen/errors ztx)))
+    (t/is (empty? (zen/errors ztx)))
 
     (matcho/assert
      '{:zen/tags #{zen/binding}
@@ -189,17 +188,17 @@
 
 
 (t/deftest load-ns-resources-loaded-test
-  (def ztx (zen.core/new-context {}))
+  (def ztx (zen/new-context {}))
 
   (matcho/match
-    (zen/load-ns ztx
-                 '{:ns my-ns
-                   a {:zen/tags #{zen/schema}
-                      :type zen/map}})
+   (zen/load-ns ztx
+                '{:ns my-ns
+                  a {:zen/tags #{zen/schema}
+                     :type zen/map}})
     [:resources-loaded 1 nil]))
 
 
-(deftest cyclic-import-validation-test
+(t/deftest cyclic-import-validation-test
   (def memory-store
     {'b '{:ns b
           :import #{a}
@@ -213,21 +212,21 @@
 
   (def z (zen/new-context {:memory-store memory-store}))
 
-  (is (= [:resources-loaded 2]
-         (zen/load-ns z (get memory-store 'a))))
+  (t/is (= [:resources-loaded 2]
+           (zen/load-ns z (get memory-store 'a))))
 
-  (is (seq (zen/errors z))))
+  (t/is (seq (zen/errors z))))
 
 
-(deftest cyclic-import-validation-on-read-ns-test
+(t/deftest cyclic-import-validation-on-read-ns-test
   (def z (zen/new-context {:paths ["test/fixtures/cyclic-import-validation-on-read-ns-test"]}))
 
-  (is (= :zen/loaded (zen/read-ns z 'a)))
+  (t/is (= :zen/loaded (zen/read-ns z 'a)))
 
-  (is (seq (zen/errors z))))
+  (t/is (seq (zen/errors z))))
 
 
-(deftest symbol-validation-test
+(t/deftest symbol-validation-test
   (def memory-store
     {'b '{:ns b
           :import #{a}
@@ -239,9 +238,9 @@
 
   (def z (zen/new-context {:memory-store memory-store}))
 
-  (is (= [:resources-loaded 2]
-         (zen/load-ns z (get memory-store 'a))))
+  (t/is (= [:resources-loaded 2]
+           (zen/load-ns z (get memory-store 'a))))
 
   (t/testing "unresolved symbols errors"
     (matcho/match (zen/errors z)
-                  [{} {} {} {} nil])))
+      [{} {} {} {} nil])))

@@ -1,16 +1,16 @@
 (ns zen.validation
   (:require [clojure.set]
+            [clojure.string :as str]
             [zen.effect]
             [zen.match]
-            [zen.utils]
-            [clojure.string :as str]))
+            [zen.utils]))
 
 ;; NAMESPACE DEPRECATED
 ;; use zen.v2-validation
 
 (def get-symbol zen.utils/get-symbol)
 
-(defn update-acc [ctx acc {dp :path sp :schema}]
+(defn update-acc [_ctx acc {dp :path sp :schema}]
   (cond-> acc
     dp (update :path into dp)
     sp (update :schema into sp)))
@@ -69,7 +69,7 @@
               eks :exclusive-keys
               validation-type :validation-type
               :or {validation-type :closed}
-              :as sch} data]
+              :as _sch} data]
   (if (map? data)
     (let [ignore-unknown-keys (or ky vls (= :open validation-type))
           acc (if ignore-unknown-keys
@@ -104,13 +104,13 @@
                                            :else
                                            (update-in acc [:keys (conj (:path acc) k)] #(or % #{})))
                                      acc (if (and vls (nil? sch) (nil? prop-sch))
-                                             (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
-                                                 (restore-acc acc))
-                                             acc)
+                                           (-> (validate-node ctx (update-acc ctx acc {:schema [:values] :path [k]}) vls v)
+                                               (restore-acc acc))
+                                           acc)
                                      acc (if (and ky (nil? sch) (nil? prop-sch))
-                                             (-> (validate-node ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
-                                                 (restore-acc acc))
-                                             acc)]
+                                           (-> (validate-node ctx (update-acc ctx acc {:schema [:key] :path [k]}) ky k)
+                                               (restore-acc acc))
+                                           acc)]
                                  acc)))
                            acc))
           acc (->> reqs
@@ -157,7 +157,7 @@
       acc)
     (add-error ctx acc {:message (format "Expected type of 'map, got %s" (pr-str data))  :type "type"})))
 
-(defmulti slicing-filter (fn [ctx slicing-definition data] (:engine slicing-definition)))
+(defmulti slicing-filter (fn [_ctx slicing-definition _data] (:engine slicing-definition)))
 
 (defmethod slicing-filter :zen [ctx {schema :zen} data]
   (empty? (:errors (validate-node ctx (new-validation-acc) schema data))))
@@ -166,7 +166,7 @@
   (let [pure-validation (validate-node ctx (new-validation-acc) schema data)]
     (empty? (:errors (zen.effect/apply-fx ctx pure-validation data)))))
 
-(defmethod slicing-filter :match [ctx {:keys [match]} data]
+(defmethod slicing-filter :match [_ctx {:keys [match]} data]
   (empty? (zen.match/match data match)))
 
 (defn determine-slice [ctx slices data]
@@ -178,7 +178,7 @@
   (reduce (fn [coll-slices [idx coll-el]]
             (->> (or (not-empty (determine-slice ctx (:slices slicing) coll-el))
                      [:slicing/rest])
-                 (into {} (map (fn [slice-name] [slice-name ^:slice{idx coll-el}])))
+                 (into {} (map (fn [slice-name] [slice-name ^:slice {idx coll-el}])))
                  (merge-with merge coll-slices)))
           {}
           (if (:slice (meta coll))
@@ -195,7 +195,7 @@
     (assoc error :path path)))
 
 (defn process-slicing-errors-paths
-  "Appends slice names to errors paths
+  "Appends slice names to errors paths.
    We can't modify (:path acc) when traversing into slices because
    paths are shared between :every and :slices and
    keys validation relies on paths collisions"
@@ -234,13 +234,13 @@
                              (cond-> acc'
                                (:every schema)
                                (as-> $
-                                 (update-acc ctx $ {:path [idx] :schema [:every]})
+                                     (update-acc ctx $ {:path [idx] :schema [:every]})
                                  (validate-node ctx $ (:every schema) coll-el)
                                  (restore-acc $ acc))
 
                                (and (:nth schema) (get (:nth schema) idx))
                                (as-> $
-                                 (update-acc ctx $ {:path [idx] :schema [:nth idx]})
+                                     (update-acc ctx $ {:path [idx] :schema [:nth idx]})
                                  (validate-node ctx $ (get (:nth schema) idx) coll-el)
                                  (restore-acc $ acc))))
                            acc))
@@ -308,15 +308,15 @@
                 acc)
           acc (if (and (:subset-of schema)
                        (not (clojure.set/subset?
-                              data
-                              (:subset-of schema))))
+                             data
+                             (:subset-of schema))))
                 (add-error ctx acc {:message (format "Expected %s to be a subset of %s" data (:subset-of schema)) :type "set"}
                            {:schema [:subset-of]})
                 acc)
           acc (if (and (:superset-of schema)
                        (not (clojure.set/superset?
-                              data
-                              (:superset-of schema))))
+                             data
+                             (:superset-of schema))))
                 (add-error ctx acc {:message (format "Expected %s to be a superset of %s" data (:superset-of schema)) :type "set"}
                            {:schema [:superset-of]})
                 acc)]
@@ -443,14 +443,14 @@
     (add-error ctx acc {:message (format "Expected fn call '(fn-name args-1 arg-2), got '%s" (pretty-type data)) :type "apply.type"})))
 
 (defmethod validate-type 'zen/boolean
-  [_ ctx acc schema data]
+  [_ ctx acc _schema data]
   (if (boolean? data)
     acc
     (add-error ctx acc {:message (format "Expected type of 'boolean, got '%s" (pretty-type data)) :type "primitive-type"})))
 
 
 (defmethod validate-type 'zen/keyword
-  [_ ctx acc schema data]
+  [_ ctx acc _schema data]
   (if (keyword? data)
     acc
     (add-error ctx acc {:message (format "Expected type of 'keyword, got '%s" (pretty-type data)) :type "primitive-type"})))
@@ -459,25 +459,25 @@
   (instance? java.util.regex.Pattern x))
 
 (defmethod validate-type 'zen/regex
-  [_ ctx acc schema data]
+  [_ ctx acc _schema data]
   (if (and (string? data) (re-pattern data))
     acc
     (add-error ctx acc {:message (format "Expected type of 'regex, got '%s" (pretty-type data)) :type "primitive-type"})))
 
 (defmethod validate-type 'zen/date
-  [_ ctx acc schema data]
-  (if (and (string? data) #_(re-matches #"\d{4}-\d{2}-\d{2}" data))
-    acc
-    (add-error ctx acc {:message (format "Expected type of 'date, got \"%s\"" data) :type "primitive-type"})))
+  [_ ctx acc _schema data]
+  (if (string? data) #_(and (string? data) #_(re-matches #"\d{4}-\d{2}-\d{2}" data))
+      acc
+      (add-error ctx acc {:message (format "Expected type of 'date, got \"%s\"" data) :type "primitive-type"})))
 
 (defmethod validate-type 'zen/datetime
-  [_ ctx acc schema data]
-  (if (and (string? data) #_(re-matches #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*" data))
-    acc
-    (add-error ctx acc {:message (format "Expected type of 'date, got \"'%s\"" data) :type "primitive-type"})))
+  [_ ctx acc _schema data]
+  (if (string? data) #_(and (string? data) #_(re-matches #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*" data))
+      acc
+      (add-error ctx acc {:message (format "Expected type of 'date, got \"'%s\"" data) :type "primitive-type"})))
 
 (defmethod validate-type :default
-  [t ctx acc schema data]
+  [t ctx acc _schema _data]
   (add-error ctx acc {:message (format "No validate-type multimethod for '%s" t) :type "primitive-type"}))
 
 (defn register-unmatched-enum [acc enum data]
@@ -496,6 +496,7 @@
 
 (defmethod validate-node-rule :default [_ctx _acc _rule _rule-val _data])
 
+#_{:clj-kondo/ignore [:docstring-no-summary]}
 (defn emit-fx
   "If an unknown key encountered it may be a top-level fx symbol (as defined in zen/schema :keyname-schemas)
   then the encountered symbol should be checked if it indeed is a zen/schema-fx
@@ -526,7 +527,7 @@
             (restore-acc acc))
         (add-error ctx acc {:message (format "Could not resolve schema '%s" sym) :type "schema"})))))
 
-(defmethod validate-node-rule :confirms [ctx {pth :path :as acc} _ cfs data]
+(defmethod validate-node-rule :confirms [ctx {_pth :path :as acc} _ cfs data]
   (reduce (fn [acc sym] (validate-sch ctx acc sym data {:schema [:confirms sym]}))
           acc
           cfs))
@@ -568,7 +569,7 @@
       (when (:unsafe @ctx) (throw e))
       (add-error ctx acc {:message (pr-str e) :type "schema"}))))
 
-(defn validate-node [ctx acc {tp :type :as schema} data]
+(defn validate-node [ctx acc {_tp :type :as schema} data]
   (let [acc (reduce-kv (fn [acc' rule rule-val]
                          (or (validate-node-rule* ctx acc' rule rule-val data)
                              acc'))

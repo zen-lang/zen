@@ -1,8 +1,7 @@
 (ns zen.match
   (:refer-clojure :exclude [assert])
   (:require
-   [clojure.pprint]
-   [clojure.string :as str]))
+   [clojure.pprint]))
 
 (defn smart-explain-data [p x]
   (cond
@@ -23,10 +22,10 @@
   (if (not-any? #(empty? (match data %))
                 values)
     (let [expected `(:zen.match/one-of ~values)]
-     (conj errors {:message (str "Expected " (pr-str expected) " but " (pr-str data))
-                   :expected expected
-                   :but data
-                   :path path}))
+      (conj errors {:message (str "Expected " (pr-str expected) " but " (pr-str data))
+                    :expected expected
+                    :but data
+                    :path path}))
     errors))
 
 (defn present? [errors path data]
@@ -95,7 +94,7 @@
               errors))))
 
 (defn match
-  "Match against each pattern"
+  "Match against each pattern."
   [x pat]
   (match-recur []  [] x pat))
 

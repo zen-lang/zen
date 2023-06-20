@@ -34,7 +34,7 @@
             (assoc :schema (conj (:schema vtx) sch-key)))]
     (update vtx :errors conj err*)))
 
-(defn add-fx [vtx sch-key fx & data-path]
+(defn add-fx [vtx sch-key fx & _data-path]
   (let [fx*
         (-> fx
             (assoc :path (conj (:path vtx) sch-key)))]
@@ -150,8 +150,8 @@
 
    'zen/qsymbol {:fn (fn [sym]
                        (and
-                         (symbol? sym)
-                         (:zen/quote (meta sym))))
+                        (symbol? sym)
+                        (:zen/quote (meta sym))))
                  :to-str "quoted-symbol"}
 
    'zen/any (constantly true)
@@ -172,7 +172,7 @@
   (let [path (:path vtx)]
     (persistent!
      (utils/iter-reduce (fn [keyset data-entry]
-                    (conj! keyset
-                           (conj path (nth data-entry 0))))
-                  (transient #{})
-                  data))))
+                          (conj! keyset
+                                 (conj path (nth data-entry 0))))
+                        (transient #{})
+                        data))))

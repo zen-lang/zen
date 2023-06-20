@@ -1,16 +1,14 @@
 (ns zen.valpending-test
   (:require
    [clojure.java.io]
-   [zen.utils]
-   [zen.store]
-   [zen.test-runner :as r]
-   [clojure.test :refer [deftest is testing]]
-   [zen.v2-validation :as v]
-   [zen.validation]
+   [clojure.test :as t]
    [zen.core :as zen]
-   [matcho.core :as matcho]))
+   [zen.store]
+   [zen.utils]
+   [zen.v2-validation :as v]
+   [zen.validation]))
 
-(deftest ^:kaocha/pending is-key-extension
+(t/deftest ^:kaocha/pending is-key-extension
   (def ztx (zen/new-context {:unsafe true}))
 
   (def ex-ns
@@ -28,7 +26,7 @@
 
   (zen/load-ns ztx ex-ns)
 
-  (is (empty? (zen/errors ztx)))
+  (t/is (empty? (zen/errors ztx)))
 
   (def sch
     '{:zen/tags #{zen/schema}
@@ -36,9 +34,9 @@
       :ext-1 [1 2 3]
       :myns/ext-2 ["a" "string" "vector"]})
 
-  (is (empty? (:errors (zen/validate ztx #{'zen/schema} sch)))))
+  (t/is (empty? (:errors (zen/validate ztx #{'zen/schema} sch)))))
 
-(deftest ^:kaocha/pending validation-compatibility-test
+(t/deftest ^:kaocha/pending validation-compatibility-test
   (def rest-ns
     '{ns rest
 
@@ -104,27 +102,27 @@
        "$export" {:POST op}
        [:id]     {:GET op}}})
 
-  (testing "composing map validations"
+  (t/testing "composing map validations"
 
-    (testing "previous validation engine with current zen.edn"
-      (with-redefs [zen.v2-validation/validate zen.validation/validate
-                    zen.core/validate zen.validation/validate
-                    zen.v2-validation/validate-schema zen.validation/validate-schema
-                    zen.core/validate-schema zen.validation/validate-schema]
+    (t/testing "previous validation engine with current zen.edn"
+      (with-redefs [v/validate zen.validation/validate
+                    zen/validate zen.validation/validate
+                    v/validate-schema zen.validation/validate-schema
+                    v/validate-schema zen.validation/validate-schema]
 
-        (def ztx (zen.core/new-context))
+        (def ztx (zen/new-context))
 
-        (testing "zen ns load"
-          (is (empty? (zen.core/errors ztx))))
-
-        (swap! ztx assoc :errors [])
-
-        (testing "loading rest ns"
-          (zen.core/load-ns ztx rest-ns)
-          (is (empty? (zen.core/errors ztx))))
+        (t/testing "zen ns load"
+          (t/is (empty? (zen/errors ztx))))
 
         (swap! ztx assoc :errors [])
 
-        (testing "loading myns"
-          (zen.core/load-ns ztx myns)
-          (is (empty? (zen.core/errors ztx))))))))
+        (t/testing "loading rest ns"
+          (zen/load-ns ztx rest-ns)
+          (t/is (empty? (zen/errors ztx))))
+
+        (swap! ztx assoc :errors [])
+
+        (t/testing "loading myns"
+          (zen/load-ns ztx myns)
+          (t/is (empty? (zen/errors ztx))))))))

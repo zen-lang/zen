@@ -1,8 +1,0 @@
-{ns auth.op
- login-op {types zen/schema
-           :desc "Login operation"
-           :confirms #{zen/op}
-           :keys  {:session {:keys {:store {:type zen/symbol}
-                                    :schema {:type zen/symbol}}}
-                   :user {:keys {:store {:type zen/symbol}
-                                 :schema {:type zen/symbol}}}}}}

@@ -1,12 +1,13 @@
 (ns zen.package-test
-  (:require [zen.package :as sut]
-            [zen.core :as zen]
-            [zen.store]
-            [clojure.string :as str]
-            [clojure.java.io :as io]
-            [clojure.test :as t]
-            [matcho.core :as matcho]
-            [zen.test-utils]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :as t]
+   [matcho.core :as matcho]
+   [zen.core :as zen]
+   [zen.package :as sut]
+   [zen.store]
+   [zen.test-utils]))
 
 
 (defn get-git-hash [path]
@@ -51,50 +52,51 @@
 
 
 (t/deftest init-test
-  (def test-dir-path "/tmp/zen.package-test")
-  (def module-dir-path (str test-dir-path "/test-module"))
+  (def test-dir-path (io/file "/tmp/zen.package-test"))
+  (def module-dir-path (io/file test-dir-path "test-module"))
 
   (zen.test-utils/rm-fixtures test-dir-path)
 
   (t/testing "init"
     (zen.test-utils/mk-fixtures test-dir-path test-zen-repos)
 
-    (t/is (and (.exists (io/file (str module-dir-path "/zen-package.edn")))
+    (t/is (and (.exists (io/file module-dir-path "zen-package.edn"))
                (matcho/match
-                 (read-string (slurp (io/file (str module-dir-path "/zen-package.edn"))))
+                (read-string (slurp (io/file module-dir-path "zen-package.edn")))
                  {:deps {'a-lib string?}})))
 
-    (t/is (and (.exists (io/file (str module-dir-path "/.gitignore")))
-               (= (slurp (io/file (str module-dir-path "/.gitignore")))
+    (t/is (and (.exists (io/file module-dir-path ".gitignore"))
+               (= (slurp (io/file module-dir-path ".gitignore"))
                   "\n/zen-packages"))))
 
   (t/testing "read initted"
+    (println :here module-dir-path)
     (sut/zen-init-deps! module-dir-path)
 
-    (t/is (.exists (io/file (str module-dir-path "/zen-packages/"))))
+    (t/is (.exists (io/file module-dir-path "zen-packages")))
 
-    (def ztx (zen.core/new-context {:package-paths [module-dir-path]}))
+    (def ztx (zen/new-context {:package-paths [module-dir-path]}))
 
     (t/testing "no errors on read"
-      (zen.core/read-ns ztx 'main)
-      (t/is (empty? (zen.core/errors ztx))))
+      (zen/read-ns ztx 'main)
+      (t/is (empty? (zen/errors ztx))))
 
     (t/testing "symbols loaded"
       (t/is (= #{'main/sym}
-               (zen.core/get-tag ztx 'a/tag))))
+               (zen/get-tag ztx 'a/tag))))
 
     (t/testing "recursive deps schemas work"
-      (t/is (empty? (:errors (zen.core/validate ztx
-                                                #{'a/recur-sch}
-                                                {:a {:b {:a {:b {}}}}})))))))
+      (t/is (empty? (:errors (zen/validate ztx
+                                           #{'a/recur-sch}
+                                           {:a {:b {:a {:b {}}}}})))))))
 
 
 (t/deftest build-test
-  (def test-dir-path "/tmp/zen.package-test")
-  (def module-dir-path (str test-dir-path "/test-module"))
+  (def test-dir-path (io/file "/tmp/zen.package-test"))
+  (def module-dir-path (io/file test-dir-path "test-module"))
 
   (zen.test-utils/rm-fixtures test-dir-path)
-  (zen.test-utils/rm zen.store/unzip-cache-dir)
+  (zen.test-utils/rm (zen.store/unzip-cache-dir))
   (zen.test-utils/mk-fixtures test-dir-path test-zen-repos)
 
   (t/testing "Zen can build zrc folder with module files on top-level"
@@ -110,9 +112,9 @@
            (map :ns)))
 
     (t/testing "all namespaces from the fixture are present in the build zrc path"
-      (def build-zrc-path (str module-dir-path
-                               "/" (:build-path user-cfg-fixture)
-                               "/zrc"))
+      (def build-zrc-path (io/file module-dir-path
+                                   (:build-path user-cfg-fixture)
+                                   "zrc"))
 
       (t/is (= (into #{}
                      (map #(str build-zrc-path "/" (name %) ".edn"))
@@ -134,20 +136,20 @@
                        (map #(str "zrc" \/ (name %) ".edn"))
                        all-test-ns)
                  (into #{}
-                       (zen.test-utils/zip-entries build-zip-path)) ))))
+                       (zen.test-utils/zip-entries build-zip-path))))))
 
     (t/testing "zip archive read-ns"
-      (def ztx (zen.core/new-context {:zip-paths [build-zip-path]}))
+      (def ztx (zen/new-context {:zip-paths [build-zip-path]}))
 
       (t/testing "no errors on read"
-        (zen.core/read-ns ztx 'main)
-        (t/is (empty? (zen.core/errors ztx))))
+        (zen/read-ns ztx 'main)
+        (t/is (empty? (zen/errors ztx))))
 
       (t/testing "symbols loaded"
         (t/is (= #{'main/sym}
-                 (zen.core/get-tag ztx 'a/tag))))
+                 (zen/get-tag ztx 'a/tag))))
 
       (t/testing "recursive deps schemas work"
-        (t/is (empty? (:errors (zen.core/validate ztx
-                                                  #{'a/recur-sch}
-                                                  {:a {:b {:a {:b {}}}}}))))))))
+        (t/is (empty? (:errors (zen/validate ztx
+                                             #{'a/recur-sch}
+                                             {:a {:b {:a {:b {}}}}}))))))))

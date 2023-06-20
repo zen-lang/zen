@@ -1,10 +1,10 @@
 (ns zen.utils
-  (:require [clojure.string :as str]
-            [clojure.java.io :as io])
-  (:import java.io.File))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]))
 
 (defn deep-merge
-  "efficient deep merge"
+  "Efficient deep merge."
   [a b]
   (loop [[[k v :as i] & ks] b, acc a]
     (if (nil? i)
@@ -160,40 +160,13 @@
     (or (get tags tag)
         (get tags (resolve-aliased-sym ctx tag)))))
 
-(defmacro iter-reduce
-  [fn val iterable]
-  (let [[params & fn-body] (if (list? fn)
-                             (drop-while symbol? fn)
-                             [['acc 'val] (list fn 'acc 'val)])
-        [acc-arg el-arg] params
-        tagged-iter (vary-meta iterable assoc :tag `Iterable)]
-    `(let [iter# (.iterator ~tagged-iter)]
-       (loop [~acc-arg ~val]
-         (if (.hasNext iter#)
-           (let [~el-arg (.next iter#)]
-             (recur (do ~@fn-body)))
-           ~acc-arg)))))
-
-;; NOTE: `clojure.core/into` uses transients when possible. Here they
-;; are not used because `bench.clj` performance benchmarking showed
-;; noticeable improvements (≈10%) when they were omitted. That
-;; performance was done on FHIR resources schemas and data. For other
-;; usecases this implementation may not be as efficient.
-(defn iter-into
-  "Efficient implementation of monadic and dyadic arities of clojure.core/into."
-  ([to] to)
-  ([to from]
-   (if from
-     (iter-reduce conj to from)
-     to)))
-
 (defn mk-symbol [ns-part name-part]
   (with-meta
     (symbol
-      (if (qualified-ident? ns-part)
-        (namespace ns-part)
-        (name ns-part))
-      (name name-part))
+     (if (qualified-ident? ns-part)
+       (namespace ns-part)
+       (name ns-part))
+     (name name-part))
     (merge (meta ns-part) (meta name-part))))
 
 (defmacro iter-reduce
@@ -254,16 +227,16 @@
                           ^java.io.File file
                           & {:keys [create-parents?]}]
   (when create-parents?
-    (clojure.java.io/make-parents file))
-  (clojure.java.io/copy input-stream file))
+    (io/make-parents file))
+  (io/copy input-stream file))
 
 (defn unzip! [url dest-dir]
-  (with-open [zip-input-stream (java.util.zip.ZipInputStream. (clojure.java.io/input-stream url))]
+  (with-open [zip-input-stream (java.util.zip.ZipInputStream. (io/input-stream url))]
     (doseq [^java.util.zip.ZipEntry etr (iteration (fn [_] (.getNextEntry zip-input-stream)))]
       (let [entry-name (.getName etr)
             file? (not (str/ends-with? entry-name "/"))]
         (when (and file? (not (str/blank? entry-name)))
-          (let [file (clojure.java.io/file (str dest-dir "/" entry-name))]
+          (let [file (io/file dest-dir entry-name)]
             (input-stream->file zip-input-stream file :create-parents? true)))))
     dest-dir))
 
@@ -286,13 +259,11 @@
 
 
 (defn copy-directory [from to]
-  (let [from (io/file from)
-        to (io/file to)]
-    (when (not (.exists to)) (.mkdirs to))
-    (doseq [^java.io.File file (.listFiles from)]
-      (if (.isDirectory file)
-        (copy-directory (.getPath file) (str to "/" (.getName file)))
-        (copy-file (.getPath file) (str to "/" (.getName file)))))))
+  (when (not (.exists to)) (.mkdirs to))
+  (doseq [^java.io.File file (.listFiles from)]
+    (if (.isDirectory file)
+      (copy-directory (.getPath file) (io/file  to (.getName file)))
+      (copy-file (.getPath file) (io/file to (.getName file))))))
 
 
 (defn rmrf [path]
@@ -301,12 +272,16 @@
       (run! io/delete-file (reverse (file-seq file))))))
 
 (defn update-file
-  [file-path update-fn]
-  (let [file        (io/file file-path)
-        old-content (when (.exists file)
-                      (let [content (slurp file-path)]
+  [file update-fn]
+  (let [old-content (when (.exists file)
+                      (let [content (slurp file)]
                         (when (not-empty content)
-                          (read-string (slurp file-path)))))
+                          (read-string (slurp file)))))
         new-content (update-fn old-content)]
-    (spit file-path new-content)
+    (spit file new-content)
     new-content))
+
+
+(def ^{:doc "Current working directory."
+       :dynamic true}
+  *cwd* (.getCanonicalFile (io/file ".")))

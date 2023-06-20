@@ -1,7 +1,8 @@
 (ns zen.core-test
-  (:require [zen.core :as sut]
-            [clojure.test :as t]
-            [matcho.core :as matcho]))
+  (:require
+   [clojure.test :as t]
+   [matcho.core :as matcho]
+   [zen.core :as sut]))
 
 
 (t/deftest errors-test
@@ -15,15 +16,15 @@
 
   (t/testing "errors are sorted by default"
     (matcho/match (sut/errors ztx)
-                  [{:path [:unknown]}
-                   {:missing-ns 'doesnt-exist}
-                   nil]))
+      [{:path [:unknown]}
+       {:missing-ns 'doesnt-exist}
+       nil]))
 
   (t/testing "errors can be returned in the order of creation"
     (matcho/match (sut/errors ztx :order :as-is)
-                  [{:missing-ns 'doesnt-exist}
-                   {:path [:unknown]}
-                   nil]))
+      [{:missing-ns 'doesnt-exist}
+       {:path [:unknown]}
+       nil]))
 
   (t/testing "unknown order param throws error"
     (t/is (instance? Exception

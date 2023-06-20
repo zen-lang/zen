@@ -2,16 +2,17 @@
   (:require
    ;; start cider with :test alias to get the criterium dependency
    ;; and with :profile alias to launch async profiler's java agent
-   [clojure.pprint]
    [clojure.java.io :as io]
-   [clj-async-profiler.core :as prof]
+   [clojure.pprint]
    [criterium.core :as c]
    [zen.core :as zen]
-   [zen.v2-validation :as v]
-   [zen.package]))
+   [zen.package]
+   [zen.v2-validation :as v]))
 
-(defn bench [zen-pkg-res bench-data-res]
-  "`res` means Java classpath resource"
+(defn bench
+  "Input `res` means Java classpath resource."
+  [zen-pkg-res bench-data-res]
+
   (let [zen-pkg-path (.getPath (io/resource zen-pkg-res))
         deps-pulled? (.exists (io/file zen-pkg-path "zen-packages"))]
     (if (not deps-pulled?)
@@ -30,18 +31,18 @@
                                    :unsafe true})]
 
          (doseq [sch schema-sym*]
-           (assert (= :zen/loaded (zen.core/read-ns ztx (symbol sch)))))
+           (assert (= :zen/loaded (zen/read-ns ztx (symbol sch)))))
 
          (println)
          (println)
          (println (str k " OLD VERSION BENCH"))
          (c/with-progress-reporting
-           (c/bench (zen.core/validate ztx schema-names data) #_:verbose))
+           (c/bench (zen/validate ztx schema-names data) #_:verbose))
 
          (println)
          (println)
          (println (str k " OLD VERSION ERRORS"))
-         (clojure.pprint/pprint (zen.core/validate ztx schema-names data))
+         (clojure.pprint/pprint (zen/validate ztx schema-names data))
 
          (println)
          (println)
@@ -54,7 +55,7 @@
          (println (str k " NEW VERSION ERRORS"))
          (clojure.pprint/pprint (v/validate ztx schema-names data))
 
-         [(zen.core/validate ztx schema-names data) (v/validate ztx schema-names data)])))))
+         [(zen/validate ztx schema-names data) (v/validate ztx schema-names data)])))))
 
 (comment
 
@@ -84,8 +85,8 @@
     (zen.core/read-ns ztx 'hl7-fhir-r4-core.Organization)
 
     #_(v/validate ztx #{'hl7-fhir-r4-core.Organization/schema
-                      'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
-                data)
+                        'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
+                  data)
 
     (prof/profile #_{:event :alloc}
      (doseq [_ (range 5000)]
@@ -94,10 +95,10 @@
                    data)))
 
     #_(prof/profile {:event :alloc}
-       (doseq [_ (range 5000)]
-         (zen.core/validate ztx #{'hl7-fhir-r4-core.Organization/schema
-                                  'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
-                            data))))
+                    (doseq [_ (range 5000)]
+                      (zen.core/validate ztx #{'hl7-fhir-r4-core.Organization/schema
+                                               'hl7-fhir-us-davinci-pdex-plan-net.plannet-Organization/schema}
+                                         data))))
 
   (prof/list-event-types)
 
