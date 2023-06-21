@@ -1,22 +1,12 @@
 (ns zen.package-test
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.test :as t]
    [matcho.core :as matcho]
    [zen.core :as zen]
    [zen.package :as sut]
    [zen.store]
    [zen.test-utils]))
-
-
-(defn get-git-hash [path]
-  (as-> (slurp (str path "/.git/HEAD")) v
-    (str/trim-newline v)
-    (subs v 5)
-    (str path "/.git/" v)
-    (slurp v)
-    (str/trim-newline v)))
 
 
 (def test-zen-repos

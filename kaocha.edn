@@ -7,7 +7,7 @@
 
   :plugins                     [:hooks
                                ;; :kaocha.plugin/filter
-                               ;; :kaocha.plugin/capture-output
+                                ;; :kaocha.plugin/capture-output
                                 :kaocha.plugin/print-invocations
                                 :kaocha.plugin/profiling]
   :tests                       [{:id   :unit

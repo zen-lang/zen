@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer [is]]
             [matcho.core :as matcho]
+            [zen.git :as git]
             [zen.package]
             [zen.utils :as utils])
   (:import java.io.File))
@@ -88,13 +89,13 @@
 
 (defn git-commit [dir to-add message]
   (let [to-add-seq (if (sequential? to-add) to-add [to-add])]
-    (apply shell/sh (concat ["git" "add"] to-add-seq [:dir dir]))
-    (shell/sh "git" "commit" "-m" message :dir dir)))
+    (git/add dir to-add-seq)
+    (git/commit dir message)))
 
 
 (defn git-init-commit [dir]
-  (shell/sh "git" "add" "." :dir dir)
-  (shell/sh "git" "commit" "-m" "\"Initial commit\"" :dir dir))
+  (git/add dir ["."])
+  (git/commit dir "Initial commit"))
 
 
 (defn mk-module-dir-path [root-dir-path module-name]

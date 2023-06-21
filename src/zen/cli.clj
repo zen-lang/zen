@@ -10,6 +10,7 @@
    [zen.changes]
    [zen.cli.output]
    [zen.core]
+   [zen.git :as git]
    [zen.package]
    [zen.utils :as utils]
    [zen.v2-validation]))
@@ -217,9 +218,9 @@
   ([new-ztx opts]
    (let [pwd     (get-pwd opts)
          new-ztx (load-used-namespaces new-ztx opts)
-         _stash! (clojure.java.shell/sh "git" "stash" :dir pwd) #_"NOTE: should this logic be moved to zen.package?"
+         _stash! (git/stash pwd)
          old-ztx (load-used-namespaces (load-ztx opts) opts)
-         _pop!   (clojure.java.shell/sh "git" "stash" "pop" :dir pwd)]
+         _pop!   (git/stash-pop pwd)]
      (zen.changes/check-changes old-ztx new-ztx))))
 
 

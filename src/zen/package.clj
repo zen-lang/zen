@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
+   [zen.git :as git]
    [zen.store]
    [zen.utils :as utils])
   (:import java.io.File))
@@ -106,7 +107,7 @@
     (if not-empty-zen-dir?
       nil
       (do
-        (sh! "git" "init" :dir package-dir)
+        (git/init-repo package-dir)
         (make-template! package-dir {:package-name package-name})
         #_(init-pre-commit-hook! package-dir)))))
 
@@ -130,11 +131,9 @@
 
           (and (.exists dep-dir)
                (= dep-url
-                  (->> (sh-with-env! "git" "remote" "get-url" "origin" :dir dep-dir)
-                       :out
-                       str/trim-newline)))
+                  (git/get-remote-url dep-dir "origin")))
           (do
-            (sh-with-env! "git" "pull" :dir (io/file root dep-name-str))
+            (git/pull (io/file root dep-name-str))
             (recur
              (concat (read-deps (io/file root dep-name-str))
                      deps-to-init)
@@ -145,8 +144,7 @@
           (do
             (when (.exists dep-dir)
               (throw (Exception. (format "Directory %s already exists" dep-dir))))
-            (sh-with-env! "git" "clone" "--depth=1" (str dep-url) dep-name-str
-                          :dir root)
+            (git/clone root dep-url :sub-dir dep-name-str)
             (recur
              (concat (read-deps dep-dir)
                      deps-to-init)
@@ -200,4 +198,5 @@
 
 (defn init-template
   [root repository-url]
-  (sh! "git" "clone" "--depth=1" repository-url  "." :dir root))
+  (git/init-template root repository-url))
+
