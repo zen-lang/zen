@@ -1,10 +1,10 @@
 (ns zen.core
   (:require
-   [zen.misc]
-   [zen.v2-validation :as v2]
    [zen.effect]
+   [zen.misc]
+   [zen.store]
    [zen.utils]
-   [zen.store]))
+   [zen.v2-validation :as v2]))
 
 (defn load-ns [ztx ns]
   (zen.store/load-ns ztx ns))
@@ -15,7 +15,7 @@
 (defn read-ns [ztx ns-name]
   (zen.store/read-ns ztx ns-name))
 
-(defn new-context [& [{paths :paths entry-point :entry-point :as opts}]]
+(defn new-context [& [{_paths :paths _entry-point :entry-point :as opts}]]
   (zen.store/new-context (or opts {})))
 
 (defn get-symbol [ztx sym]
@@ -35,7 +35,8 @@
   (zen.effect/apply-fx ztx (v2/validate ztx symbols data) data))
 
 (defn errors
-  "get zen metastorage errors. :order param values :ns&message (default) or :as-is
+  "Get zen metastorage errors. 
+   :order param values :ns&message (default) or :as-is
    throws error if order param value is unknown"
   [ztx & {:keys [order]}]
   (let [binding-errs
@@ -63,41 +64,40 @@
   (or (:engine config) (:zen/name config)))
 
 (defmulti start
-  "stop operation"
-  (fn [ztx cfg]
+  "Start operation."
+  (fn [_ztx cfg]
     (engine-key cfg)))
 
 (defmulti stop
-  "stop operation"
-  (fn [ztx cfg state]
+  "Stop operation."
+  (fn [_ztx cfg _state]
     (engine-key cfg)))
 
 (defmulti reload
-  "stop operation"
-  (fn [ztx cfg state]
+  "Reload operation."
+  (fn [_ztx cfg _state]
     (engine-key cfg)))
 
 (defmulti op
-  "define system operation
+  "Define system operation.
   * ztx - zen context
   * cfg - zen config
   * params - operation params
-  * [session] - session data
-  "
-  (fn [ztx cfg params & [session]] (engine-or-name cfg)))
+  * [session] - session data"
+  (fn [_ztx cfg _params & [_session]] (engine-or-name cfg)))
 
 (defmethod op
   :default
-  [_ztx config req & [session]]
+  [_ztx config _req & [_session]]
   (println :no-op-impl (engine-or-name config)))
 
 (defn pub
-  "publish event"
+  "Publish event."
   [_ztx event-name params & [_session]]
   (println :event event-name params))
 
 (defn error
-  "publish error"
+  "Publish error."
   [ztx error-name params & [session]]
   (pub ztx error-name params session)
   {:error (assoc params :name error-name)})
@@ -165,7 +165,7 @@
       (contains? (:zen/tags op-model) 'zen/op)
       (op ztx op-model (get-symbol ztx op-name))
       :else
-      (error ztx 'zen/start-unknown {:op op-name :message (str "expected op-name is zen/start or zen/op")}))
+      (error ztx 'zen/start-unknown {:op op-name :message "expected op-name is zen/start or zen/op"}))
     (error ztx 'zen/start-missed {:op op-name})))
 
 (defn start-system [ztx & [entry-point]]
@@ -175,7 +175,7 @@
 
 (defn stop-system [ztx]
   (doseq [op-name (->>
-                   (get-in @ztx [:zen/state])
-                   (map (fn [[k v]] (:start v)))
+                   (get @ztx :zen/state)
+                   (map (fn [[_k v]] (:start v)))
                    (filter identity))]
     (stop-call ztx op-name)))

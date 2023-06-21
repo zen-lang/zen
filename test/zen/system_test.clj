@@ -1,23 +1,23 @@
 (ns zen.system-test
   (:require
-   [zen.core :as zen]
+   [clojure.test :as t]
    [matcho.core :as matcho]
-   [clojure.test :as t]))
+   [zen.core :as zen]))
 
 (defmethod zen/start
   'mysystem/custom-comp
-  [ztx config]
+  [ztx _config]
   (zen/pub ztx 'mysystem.custom-comp/start {})
   (atom {}))
 
 (defmethod zen/stop
   'mysystem/custom-comp
-  [ztx config state]
+  [ztx _config state]
   (zen/pub ztx 'mysystem.custom-comp/stop (keys @state)))
 
 (defmethod zen/op
   'mysystem/save
-  [ztx config req & [session]]
+  [ztx _config req & [_session]]
   (if-let [db (zen/get-state ztx :custom-comp)]
     (do
       (zen/pub ztx 'save req)
@@ -26,7 +26,7 @@
 
 (defmethod zen/op
   'mysystem/search
-  [ztx config req & [session]]
+  [ztx _config req & [_session]]
   (if-let [db (zen/get-state ztx :custom-comp)]
     (do
       (zen/pub ztx 'search req)
@@ -35,13 +35,13 @@
 
 (defmethod zen/op
   'mysystem/just-op
-  [ztx config req & [session]]
+  [ztx _config _req & [_session]]
   (swap! ztx assoc :just-op true)
   {:status :ok})
 
 (defmethod zen/op
   'mysystem/generic-op
-  [ztx config {{v :value :as params} :params} & [session]]
+  [ztx _config {{v :value :as params} :params} & [_session]]
   (swap! ztx assoc :generic-op v)
   {:status :ok :params params})
 
@@ -102,10 +102,10 @@
 
   (matcho/match
    (zen/op-call ztx 'mysystem/save   {:resourceType "Patient" :id "pt1"})
-   {"Patient" {"pt1" {:resourceType "Patient", :id "pt1"}}})
+    {"Patient" {"pt1" {:resourceType "Patient", :id "pt1"}}})
 
   (matcho/match
    (zen/op-call ztx 'mysystem/search {:resourceType "Patient"})
-   {"pt1" {:resourceType "Patient", :id "pt1"}})
+    {"pt1" {:resourceType "Patient", :id "pt1"}})
 
   (zen/stop-system ztx))

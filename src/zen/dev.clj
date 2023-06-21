@@ -1,8 +1,9 @@
 (ns zen.dev
-  (:require [hawk.core :as hawk]
-            [zen.core]
-            [clojure.string :as str]
-            [clojure.java.io :as io]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [hawk.core :as hawk]
+   [zen.core]))
 
 (defn make-ns-name [paths filename]
   (when-let [nm (->> paths
@@ -29,7 +30,7 @@
   (swap! ztx assoc-in [:ns-reloads ns-sym] (hash (get-in @ztx [:ns ns-sym])))
   (zen.core/read-ns ztx (symbol ns-sym)))
 
-(defn handle-updates [ztx paths htx {^java.io.File file :file kind :kind}]
+(defn handle-updates [ztx paths htx {^java.io.File file :file _kind :kind}]
   (let [filename (-> (.getPath file)
                      ;; this is strange prefix in macos
                      (str/replace  #"^/private" ""))]
@@ -65,8 +66,5 @@
 
 
 (comment
-  (def w
-    )
-  (hawk/stop! w)
-
-  )
+  (def w)
+  (hawk/stop! w))

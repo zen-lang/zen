@@ -3,7 +3,7 @@
  email {:zen/tags #{zen/schema}
         :zen/desc "email type"
         :type zen/string
-        :regex #"^.*@.*$"}
+        :regex "^.*@.*$"}
 
  User {:zen/tags #{zen/schema}
        :type zen/map
@@ -17,6 +17,4 @@
         :id "admin"
         :name "admin"
         :password #scrypt"pwd"
-        :email "admin"}
-
- }
+        :email "admin"}}

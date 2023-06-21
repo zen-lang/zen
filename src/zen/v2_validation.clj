@@ -1,22 +1,19 @@
 (ns zen.v2-validation
   (:require
-   [zen.schema]
-   [zen.validation.utils
-    :refer :all
-    :exclude [add-err fhir-date-regex fhir-datetime-regex types-cfg]
-    :as validation.utils]
-   [zen.effect]
-   [zen.match]
    [clojure.set :as set]
    [clojure.string :as str]
-   [zen.utils :as utils]))
+   [zen.effect]
+   [zen.match]
+   [zen.schema]
+   [zen.utils :as utils]
+   [zen.validation.utils :as validation.utils]))
 
 
 ;; backwards-compatible aliases used in this ns
 (def get-cached       zen.schema/get-cached)
 (def compile-key      zen.schema/compile-key)
-(def add-err   zen.validation.utils/add-err)
-(def types-cfg zen.validation.utils/types-cfg)
+(def add-err   validation.utils/add-err)
+(def types-cfg validation.utils/types-cfg)
 
 
 #_"NOTE: aliases for backwards-compatibility.
@@ -38,7 +35,7 @@ Probably safe to remove if no one relies on them"
       (::prop-schemas @ztx)
       (->> props-syms
            (map (fn [prop]
-                  (zen.utils/get-symbol ztx prop)))
+                  (utils/get-symbol ztx prop)))
            (map (fn [sch]
                   [sch (get-cached ztx sch false)]))
            (reduce (fn [acc [sch v]]
@@ -63,7 +60,7 @@ Probably safe to remove if no one relies on them"
     vtx))
 
 
-(defn props-pre-process-hook [ztx schema]
+(defn props-pre-process-hook [ztx _schema]
   (let [#_"FIXME: won't reeval proprs if they change in run-time"
         props (resolve-props ztx)]
     (fn pre-process-props [vtx data opts]
@@ -71,8 +68,8 @@ Probably safe to remove if no one relies on them"
 
 
 (zen.schema/register-schema-pre-process-hook!
-  ::validate
-  props-pre-process-hook)
+ ::validate
+ props-pre-process-hook)
 
 
 (defn valtype-rule [vtx data open-world?] #_"NOTE: maybe refactor name to 'set-unknown-keys ?"
@@ -104,35 +101,35 @@ Probably safe to remove if no one relies on them"
       (update vtx :unknown-keys set-unknown))))
 
 
-(defn unknown-keys-post-process-hook [ztx schema]
+(defn unknown-keys-post-process-hook [_ztx schema]
   (when (and (some? (:type schema))
              (nil? (:validation-type schema)))
     (let [open-world? (or (:key schema)
                           (:values schema)
                           (= (:validation-type schema) :open)
                           (= (:type schema) 'zen/any))]
-      (fn post-process-unknown-keys [vtx data opts]
+      (fn post-process-unknown-keys [vtx data _opts]
         (when (map? data)
           (valtype-rule vtx data open-world?))))))
 
 
 (zen.schema/register-schema-post-process-hook!
-  ::validate
-  unknown-keys-post-process-hook)
+ ::validate
+ unknown-keys-post-process-hook)
 
 
 (zen.schema/register-compile-key-interpreter!
-  [:validation-type ::validate]
-  (fn [_ ztx tp]
-    (let [open-world? (= :open tp)]
-      (fn validate-validation-type [vtx data opts] (valtype-rule vtx data open-world?)))))
+ [:validation-type ::validate]
+ (fn [_ _ztx tp]
+   (let [open-world? (= :open tp)]
+     (fn validate-validation-type [vtx data _opts] (valtype-rule vtx data open-world?)))))
 
 
-(defmulti compile-type-check (fn [tp ztx] tp))
+(defmulti compile-type-check (fn [tp _ztx] tp))
 
 
 (defn *validate-schema
-  "internal, use validate function"
+  "Шnternal, use validate function."
   [ztx vtx schema data {:keys [_sch-symbol] :as opts}]
   (zen.schema/apply-schema ztx vtx schema data (assoc opts :interpreters [::validate])))
 
@@ -145,7 +142,7 @@ Probably safe to remove if no one relies on them"
                    :effects []}]
     (-> ztx
         (*validate-schema empty-vtx schema data opts)
-        (unknown-errs))))
+        (validation.utils/unknown-errs))))
 
 (defn validate [ztx schemas data & [opts]]
   (loop [schemas (seq schemas)
@@ -155,7 +152,7 @@ Probably safe to remove if no one relies on them"
               :unknown-keys #{}
               :effects []}]
     (if (empty? schemas)
-      (unknown-errs vtx)
+      (validation.utils/unknown-errs vtx)
       #_(-> (unknown-errs vtx)
             (dissoc :unknown-keys ::confirmed)
             (cond-> (not (:vtx-visited opts)) (dissoc :visited)))
@@ -183,7 +180,7 @@ Probably safe to remove if no one relies on them"
           :else
           (let [error-msg
                 {:message (str "Expected type of '" (or (:to-str type-cfg) sym)
-                               ", got '" (pretty-type data))}]
+                               ", got '" (validation.utils/pretty-type data))}]
             (add-err vtx :type error-msg)))))))
 
 (defmethod compile-type-check 'zen/string [_ _] (type-fn 'zen/string))
@@ -204,17 +201,17 @@ Probably safe to remove if no one relies on them"
 (defmethod compile-type-check 'zen/datetime [_ _] (type-fn 'zen/datetime))
 
 (defmethod compile-type-check :default
-  [tp ztx]
-  (fn validate-type-default [vtx data opts]
+  [tp _ztx]
+  (fn validate-type-default [vtx _data _opts]
     (add-err vtx :type {:message (format "No validate-type multimethod for '%s" tp)})))
 
 (defmethod compile-type-check 'zen/apply
-  [tp ztx]
+  [_tp ztx]
   (fn validate-type-zen.apply [vtx data opts]
     (cond
       (not (list? data))
       (add-err vtx :type {:message (str "Expected fn call '(fn-name args-1 arg-2), got '"
-                                        (pretty-type data))})
+                                        (validation.utils/pretty-type data))})
 
       (not (symbol? (nth data 0)))
       (add-err vtx :apply {:message (str "Expected symbol, got '" (first data))
@@ -234,234 +231,234 @@ Probably safe to remove if no one relies on them"
 
           :else
           (let [v (get-cached ztx args false)]
-            (-> (node-vtx vtx [sch-sym :args])
+            (-> (validation.utils/node-vtx vtx [sch-sym :args])
                 (v (vec (rest data)) opts)
-                (merge-vtx vtx))))))))
+                (validation.utils/merge-vtx vtx))))))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:type ::validate]
-  (fn [_ ztx tp] (compile-type-check tp ztx)))
+ [:type ::validate]
+ (fn [_ ztx tp] (compile-type-check tp ztx)))
 
 (zen.schema/register-compile-key-interpreter!
-  [:case ::validate]
-  #_"NOTE: this is a conditional navigation.
+ [:case ::validate]
+ #_"NOTE: this is a conditional navigation.
            Conditions are taken from ::validate interpreter
            Can't split into independant :zen.schema/navigate and ::validate"
-  (fn [_ ztx cases]
-    (let [vs (doall
-               (map (fn [{:keys [when then]}]
-                      (cond-> {:when (get-cached ztx when false)}
-                        (not-empty then) (assoc :then (get-cached ztx then false))))
-                    cases))]
-      (fn validate-case [vtx data opts]
-        (loop [[{wh :when th :then :as v} & rest] vs
-               item-idx 0
-               vtx* vtx
-               passed []]
-          (cond
-            (and (nil? v) (not-empty passed))
-            vtx*
+ (fn [_ ztx cases]
+   (let [vs (doall
+             (map (fn [{:keys [when then]}]
+                    (cond-> {:when (get-cached ztx when false)}
+                      (not-empty then) (assoc :then (get-cached ztx then false))))
+                  cases))]
+     (fn validate-case [vtx data opts]
+       (loop [[{wh :when th :then :as v} & rest] vs
+              item-idx 0
+              vtx* vtx
+              passed []]
+         (cond
+           (and (nil? v) (not-empty passed))
+           vtx*
 
-            (nil? v)
-            (add-err vtx*
-                     :case
-                     {:message (format "Expected one of the cases to be true") :type "case"})
+           (nil? v)
+           (add-err vtx*
+                    :case
+                    {:message (format "Expected one of the cases to be true") :type "case"})
 
-            :else
-            (let [when-vtx (wh (node-vtx vtx* [:case item-idx :when]) data opts)]
-              (cond
-                (and (empty? (:errors when-vtx)) th)
-                (let [merged-vtx (merge-vtx when-vtx vtx*)]
-                  (-> merged-vtx
-                      (node-vtx [:case item-idx :then])
-                      (th data opts)
-                      (merge-vtx merged-vtx)))
+           :else
+           (let [when-vtx (wh (validation.utils/node-vtx vtx* [:case item-idx :when]) data opts)]
+             (cond
+               (and (empty? (:errors when-vtx)) th)
+               (let [merged-vtx (validation.utils/merge-vtx when-vtx vtx*)]
+                 (-> merged-vtx
+                     (validation.utils/node-vtx [:case item-idx :then])
+                     (th data opts)
+                     (validation.utils/merge-vtx merged-vtx)))
 
-                (empty? (:errors when-vtx))
-                (recur rest (inc item-idx) (merge-vtx when-vtx vtx*) (conj passed v))
+               (empty? (:errors when-vtx))
+               (recur rest (inc item-idx) (validation.utils/merge-vtx when-vtx vtx*) (conj passed v))
 
-                :else (recur rest (inc item-idx) vtx* passed)))))))))
-
-(zen.schema/register-compile-key-interpreter!
-  [:enum ::validate]
-  (fn [_ ztx values]
-    (let [values* (set (map :value values))]
-      (fn validate-enum [vtx data opts]
-        (if-not (contains? values* data)
-          (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
-          vtx)))))
+               :else (recur rest (inc item-idx) vtx* passed)))))))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:match ::validate]
-  (fn [_ ztx pattern]
-    (fn validate-match [vtx data opts]
-      (let [errs (zen.match/match data pattern)]
-        (if-not (empty? errs)
-          (->> errs
-               (reduce (fn [acc err]
-                         (let [err-msg
-                               (or (:message err)
-                                   (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))]
-                           (apply add-err (utils/iter-into [acc :match {:message err-msg :type "match"}]
-                                                           (:path err)))))
-                       vtx))
-          vtx)))))
+ [:enum ::validate]
+ (fn [_ _ztx values]
+   (let [values* (set (map :value values))]
+     (fn validate-enum [vtx data _opts]
+       (if-not (contains? values* data)
+         (add-err vtx :enum {:message (str "Expected '" data "' in " values*) :type "enum"})
+         vtx)))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:scale ::validate]
-  (fn [_ ztx scale]
-    (fn validate-scale [vtx num opts]
-      (let [dc (bigdec num)
-            num-scale (.scale dc)]
-        (if (<= num-scale scale)
-          vtx
-          (add-err vtx :scale
-                   {:message (str "Expected scale = " scale ", got " (.scale dc))}))))))
+ [:match ::validate]
+ (fn [_ _ztx pattern]
+   (fn validate-match [vtx data _opts]
+     (let [errs (zen.match/match data pattern)]
+       (if-not (empty? errs)
+         (->> errs
+              (reduce (fn [acc err]
+                        (let [err-msg
+                              (or (:message err)
+                                  (str "Expected " (pr-str (:expected err)) ", got " (pr-str (:but err))))]
+                          (apply add-err (utils/iter-into [acc :match {:message err-msg :type "match"}]
+                                                          (:path err)))))
+                      vtx))
+         vtx)))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:precision ::validate]
-  (fn [_ ztx precision]
-    (fn validate-precision [vtx num opts]
-      (let [dc ^BigDecimal (bigdec num)
-            num-precision (.precision dc)
+ [:scale ::validate]
+ (fn [_ _ztx scale]
+   (fn validate-scale [vtx num _opts]
+     (let [dc (bigdec num)
+           num-scale (.scale dc)]
+       (if (<= num-scale scale)
+         vtx
+         (add-err vtx :scale
+                  {:message (str "Expected scale = " scale ", got " (.scale dc))}))))))
+
+(zen.schema/register-compile-key-interpreter!
+ [:precision ::validate]
+ (fn [_ _ztx precision]
+   (fn validate-precision [vtx num _opts]
+     (let [dc ^BigDecimal (bigdec num)
+           num-precision (.precision dc)
             ;; NOTE: fraction will be used when we add composite checking scale + precision
-            #_#_fraction (.remainder dc BigDecimal/ONE)]
-        (if (<= num-precision precision)
-          vtx
-          (add-err vtx :precision
-                   {:message (str "Expected precision = " precision ", got " num-precision)}))))))
+           #_#_fraction (.remainder dc BigDecimal/ONE)]
+       (if (<= num-precision precision)
+         vtx
+         (add-err vtx :precision
+                  {:message (str "Expected precision = " precision ", got " num-precision)}))))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:min ::validate]
-  (fn [_ ztx ^Long min]
-    (fn validate-min [vtx ^Long data opts]
-      (if (< data min)
-        (add-err vtx :min {:message (str "Expected >= " min ", got " data)})
-        vtx))))
+ [:min ::validate]
+ (fn [_ _ztx ^Long min]
+   (fn validate-min [vtx ^Long data _opts]
+     (if (< data min)
+       (add-err vtx :min {:message (str "Expected >= " min ", got " data)})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:max ::validate]
-  (fn [_ ztx ^Long max]
-    (fn validate-max [vtx ^Long data opts]
-      (if (> data max)
-        (add-err vtx :max {:message (str "Expected <= " max ", got " data)})
-        vtx))))
+ [:max ::validate]
+ (fn [_ _ztx ^Long max]
+   (fn validate-max [vtx ^Long data _opts]
+     (if (> data max)
+       (add-err vtx :max {:message (str "Expected <= " max ", got " data)})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:minLength ::validate]
-  (fn [_ ztx ^Long min-len]
-    (fn validate-minLength [vtx ^String data opts]
-      (if (< (.length data) min-len)
-        (add-err vtx
-                 :minLength
-                 {:message (str "Expected length >= " min-len ", got " (.length data))})
-        vtx))))
+ [:minLength ::validate]
+ (fn [_ _ztx ^Long min-len]
+   (fn validate-minLength [vtx ^String data _opts]
+     (if (< (.length data) min-len)
+       (add-err vtx
+                :minLength
+                {:message (str "Expected length >= " min-len ", got " (.length data))})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:maxLength ::validate]
-  (fn [_ ztx ^Long max-len]
-    (fn validate-maxLength [vtx ^String data opts]
-      (if (> (.length data) max-len)
-        (add-err vtx
-                 :maxLength
-                 {:message (str "Expected length <= " max-len ", got " (.length data))})
-        vtx))))
+ [:maxLength ::validate]
+ (fn [_ _ztx ^Long max-len]
+   (fn validate-maxLength [vtx ^String data _opts]
+     (if (> (.length data) max-len)
+       (add-err vtx
+                :maxLength
+                {:message (str "Expected length <= " max-len ", got " (.length data))})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:minItems ::validate]
-  (fn [_ ztx ^Long items-count]
-    (fn validate-minItems [vtx data opts]
-      (if (< (count data) items-count)
-        (add-err vtx
-                 :minItems
-                 {:message (str "Expected >= " items-count ", got " (count data))})
-        vtx))))
+ [:minItems ::validate]
+ (fn [_ _ztx ^Long items-count]
+   (fn validate-minItems [vtx data _opts]
+     (if (< (count data) items-count)
+       (add-err vtx
+                :minItems
+                {:message (str "Expected >= " items-count ", got " (count data))})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:maxItems ::validate]
-  (fn [_ ztx ^Long items-count]
-    (fn validate-maxItems [vtx data opts]
-      (if (> (count data) items-count)
-        (add-err vtx
-                 :maxItems
-                 {:message (str "Expected <= " items-count ", got " (count data))})
-        vtx))))
+ [:maxItems ::validate]
+ (fn [_ _ztx ^Long items-count]
+   (fn validate-maxItems [vtx data _opts]
+     (if (> (count data) items-count)
+       (add-err vtx
+                :maxItems
+                {:message (str "Expected <= " items-count ", got " (count data))})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:const ::validate]
-  (fn [_ ztx {:keys [value]}]
-    (fn validate-const [vtx data opts]
-      (if (not= value data)
-        (add-err vtx :const
-                 {:message (str "Expected '" value "', got '" data "'")
-                  :type "schema"})
-        vtx))))
+ [:const ::validate]
+ (fn [_ _ztx {:keys [value]}]
+   (fn validate-const [vtx data _opts]
+     (if (not= value data)
+       (add-err vtx :const
+                {:message (str "Expected '" value "', got '" data "'")
+                 :type "schema"})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:keys ::validate]
-  (fn [_ ztx ks]
-    (let [known-keys (set (keys ks))]
-      (fn validate-keys [vtx data opts]
-        (let [data-keys (->> data
-                             (utils/iter-reduce (fn [keys-set data-entry]
-                                                  (conj! keys-set (nth data-entry 0)))
-                                                (transient #{}))
-                             (persistent!))
-              unknown-keys (utils/set-diff data-keys known-keys)]
-          (update vtx
-                  :unknown-keys
-                  (fn [vtx-unk-keys]
-                    (let [path (:path vtx)]
-                      (->> unknown-keys
-                           (utils/iter-reduce (fn [vtx-unk-keys* unk-key]
-                                                (conj! vtx-unk-keys* (conj path unk-key)))
-                                              (transient vtx-unk-keys))
-                           (persistent!))))))))))
+ [:keys ::validate]
+ (fn [_ _ztx ks]
+   (let [known-keys (set (keys ks))]
+     (fn validate-keys [vtx data _opts]
+       (let [data-keys (->> data
+                            (utils/iter-reduce (fn [keys-set data-entry]
+                                                 (conj! keys-set (nth data-entry 0)))
+                                               (transient #{}))
+                            (persistent!))
+             unknown-keys (utils/set-diff data-keys known-keys)]
+         (update vtx
+                 :unknown-keys
+                 (fn [vtx-unk-keys]
+                   (let [path (:path vtx)]
+                     (->> unknown-keys
+                          (utils/iter-reduce (fn [vtx-unk-keys* unk-key]
+                                               (conj! vtx-unk-keys* (conj path unk-key)))
+                                             (transient vtx-unk-keys))
+                          (persistent!))))))))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:subset-of ::validate]
-  (fn [_ ztx superset]
-    (fn validate-subset-of [vtx data opts]
-      (if-not (clojure.set/subset? data superset)
-        (add-err vtx :subset-of {:type "set"})
-        vtx))))
+ [:subset-of ::validate]
+ (fn [_ _ztx superset]
+   (fn validate-subset-of [vtx data _opts]
+     (if-not (set/subset? data superset)
+       (add-err vtx :subset-of {:type "set"})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:superset-of ::validate]
-  (fn [_ ztx subset]
-    (fn validate-superset-of [vtx data opts]
-      (if-not (clojure.set/subset? subset data)
-        (add-err vtx :superset-of {:type "set"})
-        vtx))))
+ [:superset-of ::validate]
+ (fn [_ _ztx subset]
+   (fn validate-superset-of [vtx data _opts]
+     (if-not (set/subset? subset data)
+       (add-err vtx :superset-of {:type "set"})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:regex ::validate]
-  (fn [_ ztx regex]
-    (fn validate-regex [vtx data opts]
-      (if (not (re-find (re-pattern regex) data))
-        (add-err vtx :regex
-                 {:message (str "Expected match /" (str regex) "/, got \"" data "\"")})
-        vtx))))
+ [:regex ::validate]
+ (fn [_ _ztx regex]
+   (fn validate-regex [vtx data _opts]
+     (if (not (re-find (re-pattern regex) data))
+       (add-err vtx :regex
+                {:message (str "Expected match /" (str regex) "/, got \"" data "\"")})
+       vtx))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:require ::validate]
-  (fn [_ ztx ks] ;; TODO decide if require should add to :visited keys vector
-    (let [one-of-fn
-          (fn [vtx data s]
-            (let [reqs (->> (select-keys data s) (remove nil?))]
-              (if (empty? reqs)
-                (add-err vtx :require {:type "map.require"
-                                       :message (str "one of keys " s " is required")})
-                vtx)))]
-      (fn validate-require [vtx data opts]
-        (reduce (fn [vtx* k]
-                  (cond
-                    (set? k) (one-of-fn vtx* data k)
-                    (contains? data k) vtx*
-                    :else
-                    (add-err vtx* :require {:type "require" :message (str k " is required")} k)))
-                vtx
-                ks)))))
+ [:require ::validate]
+ (fn [_ _ztx ks] ;; TODO decide if require should add to :visited keys vector
+   (let [one-of-fn
+         (fn [vtx data s]
+           (let [reqs (->> (select-keys data s) (remove nil?))]
+             (if (empty? reqs)
+               (add-err vtx :require {:type "map.require"
+                                      :message (str "one of keys " s " is required")})
+               vtx)))]
+     (fn validate-require [vtx data _opts]
+       (reduce (fn [vtx* k]
+                 (cond
+                   (set? k) (one-of-fn vtx* data k)
+                   (contains? data k) vtx*
+                   :else
+                   (add-err vtx* :require {:type "require" :message (str k " is required")} k)))
+               vtx
+               ks)))))
 
 (defn is-exclusive? [group data]
   (let [group-iter (.iterator ^Iterable group)]
@@ -489,7 +486,7 @@ Probably safe to remove if no one relies on them"
 
 (zen.schema/register-compile-key-interpreter!
  [:exclusive-keys ::validate]
- (fn [_ ztx groups]
+ (fn [_ _ztx groups]
    (let [err-fn
          (fn [group [vtx data]]
            (if (is-exclusive? group data)
@@ -508,7 +505,7 @@ Probably safe to remove if no one relies on them"
          (->> groups
               (map #(partial err-fn %))
               (apply comp))]
-     (fn validate-exclusive-keys [vtx data opts]
+     (fn validate-exclusive-keys [vtx data _opts]
        (-> (list vtx data)
            comp-fn
            (nth 0))))))
@@ -517,18 +514,18 @@ Probably safe to remove if no one relies on them"
   (cond
     (qualified-ident? schema-key)
     (let [{:keys [zen/tags] :as sch} (utils/get-symbol ztx (symbol schema-key))] #_"NOTE: `:keys [zen/tags]` does it work? Is it used?"
-      {:rule
-       (fn default-sch [vtx data opts]
-         (cond
-           (contains? tags 'zen/schema-fx)
-           (add-fx vtx (:zen/name sch)
-                   {:name (:zen/name sch)
-                    :params sch-params
-                    :data data})
+         {:rule
+          (fn default-sch [vtx data _opts]
+            (cond
+              (contains? tags 'zen/schema-fx)
+              (validation.utils/add-fx vtx (:zen/name sch)
+                                       {:name (:zen/name sch)
+                                        :params sch-params
+                                        :data data})
 
-           :else vtx))})
+              :else vtx))})
 
-    :else {:rule (fn default-sch [vtx data opts] vtx)}))
+    :else {:rule (fn default-sch [vtx _data _opts] vtx)}))
 
 (zen.schema/register-compile-key-interpreter!
  [:tags ::validate]
@@ -536,14 +533,14 @@ Probably safe to remove if no one relies on them"
    ;; currently :tags implements three usecases:
    ;; tags check where schema name is string or symbol
    ;; and zen.apply tags check (list notation)
-   (fn validate-tags [vtx data opts]
+   (fn validate-tags [vtx data _opts]
      (let [[sym type-err]
            (cond
              (list? data) [(nth data 0) "apply.fn-tag"]
              (string? data) [(symbol data) "string"]
              (symbol? data) [data "symbol"])
            {:keys [zen/tags] :as sch} (utils/get-symbol ztx sym)]
-       (if (not (clojure.set/superset? tags sch-tags))
+       (if (not (set/superset? tags sch-tags))
          (add-err vtx :tags
                   {:message
                    (cond
@@ -555,25 +552,25 @@ Probably safe to remove if no one relies on them"
          vtx)))))
 
 
-(defmulti slice-fn (fn [ztx [_slice-name slice-schema]]
+(defmulti slice-fn (fn [_ztx [_slice-name slice-schema]]
                      (get-in slice-schema [:filter :engine])))
 
 
-(defmethod slice-fn :default [ztx [slice-name slice-schema]]
-  (fn [vtx [idx el] opts]
+(defmethod slice-fn :default [_ztx [_slice-name _slice-schema]]
+  (fn [_vtx [_idx _el] _opts]
     nil) #_"TODO add error if engine is not found?")
 
 
 (defmethod slice-fn :zen [ztx [slice-name slice-schema]]
   (let [v (get-cached ztx (get-in slice-schema [:filter :zen]) false)]
     (fn [vtx [idx el] opts]
-      (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)]
+      (let [vtx* (v (validation.utils/node-vtx vtx [:slicing] [idx]) el opts)]
         (when (empty? (:errors vtx*))
           slice-name)))))
 
 
-(defmethod slice-fn :match [ztx [slice-name slice-schema]]
-  (fn [vtx [idx el] opts]
+(defmethod slice-fn :match [_ztx [slice-name slice-schema]]
+  (fn [_vtx [_idx el] _opts]
     (let [errs
           (->> (get-in slice-schema [:filter :match])
                (zen.match/match el))]
@@ -583,11 +580,11 @@ Probably safe to remove if no one relies on them"
 
 (defmethod slice-fn :zen-fx [ztx [slice-name slice-schema]]
   (let [v (get-cached ztx (get-in slice-schema [:filter :zen]) false)]
-        (fn [vtx [idx el] opts]
-          (let [vtx* (v (node-vtx vtx [:slicing] [idx]) el opts)
-                effect-errs (zen.effect/apply-fx ztx vtx* el)]
-            (when (empty? (:errors effect-errs))
-              slice-name)))))
+    (fn [vtx [idx el] opts]
+      (let [vtx* (v (validation.utils/node-vtx vtx [:slicing] [idx]) el opts)
+            effect-errs (zen.effect/apply-fx ztx vtx* el)]
+        (when (empty? (:errors effect-errs))
+          slice-name)))))
 
 
 (defn err-fn [schemas rest-fn opts vtx [slice-name slice]]
@@ -596,9 +593,9 @@ Probably safe to remove if no one relies on them"
     (let [v (if (= slice-name :slicing/rest)
               rest-fn
               (get schemas slice-name))]
-      (-> (node-vtx vtx [:slicing slice-name])
+      (-> (validation.utils/node-vtx vtx [:slicing slice-name])
           (v (mapv #(nth % 1) slice) (assoc opts :indices (map #(nth % 0) slice)))
-          (merge-vtx vtx)))))
+          (validation.utils/merge-vtx vtx)))))
 
 #_"NOTE: Navigation and validation should be untied from each other."
 (zen.schema/register-compile-key-interpreter!
@@ -631,10 +628,10 @@ Probably safe to remove if no one relies on them"
             (reduce (partial err-fn schemas rest-fn opts) vtx))))))
 
 (zen.schema/register-compile-key-interpreter!
-  [:fail ::validate]
-  (fn [_ ztx err-msg]
-    (fn validate-fail [vtx data opts]
-      (add-err vtx :fail {:message err-msg}))))
+ [:fail ::validate]
+ (fn [_ _ztx err-msg]
+   (fn validate-fail [vtx _data _opts]
+     (add-err vtx :fail {:message err-msg}))))
 
 (zen.schema/register-compile-key-interpreter!
  [:key-schema ::validate]
@@ -648,22 +645,22 @@ Probably safe to remove if no one relies on them"
                            (keyword (name sch-name))
                            (keyword sch-name))
                          (:for sch)]))))]
-     (fn validate-key-schema [vtx data opts]
-      (let [correct-keys
-            (into #{}
-                  (keep (fn [[sch-key for]]
-                          (when (or (nil? for)
-                                    (contains? for (get data key)))
-                            sch-key)))
-                  keys-schemas)
+     (fn validate-key-schema [vtx data _opts]
+       (let [correct-keys
+             (into #{}
+                   (keep (fn [[sch-key for]]
+                           (when (or (nil? for)
+                                     (contains? for (get data key)))
+                             sch-key)))
+                   keys-schemas)
 
-            all-keys
-            (-> data keys set)
+             all-keys
+             (-> data keys set)
 
-            incorrect-keys
-            (utils/set-diff all-keys correct-keys)]
-       (update vtx
-               :unknown-keys
-               into
-               (map #(conj (:path vtx) %))
-               incorrect-keys))))))
+             incorrect-keys
+             (utils/set-diff all-keys correct-keys)]
+         (update vtx
+                 :unknown-keys
+                 into
+                 (map #(conj (:path vtx) %))
+                 incorrect-keys))))))

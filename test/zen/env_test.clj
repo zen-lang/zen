@@ -1,9 +1,10 @@
 (ns zen.env-test
-  (:require [matcho.core :as matcho]
-            [clojure.test :refer [deftest is testing]]
-            [zen.core]))
+  (:require
+   [clojure.test :as t]
+   [matcho.core :as matcho]
+   [zen.core]))
 
-(deftest test-envs
+(t/deftest test-envs
 
   (def ztx (zen.core/new-context {:paths ["test"]
                                   :env {:ESTR "extr" :EINT "99" :ESYM "schema"
@@ -18,21 +19,21 @@
 
   (matcho/match
    (zen.core/get-symbol ztx 'test-env/model)
-   {:zen/tags #{'test-env/schema}
-    :home string?
-    :string "extr"
-    :int 99
-    :key :some/key
-    :num 0.02
-    :bool-true true
-    :bool-false false
-    :sym 'test-env/schema
+    {:zen/tags #{'test-env/schema}
+     :home string?
+     :string "extr"
+     :int 99
+     :key :some/key
+     :num 0.02
+     :bool-true true
+     :bool-false false
+     :sym 'test-env/schema
 
-    :dstring "DS"
-    :dint 4
-    :dkey :key
-    :dbool-false false
-    :dbool-true true
-    :dnum 4.0
-    :dsym 'test-env/sym
-    :dhome "DH"}))
+     :dstring "DS"
+     :dint 4
+     :dkey :key
+     :dbool-false false
+     :dbool-true true
+     :dnum 4.0
+     :dsym 'test-env/sym
+     :dhome "DH"}))

@@ -1,23 +1,25 @@
 (ns zen.cli
   (:gen-class)
-  (:require [zen.package]
-            [zen.changes]
-            [zen.core]
-            [zen.cli.output]
-            [clojure.pprint]
-            [clojure.java.io :as io]
-            [clojure.string]
-            [clojure.edn]
-            [clojure.stacktrace]
-            [clojure.java.shell]
-            [clojure.string :as str]))
+  (:require
+   [clojure.edn]
+   [clojure.java.io :as io]
+   [clojure.java.shell]
+   [clojure.pprint]
+   [clojure.stacktrace]
+   [clojure.string :as str]
+   [zen.changes]
+   [zen.cli.output]
+   [zen.core]
+   [zen.package]
+   [zen.utils :as utils]
+   [zen.v2-validation]))
 
 (defn format-command-usage
   [schema-nth]
   (->> (sort-by first schema-nth)
        (map last)
        (mapv #(if (contains? % :enum)
-                (clojure.string/join "|" (map :value (:enum %)))
+                (str/join "|" (map :value (:enum %)))
                 (:zen/desc %)))))
 
 (defn help-command
@@ -66,9 +68,15 @@
 (defn apply-with-opts [f args opts]
   (apply f (conj (vec args) opts)))
 
-(defn get-pwd [& [{:keys [pwd] :as opts}]]
-  (or (some-> pwd (clojure.string/replace #"/+$" ""))
-      (System/getProperty "user.dir")))
+(defn get-pwd [& [{:keys [pwd] :as _opts}]]
+  (if pwd
+    (if (instance? java.io.File pwd)
+      pwd
+      (let [path (io/file pwd)]
+        (if (.isAbsolute path)
+          path
+          (io/file utils/*cwd* pwd))))
+    utils/*cwd*))
 
 (defn get-return-fn [& [opts]]
   (or (:return-fn opts) clojure.pprint/pprint))
@@ -82,15 +90,14 @@
            (flush))))
 
 (defn load-ztx [opts]
-  (zen.core/new-context {:package-paths [(get-pwd opts)]}))
+  (zen.core/new-context {:package-paths [(str (get-pwd opts))]}))
 
 
 (defn collect-all-project-namespaces [opts]
   (let [pwd (get-pwd opts)
-        zrc (str pwd "/zrc")
-        relativize #(subs % (count zrc))
+        zrc (io/file pwd "zrc")
+        relativize #(subs % (count (str zrc)))
         zrc-edns (->> zrc
-                      clojure.java.io/file
                       file-seq
                       (filter #(clojure.string/ends-with? % ".edn"))
                       (map (fn [^java.io.File f] (relativize (.getAbsolutePath f))))
@@ -99,6 +106,7 @@
         namespaces (map #(-> %
                              (clojure.string/replace ".edn" "")
                              (clojure.string/replace \/ \.)
+                             (clojure.string/replace \\ \.)
                              symbol)
                         zrc-edns)]
     namespaces))
@@ -131,14 +139,23 @@
 
 (defn pull-deps
   ([opts] (pull-deps nil opts))
-
   ([_ztx opts]
    (if-let [initted-deps (zen.package/zen-init-deps! (get-pwd opts))]
      {::status :ok :format :message ::result {:message "Dependencies have been successfully updated"
-                                               :status  :ok
-                                               :code :pulled :deps initted-deps}}
+                                              :status  :ok
+                                              :code :pulled :deps initted-deps}}
      {::status :ok :format :message ::result {:status :ok :message "No dependencies found" :code :nothing-to-pull}})))
 
+
+(comment
+  (java.io.File)
+  ()
+  zen.utils/*cwd*
+  (get-pwd {:dir "/fdf"})
+  (get-pwd)
+  (changes  {:pwd (io/file zen.utils/*cwd* "pkg" "zen-pkg" "my-package")})
+  (init "my-package" {:pwd (io/file zen.utils/*cwd* "pkg" "zen-pkg")})
+  (clojure.string/replace "/User/ALex/" #"[\\|\/]+$" ""))
 
 (defn errors
   ([opts] (errors (load-ztx opts) opts))
@@ -148,12 +165,12 @@
    {:format  :error
     ::status :ok
     ::result (seq (map #(assoc % ::file
-                               (some-> 
+                               (some->
                                 (or (get-in @ztx [:ns (:ns %) :zen/file])
                                     (:file %)
                                     (and (:resource %)
                                          (:zen/file (zen.core/get-symbol ztx (:resource %)))))
-                                (subs (inc (count (get-pwd opts))))))
+                                (subs (inc (count (str (get-pwd opts)))))))
                        (zen.core/errors ztx :order :as-is)))}))
 
 
@@ -231,7 +248,7 @@
 
 (defn cmd [& args]
   (exception->error-result
-    (apply cmd-unsafe args)))
+   (apply cmd-unsafe args)))
 
 
 (defn build
@@ -240,7 +257,7 @@
   ([path package-name opts] (build nil path package-name opts))
   ([_ztx path package-name opts] #_"NOTE: currently this fn doesn't need ztx"
    (zen.package/zen-build! (get-pwd opts) {:build-path path :package-name package-name})
-   {::status :ok :format :message ::result {:message "Project was successfully builded" :code :builded :status :ok}}))
+                                 {::status :ok :format :message ::result {:message "Project was successfully builded" :code :builded :status :ok}}))
 
 (defn command-dispatch [command-name _command-args _opts]
   command-name)
@@ -389,17 +406,17 @@
   (let [prompt-fn (get-prompt-fn opts)
         read-fn   (get-read-fn opts)
         return-fn (get-return-fn opts)
-        config    (zen.core/get-symbol ztx config-sym)
-        commands  (:commands config)
+        #_#_config    (zen.core/get-symbol ztx config-sym)
+        #_#_commands  (:commands config)
 
         opts (update opts :stop-repl-atom #(or % (atom false)))]
     (while (not @(:stop-repl-atom opts))
       (return-fn
-        (exception->error-result
-          (prompt-fn)
-          (let [line (read-fn)
-                args (split-args-by-space line)]
-            (cli-exec ztx config-sym args opts)))))))
+       (exception->error-result
+        (prompt-fn)
+        (let [line (read-fn)
+              args (split-args-by-space line)]
+          (cli-exec ztx config-sym args opts)))))))
 
 (defn cli-main* [ztx config-sym [cmd-name :as args] opts]
   (if (seq cmd-name)

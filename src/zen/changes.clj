@@ -6,7 +6,6 @@
 
 (defn namespace-check [acc old-ztx new-ztx]
   (let [get-set-of-ns #(set (keys (:ns %)))
-
         [lost new same]
         (clojure.data/diff (get-set-of-ns @old-ztx)
                            (get-set-of-ns @new-ztx))]
@@ -20,12 +19,12 @@
                                  :namespace lost-ns}))
                          lost)
       (seq new) (update :changes
-                         into
-                         (map (fn [new-ns]
-                                {:type      :namespace/new
-                                 :message   (str "New namespace: "  new-ns)
-                                 :namespace new-ns}))
-                         new))))
+                        into
+                        (map (fn [new-ns]
+                               {:type      :namespace/new
+                                :message   (str "New namespace: "  new-ns)
+                                :namespace new-ns}))
+                        new))))
 
 
 (def core-zen-syms #{'import 'ns 'alias})
@@ -65,12 +64,12 @@
                                  :symbol  lost-sym}))
                          lost)
       (seq new)  (update :changes
-                        into
-                        (map (fn [new-sym]
-                               {:type    :symbol/new
-                                :message (str "New symbol: " new-sym)
-                                :symbol  new-sym}))
-                        new))))
+                         into
+                         (map (fn [new-sym]
+                                {:type    :symbol/new
+                                 :message (str "New symbol: " new-sym)
+                                 :symbol  new-sym}))
+                         new))))
 
 
 (defn index-sch-seq [sch-seq]
@@ -112,7 +111,7 @@
                  :new new}
                 old)]
 
-    (reduce (fn [acc [ch-pth new-el]]
+    (reduce (fn [acc [_ch-pth new-el]]
               (let [{:keys [path]} new-el
                     change (process-change sym path nil (:value new-el))]
                 (cond-> acc (some? change) (conj change))))

@@ -1,12 +1,11 @@
 (ns zen.dev-test
-  (:require [clojure.test :as t]
-            [clojure.java.io :as io]
-            [zen.core :as zen]
-            [matcho.core :as matcho]
-            [zen.dev :as dev]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :as t]
+   [matcho.core :as matcho]
+   [zen.core :as zen]
+   [zen.dev :as dev]))
 
-
-(System/getProperty "java.io.tmpdir")
 
 (defmacro wait-for [expr times]
   `(loop [t# ~times]
@@ -52,11 +51,11 @@
 
   (matcho/match
    (zen/errors ztx)
-   [{:message "Could not resolve symbol 'lib.dev-test-lib/model in dev-test-app/Model1",
-     :ns 'dev-test-app}
-    {:message "EOF while reading, expected } to match { at [1,1]",
-     :file #"dev-test-broken.edn",
-     :ns 'dev-test-broken}])
+    [{:message "Could not resolve symbol 'lib.dev-test-lib/model in dev-test-app/Model1",
+      :ns 'dev-test-app}
+     {:message "EOF while reading, expected } to match { at [1,1]",
+      :file #"dev-test-broken.edn",
+      :ns 'dev-test-broken}])
 
   (try
     (dev/watch ztx)
@@ -73,7 +72,7 @@
 
     (matcho/match
      (zen/errors ztx)
-     empty?)
+      empty?)
 
     (finally
       (println ::stop)
@@ -111,7 +110,7 @@
       (t/is (contains? (:ns @ztx) 'not-imported-yet))
 
       (matcho/match
-        (zen/errors ztx)
+       (zen/errors ztx)
         empty?))
 
     (finally
@@ -143,7 +142,7 @@
       (t/is (contains? (into #{} (keys (:ns @ztx))) 'not-created-yet))
 
       (matcho/match
-        (zen/errors ztx)
+       (zen/errors ztx)
         empty?))
 
     (finally
@@ -164,19 +163,16 @@
 
     (matcho/match
      (zen/errors ztx)
-     [{:message
-       "Could not resolve symbol 'lib.dependence/dep2 in main/Model2",
-       :ns 'main}])
+      [{:message
+        "Could not resolve symbol 'lib.dependence/dep2 in main/Model2",
+        :ns 'main}])
 
     (spit (str project "/lib/dependence.edn") "{ns lib.dependence dep1 {:zen/tags #{zen/tag}} dep2 {:zen/tags #{zen/tag}}}")
     (wait-for (zen/get-symbol ztx 'lib.dependence/dep2) 100)
 
-    (get-in @ztx [:ns 'main 'import])
-    (:ns-reloads @ztx)
-
     (matcho/match
      (zen/errors ztx)
-     empty?)
+      empty?)
 
     (finally
       (println ::stop)

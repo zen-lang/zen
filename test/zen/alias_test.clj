@@ -1,10 +1,10 @@
 (ns zen.alias-test
   (:require
-   [zen.core :as zen]
+   [clojure.test :as t]
    [matcho.core :as matcho]
-   [clojure.test :refer [deftest is testing]])) 
+   [zen.core :as zen]))
 
-(deftest alias-test
+(t/deftest alias-test
   #"TODO: add alias remove test"
   (def test-namespaces
     '{ns1 {:ns   ns1
@@ -75,63 +75,63 @@
 
   (zen/load-ns ztx (get test-namespaces 'myns))
 
-  (is (empty? (zen/errors ztx)))
+  (t/is (empty? (zen/errors ztx)))
 
   (matcho/match
-    (zen/get-symbol ztx 'myns/tagged-sym1)
+   (zen/get-symbol ztx 'myns/tagged-sym1)
     {:zen/tags #{'ns1/tag1}})
 
   (matcho/match
-    (zen/get-symbol ztx 'myns/tagged-sym2)
+   (zen/get-symbol ztx 'myns/tagged-sym2)
     {:zen/tags #{'ns1/tag1}})
 
   (matcho/match
-    (zen/get-symbol ztx 'myns/tagged-sym3)
+   (zen/get-symbol ztx 'myns/tagged-sym3)
     {:zen/tags #{'ns1/tag1}})
 
   (matcho/match
-    (zen/get-symbol ztx 'myns/tagged-sym4)
+   (zen/get-symbol ztx 'myns/tagged-sym4)
     {:zen/tags #{'ns1/tag1}})
 
-  (testing "symbol alias"
+  (t/testing "symbol alias"
     (matcho/match
      (zen/get-symbol ztx 'myns/sym1)
       '{:zen/name ns1/sym1}))
 
-  (testing "ns alias"
+  (t/testing "ns alias"
     (matcho/match
      (zen/get-symbol ztx 'myns/sym21)
       '{:zen/name ns2/sym21})
 
-    (testing "monkey patch"
+    (t/testing "monkey patch"
       (matcho/match
        (zen/get-symbol ztx 'myns/sym22)
         '{:zen/name myns/sym22})))
 
-  (testing "tags alias"
-    (testing "symbol alias"
-      (is (= #{'myns/tagged-sym1 'myns/tagged-sym2 'myns/tagged-sym3 'myns/tagged-sym4}
-             (zen/get-tag ztx 'myns/tag1)))
+  (t/testing "tags alias"
+    (t/testing "symbol alias"
+      (t/is (= #{'myns/tagged-sym1 'myns/tagged-sym2 'myns/tagged-sym3 'myns/tagged-sym4}
+               (zen/get-tag ztx 'myns/tag1)))
 
-      (is (= #{'myns/tagged-sym1 'myns/tagged-sym2 'myns/tagged-sym3 'myns/tagged-sym4}
-             (zen/get-tag ztx 'ns1/tag1))))
+      (t/is (= #{'myns/tagged-sym1 'myns/tagged-sym2 'myns/tagged-sym3 'myns/tagged-sym4}
+               (zen/get-tag ztx 'ns1/tag1))))
 
-    (testing "ns alias"
-      (is (= #{'myns/tagged-sym21 'ns2/tagged-sym1}
-             (zen/get-tag ztx 'myns/tag21)))
+    (t/testing "ns alias"
+      (t/is (= #{'myns/tagged-sym21 'ns2/tagged-sym1}
+               (zen/get-tag ztx 'myns/tag21)))
 
-      (is (= #{'myns/tagged-sym21 'ns2/tagged-sym1}
-             (zen/get-tag ztx 'ns2/tag21)))
+      (t/is (= #{'myns/tagged-sym21 'ns2/tagged-sym1}
+               (zen/get-tag ztx 'ns2/tag21)))
 
-      (testing "monkey patch"
-        (is (= #{'myns/tagged-sym221}
-               (zen/get-tag ztx 'myns/tag22)))
+      (t/testing "monkey patch"
+        (t/is (= #{'myns/tagged-sym221}
+                 (zen/get-tag ztx 'myns/tag22)))
 
-        (is (= #{'myns/tagged-sym222 'ns2/tagged-sym2}
-               (zen/get-tag ztx 'ns2/tag22))))))
+        (t/is (= #{'myns/tagged-sym222 'ns2/tagged-sym2}
+                 (zen/get-tag ztx 'ns2/tag22))))))
 
-  (testing "validate with alias"
-    (is (zen/get-symbol ztx 'myns/sch1))
+  (t/testing "validate with alias"
+    (t/is (zen/get-symbol ztx 'myns/sch1))
 
     (matcho/match
      (zen/validate ztx #{'ns1/sch1} {:a 1})

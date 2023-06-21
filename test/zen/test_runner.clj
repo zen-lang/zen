@@ -1,11 +1,11 @@
 (ns zen.test-runner
   (:require
-   [clojure.test :refer [is]]
+   [clojure.test :as t]
    [clojure.walk]
    [matcho.core :as matcho]
    [zen.core :as zen]
-   [zen.validation :as v1]
-   [zen.v2-validation :as v2]))
+   [zen.v2-validation :as v2]
+   [zen.validation :as v1]))
 
 (def versions
   {:v1 #'v1/validate
@@ -21,14 +21,14 @@
 (defn translate-to-matcho [match]
   (clojure.walk/postwalk (fn [x] (get replacements x x)) match))
 
-(defmulti do-step (fn [_ztx step version] (get-in step [:do :type])))
+(defmulti do-step (fn [_ztx step _version] (get-in step [:do :type])))
 
-(defmethod do-step :default [_ztx _step version]
+(defmethod do-step :default [_ztx _step _version]
   (assert false "step type not found"))
 
 (defmethod do-step 'zen.test/validate [ztx step version]
   (let [f (get versions version)
-        sch (zen.core/get-symbol ztx (get-in step [:do :schema]))
+        sch (zen/get-symbol ztx (get-in step [:do :schema]))
         validated-sch (f ztx #{'zen/schema} (dissoc sch :zen/name :zen/file :zen/desc :zen/tags))]
     (-> (f ztx #{(get-in step [:do :schema])} (get-in step [:do :data]) (or (:val-opts step) {}))
         (update :errors into (map #(assoc % ::validate-schema-error true)
@@ -36,7 +36,7 @@
 
 (defmethod do-step 'zen.test/validate-schema [ztx step version]
   (let [f (get versions version)
-        sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
+        sch (zen/get-symbol ztx (get-in step [:do :schema]))]
     ;; TODO revisit this later
     ;; why this attrs are not in zen.edn?
     (f ztx #{'zen/schema} (dissoc sch :zen/name :zen/file :zen/tags :zen/desc))))
@@ -52,7 +52,7 @@
   (println (:message (last (get-in result [:results 'zen.validation-test 'test-validation])))))
 
 (defmethod report-step 'zen.test/validate-schema [ztx step result test-case]
-  (let [sch (zen.core/get-symbol ztx (get-in step [:do :schema]))]
+  (let [sch (zen/get-symbol ztx (get-in step [:do :schema]))]
     (println "## Test: " (or (:title test-case) (:id test-case)))
     (println "  step: " (:desc step) " \n  " (get-in step [:do :schema]) "\n  " sch)
     (println (:message (last (get-in result [:results 'zen.validation-test 'test-validation]))))))
@@ -61,7 +61,7 @@
   (doall
    (filter
     identity
-    (for [test-name (zen.core/get-tag ztx 'zen.test/case)
+    (for [test-name (zen/get-tag ztx 'zen.test/case)
           step      (:steps (zen/get-symbol ztx test-name))
           version (or (not-empty versions) [:v2 :v1])]
       (let [test-def (zen/get-symbol ztx test-name)
@@ -103,5 +103,5 @@
               #_(report-step ztx step match-res test-def)
               {:desc (:desc step) :version version :expected (:match step) :got step-res}))))))))
 
-(defn zen-read-ns [ztx s & args]
-  (is (= :zen/loaded (zen.core/read-ns ztx s))))
+(defn zen-read-ns [ztx s & _args]
+  (t/is (= :zen/loaded (zen/read-ns ztx s))))

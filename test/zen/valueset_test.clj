@@ -1,9 +1,10 @@
 (ns zen.valueset-test
-  (:require [matcho.core :as matcho]
-            [zen.validation]
-            [clojure.test :refer [deftest is testing]]
-            [zen.effect]
-            [zen.core]))
+  (:require
+   [clojure.test :as t]
+   [matcho.core :as matcho]
+   [zen.core]
+   [zen.effect]
+   zen.validation))
 
 
 (def zen-fx
@@ -36,7 +37,7 @@
   (valueset-engine-apply ctx (zen.core/get-symbol ctx valueset-sym) value))
 
 
-(deftest custom-engine-with-deffereds
+(t/deftest custom-engine-with-deffereds
   (def zen-schema
     '{ns     myapp
       import #{fx}
@@ -80,20 +81,20 @@
   (def validation-result (zen.core/validate tctx #{'myapp/sch} data))
 
   (matcho/match validation-result
-                {:errors  empty?
-                 :effects [{:name   'fx/valueset
-                            :params 'myapp/foo-bar-baz-valueset
-                            :data   {:code "foo" :display "Foo"}
-                            :path   [:coding 'fx/valueset]}
-                           nil?]})
+    {:errors  empty?
+     :effects [{:name   'fx/valueset
+                :params 'myapp/foo-bar-baz-valueset
+                :data   {:code "foo" :display "Foo"}
+                :path   [:coding 'fx/valueset]}
+               nil?]})
 
   (def resolved (zen.effect/apply-fx tctx validation-result data))
 
   (matcho/match resolved {:errors empty? :effects empty?})
 
   (matcho/match (zen.core/validate! tctx #{'myapp/sch} {:coding {:code "Boo" :display "Boo"}})
-                {:errors [{:path [:coding 'fx/valueset nil?]}
-                          nil?]}))
+    {:errors [{:path [:coding 'fx/valueset nil?]}
+              nil?]}))
 
 
 (comment
@@ -113,22 +114,22 @@
 
 
     icd10-cm1 {:zen/tags #{fx/valueset-definition terminology-proxy}
-              :engine      :fhir-terminology-proxy
-              :base-url    "http://localhost:8080/fhir"
-              :headers     {"Authorization" "Basic fofofofofoffo"}
-              :valueset-id "icd10-cm"}
+               :engine      :fhir-terminology-proxy
+               :base-url    "http://localhost:8080/fhir"
+               :headers     {"Authorization" "Basic fofofofofoffo"}
+               :valueset-id "icd10-cm"}
 
     icd10-cm2 {:tags   #{zen/valueset aidbox/valueset}
-              :engine :aidbox/database
-              :table  "concept"
+               :engine :aidbox/database
+               :table  "concept"
 
-              :select {:code    {:engine :dsql
-                                 :sql    "resource#>>'{code}'"}
-                       :display {:engine :sql
-                                 :sql    "resource#>>'{display}'"}
-                       :system  {:const {:value "http://hl7.org/fhir/sid/icd-10-cm"}}}
-              :where  {:engine :sql
-                       :sql    "resource#>>'{system}' = 'http://hl7.org/fhir/sid/icd-10-cm'"}}
+               :select {:code    {:engine :dsql
+                                  :sql    "resource#>>'{code}'"}
+                        :display {:engine :sql
+                                  :sql    "resource#>>'{display}'"}
+                        :system  {:const {:value "http://hl7.org/fhir/sid/icd-10-cm"}}}
+               :where  {:engine :sql
+                        :sql    "resource#>>'{system}' = 'http://hl7.org/fhir/sid/icd-10-cm'"}}
 
     icd9 {:tags   #{zen/valueset aidbox/valueset}
           :engine :aidbox/database

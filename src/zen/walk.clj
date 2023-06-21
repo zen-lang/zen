@@ -17,8 +17,8 @@
 
 
 (defn remove-nested-paths
-  "Removes nested paths by sorting in lexicographical order
-   and then checking if a path is included in the next path"
+  "Removes nested paths by sorting in lexicographical order.
+   Then checking if a path is included in the next path"
   [paths]
   (let [sorted-paths (sort compare-path-lexicographical paths)]
     (->> (map (fn [cur-path next-path]
@@ -30,7 +30,7 @@
 
 
 (defn iterate-dsl-leafs
-  "Returns seq of paths to leafs in a provided dsl-expr. "
+  "Returns seq of paths to leafs in a provided dsl-expr."
   [ztx tags dsl-expr]
   (->> (iterate-dsl ztx tags dsl-expr)
        remove-nested-paths))

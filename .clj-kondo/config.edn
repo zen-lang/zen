@@ -1,0 +1,37 @@
+{:lint-as       {}
+ :ns-groups     [{:pattern "^.*-test$" :name tests}]
+ :skip-comments true
+ :config-in-ns  {tests                        {:linters {:inline-def {:level :off}}}}
+
+ :linters       {:not-empty? {:level :off}
+                 #_#_:line-length {:max-line-length 120}
+                 :warn-on-reflection {:level :off
+                                      :warn-only-on-interop true}
+                 :used-underscored-binding {:level :warning}
+                 :shadowed-var {:level :off}
+                 :inline-def {:level :warning}
+                 :reduce-without-init {:level :off}
+                 :keyword-binding {:level :warning}
+                 :main-without-gen-class {:level :warning}
+                 :cond-else {:level :warning}
+                 :aliased-namespace-symbol {:level :warning
+                                            :exclude [clojure.string]}
+                 :duplicate-require {:level :warning}
+                 :deprecated-var {:level :warning}
+                 :docstring-no-summary {:level :warning}
+                 :unresolved-namespace {:level :warning}
+                 :unused-namespace {:level :warning}
+                 :unsorted-required-namespaces {:level :warning}
+                 :unused-binding {:level :warning}
+                 :redundant-call {:level :warning}
+                 :redundant-fn-wrapper {:level :warning}
+                 :namespace-name-mismatch {:level :warning}
+                 :missing-body-in-when {:level :warning}
+                 :refer-all {:level :warning}
+                 :single-key-in {:level :warning}
+                 :missing-clause-in-try {:level :warning}
+                 :docstring-leading-trailing-whitespace {:level :warning}
+                 :missing-else-branch {:level :off}
+                 :non-arg-vec-return-type-hint {:level :off}
+                 :unused-private-var {:level :off}}
+ :output        {:show-rule-name-in-message true}}

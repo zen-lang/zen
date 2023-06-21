@@ -1,8 +1,9 @@
 (ns zen.changes-test
-  (:require [zen.changes :as sut]
-            [zen.core]
-            [clojure.test :as t]
-            [matcho.core :as matcho]))
+  (:require
+   [clojure.test :as t]
+   [matcho.core :as matcho]
+   [zen.changes :as sut]
+   [zen.core]))
 
 
 (def rest-ns
@@ -69,8 +70,8 @@
     (zen.core/load-ns new-ztx '{ns a})
 
     (matcho/match (sut/check-changes old-ztx new-ztx)
-                  {:status :unchanged
-                   :changes empty?}))
+      {:status :unchanged
+       :changes empty?}))
 
   (t/testing "ns remove"
     (def old-ztx (zen.core/new-context))
@@ -82,13 +83,13 @@
     (zen.core/load-ns new-ztx '{ns c})
 
     (matcho/match (sut/check-changes old-ztx new-ztx)
-                  {:status :changed,
-                   :changes
-                   [{:type :namespace/lost
-                     :namespace 'b}
-                    {:type :namespace/new
-                     :namespace 'c}
-                    nil]}))
+      {:status :changed,
+       :changes
+       [{:type :namespace/lost
+         :namespace 'b}
+        {:type :namespace/new
+         :namespace 'c}
+        nil]}))
 
   (t/testing "symbol remove"
     (def old-ztx (zen.core/new-context))
@@ -110,12 +111,12 @@
                                      :confirms #{b/sym}}})
 
     (matcho/match (sut/check-changes old-ztx new-ztx)
-                  {:status :changed,
-                   :changes [{:type :symbol/lost,
-                              :symbol 'b/sym}
-                             {:type :symbol/new,
-                              :symbol 'b/sym2}
-                            nil]}))
+      {:status :changed,
+       :changes [{:type :symbol/lost,
+                  :symbol 'b/sym}
+                 {:type :symbol/new,
+                  :symbol 'b/sym2}
+                 nil]}))
 
   (t/testing "schema changes"
     (def old-ztx (zen.core/new-context))
@@ -143,23 +144,23 @@
                                      :confirms #{b/sym}}})
 
     (matcho/match (sut/check-changes old-ztx new-ztx)
-                  {:status :changed
-                   :changes [{:type   :schema/removed
-                              :sym    'b/sym
-                              :path   [:keys :baz :type nil]
-                             :before 'zen/any
-                             :after  nil}
-                            {:type   :schema/updated
-                             :sym    'b/sym
-                             :path   [:keys :foo :type nil]
-                             :before 'zen/number
-                             :after  'zen/integer}
-                            {:type   :schema/added
-                             :sym    'b/sym
-                             :path   [:keys :quux :type nil]
-                             :before nil
-                             :after  'zen/any}
-                            nil]}))
+      {:status :changed
+       :changes [{:type   :schema/removed
+                  :sym    'b/sym
+                  :path   [:keys :baz :type nil]
+                  :before 'zen/any
+                  :after  nil}
+                 {:type   :schema/updated
+                  :sym    'b/sym
+                  :path   [:keys :foo :type nil]
+                  :before 'zen/number
+                  :after  'zen/integer}
+                 {:type   :schema/added
+                  :sym    'b/sym
+                  :path   [:keys :quux :type nil]
+                  :before nil
+                  :after  'zen/any}
+                 nil]}))
 
   (t/testing "dsl changes"
     (t/testing "rpc"
@@ -194,18 +195,18 @@
                                     :keys {:bar {:type zen/string}}}}})
 
       (matcho/match (sut/check-changes old-ztx new-ztx)
-                    {:status :changed
-                     :changes [{:type   :schema/removed
-                                :sym    'myns/myrpc
-                                :path   [:params :require nil]
-                                :before #{:foo}
-                                :after  nil}
-                               {:type   :schema/removed
-                                :sym    'myns/myrpc
-                                :path   [:result :require nil]
-                                :before #{:bar}
-                                :after  nil}
-                               nil]}))
+        {:status :changed
+         :changes [{:type   :schema/removed
+                    :sym    'myns/myrpc
+                    :path   [:params :require nil]
+                    :before #{:foo}
+                    :after  nil}
+                   {:type   :schema/removed
+                    :sym    'myns/myrpc
+                    :path   [:result :require nil]
+                    :before #{:bar}
+                    :after  nil}
+                   nil]}))
 
     (t/testing "routing"
 
@@ -259,35 +260,35 @@
       (zen.core/load-ns new-ztx my-new-routing)
 
       (matcho/match (sut/check-changes old-ztx new-ztx)
-                    {:status  :changed
-                     :changes [{:type   :schema/added #_"NOTE: moved from 'myns/myapi"
-                                :sym    'myns/other-api
-                                :path   [:routing :methods :GET nil]
-                                :before nil
-                                :after  'myns/op}
-                               {:type   :schema/removed #_"NOTE: moved to 'myns/other-api"
-                                :sym    'myns/myapi
-                                :path   [:routing :methods :GET nil]
-                                :before 'myns/op
-                                :after  nil}
-                               {:type   :schema/removed #_"NOTE: removed; breaking"
-                                :sym    'myns/myapi
-                                :path   [:routing :methods :POST nil]
-                                :before 'myns/op
-                                :after  nil}
-                               {:type   :schema/updated #_"NOTE: changes value; breaking"
-                                :sym    'myns/myapi
-                                :path   [:routing :methods :PUT nil]
-                                :before 'myns/op
-                                :after  'myns/op2}
-                               {:type   :schema/added #_"NOTE: overlaps with other-api, but values are the same, not breaking"
-                                :sym    'myns/myapi
-                                :path   [:routing :methods :DELETE nil]
-                                :before nil
-                                :after  'myns/op}
-                               {:type   :schema/added #_"NOTE: overlaps with other-api, but values are different, breaking"
-                                :sym    'myns/myapi
-                                :path   [:routing :methods :PATCH nil]
-                                :before nil
-                                :after  'myns/op2}
-                               nil]}))))
+        {:status  :changed
+         :changes [{:type   :schema/added #_"NOTE: moved from 'myns/myapi"
+                    :sym    'myns/other-api
+                    :path   [:routing :methods :GET nil]
+                    :before nil
+                    :after  'myns/op}
+                   {:type   :schema/removed #_"NOTE: moved to 'myns/other-api"
+                    :sym    'myns/myapi
+                    :path   [:routing :methods :GET nil]
+                    :before 'myns/op
+                    :after  nil}
+                   {:type   :schema/removed #_"NOTE: removed; breaking"
+                    :sym    'myns/myapi
+                    :path   [:routing :methods :POST nil]
+                    :before 'myns/op
+                    :after  nil}
+                   {:type   :schema/updated #_"NOTE: changes value; breaking"
+                    :sym    'myns/myapi
+                    :path   [:routing :methods :PUT nil]
+                    :before 'myns/op
+                    :after  'myns/op2}
+                   {:type   :schema/added #_"NOTE: overlaps with other-api, but values are the same, not breaking"
+                    :sym    'myns/myapi
+                    :path   [:routing :methods :DELETE nil]
+                    :before nil
+                    :after  'myns/op}
+                   {:type   :schema/added #_"NOTE: overlaps with other-api, but values are different, breaking"
+                    :sym    'myns/myapi
+                    :path   [:routing :methods :PATCH nil]
+                    :before nil
+                    :after  'myns/op2}
+                   nil]}))))

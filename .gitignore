@@ -3,8 +3,9 @@
 .nrepl-port
 target
 .env
-/.clj-kondo
-/.calva
+!.clj-kondo/config.edn
+.clj-kondo/
+.calva
 
 # pulled dependencies for zen-package used for benchmark fixtures
 /pkg/zen-pkg/zen-packages/

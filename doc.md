@@ -1,4 +1,4 @@
-## zen
+# zen
 
 Zen is declarative language to describe models with data.
 Zen syntax is based on extensible data notation (edn) - [see refs](https://github.com/edn-format/edn)
@@ -24,10 +24,7 @@ Namespace should have a name under `ns` key.
 
 By convention path to file should match namespace name: i.e.   `my/package/model.edn` <-> `my.package.model**
 
-
-
 ## v2
-
 
 zen model is just a data in edn format
 
@@ -44,7 +41,7 @@ edn primer:
 
 models are grouped into namespaces, map of model names (keys) and model's data (values).
 
-Each namespace should have a name - `ns` key. 
+Each namespace should have a name - `ns` key.
 
 Each model in namespace can be references by full name `<ns-name>/<model-key>`
 
@@ -54,9 +51,7 @@ symbols in zen are reference to other models.
 zen checks that referenced name exists.
 
 Local refs can by unnamespaced names (current namespace name is assumed)
-Symbols from other namespaces are referenced with full name - <ns-name>/<model-name>
-
-
+Symbols from other namespaces are referenced with full name - `<ns-name>/<model-name>`
 
 ## Namespaces & references
 
@@ -70,7 +65,7 @@ There are two special keys:
 Other keys are names of **models** or **symbols**, which are just arbitrary data in edn
 
 ```edn
-;; file name: my-pachage/my-namespace.edn
+;; file name: my-package/my-namespace.edn
 {
   ;; namespace name
   ns my-package.my-namespace
@@ -92,8 +87,8 @@ Other keys are names of **models** or **symbols**, which are just arbitrary data
 
 ```
 
-Zen project contains one or more edn files with namespaces. 
-By convention path to file should match namespace name: 
+Zen project contains one or more edn files with namespaces.
+By convention path to file should match namespace name:
 i.e.   `my/package/model.edn` <-> `my.package.model**
 
 One file should contain only one namespace!
@@ -101,9 +96,9 @@ One file should contain only one namespace!
 Symbols in zen models are interpreted as references to other models.
 
 To reference symbol in same namespace simple name may be used, zen checker
-will interpret it as <current-namespace-name>/<symbol-name>.
+will interpret it as `<current-namespace-name>/<symbol-name>`.
 
-To reference symbol from other namespace, full name should be used <other-namespace>/<symbol-name>.
+To reference symbol from other namespace, full name should be used `<other-namespace>/<symbol-name>`.
 Zen load should check, that referenced namespace is imported and referenced symbol exists in it.
 
 No cyclic references are allowed between namespaces.
@@ -144,7 +139,7 @@ Zen runtime should provide an procedure to load all symbols with specific tag!
 
 ## zen/schema
 
-Zen is coming with built-in schema language - `zen/schema`, 
+Zen is coming with built-in schema language - `zen/schema`,
 to describe shape of data in an open way.
 
 zen/schema is a map, where each key is validation instruction.
@@ -165,4 +160,4 @@ Other keys are enabled only for specific "types".
 
 zen/schema engine should validate current schema and all referenced schemas.
 
-`:confirms` 
+`:confirms`
