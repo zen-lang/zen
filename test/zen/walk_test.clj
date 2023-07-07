@@ -192,3 +192,102 @@
        {:path [:zen/name nil]  :value 'myns4/mysym}
        {:path [:zen/tags nil]  :value '#{zen/schema myns4/mytag}}
        nil])))
+
+
+(t/deftest ^:kaocha/pending custom-compile-target-test
+  (t/testing "attribute generation"
+    (def ztx (zen.core/new-context {}))
+
+    (def my-structs-ns
+      '{:ns my-sturcts
+
+        name
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:given {:type zen/vector
+                        :every {:type zen/string}}
+                :family {:type zen/string}}}
+
+        User
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:id {:type zen/string}
+                :email {:type zen/string
+                        #_#_:regex "@"}
+                :name {:type zen/vector
+                       :every {:confirms #{name}}}
+                :link {:type zen/vector
+                       :every {:type zen/map
+                               :keys {:id {:type zen/string}}}}}}})
+
+    (zen.core/load-ns ztx my-structs-ns)
+
+    (def r
+      (sut/compile-schema
+        ztx
+        (fn [acc ztx wtx k v]
+          (conj acc (assoc wtx :k k :v v)))
+        []
+        (zen.core/get-symbol ztx 'my-sturcts/User)))
+
+
+    (defn schema-key->attribute-dispatch [acc ztx wtx k v] k)
+
+
+    (defmulti schema-key->attribute #'schema-key->attribute-dispatch
+      :default ::default)
+
+
+    (defmethod schema-key->attribute ::default [acc ztx wtx k v]
+      acc)
+
+
+    (defn mk-attr-path [wtx]
+      (->> (:path wtx)
+           (remove #(= :# %))
+           (mapv name)))
+
+
+    (defn mk-attr-id [wtx]
+      (let [path (mk-attr-path wtx)
+            entity (first (:schemas wtx))]
+        (keyword
+          (str (name entity)
+               (when-let [pth (seq path)]
+                 (str "." (clojure.string/join "." pth)))))))
+
+
+    (defmethod schema-key->attribute :type [acc ztx wtx k v]
+      (if-let [path (not-empty (mk-attr-path wtx))]
+        (assoc acc
+               (mk-attr-id wtx)
+               {:path path
+                :type (keyword (name v))})
+        acc))
+
+
+    (defmethod schema-key->attribute :confirms [acc ztx wtx k v]
+      (if-let [path (not-empty (mk-attr-path wtx))]
+        (assoc acc
+               (mk-attr-id wtx)
+               {:path path
+                :type (keyword (name (first v)))})
+        acc))
+
+
+    (def r
+      (sut/compile-schema
+        ztx
+        schema-key->attribute
+        {}
+        (zen.core/get-symbol ztx 'my-sturcts/User)))
+
+    (t/is (= {:User.id       {:path ["id"] :type :string}
+              :User.email    {:path ["email"] :type :string}
+              :User.name     {:path ["name"] #_#_:isCollection true :type :name}
+              :User.link     {:path ["link"] :type :map #_#_:isCollection true}
+              :User.link.id  {:path ["link" "id"] :type :string}
+
+              :name.given  {:path ["given"] :type :string #_#_:isCollection true}
+              :name.family {:path ["family"] :type :string}}
+             r))))
