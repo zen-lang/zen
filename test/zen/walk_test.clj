@@ -201,6 +201,12 @@
     (def my-structs-ns
       '{:ns my-sturcts
 
+        reference
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:id {:type zen/string}
+                :resourceType {:type zen/string}}}
+
         name
         {:zen/tags #{zen/schema}
          :type zen/map
@@ -214,11 +220,15 @@
          :keys {:id {:type zen/string}
                 :email {:type zen/string
                         #_#_:regex "@"}
+                :deceased {:fhir/polymorphic true
+                           :type zen/map
+                           :keys {:boolean {:type zen/boolean}
+                                  :dateTime {:type zen/datetime}}}
                 :name {:type zen/vector
                        :every {:confirms #{name}}}
                 :link {:type zen/vector
                        :every {:type zen/map
-                               :keys {:id {:type zen/string}}}}}}})
+                               :keys {:other {:confirms #{reference}}}}}}}})
 
     (zen.core/load-ns ztx my-structs-ns)
 
@@ -231,15 +241,15 @@
         (zen.core/get-symbol ztx 'my-sturcts/User)))
 
 
-    (defn schema-key->attribute-dispatch [acc ztx wtx k v] k)
+    (defn schema-key->attribute-dispatch [acc ztx wtx k v path] k)
 
 
     (defmulti schema-key->attribute #'schema-key->attribute-dispatch
       :default ::default)
 
 
-    (defmethod schema-key->attribute ::default [acc ztx wtx k v]
-      acc)
+    (defmethod schema-key->attribute ::default [acc ztx wtx k v path]
+      nil)
 
 
     (defn mk-attr-path [wtx]
@@ -257,37 +267,66 @@
                  (str "." (clojure.string/join "." pth)))))))
 
 
-    (defmethod schema-key->attribute :type [acc ztx wtx k v]
-      (if-let [path (not-empty (mk-attr-path wtx))]
-        (assoc acc
-               (mk-attr-id wtx)
-               {:path path
-                :type (keyword (name v))})
-        acc))
+    (defmethod schema-key->attribute :type [acc ztx wtx k v path]
+      {:attr
+       (let [tp (keyword (name v))]
+         (if (= :vector tp)
+           {:path path
+            :isCollection true}
+           {:path path
+            :type (keyword (name v))}))})
 
 
-    (defmethod schema-key->attribute :confirms [acc ztx wtx k v]
-      (if-let [path (not-empty (mk-attr-path wtx))]
-        (assoc acc
-               (mk-attr-id wtx)
-               {:path path
-                :type (keyword (name (first v)))})
-        acc))
+    (defmethod schema-key->attribute :confirms [acc ztx wtx k v path]
+      {:attr {:type (keyword (name (first v)))}})
+
+
+    (defmethod schema-key->attribute :fhir/polymorphic [acc ztx wtx _k v path]
+      (when (true? v)
+        {:attr
+         {:types (->> (vals (get-in wtx [:schema :keys]))
+                      (mapv :type)
+                      (mapv name)
+                      (mapv keyword)
+                      set)}
+         :skip-polymorpic-keys (keys (get-in wtx [:schema :keys]))}))
+
+
+    (defn make-attribute [acc ztx wtx _k v]
+      (or (when-let [path (not-empty (mk-attr-path wtx))]
+            (when-let [{:keys [attr skip-polymorphic-keys]}
+                       (schema-key->attribute acc ztx wtx _k v path)]
+              (-> acc
+                  (update-in [:attrs (mk-attr-id wtx)]
+                             merge {:path path} attr))))
+          acc))
 
 
     (def r
       (sut/compile-schema
         ztx
-        schema-key->attribute
-        {}
+        make-attribute
+        {:attrs {}}
         (zen.core/get-symbol ztx 'my-sturcts/User)))
 
-    (t/is (= {:User.id       {:path ["id"] :type :string}
-              :User.email    {:path ["email"] :type :string}
-              :User.name     {:path ["name"] #_#_:isCollection true :type :name}
-              :User.link     {:path ["link"] :type :map #_#_:isCollection true}
-              :User.link.id  {:path ["link" "id"] :type :string}
 
-              :name.given  {:path ["given"] :type :string #_#_:isCollection true}
-              :name.family {:path ["family"] :type :string}}
-             r))))
+    (t/is (= {:User.id         {:path ["id"] :type :string}
+              :User.email      {:path ["email"] :type :string}
+              :User.name       {:path ["name"] :isCollection true :type :name}
+              :User.link       {:path ["link"] :type :map :isCollection true}
+              :User.link.other {:path ["link" "other"] :type :reference}
+              :User.deceased   {:path ["deceased"]
+                                :type :map #_"FIXME"
+                                :types #{:boolean :datetime}}
+
+              :reference.id           {:path ["id"] :type :string}
+              :reference.resourceType {:path ["resourceType"] :type :string}
+
+              :name.given  {:path ["given"] :type :string :isCollection true}
+              :name.family {:path ["family"] :type :string}
+
+
+              #_"FIXME: should skip polymorphic keys & type"
+              :User.deceased.dateTime {:path ["deceased" "dateTime"], :type :datetime}
+              :User.deceased.boolean {:path ["deceased" "boolean"], :type :boolean}}
+             (:attrs r)))))
