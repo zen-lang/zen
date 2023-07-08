@@ -156,24 +156,29 @@
 
 #_"TODO: handle infinite recursion"
 
+(defn contains-nested-schemas? [schema]
+  (some #(contains? schema %) branch-keys))
+
 
 (defn schema-seq [ztx sym-def]
   (tree-seq
-    #(some (:schema % {}) branch-keys)
+    #(contains-nested-schemas? (:schema %))
     #(children-schemas ztx %)
     (init-lvl sym-def)))
 
 
 (defn schema-bf-seq [ztx sym-def]
   (zen.utils/bf-tree-seq
-    #(some (:schema % {}) branch-keys)
+    #(contains-nested-schemas? (:schema %))
     #(children-schemas ztx %)
     (init-lvl sym-def)))
 
 
 (defn reduce-schema-seq-kv [f acc schema-seq]
   (reduce (fn [acc node]
-            (reduce-kv (fn [acc k v] (f acc (assoc node :k k :v v)))
+            (reduce-kv (fn [acc k v]
+                         (f acc (assoc node :k k :v v)))
                        acc
                        (:schema node)))
-          acc schema-seq))
+          acc
+          schema-seq))
