@@ -444,9 +444,12 @@
  {:zen/tags #{zen/tag zen/schema}
   :zen/desc "zen system operation -> (op name config request & [session])"
   :type zen/map
+  :values {:type zen/any}
   :keys {:config {:zen/desc "late bound config map"
                   :type zen/symbol
-                  :tags #{binding}}}}
+                  :tags #{binding}}
+         :params {:type zen/any}
+         :result {:type zen/any}}}
 
  engine
  {:zen/tags #{zen/tag zen/schema}

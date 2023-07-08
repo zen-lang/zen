@@ -24,6 +24,10 @@
 (defn get-tag [ztx sym]
   (zen.store/get-tag ztx sym))
 
+(defn get-tagged [ztx sym]
+  (->> (zen.store/get-tag ztx sym)
+       (mapv (fn [t] (get-symbol ztx t)))))
+
 (defn validate [ztx symbols data]
   (-> (v2/validate ztx symbols data)
       (select-keys [:errors :warnings :effects])))
@@ -169,9 +173,10 @@
     (error ztx 'zen/start-missed {:op op-name})))
 
 (defn start-system [ztx & [entry-point]]
-  (let [system (get-symbol ztx entry-point)]
+  (if-let [system (get-symbol ztx entry-point)]
     (doseq [start-fn (:start system)]
-      (start-call ztx start-fn))))
+      (start-call ztx start-fn))
+    (error ztx 'zen/system {:message (str "No entry point " entry-point)})))
 
 (defn stop-system [ztx]
   (doseq [op-name (->>
