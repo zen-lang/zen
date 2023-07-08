@@ -71,92 +71,100 @@
 (def key-walk-seq-fns
   {:confirms (fn [ztx symbols]
                (mapv (fn [sym]
-                       {:schema-path [sym]
-                        :schema (zen.core/get-symbol ztx sym)})
+                       #:new{:schema      (zen.core/get-symbol ztx sym)
+                             :schema-sym  sym
+                             :data-path   [] #_"NOTE: to flush local data-path"
+                             :schema-path [sym]})
                      symbols))
-   :every (fn [_ztx every-sch] [{:path   [:#]
-                                 :schema every-sch}])
-   :keys  (fn [_ztx ks] (mapv (fn [[k v]]
-                                {:path   [k]
-                                 :schema v})
-                              ks))
-   :nth   (fn [_ztx idxs] (mapv (fn [[idx sch]]
-                                  {:path   [idx]
-                                   :schema sch})
-                                idxs))
-   :values   (fn [_ztx val-sch] [{:path   [:*]
-                                  :schema val-sch}])})
+
+   :every (fn [_ztx every-sch]
+            [#:new{:schema    every-sch
+                   :data-path [:#]}])
+
+   :keys (fn [_ztx ks]
+           (mapv (fn [[k v]]
+                   #:new{:schema      v
+                         :data-path   [k]
+                         :schema-path [k]})
+                 ks))
+
+   :nth (fn [_ztx idxs]
+          (mapv (fn [[idx sch]]
+                  #:new{:schema      sch
+                        :data-path   [idx]
+                        :schema-path [idx]})
+                idxs))
+
+   :values (fn [_ztx val-sch]
+             [#:new{:schema      val-sch
+                    :data-path   [:*]}])})
 
 
-(defn add-lvl-ctx [cur-lvl k w]
-  (let [path
-        (if (:schema-path w)
-          (or (:path w) [])
-          (into (:path cur-lvl) (:path w)))
-
-        full-path
-        (into (:full-path cur-lvl) (:path w))
-
-        schemas
-        (-> (or (:schema-path w) (:schemas cur-lvl))
-            (conj k))
-
-        full-schemas
-        (cond-> (:full-schemas cur-lvl)
-          (some? (:schema-path w)) (into (:schema-path w))
-          :always (conj k))
+(defn- init-lvl [top-lvl-sch]
+  {:schema           top-lvl-sch
+   :schema-sym       (:zen/name top-lvl-sch)
+   :schema-stack     [(:zen/name top-lvl-sch)]
+   :data-path        []
+   :full-data-path   []
+   :schema-path      [(:zen/name top-lvl-sch)]
+   :full-schema-path [(:zen/name top-lvl-sch)]})
 
 
-        schema-path
-        (into (-> (or (:schema-path w)
-                      (:schema-path cur-lvl))
-                  (conj k))
-              (:path w))
-
-        full-schema-path
-        (into
-          (cond-> (:full-schema-path cur-lvl)
-            (some? (:schema-path w)) (into (:schema-path w))
-            :always (conj k))
-          (:path w))]
-
-    (assoc w
-           :path path
-           :schemas schemas
-           :schema-path schema-path
-           :full-path full-path
-           :full-schemas full-schemas
-           :full-schema-path full-schema-path)))
+(defn- update-when-some [m k f v & args]
+  (if (some? v)
+    (apply update m k f v args)
+    m))
 
 
-(defn update-queue [ztx queue cur-lvl]
+(defn- add-lvl-ctx [outer-lvl k this-lvl]
+  (-> outer-lvl
+      (update-when-some :schema (fn [_outer new] new) (:new/schema this-lvl))
+      (update-when-some :schema-sym  (fn [_outer new] new) (:new/schema-sym this-lvl))
+      (update-when-some :schema-stack conj (:new/schema-sym this-lvl))
+      (update-when-some :full-data-path into (:new/data-path this-lvl))
+
+      (update-when-some :data-path
+                        (fn [outer new]
+                          (if (:new/schema-sym this-lvl)
+                            new
+                            (into outer new)))
+                        (:new/data-path this-lvl))
+
+      (update-when-some :schema-path
+                        (fn [outer new]
+                          (if (:new/schema-sym this-lvl)
+                            new
+                            (-> outer (conj k) (into new))))
+                        (:new/schema-path this-lvl))
+
+      (update-when-some :full-schema-path
+                        (fn [outer new] (-> outer (conj k) (into new)))
+                        (:new/schema-path this-lvl))))
+
+
+(defn- update-queue [ztx queue outer-lvl]
   (reduce-kv
     (fn [acc k v]
       (if-let [walk-key-fn (get key-walk-seq-fns k)]
         (into acc
-              (map #(add-lvl-ctx cur-lvl k %))
+              (map #(add-lvl-ctx outer-lvl k %))
               (walk-key-fn ztx v))
         acc))
     queue
-    (:schema cur-lvl)))
+    (:schema outer-lvl)))
 
 
-(defn compile [acc ztx wtx compile-fn]
+(defn- compile [acc ztx wtx compile-fn]
   (reduce-kv (fn [acc k v] (compile-fn acc ztx wtx k v))
              acc
              (:schema wtx)))
 
 
 (defn compile-schema [ztx compile-fn acc sym-def]
-  (loop [[cur-lvl & queue] [{:schema      sym-def
-                             :path        []
-                             :schemas     [(:zen/name sym-def)]
-                             :schema-path [(:zen/name sym-def)]
-                             :full-path        []
-                             :full-schemas     [(:zen/name sym-def)]
-                             :full-schema-path [(:zen/name sym-def)]}]
-         acc acc]
-    (if (some? cur-lvl)
-      (recur (update-queue ztx queue cur-lvl)
-             (compile acc ztx cur-lvl compile-fn))
+  (loop [[outer-lvl & queue] [(init-lvl sym-def)]
+         acc                 acc]
+    (if (some? outer-lvl)
+      #_"TODO: recursion will result in infinite loop"
+      (recur (update-queue ztx queue outer-lvl)
+             (compile acc ztx outer-lvl compile-fn))
       acc)))
