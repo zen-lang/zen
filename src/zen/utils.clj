@@ -285,3 +285,16 @@
 (def ^{:doc "Current working directory."
        :dynamic true}
   *cwd* (.getCanonicalFile (io/file ".")))
+
+
+(defn bf-tree-seq
+  [branch? children root]
+  (letfn [(step [queue]
+            (lazy-seq
+              (when (seq queue)
+                (let [node (peek queue)
+                      next-queue (pop queue)]
+                  (if (branch? node)
+                    (cons node (step (into next-queue (children node))))
+                    (cons node (step next-queue)))))))]
+    (step (conj clojure.lang.PersistentQueue/EMPTY root))))

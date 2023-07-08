@@ -192,3 +192,224 @@
        {:path [:zen/name nil]  :value 'myns4/mysym}
        {:path [:zen/tags nil]  :value '#{zen/schema myns4/mytag}}
        nil])))
+
+
+(t/deftest custom-compile-target-test
+  (t/testing "attribute generation"
+    (def ztx (zen.core/new-context {}))
+
+    (def my-structs-ns
+      '{:ns my-sturcts
+
+        reference
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:id {:type zen/string}
+                :resourceType {:type zen/string}}}
+
+        name
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:given {:type zen/vector
+                        :every {:type zen/string}}
+                :family {:type zen/string}}}
+
+        User
+        {:zen/tags #{zen/schema}
+         :type zen/map
+         :keys {:id {:type zen/string}
+                :email {:type zen/string
+                        #_#_:regex "@"}
+                :deceased {:fhir/polymorphic true
+                           :type zen/map
+                           :keys {:boolean {:type zen/boolean}
+                                  :dateTime {:type zen/datetime}}}
+                :name {:type zen/vector
+                       :every {:confirms #{name}}}
+                :link {:type zen/vector
+                       :every {:type zen/map
+                               :keys {:other {:confirms #{reference}}}}}}}})
+
+    (zen.core/load-ns ztx my-structs-ns)
+
+
+    (defn schema-key->attribute-dispatch [acc ztx wtx k v path] k)
+
+
+    (defmulti schema-key->attribute #'schema-key->attribute-dispatch
+      :default ::default)
+
+
+    (defmethod schema-key->attribute ::default [acc ztx wtx k v path]
+      nil)
+
+
+    (defn mk-attr-path [wtx]
+      (->> (:data-path wtx)
+           (remove #(= :# %))
+           (mapv name)))
+
+
+    (defn mk-attr-id [wtx]
+      (let [path (mk-attr-path wtx)
+            entity (:schema-sym wtx)]
+        (keyword
+          (str (name entity)
+               (when-let [pth (seq path)]
+                 (str "." (clojure.string/join "." pth)))))))
+
+
+    (defmethod schema-key->attribute :type [acc ztx wtx k v path]
+      {:attr
+       (let [tp (keyword (name v))]
+         (if (= :vector tp)
+           {:isCollection true}
+           {:type (keyword (name v))}))})
+
+
+    (defmethod schema-key->attribute :confirms [acc ztx wtx k v path]
+      {:attr {:type (keyword (name (first v)))}})
+
+
+    (defmethod schema-key->attribute :fhir/polymorphic [acc ztx wtx _k v path]
+      (when (true? v)
+        {:attr
+         {:types (->> (vals (get-in wtx [:schema :keys]))
+                      (mapv :type)
+                      (mapv name)
+                      (mapv keyword)
+                      set)}
+         :skip-polymorpic-keys (keys (get-in wtx [:schema :keys]))}))
+
+
+    (defn make-attribute [acc ztx {:as wtx :keys [k v]}]
+      (or (when-let [path (not-empty (mk-attr-path wtx))]
+            (when-let [{:keys [attr]}
+                       (schema-key->attribute acc ztx wtx k v path)]
+              (-> acc
+                  (update-in [:attrs (mk-attr-id wtx)]
+                             merge {:path path} attr))))
+          acc))
+
+
+    (def r
+      (sut/reduce-schema-seq-kv
+        #(make-attribute %1 ztx %2)
+        {:attrs {}}
+        (sut/schema-seq ztx (zen.core/get-symbol ztx 'my-sturcts/User))))
+
+
+    (t/is (= {:User.id         {:path ["id"] :type :string}
+              :User.email      {:path ["email"] :type :string}
+              :User.name       {:path ["name"] :isCollection true :type :name}
+              :User.link       {:path ["link"] :type :map :isCollection true}
+              :User.link.other {:path ["link" "other"] :type :reference}
+              :User.deceased   {:path ["deceased"]
+                                :type :map #_"FIXME"
+                                :types #{:boolean :datetime}}
+
+              :reference.id           {:path ["id"] :type :string}
+              :reference.resourceType {:path ["resourceType"] :type :string}
+
+              :name.given  {:path ["given"] :type :string :isCollection true}
+              :name.family {:path ["family"] :type :string}
+
+
+              #_"FIXME: should skip polymorphic keys & type"
+              :User.deceased.dateTime {:path ["deceased" "dateTime"], :type :datetime}
+              :User.deceased.boolean {:path ["deceased" "boolean"], :type :boolean}}
+             (:attrs r)))))
+
+
+(t/deftest schema-seq-test
+  (def ztx (zen.core/new-context {}))
+
+  (def myns
+    '{:ns myns
+
+      baz
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:quux {:type zen/string}}}
+
+      bar
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:baz {:confirms #{baz}}}}
+
+      foo
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:bar {:confirms #{bar}}
+              :baz {:confirms #{baz}}}}})
+
+  (zen.core/load-ns ztx myns)
+
+  (matcho/match
+    (sut/schema-bf-seq ztx (zen.core/get-symbol ztx 'myns/foo))
+    '[{:schema-sym myns/foo :schema-stack [myns/foo nil] :full-data-path [nil]      :schema {:zen/name myns/foo}}
+      {:schema-sym myns/foo :schema-stack [myns/foo nil] :full-data-path [:bar nil] :schema {:confirms #{myns/bar}}}
+      {:schema-sym myns/foo :schema-stack [myns/foo nil] :full-data-path [:baz nil] :schema {:confirms #{myns/baz}}}
+
+      {:schema-sym myns/bar :schema-stack [myns/foo myns/bar nil] :full-data-path [:bar nil]       :schema {:zen/name myns/bar}}
+      {:schema-sym myns/baz :schema-stack [myns/foo myns/baz nil] :full-data-path [:baz nil]       :schema {:zen/name myns/baz}}
+      {:schema-sym myns/bar :schema-stack [myns/foo myns/bar nil] :full-data-path [:bar :baz nil]  :schema {:confirms #{myns/baz}}}
+      {:schema-sym myns/baz :schema-stack [myns/foo myns/baz nil] :full-data-path [:baz :quux nil] :schema {:type zen/string}}
+
+      {:schema-sym myns/baz :schema-stack [myns/foo myns/bar myns/baz nil] :full-data-path [:bar :baz nil]       :schema {:zen/name myns/baz}}
+      {:schema-sym myns/baz :schema-stack [myns/foo myns/bar myns/baz nil] :full-data-path [:bar :baz :quux nil] :schema {:type zen/string}}
+      nil])
+
+  (matcho/match
+    (sut/schema-seq ztx (zen.core/get-symbol ztx 'myns/foo))
+    '[{:schema-sym myns/foo :schema-stack [myns/foo] :full-data-path [] :schema {:zen/name myns/foo}}
+      {:schema-sym myns/foo :schema-stack [myns/foo] :full-data-path [:bar] :schema {:confirms #{myns/bar}}}
+      {:schema {:zen/name myns/bar}}
+      {:schema {:confirms #{myns/baz}} :schema-stack [myns/foo myns/bar nil]}
+      {:schema {:zen/name myns/baz}}
+      {:schema {:type zen/string}}
+      {:schema {:confirms #{myns/baz}} :schema-stack [myns/foo nil]}
+      {:schema {:zen/name myns/baz}}
+      {:schema {:type zen/string}}
+      nil]))
+
+
+(t/deftest superschema-test
+  (def ztx (zen.core/new-context {}))
+
+  (def myns
+    '{:ns myns
+
+      baz
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:quux {:type zen/string}}}
+
+      bar
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:baz {:confirms #{baz}}}}
+
+      foo
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:bar {:confirms #{bar}}}}})
+
+  (zen.core/load-ns ztx myns)
+
+  (matcho/match
+    (sut/reduce-schema-seq-kv
+      (fn [acc {:keys [k v full-schema-path]}]
+        (if (or (= :confirms k)
+                (and (contains? #{:zen/tags :zen/name} k)
+                     (< 1 (count full-schema-path))))
+          acc
+          (assoc-in acc
+                    (->> (conj full-schema-path k)
+                         (remove symbol?)
+                         (remove #(= :confirms %)))
+                    v)))
+      {}
+      (sut/schema-bf-seq ztx (zen.core/get-symbol ztx 'myns/foo)))
+    {:zen/tags #{'zen/schema}
+     :keys {:bar {:keys {:baz {:keys {:quux {:type 'zen/string}}}}}}}))
