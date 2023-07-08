@@ -1,5 +1,6 @@
 (ns zen.walk
   (:require [zen.core]
+            [zen.utils]
             [zen.v2-validation]))
 
 
@@ -100,6 +101,9 @@
                     :data-path   [:*]}])})
 
 
+(def branch-keys (set (keys key-walk-seq-fns)))
+
+
 (defn- init-lvl [top-lvl-sch]
   {:schema           top-lvl-sch
    :schema-sym       (:zen/name top-lvl-sch)
@@ -142,29 +146,34 @@
                         (:new/schema-path this-lvl))))
 
 
-(defn- update-queue [ztx queue outer-lvl]
-  (reduce-kv
-    (fn [acc k v]
-      (if-let [walk-key-fn (get key-walk-seq-fns k)]
-        (into acc
-              (map #(add-lvl-ctx outer-lvl k %))
-              (walk-key-fn ztx v))
-        acc))
-    queue
-    (:schema outer-lvl)))
+(defn- children-schemas [ztx root]
+  (mapcat (fn [[k v]]
+            (when-let [walk-key-fn (get key-walk-seq-fns k)]
+              (map #(add-lvl-ctx root k %)
+                   (walk-key-fn ztx v))))
+          (:schema root)))
 
 
-(defn- compile [acc ztx wtx compile-fn]
-  (reduce-kv (fn [acc k v] (compile-fn acc ztx wtx k v))
-             acc
-             (:schema wtx)))
+#_"TODO: handle infinite recursion"
 
 
-(defn compile-schema [ztx compile-fn acc sym-def]
-  (loop [[outer-lvl & queue] [(init-lvl sym-def)]
-         acc                 acc]
-    (if (some? outer-lvl)
-      #_"TODO: recursion will result in infinite loop"
-      (recur (update-queue ztx queue outer-lvl)
-             (compile acc ztx outer-lvl compile-fn))
-      acc)))
+(defn schema-seq [ztx sym-def]
+  (tree-seq
+    #(some (:schema % {}) branch-keys)
+    #(children-schemas ztx %)
+    (init-lvl sym-def)))
+
+
+(defn schema-bf-seq [ztx sym-def]
+  (zen.utils/bf-tree-seq
+    #(some (:schema % {}) branch-keys)
+    #(children-schemas ztx %)
+    (init-lvl sym-def)))
+
+
+(defn reduce-schema-seq-kv [f acc schema-seq]
+  (reduce (fn [acc node]
+            (reduce-kv (fn [acc k v] (f acc (assoc node :k k :v v)))
+                       acc
+                       (:schema node)))
+          acc schema-seq))

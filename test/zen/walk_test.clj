@@ -282,10 +282,10 @@
          :skip-polymorpic-keys (keys (get-in wtx [:schema :keys]))}))
 
 
-    (defn make-attribute [acc ztx wtx _k v]
+    (defn make-attribute [acc ztx {:as wtx :keys [k v]}]
       (or (when-let [path (not-empty (mk-attr-path wtx))]
             (when-let [{:keys [attr]}
-                       (schema-key->attribute acc ztx wtx _k v path)]
+                       (schema-key->attribute acc ztx wtx k v path)]
               (-> acc
                   (update-in [:attrs (mk-attr-id wtx)]
                              merge {:path path} attr))))
@@ -293,11 +293,10 @@
 
 
     (def r
-      (sut/compile-schema
-        ztx
-        make-attribute
+      (sut/reduce-schema-seq-kv
+        #(make-attribute %1 ztx %2)
         {:attrs {}}
-        (zen.core/get-symbol ztx 'my-sturcts/User)))
+        (sut/schema-seq ztx (zen.core/get-symbol ztx 'my-sturcts/User))))
 
 
     (t/is (= {:User.id         {:path ["id"] :type :string}
@@ -320,6 +319,59 @@
               :User.deceased.dateTime {:path ["deceased" "dateTime"], :type :datetime}
               :User.deceased.boolean {:path ["deceased" "boolean"], :type :boolean}}
              (:attrs r)))))
+
+
+(t/deftest schema-seq-test
+  (def ztx (zen.core/new-context {}))
+
+  (def myns
+    '{:ns myns
+
+      baz
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:quux {:type zen/string}}}
+
+      bar
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:baz {:confirms #{baz}}}}
+
+      foo
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:bar {:confirms #{bar}}
+              :baz {:confirms #{baz}}}}})
+
+  (zen.core/load-ns ztx myns)
+
+  (matcho/match
+    (sut/schema-bf-seq ztx (zen.core/get-symbol ztx 'myns/foo))
+    '[{:schema-sym myns/foo :schema-stack [myns/foo nil] :full-data-path [nil]      :schema {:zen/name myns/foo}}
+      {:schema-sym myns/foo :schema-stack [myns/foo nil] :full-data-path [:bar nil] :schema {:confirms #{myns/bar}}}
+      {:schema-sym myns/foo :schema-stack [myns/foo nil] :full-data-path [:baz nil] :schema {:confirms #{myns/baz}}}
+
+      {:schema-sym myns/bar :schema-stack [myns/foo myns/bar nil] :full-data-path [:bar nil]       :schema {:zen/name myns/bar}}
+      {:schema-sym myns/baz :schema-stack [myns/foo myns/baz nil] :full-data-path [:baz nil]       :schema {:zen/name myns/baz}}
+      {:schema-sym myns/bar :schema-stack [myns/foo myns/bar nil] :full-data-path [:bar :baz nil]  :schema {:confirms #{myns/baz}}}
+      {:schema-sym myns/baz :schema-stack [myns/foo myns/baz nil] :full-data-path [:baz :quux nil] :schema {:type zen/string}}
+
+      {:schema-sym myns/baz :schema-stack [myns/foo myns/bar myns/baz nil] :full-data-path [:bar :baz nil]       :schema {:zen/name myns/baz}}
+      {:schema-sym myns/baz :schema-stack [myns/foo myns/bar myns/baz nil] :full-data-path [:bar :baz :quux nil] :schema {:type zen/string}}
+      nil])
+
+  (matcho/match
+    (sut/schema-seq ztx (zen.core/get-symbol ztx 'myns/foo))
+    '[{:schema-sym myns/foo :schema-stack [myns/foo] :full-data-path [] :schema {:zen/name myns/foo}}
+      {:schema-sym myns/foo :schema-stack [myns/foo] :full-data-path [:bar] :schema {:confirms #{myns/bar}}}
+      {:schema {:zen/name myns/bar}}
+      {:schema {:confirms #{myns/baz}} :schema-stack [myns/foo myns/bar nil]}
+      {:schema {:zen/name myns/baz}}
+      {:schema {:type zen/string}}
+      {:schema {:confirms #{myns/baz}} :schema-stack [myns/foo nil]}
+      {:schema {:zen/name myns/baz}}
+      {:schema {:type zen/string}}
+      nil]))
 
 
 (t/deftest superschema-test
@@ -346,55 +398,18 @@
   (zen.core/load-ns ztx myns)
 
   (matcho/match
-    (sut/compile-schema
-      ztx
-      (fn [acc ztx wtx k v]
-        (conj acc (assoc wtx :k k :v v)))
-      []
-      (zen.core/get-symbol ztx 'myns/foo))
-    [{:schema-sym 'myns/foo :schema-stack '[myns/foo] :full-data-path [] :k :zen/tags
-      :schema-path '[myns/foo]
-      :full-schema-path '[myns/foo]}
-     {:schema-sym 'myns/foo :schema-stack '[myns/foo] :full-data-path [] :k :type}
-     {:schema-sym 'myns/foo :schema-stack '[myns/foo] :full-data-path [] :k :keys}
-     {:schema-sym 'myns/foo :schema-stack '[myns/foo] :full-data-path [] :k :zen/name}
-     {:schema-sym 'myns/foo :schema-stack '[myns/foo] :full-data-path [:bar] :k :confirms
-      :data-path [:bar]
-      :schema-path '[myns/foo :keys :bar]
-      :full-schema-path '[myns/foo :keys :bar]}
-     {:schema-sym 'myns/bar :schema-stack '[myns/foo myns/bar] :full-data-path [:bar] :k :zen/tags}
-     {:schema-sym 'myns/bar :schema-stack '[myns/foo myns/bar] :full-data-path [:bar] :k :type}
-     {:schema-sym 'myns/bar :schema-stack '[myns/foo myns/bar] :full-data-path [:bar] :k :keys}
-     {:schema-sym 'myns/bar :schema-stack '[myns/foo myns/bar] :full-data-path [:bar] :k :zen/name}
-     {:schema-sym 'myns/bar :schema-stack '[myns/foo myns/bar] :full-data-path [:bar :baz] :k :confirms
-      :data-path [:baz]
-      :schema-path '[myns/bar :keys :baz]
-      :full-schema-path '[myns/foo :keys :bar :confirms myns/bar :keys :baz]}
-     {:schema-sym 'myns/baz :schema-stack '[myns/foo myns/bar myns/baz] :full-data-path [:bar :baz] :k :zen/tags}
-     {:schema-sym 'myns/baz :schema-stack '[myns/foo myns/bar myns/baz] :full-data-path [:bar :baz] :k :type}
-     {:schema-sym 'myns/baz :schema-stack '[myns/foo myns/bar myns/baz] :full-data-path [:bar :baz] :k :keys}
-     {:schema-sym 'myns/baz :schema-stack '[myns/foo myns/bar myns/baz] :full-data-path [:bar :baz] :k :zen/name}
-     {:schema-sym 'myns/baz :schema-stack '[myns/foo myns/bar myns/baz] :k :type
-      :full-data-path [:bar :baz :quux]
-      :data-path [:quux]
-      :schema-path '[myns/baz :keys :quux]
-      :full-schema-path '[myns/foo :keys :bar :confirms myns/bar :keys :baz :confirms myns/baz :keys :quux]}
-     nil])
-
-  (matcho/match
-    (sut/compile-schema
-      ztx
-      (fn [acc ztx wtx k v]
+    (sut/reduce-schema-seq-kv
+      (fn [acc {:keys [k v full-schema-path]}]
         (if (or (= :confirms k)
                 (and (contains? #{:zen/tags :zen/name} k)
-                     (< 1 (count (:full-schema-path wtx)))))
+                     (< 1 (count full-schema-path))))
           acc
           (assoc-in acc
-                    (->> (conj (:full-schema-path wtx) k)
+                    (->> (conj full-schema-path k)
                          (remove symbol?)
                          (remove #(= :confirms %)))
                     v)))
       {}
-      (zen.core/get-symbol ztx 'myns/foo))
+      (sut/schema-bf-seq ztx (zen.core/get-symbol ztx 'myns/foo)))
     {:zen/tags #{'zen/schema}
      :keys {:bar {:keys {:baz {:keys {:quux {:type 'zen/string}}}}}}}))
