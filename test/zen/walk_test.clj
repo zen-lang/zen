@@ -413,3 +413,58 @@
       (sut/schema-bf-seq ztx (zen.core/get-symbol ztx 'myns/foo)))
     {:zen/tags #{'zen/schema}
      :keys {:bar {:keys {:baz {:keys {:quux {:type 'zen/string}}}}}}}))
+
+
+(t/deftest walk-test
+  (def ztx (zen.core/new-context {}))
+
+  (def my-structs-ns
+    '{:ns my-sturcts
+
+      User
+      {:zen/tags #{zen/schema}
+       :type zen/map
+       :keys {:id {:type zen/string}
+              :email {:type zen/string
+                      #_#_:regex "@"}
+              :name {:type zen/vector
+                     :every {:type zen/map
+                             :keys {:given {:type zen/vector
+                                            :every {:type zen/string}}
+                                    :family {:type zen/string}}}}}}})
+
+  (zen.core/load-ns ztx my-structs-ns)
+
+  (def ts-typedef-assert
+    (str "type User = {\n"
+         "  id: string;\n"
+         "  email: string;\n"
+         "  name: Array < {\n"
+         "    given: Array < string >;\n"
+         "    family: string\n"
+         "  } >\n"
+         "}"))
+
+  (def r
+    (sut/postwalk-schemas
+      nil
+      (fn [schema]
+        (str
+          (when-let [nm (:zen/name schema)]
+            (str "type " (name nm) " = "))
+          (case (:type schema)
+            zen/map    (str "{\n"
+                            (clojure.string/join
+                              ";\n"
+                              (map
+                                (fn [[k v]]
+                                  (str "  " (name k) ": "
+                                       (->> (clojure.string/split-lines v)
+                                            (clojure.string/join "\n  "))))
+                                (:keys schema)))
+                            "\n}")
+            zen/vector (str "Array < " (:every schema) " >")
+            (name (:type schema)))))
+      (zen.core/get-symbol ztx 'my-sturcts/User)))
+
+  (t/is (= ts-typedef-assert r)))
