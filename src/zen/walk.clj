@@ -56,7 +56,7 @@
       {:path  path
        :value (get-in sym-def path)})))
 
-
+#_"TODO"
 #_:confirms
 #_:every
 :key
@@ -67,8 +67,6 @@
 :schema-index
 :schema-key
 #_:values
-
-
 (def key-walk-seq-fns
   {:confirms (fn [ztx symbols]
                (mapv (fn [sym]
@@ -146,7 +144,7 @@
                         (:new/schema-path this-lvl))))
 
 
-(defn- children-schemas [ztx root]
+(defn- child-schemas [ztx root]
   (mapcat (fn [[k v]]
             (when-let [walk-key-fn (get key-walk-seq-fns k)]
               (map #(add-lvl-ctx root k %)
@@ -163,14 +161,14 @@
 (defn schema-seq [ztx sym-def]
   (tree-seq
     #(contains-nested-schemas? (:schema %))
-    #(children-schemas ztx %)
+    #(child-schemas ztx %)
     (init-lvl sym-def)))
 
 
 (defn schema-bf-seq [ztx sym-def]
   (zen.utils/bf-tree-seq
     #(contains-nested-schemas? (:schema %))
-    #(children-schemas ztx %)
+    #(child-schemas ztx %)
     (init-lvl sym-def)))
 
 
@@ -182,3 +180,43 @@
                        (:schema node)))
           acc
           schema-seq))
+
+
+#_"TODO"
+:confirms
+#_:every
+:key
+:key-schema
+:keyname-schemas
+#_:keys
+#_:nth
+:schema-index
+:schema-key
+#_:values
+(defn walk-schemas [ztx inner outer schema]
+  (outer
+    (into {}
+          (map (fn [[k v]]
+                 [k (case k
+                      :every (inner v)
+                      :keys (update-vals v inner)
+                      :nth (update-vals v inner)
+                      :values (inner v)
+                      v)]))
+          schema)))
+
+
+(defn postwalk-schemas [ztx f schema]
+  (walk-schemas ztx (partial postwalk-schemas ztx f) f schema))
+
+
+(defn prewalk-schemas [ztx f schema]
+  (walk-schemas ztx (partial prewalk-schemas ztx f) identity (f schema)))
+
+
+(defn postwalk-demo [ztx schema]
+  (postwalk-schemas ztx (fn [x] (print "Walked: ") (prn x) x) schema))
+
+
+(defn prewalk-demo [ztx schema]
+  (prewalk-schemas ztx (fn [x] (print "Walked: ") (prn x) x) schema))
