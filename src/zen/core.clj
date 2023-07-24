@@ -191,3 +191,13 @@
      (f acc (get-symbol ztx sym)))
    {}
    (get-tag ztx tag)))
+
+
+(defn tag-filter [ztx tag f]
+  (->> (get-tag ztx tag)
+       (map #(get-symbol ztx %))
+       (filter f)))
+
+
+(defn tag-filter-first [ztx tag f]
+  (first (tag-filter ztx tag f)))
