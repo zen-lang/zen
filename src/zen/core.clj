@@ -184,3 +184,10 @@
                    (map (fn [[_k v]] (:start v)))
                    (filter identity))]
     (stop-call ztx op-name)))
+
+(defn tag-reduce [ztx tag f]
+  (reduce
+   (fn [acc sym]
+     (f acc (get-symbol ztx sym)))
+   {}
+   (get-tag ztx tag)))
