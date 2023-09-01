@@ -423,7 +423,7 @@
       (try
         (let [content (slurp file)
               env (:env @ctx)
-              zen-ns-map (edamame.core/parse-string content
+              zen-ns-map (first (edamame.core/parse-string-all content
                                                     {:readers {'env         (fn [v] (env-string  env v))
                                                                'env-string  (fn [v] (env-string  env v))
                                                                'env-integer (fn [v] (env-integer env v))
@@ -431,7 +431,7 @@
                                                                'env-number  (fn [v] (env-number  env v))
                                                                'env-keyword (fn [v] (env-keyword  env v))
                                                                'env-boolean (fn [v] (env-boolean env v))
-                                                               'zen/quote   zen-quote}})
+                                                               'zen/quote   zen-quote}}))
               zen-ns-sym (get-ns zen-ns-map)]
           (if (= nm zen-ns-sym)
             (load-ns* ctx zen-ns-map (cond-> {:zen/file (.getPath file)}

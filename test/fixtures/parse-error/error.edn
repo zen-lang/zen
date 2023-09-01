@@ -1,0 +1,6 @@
+{:ns error
+ }
+
+hello
+{:zen/tags #{zen/tag zen/schema}
+ :type zen/map}}

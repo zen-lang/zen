@@ -244,3 +244,14 @@
   (t/testing "unresolved symbols errors"
     (matcho/match (zen/errors z)
       [{} {} {} {} nil])))
+
+(t/deftest parse-error-test
+
+  (def z (zen/new-context {:paths ["test/fixtures/parse-error"]}))
+
+  (t/is (= :zen/load-failed (zen/read-ns z 'error)))
+
+  (t/is (= [{:message "Unmatched delimiter: }",
+           :file "test/fixtures/parse-error/error.edn",
+           :ns 'error}]
+          (zen/errors z))))
