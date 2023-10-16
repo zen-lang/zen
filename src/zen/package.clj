@@ -164,27 +164,27 @@
 (defn zen-build! [root {:as _cfg,
                         :keys [build-path package-name]}]
   (zen-init-deps! root)
-
   (let [sep-char (File/separatorChar)
         build-dir-name (.getName (io/file build-path))
-        build-dir (if build-path (io/file root build-path) (io/file root build-dir-name))
+        build-dir (if build-path
+                    (io/file root build-path)
+                    (io/file root build-dir-name))
         zip-name (str (or package-name "zen-package") ".zip")
         zip-write-file (io/file build-dir zip-name)
-        _ (when-not (.exists zip-write-file) (.mkdir zip-write-file))
+        _ (when-not (.exists zip-write-file)
+            (io/make-parents zip-write-file))
         expanded-package-paths (zen.store/expand-package-path root)
         _ (doseq [p expanded-package-paths]
             (utils/copy-directory p (io/file build-dir "zrc")))
         _ (when (.exists (io/file root "ftr"))
             (utils/copy-directory (io/file root "ftr") (io/file build-dir "ftr")))
         sep-regex (java.util.regex.Pattern/compile (str (File/separatorChar)))]
-
     (with-open [zip-stream
                 ^java.util.zip.ZipOutputStream
                 (->
-                 zip-write-file
-                 (io/output-stream)
-                 (java.util.zip.ZipOutputStream.))]
-
+                  zip-write-file
+                  (io/output-stream)
+                  (java.util.zip.ZipOutputStream.))]
       (doseq [^java.io.File f (file-seq (io/file build-dir))
               :when (and (not (.isDirectory f))
                          (not (str/includes? (.getPath f) ".git"))
