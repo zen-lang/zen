@@ -446,7 +446,7 @@
                         :got-ns zen-ns-sym})
                 nil)))
         (catch Exception e
-          (println :error-while-reading (.getPath file) e)
+          #_(println :error-while-reading (.getPath file) e)
           (swap! ctx update :errors
                  (fnil conj [])
                  {:message (.getMessage e)
