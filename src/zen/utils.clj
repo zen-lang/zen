@@ -262,7 +262,7 @@
   (when (not (.exists to)) (.mkdirs to))
   (doseq [^java.io.File file (.listFiles from)]
     (if (.isDirectory file)
-      (copy-directory (.getPath file) (io/file  to (.getName file)))
+      (copy-directory (io/file (.getPath file)) (io/file  to (.getName file)))
       (copy-file (.getPath file) (io/file to (.getName file))))))
 
 
@@ -291,10 +291,10 @@
   [branch? children root]
   (letfn [(step [queue]
             (lazy-seq
-              (when (seq queue)
-                (let [node (peek queue)
-                      next-queue (pop queue)]
-                  (if (branch? node)
-                    (cons node (step (into next-queue (children node))))
-                    (cons node (step next-queue)))))))]
+             (when (seq queue)
+               (let [node (peek queue)
+                     next-queue (pop queue)]
+                 (if (branch? node)
+                   (cons node (step (into next-queue (children node))))
+                   (cons node (step next-queue)))))))]
     (step (conj clojure.lang.PersistentQueue/EMPTY root))))
