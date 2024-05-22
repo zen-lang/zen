@@ -326,9 +326,17 @@
          (map (fn [x] (io/file x "zrc")))
          (filter #(.isDirectory %)))))
 
+(defn expand-nippy-indexes [modules]
+  (when (and (.exists modules) (.isDirectory modules))
+    (->> (.listFiles modules) 
+         (filter (fn [x] (.exists (io/file x "index.nippy"))))
+         (map (fn [x] (io/file x "index.nippy"))))))
 
 (defn expand-package-path [package-path]
   (cons (io/file package-path "zrc") (expand-zen-packages (io/file package-path "zen-packages"))))
+
+(defn expand-nippy-path [package-path]
+  (expand-nippy-indexes (io/file package-path "zen-packages")))
 
 
 (defn unzip-cache-dir

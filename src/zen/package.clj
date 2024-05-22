@@ -176,6 +176,9 @@
         expanded-package-paths (zen.store/expand-package-path root)
         _ (doseq [p expanded-package-paths]
             (utils/copy-directory p (io/file build-dir "zrc")))
+        expanded-nippy-paths (zen.store/expand-nippy-path root)
+        _ (doseq [p expanded-nippy-paths]
+            (utils/copy-file p (io/file (io/file build-dir "zrc") (last (str/split (str p) #"/zen-packages/")))))
         _ (when (.exists (io/file root "ftr"))
             (utils/copy-directory (io/file root "ftr") (io/file build-dir "ftr")))
         sep-regex (java.util.regex.Pattern/compile (str (File/separatorChar)))]
