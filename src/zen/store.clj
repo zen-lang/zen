@@ -3,7 +3,7 @@
    [clojure.edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
+   [zen.walk2]
    [edamame.core]
    [zen.utils]
    [zen.v2-validation :as v2]))
@@ -48,7 +48,7 @@
   ;; disables sym expansion in zen/list (expr types)
   (if (list? resource)
     resource
-    (walk/walk (partial walk-resource walk-fn) walk-fn resource)))
+    (zen.walk2/walk (partial walk-resource walk-fn) walk-fn resource)))
 
 
 (defn validate-symbol
