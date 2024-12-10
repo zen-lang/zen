@@ -168,7 +168,7 @@
  length
  {:zen/tags #{schema is-key}
   :for #{string}
-  :zen/desc "lenght of string"}
+  :zen/desc "length of string"}
 
  minLength
  {:zen/tags #{schema is-key}
