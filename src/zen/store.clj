@@ -472,7 +472,8 @@
 (defn read-ns [ctx zen-ns-sym & [opts]]
   (if-let [validate-queue (read-ns* ctx zen-ns-sym opts)]
     (do
-      (validate-queue-resources! ctx validate-queue)
+      (when (not (:disable-schema-validation opts))
+        (validate-queue-resources! ctx validate-queue))
       :zen/loaded)
     :zen/load-failed))
 
